@@ -1,0 +1,16 @@
+/* Slides surface palette — Figma-dark, mode-independent.
+   Lifted verbatim from the study export and centralized here so the slides UI
+   (SlidesPanel / SlideInspector) theming lives in one place instead of scattered
+   literals. These generate `*-slides-*` Tailwind utilities (bg/border/text). */
+@theme {
+  --color-slides-bg: #2c2c2c;               /* panel + section surface */
+  --color-slides-surface: #383838;          /* segmented track, raised tab */
+  --color-slides-border: #444444;           /* strong divider / control border */
+  --color-slides-hairline: rgba(255, 255, 255, 0.1); /* subtle inner border */
+  --color-slides-accent: #f65009;           /* Share / primary action */
+  --color-slides-comment: #ff5c16;          /* comment pin */
+  --color-slides-selected: #d4693b;         /* selected-slide tint */
+  --color-slides-number-selected: #ffa27a;  /* selected slide number */
+  --color-slides-avatar: #f3c11b;           /* multiplayer avatar */
+  --color-slides-chit: #212121;             /* colour-chit swatch */
+}
