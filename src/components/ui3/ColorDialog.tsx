@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { clsx } from "clsx";
 import { Image, Pipette, Blend, Contrast, Plus, Minus, RotateCcw, Disc, Diamond, Search, LayoutGrid, ChevronDown } from "lucide-react";
 import { Modal, ModalHeader, ModalBody, ModalDivider, MODAL_WIDTHS } from "./Dialog";
+import { hsbToHex } from "../../lib/color";
 import { Tabs } from "./Tabs";
 import { Slider, PickerHandle, GradientStopHandle } from "./Slider";
 import { InputField, ColorInput, NumericInputMulti } from "./Input";
@@ -269,11 +270,12 @@ function AdjustRow({ label, value, onChange }: {
 // ─── Gradient stop row ────────────────────────────────────────────────────────
 
 function StopRow({
-  stop, onPosition, onOpacity, onRemove,
+  stop, onPosition, onOpacity, onColor, onRemove,
 }: {
   stop: GradientStop;
   onPosition: (id: string, v: number) => void;
   onOpacity: (id: string, v: number) => void;
+  onColor: (id: string, hex: string) => void;
   onRemove: (id: string) => void;
 }) {
   return (
@@ -289,7 +291,7 @@ function StopRow({
       </div>
       {/* the stop color uses the same ColorInput as the panels */}
       <div className="flex-1 min-w-0">
-        <ColorInput fullWidth color={`#${stop.color}`} opacity={stop.opacity} onOpacityChange={v => onOpacity(stop.id, v)} />
+        <ColorInput fullWidth color={`#${stop.color}`} opacity={stop.opacity} onColorChange={v => onColor(stop.id, v)} onOpacityChange={v => onOpacity(stop.id, v)} />
       </div>
       <button
         onClick={() => onRemove(stop.id)}
@@ -350,25 +352,43 @@ export function ColorDialog({
     const el = canvasRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    setSat(Math.round(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * 100));
-    setBri(Math.round((1 - Math.max(0, Math.min(1, (e.clientY - r.top) / r.height))) * 100));
+    const nextSat = Math.round(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * 100);
+    const nextBri = Math.round((1 - Math.max(0, Math.min(1, (e.clientY - r.top) / r.height))) * 100);
+    setSat(nextSat);
+    setBri(nextBri);
+    // The picker commits a concrete color — consumers only speak hex.
+    const nextHex = hsbToHex(hue, nextSat, nextBri);
+    setHex(nextHex);
+    onHexChange?.(nextHex);
   };
 
   const [colorFormat, setColorFormat] = useState("Hex");
   const cycleFormat = () => setColorFormat(f => COLOR_FORMATS[(COLOR_FORMATS.indexOf(f) + 1) % COLOR_FORMATS.length]);
   const isSingleFmt = colorFormat === "Hex" || colorFormat === "CSS";
   const handleFillType = (t: FillType) => { setFillType(t); onFillTypeChange?.(t); };
-  const handleHue      = (v: number)   => { setHue(v);      onHueChange?.(v); };
+  const handleHue      = (v: number)   => {
+    setHue(v);
+    onHueChange?.(v);
+    const nextHex = hsbToHex(v, sat, bri);
+    setHex(nextHex);
+    onHexChange?.(nextHex);
+  };
   const handleOpacity  = (v: number)   => { setOpacity(v);  onOpacityChange?.(v); };
   const handleHex      = (v: string)   => { setHex(v);      onHexChange?.(v); };
 
+  const commitStops = (next: GradientStop[]) => {
+    setStops(next);
+    onStopsChange?.(next);
+  };
   const handleStopPos  = (id: string, v: number) =>
-    setStops(s => s.map(x => x.id === id ? { ...x, position: Math.min(100, Math.max(0, v)) } : x));
+    commitStops(stops.map(x => x.id === id ? { ...x, position: Math.min(100, Math.max(0, v)) } : x));
   const handleStopOp   = (id: string, v: number) =>
-    setStops(s => s.map(x => x.id === id ? { ...x, opacity: Math.min(100, Math.max(0, v)) } : x));
-  const handleStopRemove = (id: string) => setStops(s => s.filter(x => x.id !== id));
+    commitStops(stops.map(x => x.id === id ? { ...x, opacity: Math.min(100, Math.max(0, v)) } : x));
+  const handleStopColor = (id: string, hexValue: string) =>
+    commitStops(stops.map(x => x.id === id ? { ...x, color: hexValue.replace(/^#/, "") } : x));
+  const handleStopRemove = (id: string) => commitStops(stops.filter(x => x.id !== id));
   const handleStopAdd    = () =>
-    setStops(s => [...s, { id: String(Date.now()), position: 50, color: "888888", opacity: 100 }]);
+    commitStops([...stops, { id: String(Date.now()), position: 50, color: "888888", opacity: 100 }]);
 
   const hueColor = `hsl(${hue}, 100%, 50%)`;
   const pickerColor = `hsl(${hue}, ${sat}%, ${(bri * (100 - sat / 2) / 100)}%)`;
@@ -437,6 +457,11 @@ export function ColorDialog({
                 value={fillType.charAt(0).toUpperCase() + fillType.slice(1)}
                 size="default"
                 className="w-[96px]"
+                onClick={() => {
+                  const order: FillType[] = ["linear", "radial", "angular", "diamond"];
+                  const next = order[(order.indexOf(fillType) + 1) % order.length];
+                  handleFillType(next);
+                }}
               />
             </div>
           )}
@@ -505,7 +530,7 @@ export function ColorDialog({
                 </div>
               ) : (
                 <div className="flex-1 min-w-0">
-                  <NumericInputMulti values={colorFormat === "RGB" ? [30, 30, 30, opacity] : [0, 0, 12, opacity]} />
+                  <NumericInputMulti values={(colorFormat === "RGB" ? [30, 30, 30, opacity] : [0, 0, 12, opacity]).map(v => ({ value: v })) as [{ value: number }, { value: number }, { value: number }, { value: number }]} />
                 </div>
               )}
             </div>
@@ -572,6 +597,7 @@ export function ColorDialog({
                 stop={stop}
                 onPosition={handleStopPos}
                 onOpacity={handleStopOp}
+                onColor={handleStopColor}
                 onRemove={handleStopRemove}
               />
             ))}

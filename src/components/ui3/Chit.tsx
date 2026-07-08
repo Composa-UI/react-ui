@@ -1,6 +1,6 @@
 import { clsx } from "clsx";
 
-export type ChitType = "Fill" | "Opacity" | "Gradient" | "Image";
+export type ChitType = "Fill" | "Opacity" | "Gradient" | "Image" | "Instance";
 export type ChitVariant = "Square" | "Circle";
 
 const CSS_GRADIENT = "linear-gradient(135deg, #f06 0%, #fc0 25%, #0cf 50%, #f06 75%, #fc0 100%)";

@@ -1,0 +1,73 @@
+/*
+ * Editor bridge — the SAFE style surface for consuming @composa/ui from
+ * composa-editor (or any host that runs its own Tailwind v4 build).
+ *
+ * Why not `@composa/ui/styles` (index.css)? Two hazards for hosts:
+ *   1. tailwind.css re-imports tailwindcss → a second preflight fights the
+ *      host's own reset.
+ *   2. theme.css's :root block defines --background/--foreground/--border
+ *      etc., which collide with (and would clobber) the host's identically
+ *      named theme variables.
+ *
+ * This file carries ONLY the collision-free layers:
+ *   - composa-tokens.css: --color-* / --radius-* / --elevation-* primitives
+ *     (light + dark via [data-composa-mode])
+ *   - fonts.css: Inter + --composa-font-family
+ *   - the c-* @theme mappings, so the host's Tailwind generates the c-*
+ *     utilities used by these components (add an @source for this package's
+ *     src/ in the host's CSS).
+ * Keep the c-* block in sync with theme.css when tokens are added.
+ */
+
+@import './composa-tokens.css';
+@import './fonts.css';
+
+@theme inline {
+  --color-c-bg:                  var(--color-bg);
+  --color-c-bg-secondary:        var(--color-bg-secondary);
+  --color-c-bg-hover:            var(--color-bg-hover);
+  --color-c-bg-pressed:          var(--color-bg-pressed);
+  --color-c-bg-disabled:         var(--color-bg-disabled);
+  --color-c-bg-inverse:          var(--color-bg-inverse);
+  --color-c-bg-brand:            var(--color-bg-brand);
+  --color-c-bg-brand-pressed:    var(--color-bg-brand-pressed);
+  --color-c-bg-danger:           var(--color-bg-danger);
+  --color-c-bg-success:          var(--color-bg-success);
+  --color-c-bg-warning:          var(--color-bg-warning);
+  --color-c-bg-selected:         var(--color-bg-selected);
+  --color-c-bg-assistive:        var(--color-bg-assistive);
+  --color-c-bg-figjam:           var(--color-bg-figjam);
+  --color-c-text:                var(--color-text);
+  --color-c-text-secondary:      var(--color-text-secondary);
+  --color-c-text-tertiary:       var(--color-text-tertiary);
+  --color-c-text-onbrand:        var(--color-text-onbrand);
+  --color-c-text-on-brand:       var(--color-text-onbrand);
+  --color-c-text-on-inverse:     var(--color-text-on-inverse);
+  --color-c-text-disabled:       var(--color-text-tertiary);
+  --color-c-text-danger:         var(--color-text-danger);
+  --color-c-text-success:        var(--color-text-success);
+  --color-c-text-warning:        var(--color-text-warning);
+  --color-c-text-brand:          var(--color-text-brand);
+  --color-c-text-assistive:      var(--color-text-assistive);
+  --color-c-icon:                var(--color-icon);
+  --color-c-icon-secondary:      var(--color-icon-secondary);
+  --color-c-icon-tertiary:       var(--color-icon-tertiary);
+  --color-c-icon-onbrand:        var(--color-icon-onbrand);
+  --color-c-icon-on-brand:       var(--color-icon-onbrand);
+  --color-c-component:           var(--color-bg-figjam);
+  --color-c-border:              var(--color-border);
+  --color-c-border-strong:       var(--color-border-strong);
+  --color-c-border-translucent:  var(--color-border-translucent);
+  --color-c-border-selected:     var(--color-border-selected);
+  --color-c-border-selected-strong: var(--color-border-selected-strong);
+  --color-c-border-disabled:     var(--color-border-disabled);
+  --color-c-border-menu:         var(--color-border-menu);
+  --color-c-focus-ring:          var(--color-focus-ring);
+  --radius-c-sm:                 var(--radius-small);
+  --radius-c-md:                 var(--radius-medium);
+  --radius-c-lg:                 var(--radius-large);
+  --radius-c-full:               var(--radius-full);
+  --shadow-c-100:                var(--elevation-100);
+  --shadow-c-200:                var(--elevation-200);
+  --shadow-c-300:                var(--elevation-300);
+}
