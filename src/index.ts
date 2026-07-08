@@ -1,0 +1,27 @@
+// @composa/ui public API — re-exports the merged UI3 component set.
+// Consumed by composa-editor. Panels/dialogs from ours land here as they're recomposed.
+export * from "./components/ui3/Avatar";
+export * from "./components/ui3/Button";
+export * from "./components/ui3/Checkbox";
+export * from "./components/ui3/ChipVariable";
+export * from "./components/ui3/Chit";
+export * from "./components/ui3/ColorDialog";
+export * from "./components/ui3/CreationToolbar";
+export * from "./components/ui3/Dialog";
+export * from "./components/ui3/Dropdown";
+export * from "./components/ui3/Input";
+export * from "./components/ui3/ListCell";
+export * from "./components/ui3/Menu";
+export * from "./components/ui3/Notification";
+export * from "./components/ui3/Panel";
+export * from "./components/ui3/PropertyPanel";
+export * from "./components/ui3/RadioButton";
+export * from "./components/ui3/SegmentedControl";
+export * from "./components/ui3/ShareModal";
+export * from "./components/ui3/Slider";
+export * from "./components/ui3/SplitButton";
+export * from "./components/ui3/Switch";
+export * from "./components/ui3/Tabs";
+export * from "./components/ui3/TextPair";
+export * from "./components/ui3/ToolbarButton";
+export * from "./components/ui3/Tooltip";
