@@ -530,7 +530,7 @@ export function ColorDialog({
                 </div>
               ) : (
                 <div className="flex-1 min-w-0">
-                  <NumericInputMulti values={colorFormat === "RGB" ? [30, 30, 30, opacity] : [0, 0, 12, opacity]} />
+                  <NumericInputMulti values={(colorFormat === "RGB" ? [30, 30, 30, opacity] : [0, 0, 12, opacity]).map(v => ({ value: v })) as [{ value: number }, { value: number }, { value: number }, { value: number }]} />
                 </div>
               )}
             </div>
