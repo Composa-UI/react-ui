@@ -25,3 +25,4 @@ export * from "./components/ui3/Tabs";
 export * from "./components/ui3/TextPair";
 export * from "./components/ui3/ToolbarButton";
 export * from "./components/ui3/Tooltip";
+export { hexToHsb, hsbToHex } from "./lib/color";
