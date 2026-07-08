@@ -1,3 +1,16 @@
+/* ============================================================================
+ * REFERENCE ONLY — DO NOT SHIP / DO NOT IMPORT INTO THE APP.
+ *
+ * This is a raw Figma-Make export of the slides editor layout (absolute
+ * positioning, baked-in PNG thumbnails, hardcoded values). It exists purely as a
+ * visual reference to BUILD COMPONENTS AGAINST — not as a component itself.
+ *
+ * The real, componentized versions live in `../../components/ui3/`:
+ *   - SlidesPanel   (left rail + slide-list states)
+ *   - SlideInspector (right panel — template style + background)
+ * The creation toolbar + layer list are still to be componentized from here and
+ * the sibling `Dark` export. Preview this raw layout at `?view=slides-raw`.
+ * ========================================================================== */
 import svgPaths from "./svg-d7l9mfigrm";
 import imgThumbnail from "./9bf3285fa6c14222923aa8fcd4bf31f6e40807d9.png";
 import imgThumbnail1 from "./201951eb24dd285dd0794f4e790b8175c012bf20.png";
