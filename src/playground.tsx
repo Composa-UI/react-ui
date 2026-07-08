@@ -1,6 +1,47 @@
 import { PropertyPanel } from "./components/ui3/PropertyPanel";
+import SlidesTemplate from "./imports/SlidesTemplate";
+import { SlidesPanel, type SlideData } from "./components/ui3/SlidesPanel";
+import thumb0 from "./imports/SlidesTemplate/9bf3285fa6c14222923aa8fcd4bf31f6e40807d9.png";
+import thumb1 from "./imports/SlidesTemplate/201951eb24dd285dd0794f4e790b8175c012bf20.png";
+import thumb2 from "./imports/SlidesTemplate/4f36d4cb9f77c2e380641dd47deb24943efa0b8a.png";
+import thumb3 from "./imports/SlidesTemplate/16da0f3d572c4e81a81819ed074b78b9021856c1.png";
+import thumb4 from "./imports/SlidesTemplate/fb3c95b27b7857955e04f62e905c22514cca029c.png";
+import thumb5 from "./imports/SlidesTemplate/6c2145074f835f12139b4a2a5e3bd8475c1fe34a.png";
+
+const DEMO_SLIDES: SlideData[] = [
+  { n: 1,  thumb: thumb0, selected: true },
+  { n: 2,  thumb: thumb1, group: true, expanded: true },
+  { n: 3,  thumb: thumb2, sub: true, comment: 3 },
+  { n: 4,  thumb: thumb3, sub: true, motion: true },
+  { n: 5,  thumb: thumb4, group: true, expanded: true, stacked: true, motion: true },
+  { n: 10, thumb: thumb5 },
+  { n: 11, thumb: thumb1 },
+  { n: 12, thumb: thumb2 },
+  { n: 13, thumb: thumb3 },
+];
 
 export default function Playground() {
+  // ?view=slides = componentized SlidesPanel; ?view=slides-raw = the raw Figma export
+  // (side-by-side fidelity check); default = property-panel fidelity set.
+  const view = new URLSearchParams(window.location.search).get("view");
+
+  if (view === "slides-raw") {
+    return (
+      <div style={{ height: "100vh", width: "100vw" }}>
+        <SlidesTemplate />
+      </div>
+    );
+  }
+
+  if (view === "slides") {
+    return (
+      <div style={{ height: "100vh", width: "100vw", display: "flex", background: "#1e1e1e" }}>
+        <SlidesPanel slides={DEMO_SLIDES} />
+        <div style={{ flex: 1 }} />
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "flex", gap: 20, padding: 24, height: "100%", background: "#e6e6e6", boxSizing: "border-box", overflowX: "auto" }}>
       <div style={{ height: "96%", flex: "0 0 auto" }}>

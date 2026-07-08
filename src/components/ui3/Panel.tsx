@@ -6,7 +6,7 @@ import { ChevronDown } from "lucide-react";
 // Native scrollbar is fully hidden (takes NO width — content is full-bleed); a thin
 // overlay thumb sits ON the panel, driven by JS and revealed on hover/scroll.
 // (Mirrors the study panel's `.composa-editing-inspector-scroll(bar)`.)
-export function ScrollArea({ children, className }: { children?: ReactNode; className?: string }) {
+export function ScrollArea({ children, className, thumbClassName = "bg-c-icon-secondary" }: { children?: ReactNode; className?: string; thumbClassName?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [thumb, setThumb] = useState<{ top: number; height: number } | null>(null);
   const [active, setActive] = useState(false);
@@ -46,7 +46,7 @@ export function ScrollArea({ children, className }: { children?: ReactNode; clas
       </div>
       {thumb && (
         <div
-          className="absolute right-[2px] w-[6px] rounded-full bg-c-icon-secondary pointer-events-none transition-opacity duration-200"
+          className={clsx("absolute right-[2px] w-[6px] rounded-full pointer-events-none transition-opacity duration-200", thumbClassName)}
           style={{ top: thumb.top, height: thumb.height, opacity: active ? 0.45 : 0 }}
         />
       )}
