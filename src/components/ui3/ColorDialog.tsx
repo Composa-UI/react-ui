@@ -36,6 +36,15 @@ interface ColorDialogProps {
   onHexChange?: (h: string) => void;
   gradientStops?: GradientStop[];
   onStopsChange?: (stops: GradientStop[]) => void;
+  /** Library groups for the Libraries tab. Defaults to demo data so the
+   * playground/stories keep working; hosts inject document tokens here. */
+  libraries?: LibraryGroup[];
+  /** Selecting a library color. Hosts get the full entry (id = token or
+   * variable id) so they can BIND rather than copy; without a handler the
+   * dialog applies the hex like any picker change. */
+  onSelectLibraryColor?: (color: LibraryColor, group: LibraryGroup) => void;
+  /** "On this page" swatch hexes (with #). Defaults to demo swatches. */
+  swatches?: string[];
   imageExposure?: number;
   imageContrast?: number;
   imageSaturation?: number;
@@ -47,14 +56,14 @@ interface ColorDialogProps {
 
 // ─── Library color data types ─────────────────────────────────────────────────
 
-interface LibraryColor {
+export interface LibraryColor {
   id: string;
   name: string;
   color: string;   // hex with #
   selected?: boolean;
 }
 
-interface LibraryGroup {
+export interface LibraryGroup {
   path: string;    // e.g. "_icon"  — rendered as ✦/_icon
   colors: LibraryColor[];
 }
@@ -97,14 +106,18 @@ function ColorChip({ color }: { color: string }) {
 }
 
 function LibrariesTab({
-  onSelectColor,
+  groups,
+  onSelect,
 }: {
-  onSelectColor?: (hex: string, name: string) => void;
+  groups: LibraryGroup[];
+  onSelect?: (color: LibraryColor, group: LibraryGroup) => void;
 }) {
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState("icon-default");
+  const [selectedId, setSelectedId] = useState(
+    () => groups.flatMap(g => g.colors).find(c => c.selected)?.id ?? "",
+  );
 
-  const filtered = MOCK_LIBRARY.map(group => ({
+  const filtered = groups.map(group => ({
     ...group,
     colors: group.colors.filter(c =>
       !search || c.name.toLowerCase().includes(search.toLowerCase()),
@@ -157,7 +170,7 @@ function LibrariesTab({
                   key={color.id}
                   onClick={() => {
                     setSelectedId(color.id);
-                    onSelectColor?.(color.color, color.name);
+                    onSelect?.(color, group);
                   }}
                   className={clsx(
                     "flex items-center w-full h-[32px] pl-[16px] pr-[4px] gap-[8px]",
@@ -184,7 +197,7 @@ function LibrariesTab({
             <ModalDivider className="mt-[4px]" />
             <div className="flex items-center h-[32px] px-[16px]">
               <span className={clsx(FONT, "text-[11px] font-[450] text-c-text-secondary truncate")}>
-                ✦/{MOCK_LIBRARY
+                ✦/{groups
                   .flatMap(g => g.colors.map(c => ({ ...c, path: g.path })))
                   .find(c => c.id === selectedId)
                   ?.path ?? ""}
@@ -328,6 +341,9 @@ export function ColorDialog({
   onHexChange,
   gradientStops: stopsProp,
   onStopsChange,
+  libraries = MOCK_LIBRARY,
+  onSelectLibraryColor,
+  swatches = ["#383838", "#f5f5f5", "#1e1e1e", "#ffffff", "#0d99ff", "#ff24bd"],
   imageExposure = 0,
   imageContrast = 0,
   imageSaturation = 0,
@@ -542,14 +558,15 @@ export function ColorDialog({
               <Dropdown value="On this page" size="default" className="w-full" />
             </div>
 
-            {/* Color swatches */}
+            {/* Color swatches — injected document colors; click applies */}
             <div className="flex flex-wrap gap-[8px] px-[16px] py-[8px] pb-[16px]">
-              {["#383838", "#f5f5f5", "#1e1e1e", "#ffffff", "#0d99ff", "#ff24bd"].map(c => (
+              {swatches.map(c => (
                 <button
                   key={c}
                   className="rounded-[3px] size-[16px] ring-1 ring-inset ring-[rgba(0,0,0,0.1)]"
                   style={{ backgroundColor: c }}
                   aria-label={c}
+                  onClick={() => handleHex(c.replace("#", ""))}
                 />
               ))}
             </div>
@@ -641,8 +658,10 @@ export function ColorDialog({
       {activeTab === "libraries" && (
         <ModalBody scrollable={false} className="flex flex-col overflow-hidden">
           <LibrariesTab
-            onSelectColor={(hex, name) => {
-              handleHex(hex.replace("#", ""));
+            groups={libraries}
+            onSelect={(color, group) => {
+              if (onSelectLibraryColor) onSelectLibraryColor(color, group);
+              else handleHex(color.color.replace("#", ""));
             }}
           />
         </ModalBody>
