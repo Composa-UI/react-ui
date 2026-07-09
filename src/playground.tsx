@@ -3,6 +3,8 @@ import SlidesTemplate from "./imports/SlidesTemplate";
 import { SlidesPanel, type SlideData } from "./components/ui3/SlidesPanel";
 import { SlideInspector } from "./components/ui3/SlideInspector";
 import { Timeline } from "./components/ui3/Timeline";
+import { LayerList } from "./components/ui3/LayerList";
+import { NavRail } from "./components/ui3/NavRail";
 import thumb0 from "./imports/SlidesTemplate/9bf3285fa6c14222923aa8fcd4bf31f6e40807d9.png";
 import thumb1 from "./imports/SlidesTemplate/201951eb24dd285dd0794f4e790b8175c012bf20.png";
 import thumb2 from "./imports/SlidesTemplate/4f36d4cb9f77c2e380641dd47deb24943efa0b8a.png";
@@ -31,6 +33,16 @@ export default function Playground() {
     return (
       <div style={{ height: "100vh", width: "100vw" }}>
         <SlidesTemplate />
+      </div>
+    );
+  }
+
+  if (view === "layers") {
+    return (
+      <div style={{ height: "100vh", width: "100vw", display: "flex", background: "#e6e6e6" }}>
+        <NavRail />
+        <LayerList />
+        <div style={{ flex: 1 }} />
       </div>
     );
   }
