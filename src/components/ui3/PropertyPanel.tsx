@@ -328,6 +328,8 @@ function LayoutAutoSection({
   const [lockAspect, setLockAspect] = useState(false);
   const [flow, setFlow] = useState("v");
   const [align, setAlign] = useState(alignValue);
+  const [indivPadding, setIndivPadding] = useState(false);
+  const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
 
   const flowBtns: IconBtn[] = [
     { icon: <Columns  size={S} strokeWidth={1.5} />, label: "Horizontal",  value: "h" },
@@ -365,28 +367,68 @@ function LayoutAutoSection({
         }
       />
 
-      {/* Alignment 3×3 + Gap */}
-      <div className="flex items-start pl-[16px] pr-[8px] gap-[8px] py-[8px]">
-        <AlignmentGrid value={align} onChange={setAlign} />
-        <div className="flex flex-col gap-[4px] flex-1">
-          <NumericInput
-            iconLead={<span className={FONT}>{"]·["}</span>}
-            defaultValue={gap} min={0} suffix="px"
-          />
-          <Dropdown value="Auto" size="default" />
+      {/* Alignment + Gap — Alignment is a fixed 88px matrix (not fluid like a
+          typical dual-field row); Gap fills the remainder; the settings icon
+          sits in the standard reserved 24px right-action slot. Gap's "Auto" is
+          the gap MODE (Fixed px vs Auto/space-between distribution). */}
+      <div className="pl-[16px] pr-[16px] py-[8px]">
+        <div className="flex items-start gap-[8px]">
+          <div className="shrink-0">
+            <div className={subLabel}>Alignment</div>
+            <AlignmentGrid value={align} onChange={setAlign} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className={subLabel}>Gap</div>
+            <div className="flex flex-col gap-[4px]">
+              <NumericInput
+                iconLead={<span className={FONT}>{"]·["}</span>}
+                defaultValue={gap} min={0} suffix="px"
+              />
+              <Dropdown value="Auto" fullWidth />
+            </div>
+          </div>
+          <div className="shrink-0 flex items-start min-w-[24px] justify-end">
+            <PanelActionBtn icon={<Settings2 size={16} strokeWidth={1.5} />} label="Gap settings" />
+          </div>
         </div>
-        <PanelActionBtn icon={<Settings2 size={16} strokeWidth={1.5} />} label="Gap settings" />
       </div>
 
-      {/* Padding — cross layout */}
+      {/* Padding — cross layout. Combined (default): Vertical + Horizontal, two
+          fields. Expanded (toggle): all four sides independently. */}
       <div className="px-[16px] pb-[4px]">
-        <span className={clsx(FONT, "text-[9px] font-[450] text-c-text-secondary tracking-[0.05em]")}>Padding</span>
-        <div className="grid grid-cols-2 gap-[4px] mt-[4px]">
-          <NumericInput iconLead={<span className={FONT}>↑</span>} defaultValue={paddingTop}  min={0} />
-          <NumericInput iconLead={<span className={FONT}>→</span>} defaultValue={paddingRight} min={0} />
-          <NumericInput iconLead={<span className={FONT}>↓</span>} defaultValue={paddingBottom} min={0} />
-          <NumericInput iconLead={<span className={FONT}>←</span>} defaultValue={paddingLeft} min={0} />
+        <div className="flex items-center justify-between mb-[3px]">
+          <span className={subLabel}>Padding</span>
         </div>
+        {indivPadding ? (
+          <div className="grid grid-cols-2 gap-[4px]">
+            <NumericInput iconLead={<span className={FONT}>↑</span>} defaultValue={paddingTop}    min={0} />
+            <NumericInput iconLead={<span className={FONT}>→</span>} defaultValue={paddingRight}  min={0} />
+            <NumericInput iconLead={<span className={FONT}>↓</span>} defaultValue={paddingBottom} min={0} />
+            <NumericInput iconLead={<span className={FONT}>←</span>} defaultValue={paddingLeft}   min={0} />
+            <div className="col-span-2 flex justify-end">
+              <PanelActionBtn
+                icon={<Maximize size={16} strokeWidth={1.5} />}
+                label="Combine padding"
+                active
+                onClick={() => setIndivPadding(false)}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-[4px]">
+            <div className="flex-1 min-w-0">
+              <NumericInput iconLead={<span className={FONT}>↕</span>} defaultValue={paddingTop} min={0} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <NumericInput iconLead={<span className={FONT}>↔</span>} defaultValue={paddingLeft} min={0} />
+            </div>
+            <PanelActionBtn
+              icon={<Maximize size={16} strokeWidth={1.5} />}
+              label="Independent padding"
+              onClick={() => setIndivPadding(true)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Clip content */}
