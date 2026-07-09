@@ -413,19 +413,22 @@ function LayoutAutoSection({
           <span className={subLabel}>Padding</span>
         </div>
         {indivPadding ? (
-          <div className="grid grid-cols-2 gap-[4px]">
-            <NumericInput iconLead={<span className={FONT}>↑</span>} defaultValue={paddingTop}    min={0} />
-            <NumericInput iconLead={<span className={FONT}>→</span>} defaultValue={paddingRight}  min={0} />
-            <NumericInput iconLead={<span className={FONT}>↓</span>} defaultValue={paddingBottom} min={0} />
-            <NumericInput iconLead={<span className={FONT}>←</span>} defaultValue={paddingLeft}   min={0} />
-            <div className="col-span-2 flex justify-end">
-              <PanelActionBtn
-                icon={<Maximize size={16} strokeWidth={1.5} />}
-                label="Combine padding"
-                active
-                onClick={() => setIndivPadding(false)}
-              />
+          // Same reserved icon column as the combined state below (shrink-0, right
+          // edge) — the field grid is flex-1 so it shrinks to leave that room,
+          // instead of the icon getting bumped to its own row underneath.
+          <div className="flex items-center gap-[4px]">
+            <div className="grid grid-cols-2 gap-[4px] flex-1 min-w-0">
+              <NumericInput iconLead={<span className={FONT}>↑</span>} defaultValue={paddingTop}    min={0} />
+              <NumericInput iconLead={<span className={FONT}>→</span>} defaultValue={paddingRight}  min={0} />
+              <NumericInput iconLead={<span className={FONT}>↓</span>} defaultValue={paddingBottom} min={0} />
+              <NumericInput iconLead={<span className={FONT}>←</span>} defaultValue={paddingLeft}   min={0} />
             </div>
+            <PanelActionBtn
+              icon={<Maximize size={16} strokeWidth={1.5} />}
+              label="Combine padding"
+              active
+              onClick={() => setIndivPadding(false)}
+            />
           </div>
         ) : (
           <div className="flex items-center gap-[4px]">
