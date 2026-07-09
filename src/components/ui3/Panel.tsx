@@ -6,7 +6,7 @@ import { ChevronDown } from "lucide-react";
 // Native scrollbar is fully hidden (takes NO width — content is full-bleed); a thin
 // overlay thumb sits ON the panel, driven by JS and revealed on hover/scroll.
 // (Mirrors the study panel's `.composa-editing-inspector-scroll(bar)`.)
-export function ScrollArea({ children, className, thumbClassName = "bg-c-icon-secondary" }: { children?: ReactNode; className?: string; thumbClassName?: string }) {
+export function ScrollArea({ children, className, thumbClassName = "bg-c-icon-secondary", onScroll }: { children?: ReactNode; className?: string; thumbClassName?: string; onScroll?: (scrollTop: number) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [thumb, setThumb] = useState<{ top: number; height: number } | null>(null);
   const [active, setActive] = useState(false);
@@ -39,7 +39,7 @@ export function ScrollArea({ children, className, thumbClassName = "bg-c-icon-se
     >
       <div
         ref={ref}
-        onScroll={() => { measure(); setActive(true); }}
+        onScroll={e => { measure(); setActive(true); onScroll?.(e.currentTarget.scrollTop); }}
         className={clsx("h-full overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", className)}
       >
         {children}

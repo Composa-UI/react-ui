@@ -98,7 +98,7 @@ function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect }
         else if (e.key === "ArrowRight" && hasChildren && !open) onToggle();
         else if (e.key === "ArrowLeft" && hasChildren && open) onToggle();
       }}
-      className="group/layer relative flex items-center gap-[6px] h-[30px] pr-[8px] cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-c-border-selected"
+      className="group/layer relative flex items-center gap-[6px] h-[30px] pr-[12px] cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-c-border-selected"
       style={{ paddingLeft: 8 + depth * 16 }}
     >
       {/* hover — single row only (the cascade selection highlight renders once, as
@@ -159,14 +159,17 @@ export function LayerList({ layers = DEMO_LAYERS, title = "Layers" }: { layers?:
     return first === -1 ? null : { top: first * ROW_H, height: (last - first + 1) * ROW_H };
   }, [flat, selected]);
 
+  const [scrolled, setScrolled] = useState(false);
+
   return (
     <div className="w-[240px] shrink-0 h-full flex flex-col bg-c-bg border-r border-c-border overflow-hidden">
-      {/* header */}
-      <div className="shrink-0 h-[40px] flex items-center px-[16px] border-t border-b border-c-border">
+      {/* header — the bottom divider only appears once the tree is scrolled (a
+          "scrolled under" affordance), not persistently */}
+      <div className={clsx("shrink-0 h-[40px] flex items-center px-[16px] border-t border-c-border", scrolled && "border-b border-c-border")}>
         <span className={clsx(FONT, "text-[11px] font-[550] leading-[16px] text-c-text")}>{title}</span>
       </div>
       {/* tree — overlay scrollbar (theme-aware thumb), matching inspector/slides panels */}
-      <ScrollArea className="py-[4px]">
+      <ScrollArea className="py-[4px]" onScroll={st => setScrolled(st > 0)}>
         <div role="tree" aria-label={title} className="relative">
           {highlightRange && (
             <span

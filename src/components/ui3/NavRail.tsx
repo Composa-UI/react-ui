@@ -50,6 +50,10 @@ export function NavRail({
           <Layers size={18} strokeWidth={1.5} />
         </button>
       </div>
+      {/* divider — inset from the rail edges, not full-width */}
+      <div aria-hidden className="w-full px-[12px]">
+        <div className="h-px bg-c-border" />
+      </div>
       {/* nav destinations */}
       <div className="flex flex-col items-center gap-[6px] pt-[12px]">
       {items.map(it => {

@@ -97,7 +97,11 @@ function blendMenu(current: BlendMode, onPick: (m: BlendMode) => void) {
 }
 
 // ─── 9×9 icon groups ──────────────────────────────────────────────────────────
-// Alignment grid for auto-layout — 3×3 grid of IconButtons
+// Alignment picker for auto-layout child alignment — a 3×3 DOT matrix (not icon
+// glyphs), ported from the older DS's `AlignmentPicker`/`.composa-alignment-*`:
+// an 88px-ish track with a subtle 2px dot per cell; the selected cell's dot grows
+// into a 10px accent-colored bar. This is the anchor-point convention, distinct
+// from Position's directional-icon alignment (AlignLeft/Center/Right).
 
 function AlignmentGrid({
   value,
@@ -106,43 +110,40 @@ function AlignmentGrid({
   value?: string;
   onChange?: (v: string) => void;
 }) {
-  const grid = [
-    ["tl","tc","tr"],
-    ["ml","mc","mr"],
-    ["bl","bc","br"],
-  ];
-  const icons: Record<string, ReactNode> = {
-    tl: <AlignLeft size={16} strokeWidth={1.5} />,
-    tc: <AlignCenter size={16} strokeWidth={1.5} />,
-    tr: <AlignRight size={16} strokeWidth={1.5} />,
-    ml: <AlignLeft size={16} strokeWidth={1.5} />,
-    mc: <AlignCenter size={16} strokeWidth={1.5} />,
-    mr: <AlignRight size={16} strokeWidth={1.5} />,
-    bl: <AlignLeft size={16} strokeWidth={1.5} />,
-    bc: <AlignCenter size={16} strokeWidth={1.5} />,
-    br: <AlignRight size={16} strokeWidth={1.5} />,
+  const cells = ["tl", "tc", "tr", "ml", "mc", "mr", "bl", "bc", "br"];
+  const labels: Record<string, string> = {
+    tl: "Top left", tc: "Top center", tr: "Top right",
+    ml: "Middle left", mc: "Middle center", mr: "Middle right",
+    bl: "Bottom left", bc: "Bottom center", br: "Bottom right",
   };
 
   return (
-    <div className="flex flex-col gap-px w-[72px]">
-      {grid.map((row, ri) => (
-        <div key={ri} className="flex gap-px">
-          {row.map(cell => (
-            <button
-              key={cell}
-              aria-label={cell}
-              onClick={() => onChange?.(cell)}
+    <div
+      role="radiogroup"
+      aria-label="Alignment"
+      className="shrink-0 grid grid-cols-3 grid-rows-3 place-items-center w-[88px] h-[56px] py-[4px] rounded-c-md bg-c-bg-secondary box-border"
+    >
+      {cells.map(cell => {
+        const selected = value === cell;
+        return (
+          <button
+            key={cell}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            aria-label={labels[cell]}
+            onClick={() => onChange?.(cell)}
+            className="w-[16px] h-[12px] grid place-items-center rounded-c-sm bg-transparent hover:bg-c-bg-hover"
+          >
+            <span
               className={clsx(
-                "flex items-center justify-center size-[24px] rounded-[2px]",
-                "text-c-icon transition-colors",
-                value === cell ? "bg-c-bg-selected" : "bg-c-bg-secondary hover:bg-c-bg-hover",
+                "h-[2px] rounded-[2px] transition-[width]",
+                selected ? "w-[10px] bg-c-border-selected" : "w-[2px] bg-c-icon-tertiary",
               )}
-            >
-              {icons[cell]}
-            </button>
-          ))}
-        </div>
-      ))}
+            />
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -235,15 +236,21 @@ interface LayoutFrameProps {
   clipContent?: boolean;
   onWidthChange?: (v: number) => void;
   onHeightChange?: (v: number) => void;
+  /** Auto-layout is reached from here two ways: the "+" button, or moving Flow
+   * off its first ("Freeform") option. Both call this. */
+  onEnableAutoLayout?: () => void;
 }
 
 function LayoutFrameSection({
   width = 0, height = 0, cornerRadius = 0,
   clipContent = false,
   onWidthChange, onHeightChange,
+  onEnableAutoLayout,
 }: LayoutFrameProps) {
   const [lockAspect, setLockAspect] = useState(false);
-  const [flow, setFlow] = useState("v");
+  // Plain frame defaults to Freeform (no auto-layout yet) — NOT "v", which would
+  // already imply vertical auto-layout while this is the "no auto-layout" section.
+  const [flow, setFlow] = useState("none");
 
   const flowBtns: IconBtn[] = [
     { icon: <AlignHorizontalJustifyCenter size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
@@ -252,37 +259,33 @@ function LayoutFrameSection({
     { icon: <WrapText size={S} strokeWidth={1.5} />, label: "Wrap", value: "wrap" },
   ];
 
+  const handleFlowChange = (v: string) => {
+    setFlow(v);
+    if (v !== "none") onEnableAutoLayout?.();
+  };
+
   return (
     <PanelSection
       title="Layout"
       rightActions={
         <>
           <PanelActionBtn icon={<Maximize2 size={16} strokeWidth={1.5} />} label="Resize to fit" />
-          <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add auto-layout" />
+          <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add auto-layout" onClick={onEnableAutoLayout} />
         </>
       }
     >
       {/* Flow */}
       <PanelFieldRow
         label="Flow"
-        left={<SegmentedControl segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon }))} value={flow} onChange={setFlow} className="w-full" />}
+        left={<SegmentedControl segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon }))} value={flow} onChange={handleFlowChange} className="w-full" />}
       />
 
-      {/* W / H */}
+      {/* W / H — same ComboInput used by auto-layout's Dimensions row, so the
+          control doesn't change shape when auto-layout is enabled */}
       <PanelFieldRow
         label="Dimensions"
-        left={
-          <NumericInput
-            iconLead={<span className={FONT}>W</span>}
-            value={width} onChange={onWidthChange}
-          />
-        }
-        right={
-          <NumericInput
-            iconLead={<span className={FONT}>H</span>}
-            value={height} onChange={onHeightChange}
-          />
-        }
+        left={<ComboInput iconLead={<span className={FONT}>W</span>} value={String(width)} onInputChange={v => onWidthChange?.(Number(v))} className="w-full" />}
+        right={<ComboInput iconLead={<span className={FONT}>H</span>} value={String(height)} onInputChange={v => onHeightChange?.(Number(v))} className="w-full" />}
         rightAction={
           <PanelActionBtn
             icon={lockAspect ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />}
@@ -333,9 +336,6 @@ function LayoutAutoSection({
     { icon: <AlignHorizontalJustifyCenter size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
   ];
 
-  const modeLabel = (m: string) =>
-    m === "hug" ? "Hug" : m === "fill" ? "Fill" : "Fixed";
-
   return (
     <PanelSection
       title="Auto layout"
@@ -349,23 +349,12 @@ function LayoutAutoSection({
         left={<SegmentedControl segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon }))} value={flow} onChange={setFlow} className="w-full" />}
       />
 
-      {/* W / H with mode — InputField with inlineDropdown shows value + mode */}
+      {/* W / H — same ComboInput as the regular (non-auto) Layout section, so the
+          control doesn't change shape between the two Layout variants */}
       <PanelFieldRow
         label="Dimensions"
-        left={
-          <InputField
-            defaultValue={String(width)}
-            inlineLabel={<span className={FONT}>W</span>}
-            inlineDropdown={{ value: modeLabel(widthMode) }}
-          />
-        }
-        right={
-          <InputField
-            defaultValue={String(height)}
-            inlineLabel={<span className={FONT}>H</span>}
-            inlineDropdown={{ value: modeLabel(heightMode) }}
-          />
-        }
+        left={<ComboInput iconLead={<span className={FONT}>W</span>} value={String(width)} className="w-full" />}
+        right={<ComboInput iconLead={<span className={FONT}>H</span>} value={String(height)} className="w-full" />}
         rightAction={
           <PanelActionBtn
             icon={lockAspect ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />}
@@ -1197,10 +1186,15 @@ export function PropertyPanel({
   ];
 
   const isText     = elementType === "text";
-  const isFrame    = elementType === "frame";
-  const isAutoLayout = elementType === "frame-auto";
   const isShape    = elementType === "shape";
   const isInstance = elementType === "component";
+
+  // Auto-layout is reachable from a plain frame two ways: the Layout header's "+"
+  // button, or moving Flow off its first ("Freeform") option — both just flip this.
+  const isFrameLike = elementType === "frame" || elementType === "frame-auto";
+  const [autoLayoutOn, setAutoLayoutOn] = useState(elementType === "frame-auto");
+  const isFrame = isFrameLike && !autoLayoutOn;
+  const isAutoLayout = isFrameLike && autoLayoutOn;
 
   const elementLabel: Record<ElementType, string> = {
     text: "Text",
@@ -1293,7 +1287,7 @@ export function PropertyPanel({
           <PositionSection x={x} y={y} rotation={rotation} />
 
           {/* Layout — polymorphic */}
-          {(isFrame)       && <LayoutFrameSection width={width} height={height} />}
+          {(isFrame)       && <LayoutFrameSection width={width} height={height} onEnableAutoLayout={() => setAutoLayoutOn(true)} />}
           {(isAutoLayout)  && <LayoutAutoSection  width={width} height={height} />}
           {(isShape || isText) && (
             <PanelSection title="Layout">
