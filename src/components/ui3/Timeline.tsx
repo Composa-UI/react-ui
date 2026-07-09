@@ -1,4 +1,4 @@
-import { useState, useRef, Fragment } from "react";
+import { useState } from "react";
 import { clsx } from "clsx";
 import { Play, Diamond, Repeat, PanelBottomClose, Hash, Square, Type, Minus, Eye, EyeOff, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -169,16 +169,15 @@ function Ruler({ maxMs }: { maxMs: number }) {
   );
 }
 
-export function Timeline({ tracks = DEMO_TRACKS, height = 320 }: { tracks?: Track[]; height?: number }) {
+export function Timeline({ tracks = DEMO_TRACKS, height = 320, duration = 10000 }: { tracks?: Track[]; height?: number; duration?: number }) {
   const [playhead, setPlayhead] = useState(300);
-  const laneRef = useRef<HTMLDivElement>(null);
-  const maxMs = 9400;
+  const maxMs = duration;
 
-  const scrub = (clientX: number) => {
-    const el = laneRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    setPlayhead(Math.max(0, Math.round((clientX - r.left) / PX_PER_MS)));
+  // Measure the element the pointer events live on (the ruler container), so the
+  // scrub origin can't desync from a separate ref.
+  const scrub = (e: React.PointerEvent) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    setPlayhead(Math.min(duration, Math.max(0, Math.round((e.clientX - r.left) / PX_PER_MS))));
   };
   const [drag, setDrag] = useState(false);
 
@@ -186,11 +185,16 @@ export function Timeline({ tracks = DEMO_TRACKS, height = 320 }: { tracks?: Trac
     <div className="flex flex-col bg-c-bg border border-c-border rounded-c-md overflow-hidden" style={{ height }}>
       {/* header: transport | ruler | zoom */}
       <div className="flex h-[40px] shrink-0 border-b border-c-border">
-        <Transport current={playhead} duration={10000} />
+        <Transport current={playhead} duration={duration} />
         <div
           className="flex-1 relative cursor-ew-resize"
-          onPointerDown={e => { setDrag(true); scrub(e.clientX); try { e.currentTarget.setPointerCapture(e.pointerId); } catch {} }}
-          onPointerMove={e => drag && scrub(e.clientX)}
+          role="slider"
+          aria-label="Playhead"
+          aria-valuemin={0}
+          aria-valuemax={duration}
+          aria-valuenow={playhead}
+          onPointerDown={e => { setDrag(true); scrub(e); try { e.currentTarget.setPointerCapture(e.pointerId); } catch {} }}
+          onPointerMove={e => drag && scrub(e)}
           onPointerUp={() => setDrag(false)}
         >
           <Ruler maxMs={maxMs} />
@@ -213,8 +217,6 @@ export function Timeline({ tracks = DEMO_TRACKS, height = 320 }: { tracks?: Trac
 
       {/* body */}
       <div className="flex-1 overflow-y-auto relative">
-        {/* lane container ref for scrub math — offset by LEFT_W */}
-        <div ref={laneRef} className="absolute top-0 bottom-0 pointer-events-none" style={{ left: LEFT_W, right: 0 }} />
         {tracks.map((t, i) => <TrackRows key={i} track={t} />)}
         {/* playhead line spanning the body */}
         <div className="absolute top-0 bottom-0 w-px pointer-events-none" style={{ left: LEFT_W + ms(playhead), backgroundColor: BLUE }} />

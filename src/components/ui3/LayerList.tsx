@@ -55,9 +55,18 @@ function LayerRow({ node, depth, selectedId, onSelect }: {
   return (
     <>
       <div
+        role="treeitem"
+        tabIndex={0}
+        aria-selected={selected}
+        aria-expanded={hasChildren ? open : undefined}
         onClick={() => onSelect(node.id)}
+        onKeyDown={e => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(node.id); }
+          else if (e.key === "ArrowRight" && hasChildren && !open) setOpen(true);
+          else if (e.key === "ArrowLeft" && hasChildren && open) setOpen(false);
+        }}
         className={clsx(
-          "group/layer flex items-center gap-[6px] h-[28px] pr-[8px] cursor-pointer select-none",
+          "group/layer flex items-center gap-[6px] h-[28px] pr-[8px] cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-c-border-selected",
           selected ? "bg-c-bg-selected" : "hover:bg-c-bg-hover",
           node.hidden && "opacity-40",
         )}
@@ -103,7 +112,7 @@ export function LayerList({ layers = DEMO_LAYERS, title = "Layers" }: { layers?:
         <span className={clsx(FONT, "text-[11px] font-[550] leading-[16px] text-c-text")}>{title}</span>
       </div>
       {/* tree */}
-      <div className="flex-1 overflow-y-auto py-[4px]">
+      <div role="tree" aria-label={title} className="flex-1 overflow-y-auto py-[4px]">
         {layers.map(n => (
           <LayerRow key={n.id} node={n} depth={0} selectedId={selected} onSelect={setSelected} />
         ))}
