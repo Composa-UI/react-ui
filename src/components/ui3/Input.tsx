@@ -682,7 +682,7 @@ export function ComboInput({
     <div className={clsx("flex gap-px items-start", className)}>
       {/* input half */}
       <div className={clsx(
-        "flex-1 min-w-0 relative rounded-l-c-md overflow-hidden",
+        "flex-1 min-w-0 relative flex items-center rounded-l-c-md overflow-hidden",
         "bg-c-bg-secondary ring-1 ring-inset transition-shadow duration-100",
         H[size],
         inputRing,

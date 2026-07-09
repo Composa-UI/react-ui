@@ -316,6 +316,10 @@ interface LayoutAutoProps {
   paddingTop?: number; paddingRight?: number;
   paddingBottom?: number; paddingLeft?: number;
   alignValue?: string;
+  /** Flow's first (Freeform) option means "not auto-layout" — selecting it
+   * reverts to the plain Layout section, symmetric with how Layout's Flow
+   * reaches auto-layout by moving off its own first option. */
+  onDisableAutoLayout?: () => void;
 }
 
 function LayoutAutoSection({
@@ -324,6 +328,7 @@ function LayoutAutoSection({
   gap = 0,
   paddingTop = 16, paddingRight = 0, paddingBottom = 8, paddingLeft = 0,
   alignValue = "mc",
+  onDisableAutoLayout,
 }: LayoutAutoProps) {
   const [lockAspect, setLockAspect] = useState(false);
   const [flow, setFlow] = useState("v");
@@ -331,12 +336,18 @@ function LayoutAutoSection({
   const [indivPadding, setIndivPadding] = useState(false);
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
 
+  // Freeform first, matching the regular Layout section's Flow order.
   const flowBtns: IconBtn[] = [
+    { icon: <AlignHorizontalJustifyCenter size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
     { icon: <Columns  size={S} strokeWidth={1.5} />, label: "Horizontal",  value: "h" },
     { icon: <Rows2    size={S} strokeWidth={1.5} />, label: "Vertical",    value: "v" },
     { icon: <WrapText size={S} strokeWidth={1.5} />, label: "Wrap",        value: "wrap" },
-    { icon: <AlignHorizontalJustifyCenter size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
   ];
+
+  const handleFlowChange = (v: string) => {
+    setFlow(v);
+    if (v === "none") onDisableAutoLayout?.();
+  };
 
   return (
     <PanelSection
@@ -348,7 +359,7 @@ function LayoutAutoSection({
       {/* Flow */}
       <PanelFieldRow
         label="Flow"
-        left={<SegmentedControl segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon }))} value={flow} onChange={setFlow} className="w-full" />}
+        left={<SegmentedControl segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon }))} value={flow} onChange={handleFlowChange} className="w-full" />}
       />
 
       {/* W / H — same ComboInput as the regular (non-auto) Layout section, so the
@@ -387,7 +398,9 @@ function LayoutAutoSection({
               <Dropdown value="Auto" fullWidth />
             </div>
           </div>
-          <div className="shrink-0 flex items-start min-w-[24px] justify-end">
+          {/* mt matches the sub-label's box (14px leading + 3px margin) so this
+              aligns with the Gap input row, not the "Gap" label above it */}
+          <div className="shrink-0 flex items-start min-w-[24px] justify-end mt-[17px]">
             <PanelActionBtn icon={<Settings2 size={16} strokeWidth={1.5} />} label="Gap settings" />
           </div>
         </div>
@@ -1330,7 +1343,7 @@ export function PropertyPanel({
 
           {/* Layout — polymorphic */}
           {(isFrame)       && <LayoutFrameSection width={width} height={height} onEnableAutoLayout={() => setAutoLayoutOn(true)} />}
-          {(isAutoLayout)  && <LayoutAutoSection  width={width} height={height} />}
+          {(isAutoLayout)  && <LayoutAutoSection  width={width} height={height} onDisableAutoLayout={() => setAutoLayoutOn(false)} />}
           {(isShape || isText) && (
             <PanelSection title="Layout">
               {/* Resizing — segmented (auto width / auto height / fixed); text only */}
