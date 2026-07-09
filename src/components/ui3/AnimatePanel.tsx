@@ -64,7 +64,7 @@ function SlideTransitionSection() {
           <div className={clsx("h-[32px] rounded-c-md border flex items-center gap-[8px] px-[8px]", ACCENT_BG, ACCENT_BORDER)}>
             <MonitorPlay size={16} strokeWidth={1.5} className="text-c-icon shrink-0" />
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] text-c-text truncate")}>Smart animate</span>
-            <button onClick={() => setApplied(false)} aria-label="Remove transition" className="flex">
+            <button onClick={() => setApplied(false)} aria-label="Remove transition" className="flex size-[20px] items-center justify-center rounded-c-sm hover:bg-black/5">
               <Trash2 size={14} strokeWidth={1.5} className="text-c-icon" />
             </button>
           </div>
@@ -98,6 +98,7 @@ function AnimEntry({ anim, expanded, onToggle }: { anim: ObjAnim; expanded: bool
       <div className={clsx(subLabel, "mb-[2px]")}>{anim.n}</div>
       <button
         onClick={onToggle}
+        aria-expanded={expanded}
         className={clsx(
           "h-[32px] w-full rounded-c-md border flex items-center gap-[6px] px-[8px]",
           expanded ? clsx(ACCENT_BG, ACCENT_BORDER) : "bg-c-bg border-c-border hover:bg-c-bg-hover",
@@ -130,7 +131,7 @@ function AnimEntry({ anim, expanded, onToggle }: { anim: ObjAnim; expanded: bool
 
 // ── Object animations ─────────────────────────────────────────────────────────────
 function ObjectAnimationsSection({ anims }: { anims: ObjAnim[] }) {
-  const [expanded, setExpanded] = useState<number | null>(anims.length ? anims[0].n : null);
+  const [expanded, setExpanded] = useState<number | null>(anims.length ? 0 : null);
   const addMenu = (close: () => void) => (
     <Menu minWidth={140}>
       {["Build in", "Action", "Build out"].map(l => (
@@ -157,8 +158,8 @@ function ObjectAnimationsSection({ anims }: { anims: ObjAnim[] }) {
         </p>
       ) : (
         <div className="px-[16px] pt-[3px] pb-[8px] flex flex-col gap-[8px]">
-          {anims.map(a => (
-            <AnimEntry key={a.n} anim={a} expanded={expanded === a.n} onToggle={() => setExpanded(e => e === a.n ? null : a.n)} />
+          {anims.map((a, i) => (
+            <AnimEntry key={i} anim={a} expanded={expanded === i} onToggle={() => setExpanded(e => e === i ? null : i)} />
           ))}
         </div>
       )}
