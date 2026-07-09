@@ -26,6 +26,7 @@ import { Chit } from "./Chit";
 import { Checkbox } from "./Checkbox";
 import { ColorDialog } from "./ColorDialog";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
+import { AnimatePanel } from "./AnimatePanel";
 import { Avatar } from "./Avatar";
 import { SplitButton } from "./SplitButton";
 import { Button } from "./Button";
@@ -1048,12 +1049,13 @@ export function PropertyPanel({
         </ScrollArea>
       )}
 
-      {/* Animate / Prototype placeholder */}
-      {tab !== "design" && (
+      {/* Animate tab — the animation panel */}
+      {tab === "animate" && <AnimatePanel />}
+
+      {/* Prototype placeholder */}
+      {tab === "prototype" && (
         <div className="flex-1 flex items-center justify-center">
-          <span className={clsx(FONT, "text-[11px] text-c-text-tertiary")}>
-            {tab === "animate" ? "Animation" : "Prototype"} settings
-          </span>
+          <span className={clsx(FONT, "text-[11px] text-c-text-tertiary")}>Prototype settings</span>
         </div>
       )}
     </Panel>
