@@ -688,8 +688,12 @@ export function ComboInput({
         inputRing,
         disabled && "opacity-60",
       )}>
+        {/* T[size] here matters: a plain-text iconLead (e.g. "W"/"H") sets no
+            font-size of its own, so it inherits from this wrapper — without it,
+            it falls back to the browser default (16px) instead of the field's
+            actual text size. (NumericInput's equivalent wrapper already has this.) */}
         {iconLead && (
-          <span className="absolute left-0 flex items-center justify-center size-[24px] shrink-0 text-c-icon-secondary pointer-events-none">
+          <span className={clsx("absolute left-0 flex items-center justify-center size-[24px] shrink-0 text-c-icon-secondary pointer-events-none", FONT, T[size])}>
             {iconLead}
           </span>
         )}
