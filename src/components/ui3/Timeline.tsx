@@ -1,21 +1,31 @@
 import { useState } from "react";
 import { clsx } from "clsx";
-import { Play, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Hash, Square, Type, Minus, Eye, EyeOff, ChevronLeft, ChevronRight } from "lucide-react";
+import { Play, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Hash, Square, Type, Minus, Eye, EyeOff, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film } from "lucide-react";
 
 // ─── Timeline ───────────────────────────────────────────────────────────────────
-// Horizontal keyframe timeline (After-Effects / Figma-Slides style), componentized
-// from the Figma export (node 2212-1693). Light theme. Data-driven: tracks → layer
-// row + property lanes; keyframes/bars are positioned along a shared ms→px scale.
-// The active accent (playhead, keyframes, zoom fill) is Figma blue #0d99ff.
+// Polymorphic timeline region (Composa editor spec: docs/composa/specs/timeline.md).
+// Two views sharing one playhead:
+//   • mode="slide"  (default) — slide-local element-animation timeline
+//     (After-Effects / Figma-Slides style): transport + ms-ruler + track list +
+//     keyframe lanes. Componentized from the Figma export (node 2212-1693).
+//   • mode="master" — full-project strip: seconds-ruler + a single "Slides" track of
+//     horizontal slide BLOCKS in order + a "Base video" placeholder row + transport.
+// Data-driven: tracks/blocks/keyframes/bars are positioned along a shared time→px
+// scale. The active accent (playhead, keyframes, zoom fill) is Figma blue #0d99ff.
 
 const FONT = "font-[family-name:var(--composa-font-family)]";
 const LEFT_W = 297;       // track-list width
-const PX_PER_MS = 0.106;  // ~106px / 1000ms
+const PX_PER_MS = 0.106;  // ~106px / 1000ms  (slide-local view: ms scale)
+const PX_PER_S = 106;     // 106px / 1s      (master view: seconds scale)
 const ROW_LAYER = 28;
 const ROW_PROP = 24;
+const ROW_BLOCK = 40;     // master-view slide/video block-track row height
 const BLUE = "#0d99ff";
 
 const ms = (t: number) => t * PX_PER_MS;
+const sec = (t: number) => (t / 1000) * PX_PER_S; // ms input → px on the seconds scale
+
+export type TimelineMode = "master" | "slide";
 
 export type TrackType = "group" | "frame" | "text" | "line";
 export interface PropTrack {
@@ -30,6 +40,13 @@ export interface Track {
   type: TrackType;
   bar?: [number, number];
   props: PropTrack[];
+}
+
+// master-view slide block — a slide's [start,end] range (ms) on the project timeline
+export interface SlideBlock {
+  name: string;
+  range: [number, number];     // [start,end] ms on the master timeline
+  active?: boolean;            // canvas focus — visually distinct
 }
 
 const TYPE_ICON: Record<TrackType, typeof Hash> = { group: Hash, frame: Square, text: Type, line: Minus };
@@ -52,6 +69,13 @@ const DEMO_TRACKS: Track[] = [
   { name: "Control + highlight indicator", type: "group", bar: [2600, 7400], props: [
     { name: "Opacity", keyframes: [2600, 5000, 7400, 7800] },
   ] },
+];
+
+const DEMO_BLOCKS: SlideBlock[] = [
+  { name: "Intro", range: [0, 4000] },
+  { name: "Overview of the quarter", range: [4000, 9000], active: true },
+  { name: "Metrics deep dive", range: [9000, 16000] },
+  { name: "Outro", range: [16000, 20000] },
 ];
 
 // ── keyframe lane (bar + diamonds + connecting line) ──────────────────────────────
@@ -163,7 +187,7 @@ function Transport({ current, duration }: { current: number; duration: number })
   );
 }
 
-// ── ruler ─────────────────────────────────────────────────────────────────────────
+// ── ruler (slide-local view — milliseconds) ────────────────────────────────────────
 function Ruler({ maxMs }: { maxMs: number }) {
   const ticks: number[] = [];
   for (let t = 1000; t <= maxMs; t += 1000) ticks.push(t);
@@ -176,15 +200,130 @@ function Ruler({ maxMs }: { maxMs: number }) {
   );
 }
 
-export function Timeline({ tracks = DEMO_TRACKS, height = 320, duration = 10000 }: { tracks?: Track[]; height?: number; duration?: number }) {
-  const [playhead, setPlayhead] = useState(300);
+// ── ruler (master view — seconds) ──────────────────────────────────────────────────
+function SecondRuler({ maxMs }: { maxMs: number }) {
+  // interval scales loosely with total duration so labels don't crowd
+  const totalS = maxMs / 1000;
+  const step = totalS > 60 ? 10 : totalS > 20 ? 5 : 1;
+  const ticks: number[] = [];
+  for (let s = 0; s <= totalS; s += step) ticks.push(s);
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      {ticks.map(s => (
+        <span key={s} className={clsx(FONT, "absolute top-1/2 -translate-y-1/2 text-[11px] text-c-text-secondary tabular-nums")} style={{ left: s * PX_PER_S }}>{s}s</span>
+      ))}
+    </div>
+  );
+}
+
+// ── master transport (Play / Stop / timecode / total / loop) ────────────────────────
+function MasterTransport({ current, duration }: { current: number; duration: number }) {
+  // s.ms display, e.g. 4.20s
+  const fmt = (n: number) => (n / 1000).toFixed(2) + "s";
+  const IconBtn = ({ children, label }: { children: React.ReactNode; label: string }) => (
+    <button aria-label={label} className="size-[24px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover">{children}</button>
+  );
+  return (
+    <div className="shrink-0 flex items-center gap-[8px] px-[8px] border-r border-c-border" style={{ width: LEFT_W }}>
+      <IconBtn label="Play"><Play size={16} fill="currentColor" strokeWidth={0} /></IconBtn>
+      <IconBtn label="Stop"><Square size={14} fill="currentColor" strokeWidth={0} /></IconBtn>
+      <div className="w-[8px]" />
+      {/* time group: current | total */}
+      <div className="flex items-center h-[24px] rounded-c-md overflow-hidden">
+        <div className="w-[54px] h-full bg-c-bg-secondary flex items-center justify-end pr-[6px]">
+          <span className={clsx(FONT, "text-[11px] font-[450] text-c-text tabular-nums")}>{fmt(current)}</span>
+        </div>
+        <div className="w-[54px] h-full bg-c-bg-secondary flex items-center justify-end pr-[6px] ml-px">
+          <span className={clsx(FONT, "text-[11px] font-[450] text-c-text-secondary tabular-nums")}>{fmt(duration)}</span>
+        </div>
+        <button aria-label="Loop" className="size-[24px] bg-c-bg-secondary ml-px flex items-center justify-center text-c-icon hover:bg-c-bg-hover">
+          <Repeat size={14} strokeWidth={1.5} />
+        </button>
+      </div>
+      <div className="flex-1" />
+      <button aria-label="Collapse track list" className="size-[24px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover">
+        <PanelLeftClose size={16} strokeWidth={1.5} />
+      </button>
+    </div>
+  );
+}
+
+// ── master track rows: "Slides" block track + "Base video" placeholder ──────────────
+function BlockTrack({ blocks }: { blocks: SlideBlock[] }) {
+  return (
+    <div className="flex" style={{ height: ROW_BLOCK }}>
+      {/* left label — includes ← Project back affordance */}
+      <div className="shrink-0 flex items-center gap-[8px] pl-[8px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W }}>
+        <Film size={16} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" />
+        <span className={clsx(FONT, "text-[11px] font-[450] text-c-text truncate")}>Slides</span>
+      </div>
+      {/* block lane */}
+      <div className="flex-1 relative" style={{ height: ROW_BLOCK }}>
+        {blocks.map((b, i) => {
+          const left = sec(b.range[0]);
+          const width = sec(b.range[1] - b.range[0]);
+          return (
+            <div
+              key={i}
+              className={clsx(
+                "absolute top-1/2 -translate-y-1/2 h-[24px] rounded-[4px] flex items-center px-[10px] overflow-hidden border",
+                b.active
+                  ? "bg-[#0d99ff]/20 border-[#0d99ff]"
+                  : "bg-c-bg-secondary border-c-border",
+              )}
+              style={{ left, width }}
+            >
+              {/* trim handles (edge-drag to trim start/end) */}
+              <span className="absolute left-[3px] top-1/2 -translate-y-1/2 h-[14px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
+              <span className="absolute right-[3px] top-1/2 -translate-y-1/2 h-[14px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
+              <span className={clsx(FONT, "text-[11px] font-[450] truncate", b.active ? "text-c-text" : "text-c-text-secondary")}>{b.name}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function BaseVideoTrack() {
+  return (
+    <div className="flex" style={{ height: ROW_BLOCK }}>
+      <div className="shrink-0 flex items-center gap-[8px] pl-[8px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W }}>
+        <Film size={16} strokeWidth={1.5} className="text-c-icon-secondary shrink-0 opacity-60" />
+        <span className={clsx(FONT, "text-[11px] font-[450] text-c-text-secondary truncate")}>Base video</span>
+      </div>
+      {/* empty placeholder lane (v1 stub) */}
+      <div className="flex-1 relative" style={{ height: ROW_BLOCK }} aria-label="Base video track (empty)" />
+    </div>
+  );
+}
+
+export function Timeline({
+  mode = "slide",
+  tracks = DEMO_TRACKS,
+  blocks = DEMO_BLOCKS,
+  height = 320,
+  duration = mode === "master" ? 20000 : 10000,
+  onBack,
+}: {
+  mode?: TimelineMode;
+  tracks?: Track[];
+  blocks?: SlideBlock[];
+  height?: number;
+  duration?: number;
+  onBack?: () => void;
+}) {
+  const master = mode === "master";
+  const [playhead, setPlayhead] = useState(300); // shared playhead, in ms
   const maxMs = duration;
+  const toPx = master ? sec : ms;                 // shared time→px scale per view
+  const pxPer = master ? PX_PER_S / 1000 : PX_PER_MS;
 
   // Measure the element the pointer events live on (the ruler container), so the
   // scrub origin can't desync from a separate ref.
   const scrub = (e: React.PointerEvent) => {
     const r = e.currentTarget.getBoundingClientRect();
-    setPlayhead(Math.min(duration, Math.max(0, Math.round((e.clientX - r.left) / PX_PER_MS))));
+    setPlayhead(Math.min(duration, Math.max(0, Math.round((e.clientX - r.left) / pxPer))));
   };
   const [drag, setDrag] = useState(false);
 
@@ -192,7 +331,7 @@ export function Timeline({ tracks = DEMO_TRACKS, height = 320, duration = 10000 
     <div className="flex flex-col bg-c-bg border-t border-c-border overflow-hidden" style={{ height }}>
       {/* header: transport | ruler | zoom */}
       <div className="flex h-[40px] shrink-0 border-b border-c-border">
-        <Transport current={playhead} duration={duration} />
+        {master ? <MasterTransport current={playhead} duration={duration} /> : <Transport current={playhead} duration={duration} />}
         <div
           className="flex-1 relative cursor-ew-resize"
           role="slider"
@@ -204,9 +343,9 @@ export function Timeline({ tracks = DEMO_TRACKS, height = 320, duration = 10000 
           onPointerMove={e => drag && scrub(e)}
           onPointerUp={() => setDrag(false)}
         >
-          <Ruler maxMs={maxMs} />
+          {master ? <SecondRuler maxMs={maxMs} /> : <Ruler maxMs={maxMs} />}
           {/* playhead handle */}
-          <div className="absolute top-[4px] -translate-x-1/2 pointer-events-none" style={{ left: ms(playhead) }}>
+          <div className="absolute top-[4px] -translate-x-1/2 pointer-events-none" style={{ left: toPx(playhead) }}>
             <svg width="12" height="10" viewBox="0 0 12 10"><path d="M0 0h12v4l-6 6-6-6V0Z" fill={BLUE} /></svg>
           </div>
         </div>
@@ -224,9 +363,29 @@ export function Timeline({ tracks = DEMO_TRACKS, height = 320, duration = 10000 
 
       {/* body */}
       <div className="flex-1 overflow-y-auto relative">
-        {tracks.map((t, i) => <TrackRows key={i} track={t} />)}
-        {/* playhead line spanning the body */}
-        <div className="absolute top-0 bottom-0 w-px pointer-events-none" style={{ left: LEFT_W + ms(playhead), backgroundColor: BLUE }} />
+        {master ? (
+          <>
+            {/* ← Project back affordance, top-left of the track area */}
+            <div className="flex items-center" style={{ height: ROW_LAYER }}>
+              <button
+                type="button"
+                onClick={onBack}
+                aria-label="Back to project"
+                className={clsx(FONT, "shrink-0 flex items-center gap-[4px] pl-[8px] pr-[8px] h-full border-r border-c-border text-[11px] font-[450] text-c-text-secondary hover:text-c-text")}
+                style={{ width: LEFT_W }}
+              >
+                <ChevronLeftBack size={14} strokeWidth={1.5} className="shrink-0" />
+                <span>Project</span>
+              </button>
+            </div>
+            <BlockTrack blocks={blocks} />
+            <BaseVideoTrack />
+          </>
+        ) : (
+          tracks.map((t, i) => <TrackRows key={i} track={t} />)
+        )}
+        {/* shared playhead line spanning the body */}
+        <div className="absolute top-0 bottom-0 w-px pointer-events-none" style={{ left: LEFT_W + toPx(playhead), backgroundColor: BLUE }} />
       </div>
     </div>
   );

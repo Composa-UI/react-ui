@@ -4,9 +4,10 @@ import { ChevronRight, ChevronDown, Plus, PanelLeft, LayoutGrid, Sparkles } from
 import { ScrollArea } from "./Panel";
 
 // ─── Slides left panel ──────────────────────────────────────────────────────────
-// Componentized from the study Figma export (`imports/SlidesTemplate`). This surface
-// is Figma-dark regardless of app mode; colours flow through the `slides-*` tokens
-// (styles/slides.css). Data-driven: one `SlideData` per row drives every state
+// Componentized from the study Figma export (`imports/SlidesTemplate`). Theme-aware:
+// renders LIGHT by default and DARK under `data-composa-mode="dark"` — colours flow
+// through the mode-flipping `c-*` tokens (styles/theme.css). Data-driven: one
+// `SlideData` per row drives every state
 // (default / group header / sub-slide / stacked / motion / comment / selected).
 
 const INTER = { fontFamily: "Inter, sans-serif" } as const;
@@ -35,10 +36,10 @@ function SlideThumb({ item }: { item: SlideData }) {
           ? <img alt="" className="absolute inset-0 size-full object-cover" src={item.thumb} />
           : <div className="absolute inset-0" style={{ background: item.tint ?? "#111" }} />}
       </div>
-      <div aria-hidden className="absolute inset-0 rounded-[5px] border border-slides-hairline" />
+      <div aria-hidden className="absolute inset-0 rounded-[5px] border border-c-border" />
       {item.motion && (
-        <div className="absolute bottom-[5px] left-[5px] size-[18px] rounded-[2px] bg-slides-bg border border-slides-hairline flex items-center justify-center">
-          <Sparkles size={11} className="text-white/70" />
+        <div className="absolute bottom-[5px] left-[5px] size-[18px] rounded-[2px] bg-c-bg border border-c-border flex items-center justify-center">
+          <Sparkles size={11} className="text-c-text-secondary" />
         </div>
       )}
     </div>
@@ -49,9 +50,9 @@ function SlideThumb({ item }: { item: SlideData }) {
 function CommentPin({ count }: { count: number }) {
   return (
     <div className="absolute right-[12px] top-[4px] size-[24px]">
-      <div className="absolute inset-0 bg-slides-comment rounded-tl-[12px] rounded-tr-[12px] rounded-br-[12px] rounded-bl-[4px] shadow-[0px_0px_0.5px_0px_rgba(0,0,0,0.18),0px_3px_8px_0px_rgba(0,0,0,0.1),0px_1px_3px_0px_rgba(0,0,0,0.1)]" />
-      <div className="absolute left-[3px] top-[3px] size-[18px] rounded-full border-[0.75px] border-slides-comment flex items-center justify-center">
-        <span className="text-white text-[10.5px] leading-[18px]" style={INTER}>{count}</span>
+      <div className="absolute inset-0 bg-c-bg-danger rounded-tl-[12px] rounded-tr-[12px] rounded-br-[12px] rounded-bl-[4px] shadow-[0px_0px_0.5px_0px_rgba(0,0,0,0.18),0px_3px_8px_0px_rgba(0,0,0,0.1),0px_1px_3px_0px_rgba(0,0,0,0.1)]" />
+      <div className="absolute left-[3px] top-[3px] size-[18px] rounded-full border-[0.75px] border-c-bg-danger flex items-center justify-center">
+        <span className="text-c-text-on-brand text-[10.5px] leading-[18px]" style={INTER}>{count}</span>
       </div>
     </div>
   );
@@ -64,7 +65,7 @@ export function SlideListItem({ item }: { item: SlideData }) {
   return (
     <div className={clsx("relative w-full shrink-0 cursor-pointer", h)} onClick={item.onClick}>
       {/* selection tint */}
-      {item.selected && <div className="absolute inset-[0_8px] rounded-[5px] bg-slides-selected" />}
+      {item.selected && <div className="absolute inset-[0_8px] rounded-[5px] bg-c-bg-selected" />}
 
       {/* stacked-group cards (peek behind/below the thumbnail) */}
       {item.stacked && (
@@ -83,14 +84,14 @@ export function SlideListItem({ item }: { item: SlideData }) {
       <div className={clsx("absolute top-[6px] flex flex-col items-center", item.group && "gap-[4px]", numLeft)}>
         <div className="w-[24px] h-[16px] flex items-center justify-center">
           <span
-            className={clsx("text-[11px] font-[450] leading-[16px] tracking-[0.055px]", item.selected ? "text-slides-number-selected" : "text-white/70")}
+            className={clsx("text-[11px] font-[450] leading-[16px] tracking-[0.055px]", item.selected ? "text-c-text-brand" : "text-c-text-secondary")}
             style={INTER}
           >
             {item.n}
           </span>
         </div>
         {item.group && (
-          <ChevronRight size={16} className={clsx("text-white transition-transform", item.expanded && "rotate-90")} />
+          <ChevronRight size={16} className={clsx("text-c-text transition-transform", item.expanded && "rotate-90")} />
         )}
       </div>
 
@@ -106,16 +107,16 @@ function ViewToggle({ view, onChange }: { view: "list" | "grid"; onChange: (v: "
       onClick={() => onChange(v)}
       className={clsx(
         "flex-1 h-[24px] flex items-center justify-center rounded-[5px] transition-colors",
-        view === v ? "bg-white" : "bg-transparent",
+        view === v ? "bg-c-bg shadow-sm" : "bg-transparent",
       )}
     >
       {children}
     </button>
   );
   return (
-    <div className="flex bg-slides-surface rounded-[5px] w-[88px] overflow-hidden">
-      <Tab v="list"><PanelLeft size={16} className={view === "list" ? "text-[#1e1e1e]" : "text-white/70"} /></Tab>
-      <Tab v="grid"><LayoutGrid size={16} className={view === "grid" ? "text-[#1e1e1e]" : "text-white/70"} /></Tab>
+    <div className="flex bg-c-bg-secondary rounded-[5px] w-[88px] overflow-hidden">
+      <Tab v="list"><PanelLeft size={16} className={view === "list" ? "text-c-text" : "text-c-text-secondary"} /></Tab>
+      <Tab v="grid"><LayoutGrid size={16} className={view === "grid" ? "text-c-text" : "text-c-text-secondary"} /></Tab>
     </div>
   );
 }
@@ -128,38 +129,38 @@ export function SlidesPanel({ slides, title = "Product review", subtitle = "nati
 }) {
   const [view, setView] = useState<"list" | "grid">("list");
   return (
-    <div className="w-[200px] shrink-0 h-full flex flex-col bg-slides-bg overflow-hidden border-r border-slides-hairline">
+    <div className="w-[200px] shrink-0 h-full flex flex-col bg-c-bg overflow-hidden border-r border-c-border">
       {/* Header */}
       <div className="shrink-0 flex flex-col pt-[8px] pb-[12px] px-[8px]">
         <div className="flex items-center justify-between w-full">
           {/* app menu */}
-          <button className="flex items-center pr-[4px] rounded-[5px] hover:bg-white/5">
+          <button className="flex items-center pr-[4px] rounded-[5px] hover:bg-c-bg-hover">
             <span className="p-[4px] flex"><FigmaGlyph /></span>
-            <ChevronDown size={11} className="text-white" />
+            <ChevronDown size={11} className="text-c-text" />
           </button>
           <ViewToggle view={view} onChange={setView} />
         </div>
         {/* title + subtitle */}
         <div className="flex flex-col px-[8px] pt-[4px]">
           <div className="flex gap-[4px] items-center h-[24px]">
-            <span className="text-white text-[13px] font-[550] leading-[22px] tracking-[-0.0325px] truncate" style={INTER}>{title}</span>
-            <ChevronDown size={11} className="text-white shrink-0" />
+            <span className="text-c-text text-[13px] font-[550] leading-[22px] tracking-[-0.0325px] truncate" style={INTER}>{title}</span>
+            <ChevronDown size={11} className="text-c-text shrink-0" />
           </div>
-          <span className="text-white/70 text-[11px] font-[450] leading-[16px] tracking-[0.055px]" style={INTER}>{subtitle}</span>
+          <span className="text-c-text-secondary text-[11px] font-[450] leading-[16px] tracking-[0.055px]" style={INTER}>{subtitle}</span>
         </div>
       </div>
 
       {/* New slide (split: label + chevron on the left, plus on the right) */}
-      <div className="shrink-0 p-[8px] border-t border-b border-slides-border">
-        <button className="relative w-full h-[24px] rounded-[6px] border border-slides-border bg-slides-bg flex items-center justify-center gap-[2px] hover:bg-white/5">
-          <span className="text-white text-[11px] font-[450] leading-[16px] tracking-[0.055px]" style={INTER}>New slide</span>
-          <ChevronDown size={12} className="text-white" />
-          <Plus size={16} className="text-white absolute right-[4px] top-1/2 -translate-y-1/2" />
+      <div className="shrink-0 p-[8px] border-t border-b border-c-border">
+        <button className="relative w-full h-[24px] rounded-[6px] border border-c-border bg-c-bg flex items-center justify-center gap-[2px] hover:bg-c-bg-hover">
+          <span className="text-c-text text-[11px] font-[450] leading-[16px] tracking-[0.055px]" style={INTER}>New slide</span>
+          <ChevronDown size={12} className="text-c-text" />
+          <Plus size={16} className="text-c-text absolute right-[4px] top-1/2 -translate-y-1/2" />
         </button>
       </div>
 
-      {/* Slide list — overlay scrollbar (light thumb for the dark surface) */}
-      <ScrollArea thumbClassName="bg-white">
+      {/* Slide list — overlay scrollbar (theme-aware thumb) */}
+      <ScrollArea>
         <div className="flex flex-col">
           {slides.map((s, i) => <SlideListItem key={i} item={s} />)}
         </div>

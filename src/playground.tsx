@@ -6,6 +6,9 @@ import { SlideInspector } from "./components/ui3/SlideInspector";
 import { Timeline } from "./components/ui3/Timeline";
 import { LayerList } from "./components/ui3/LayerList";
 import { NavRail } from "./components/ui3/NavRail";
+import { CompositionPanel } from "./components/ui3/CompositionPanel";
+import { AssetsPanel } from "./components/ui3/AssetsPanel";
+import { CreationToolbar } from "./components/ui3/CreationToolbar";
 import thumb0 from "./imports/SlidesTemplate/9bf3285fa6c14222923aa8fcd4bf31f6e40807d9.png";
 import thumb1 from "./imports/SlidesTemplate/201951eb24dd285dd0794f4e790b8175c012bf20.png";
 import thumb2 from "./imports/SlidesTemplate/4f36d4cb9f77c2e380641dd47deb24943efa0b8a.png";
@@ -49,15 +52,17 @@ export default function Playground() {
       >
         <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
           <NavRail active={nav} onSelect={setNav} />
-          {nav === "composition" ? <LayerList /> : (
+          {nav === "composition" ? <CompositionPanel /> : nav === "assets" ? <AssetsPanel /> : (
             <div className="w-[240px] shrink-0 h-full flex items-center justify-center bg-c-bg border-r border-c-border">
-              <span className="text-[11px] text-c-text-secondary font-[family-name:var(--composa-font-family)]">
-                {nav === "agent" ? "Agent" : "Assets"} — coming soon
-              </span>
+              <span className="text-[11px] text-c-text-secondary font-[family-name:var(--composa-font-family)]">Agent — coming soon</span>
             </div>
           )}
-          <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ flex: 1, minWidth: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <div style={{ width: "70%", aspectRatio: "16/9", background: dark ? "#2c2c2c" : "#fff", borderRadius: 6, boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }} />
+            {/* creation toolbar floats over the canvas */}
+            <div style={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)" }}>
+              <CreationToolbar />
+            </div>
           </div>
           <PropertyPanel elementType="frame" />
         </div>

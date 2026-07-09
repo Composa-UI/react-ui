@@ -35,6 +35,8 @@ import { Button } from "./Button";
 
 export type ElementType = "text" | "frame" | "frame-auto" | "shape" | "component" | "group";
 
+export type PanelMode = "project" | "slide" | "element";
+
 type BlendMode = string;
 
 // Full grouped list (matches the study panel); dividers render between groups.
@@ -902,15 +904,252 @@ function SelectionColorsSection() {
   );
 }
 
+// ─── Project mode sections (inspector-project-mode.md) ───────────────────────
+// Active when nothing is selected. Header label "Project"; body = Canvas,
+// Master timeline, Export (stub).
+
+// Canvas §Canvas — Aspect ratio (segmented, Custom trailing), Dimensions W|H (px),
+// Frame rate (dropdown). Presets are presentational here; Custom just unlocks the
+// segmented state visually.
+function CanvasSection({
+  width = 1920,
+  height = 1080,
+}: {
+  width?: number;
+  height?: number;
+}) {
+  const [aspect, setAspect] = useState("16:9");
+  const aspectSegments = [
+    { value: "16:9", label: "16:9" },
+    { value: "9:16", label: "9:16" },
+    { value: "1:1", label: "1:1" },
+    { value: "4:3", label: "4:3" },
+    { value: "custom", label: "Custom" },
+  ];
+  return (
+    <PanelSection title="Canvas">
+      {/* Aspect ratio — segmented with Custom as the trailing option */}
+      <PanelFieldRow
+        label="Aspect ratio"
+        left={
+          <SegmentedControl
+            segments={aspectSegments}
+            value={aspect}
+            onChange={setAspect}
+            className="w-full"
+          />
+        }
+      />
+
+      {/* Dimensions — W | H numeric (px) */}
+      <PanelFieldRow
+        label="Dimensions"
+        left={
+          <NumericInput
+            iconLead={<span className={FONT}>W</span>}
+            defaultValue={width}
+            min={1}
+            suffix="px"
+          />
+        }
+        right={
+          <NumericInput
+            iconLead={<span className={FONT}>H</span>}
+            defaultValue={height}
+            min={1}
+            suffix="px"
+          />
+        }
+      />
+
+      {/* Frame rate — dropdown */}
+      <PanelFieldRow
+        label="Frame rate"
+        left={<Dropdown value="30 fps" fullWidth />}
+      />
+    </PanelSection>
+  );
+}
+
+// Master timeline §Master timeline — Total duration (s), Playhead (s).
+function MasterTimelineSection({
+  totalDuration = 30,
+  playhead = 0,
+}: {
+  totalDuration?: number;
+  playhead?: number;
+}) {
+  return (
+    <PanelSection title="Master timeline">
+      <PanelFieldRow
+        label="Total duration"
+        left={
+          <NumericInput
+            iconLead={<span className={FONT}>T</span>}
+            defaultValue={totalDuration}
+            min={0}
+            suffix="s"
+          />
+        }
+      />
+      <PanelFieldRow
+        label="Playhead"
+        left={
+          <NumericInput
+            iconLead={<span className={FONT}>▸</span>}
+            defaultValue={playhead}
+            min={0}
+            suffix="s"
+          />
+        }
+      />
+    </PanelSection>
+  );
+}
+
+// Export §Export — project-level video export. Disabled stub in V1: Format dropdown
+// (disabled) + full-width outlined "Export project" action (disabled).
+function ProjectExportSection() {
+  return (
+    <PanelSection title="Export">
+      <PanelFieldRow
+        label="Format"
+        left={<Dropdown value="MP4" fullWidth disabled />}
+      />
+      <PanelFullRow height={40}>
+        <Button label="Export project" variant="Secondary" size="wide" disabled />
+      </PanelFullRow>
+    </PanelSection>
+  );
+}
+
+// ─── Slide mode sections (inspector-slide-mode.md) ───────────────────────────
+// Active when a slide is selected. Header = slide-name text field + options
+// IconButton; body = Timing, Background, Selection colors.
+
+// Timing §Timing — Range Start|End (s), Duration (s, derived End − Start).
+function SlideTimingSection({
+  start = 0,
+  end = 5,
+}: {
+  start?: number;
+  end?: number;
+}) {
+  return (
+    <PanelSection title="Timing">
+      <PanelFieldRow
+        label="Range"
+        left={
+          <NumericInput
+            iconLead={<span className={clsx(FONT, "text-[10px]")}>Start</span>}
+            defaultValue={start}
+            min={0}
+            suffix="s"
+          />
+        }
+        right={
+          <NumericInput
+            iconLead={<span className={clsx(FONT, "text-[10px]")}>End</span>}
+            defaultValue={end}
+            min={0}
+            suffix="s"
+          />
+        }
+      />
+      <PanelFieldRow
+        label="Duration"
+        left={
+          <NumericInput
+            iconLead={<span className={FONT}>↔</span>}
+            defaultValue={Math.max(0, end - start)}
+            min={0}
+            suffix="s"
+          />
+        }
+      />
+    </PanelSection>
+  );
+}
+
+// Background §Background — fill-type segmented (Solid · Gradient · Image · Video)
+// switching the control below. Solid shows a compact ColorInput swatch trigger.
+function SlideBackgroundSection() {
+  const [fillType, setFillType] = useState("solid");
+  const [colorOpen, setColorOpen] = useState(false);
+  const fillSegments = [
+    { value: "solid", label: "Solid" },
+    { value: "gradient", label: "Gradient" },
+    { value: "image", label: "Image" },
+    { value: "video", label: "Video" },
+  ];
+  return (
+    <PanelSection title="Background">
+      {/* Fill type — segmented within the section */}
+      <PanelFieldRow
+        label="Fill type"
+        left={
+          <SegmentedControl
+            segments={fillSegments}
+            value={fillType}
+            onChange={setFillType}
+            className="w-full"
+          />
+        }
+      />
+
+      {/* Control below switches on the selected fill type */}
+      {fillType === "solid" && (
+        <div className="flex items-center px-[16px] h-[32px]">
+          <div className="flex-1 min-w-0">
+            <ColorInput
+              fullWidth
+              color="#1e1e1e"
+              opacity={100}
+              onSwatchClick={() => setColorOpen(true)}
+            />
+          </div>
+        </div>
+      )}
+      {fillType === "gradient" && (
+        <div className="flex items-center px-[16px] h-[32px]">
+          <div className="flex-1 min-w-0">
+            <ColorInput
+              fullWidth
+              fillType="Gradient"
+              fillLabel="Linear gradient"
+              onSwatchClick={() => setColorOpen(true)}
+            />
+          </div>
+        </div>
+      )}
+      {(fillType === "image" || fillType === "video") && (
+        <div className="flex items-center gap-[8px] px-[16px] h-[32px]">
+          <span className="shrink-0 size-[24px] rounded-c-sm bg-c-bg-secondary ring-1 ring-inset ring-c-border" />
+          <div className="flex-1 min-w-0">
+            <Dropdown value="Fill" fullWidth />
+          </div>
+          <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Replace" />
+        </div>
+      )}
+
+      <ColorDialog open={colorOpen} onClose={() => setColorOpen(false)} hex="1e1e1e" />
+    </PanelSection>
+  );
+}
+
 // ─── PropertyPanel ────────────────────────────────────────────────────────────
 
 export interface PropertyPanelProps {
+  /** Inspector mode. Defaults to "element" — the current selection inspector. */
+  mode?: PanelMode;
   elementType?: ElementType;
   multiSelect?: boolean;
   x?: number; y?: number; rotation?: number;
   width?: number; height?: number;
   opacity?: number;
   blendMode?: BlendMode;
+  /** Slide mode — initial slide name shown in the header text field. */
+  slideName?: string;
   className?: string;
 }
 
@@ -939,12 +1178,14 @@ function MultiplayerBar() {
 }
 
 export function PropertyPanel({
+  mode = "element",
   elementType = "text",
   multiSelect = false,
   x = 0, y = 0, rotation = 0,
   width = 1200, height = 115,
   opacity = 100,
   blendMode = "Pass through",
+  slideName = "Slide 1",
   className,
 }: PropertyPanelProps) {
   const [tab, setTab] = useState("design");
@@ -972,9 +1213,57 @@ export function PropertyPanel({
 
   return (
     <Panel className={clsx("h-full overflow-hidden flex flex-col", className)}>
-      {/* Multiplayer tools — above the tabs */}
+      {/* Multiplayer tools — above the tabs; shared across all modes */}
       <MultiplayerBar />
 
+      {/* ── PROJECT mode (inspector-project-mode.md) ─────────────────────────
+          Active when nothing is selected. Static "Project" header, no tabs. */}
+      {mode === "project" && (
+        <ScrollArea>
+          {/* Panel header — static "Project" label */}
+          <div className="h-[40px] flex items-center px-[16px] border-b border-c-border">
+            <span className={clsx(FONT, "text-[11px] font-[550] text-c-text")}>Project</span>
+          </div>
+
+          <CanvasSection width={width} height={height} />
+          <MasterTimelineSection />
+          <ProjectExportSection />
+        </ScrollArea>
+      )}
+
+      {/* ── SLIDE mode (inspector-slide-mode.md) ─────────────────────────────
+          Active when a slide is selected. Header = slide-name field + options,
+          no tabs. */}
+      {mode === "slide" && (
+        <ScrollArea>
+          {/* Panel header — inline-editable slide name + options IconButton */}
+          <div className="h-[40px] flex items-center gap-[8px] px-[16px] border-b border-c-border">
+            <div className="flex-1 min-w-0">
+              <InputField defaultValue={slideName} placeholder="Slide name" />
+            </div>
+            <PopoverMenu
+              align="right"
+              trigger={<PanelActionBtn icon={<MoreHorizontal size={16} strokeWidth={1.5} />} label="Slide options" />}
+            >
+              {(close) => (
+                <Menu minWidth={180}>
+                  <MenuRow type="simple" label="Duplicate slide" onClick={close} />
+                  <MenuRow type="simple" label="Delete slide" onClick={close} />
+                </Menu>
+              )}
+            </PopoverMenu>
+          </div>
+
+          <SlideTimingSection />
+          <SlideBackgroundSection />
+          {/* Selection colors — reuse the existing element-mode section */}
+          <SelectionColorsSection />
+        </ScrollArea>
+      )}
+
+      {/* ── ELEMENT mode (default) — tabs + selection inspector ──────────────── */}
+      {mode === "element" && (
+      <>
       {/* Tab strip */}
       <div className="border-b border-c-border px-[8px] pt-[6px] pb-[6px]">
         <Tabs
@@ -1056,6 +1345,8 @@ export function PropertyPanel({
         <div className="flex-1 flex items-center justify-center">
           <span className={clsx(FONT, "text-[11px] text-c-text-tertiary")}>Prototype settings</span>
         </div>
+      )}
+      </>
       )}
     </Panel>
   );
