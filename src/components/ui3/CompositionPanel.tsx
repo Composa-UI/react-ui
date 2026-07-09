@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, type ReactNode } from "react";
 import { clsx } from "clsx";
 import { SlidesPanel, type SlideData } from "./SlidesPanel";
 import { LayerList, type LayerNode } from "./LayerList";
@@ -19,6 +19,12 @@ const MAX_WIDTH = 360;      // spec: max panel width
 export interface CompositionPanelProps {
   slides?: SlideData[];
   layers?: LayerNode[];
+  /** Consumer-composed <SlideRow> list — takes precedence over `slides`. */
+  slidesChildren?: ReactNode;
+  /** Consumer-composed <LayerRow> list — takes precedence over `layers`. */
+  layersChildren?: ReactNode;
+  /** "New slide" button handler (forwarded to SlidesPanel). */
+  onAddSlide?: () => void;
   slidesTitle?: string;
   slidesSubtitle?: string;
   layersTitle?: string;
@@ -38,6 +44,9 @@ export interface CompositionPanelProps {
 export function CompositionPanel({
   slides = DEMO_SLIDES,
   layers,
+  slidesChildren,
+  layersChildren,
+  onAddSlide,
   slidesTitle,
   slidesSubtitle,
   layersTitle,
@@ -157,7 +166,9 @@ export function CompositionPanel({
       {/* Top — Slides (min 80px). `[&>*]:!w-full` stretches the child to the column
           width; `[&>*]:!border-r-0` drops its own right border (the container owns it). */}
       <div className="min-h-[80px] overflow-hidden [&>*]:!w-full [&>*]:!border-r-0" style={{ flexBasis: `calc(${split} * 100%)`, flexGrow: 0, flexShrink: 1 }}>
-        <SlidesPanel slides={slides} title={slidesTitle} subtitle={slidesSubtitle} />
+        <SlidesPanel slides={slides} title={slidesTitle} subtitle={slidesSubtitle} onAddSlide={onAddSlide}>
+          {slidesChildren}
+        </SlidesPanel>
       </div>
 
       {/* Bottom — Layers (min 80px, fills the rest). Same stretch/border overrides. */}
@@ -176,7 +187,9 @@ export function CompositionPanel({
           onKeyDown={onKeyDown}
           className="absolute top-0 inset-x-0 h-[4px] z-10 cursor-ns-resize select-none outline-none -translate-y-1/2 focus-visible:bg-c-border-selected/40"
         />
-        <LayerList layers={layers} title={layersTitle} />
+        <LayerList layers={layers} title={layersTitle}>
+          {layersChildren}
+        </LayerList>
       </div>
 
       {/* Width resize affordance — thin invisible vertical strip on the RIGHT EDGE.

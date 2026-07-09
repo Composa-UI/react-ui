@@ -1,3 +1,4 @@
+import { forwardRef, type ReactNode } from "react";
 import { clsx } from "clsx";
 import { ChevronRight, ChevronDown, Plus } from "lucide-react";
 import { ScrollArea } from "./Panel";
@@ -10,9 +11,17 @@ const ANIMATE_GLYPH =
 // ─── Slides left panel ──────────────────────────────────────────────────────────
 // Componentized from the study Figma export (`imports/SlidesTemplate`). Theme-aware:
 // renders LIGHT by default and DARK under `data-composa-mode="dark"` — colours flow
-// through the mode-flipping `c-*` tokens (styles/theme.css). Data-driven: one
-// `SlideData` per row drives every state
-// (default / group header / sub-slide / stacked / motion / comment / selected).
+// through the mode-flipping `c-*` tokens (styles/theme.css).
+//
+// Presentational + COMPOSABLE. Two ways to use it:
+//   • Standalone/demo: pass `slides={SlideData[]}` and the panel maps its own rows.
+//   • Consumer-composed: pass `children` (a list of <SlideRow>) so the consumer
+//     owns behavior (selection modifiers, rename, drag-reorder, context menus)
+//     while the kit owns the row/panel styling. The editor uses this path.
+// The row's rich content is injected via slots: `thumbNode` (a live canvas
+// thumbnail) and `nameNode` (e.g. an inline rename input). `SlideRow` forwards
+// `...rest` to its root so a consumer can attach a context-menu trigger, drag
+// handlers, `data-*` hooks, and event handlers.
 
 const INTER = { fontFamily: "Inter, sans-serif" } as const;
 
@@ -20,14 +29,22 @@ export interface SlideData {
   n: number | string;          // number label
   thumb?: string;              // thumbnail image src
   tint?: string;               // solid thumb colour when no image (demo)
+  thumbNode?: ReactNode;       // live thumbnail slot (takes precedence over thumb/tint)
+  name?: string;               // slide name caption
+  nameNode?: ReactNode;        // overrides the name caption (e.g. a rename input)
+  range?: string;              // time-range caption (e.g. "0:00 – 0:1.4 · 1.4s")
   selected?: boolean;
+  skipped?: boolean;           // dimmed + strikethrough name (excluded from playback)
   sub?: boolean;               // indented sub-slide (nested under a group)
   group?: boolean;             // expandable group header — shows a chevron
   expanded?: boolean;          // chevron rotation (open group)
   stacked?: boolean;           // stacked-group visual (offset cards behind)
   motion?: boolean;            // animation applied — badge on thumbnail
   comment?: number;            // comment-pin count (undefined = none)
-  onClick?: () => void;
+  dropBefore?: boolean;        // drag-reorder drop indicator above the row
+  dropAfter?: boolean;         // drag-reorder drop indicator below the row
+  onClick?: (e: React.MouseEvent) => void;
+  onDoubleClick?: (e: React.MouseEvent) => void;
 }
 
 // ── Slide thumbnail (+ motion badge) ──────────────────────────────────────────
@@ -41,9 +58,11 @@ function SlideThumb({ item }: { item: SlideData }) {
   return (
     <div className={clsx("absolute top-[8px] right-[12px] rounded-[5px]", gutter)} style={{ aspectRatio: THUMB_RATIO }}>
       <div className="absolute inset-0 rounded-[5px] overflow-hidden bg-white">
-        {item.thumb
-          ? <img alt="" className="absolute inset-0 size-full object-cover" src={item.thumb} />
-          : <div className="absolute inset-0" style={{ background: item.tint ?? "#111" }} />}
+        {item.thumbNode
+          ? item.thumbNode
+          : item.thumb
+            ? <img alt="" className="absolute inset-0 size-full object-cover" src={item.thumb} />
+            : <div className="absolute inset-0" style={{ background: item.tint ?? "#111" }} />}
       </div>
       <div aria-hidden className="absolute inset-0 rounded-[5px] border border-c-border" />
       {/* motion badge — Figma icon.24.animate.small: 18px rounded chip, bottom-left,
@@ -64,17 +83,34 @@ function SlideThumb({ item }: { item: SlideData }) {
   );
 }
 
-// ── One slide row ─────────────────────────────────────────────────────────────
-export function SlideListItem({ item }: { item: SlideData }) {
+// ── One slide row (composable shell) ──────────────────────────────────────────
+// forwardRef + `...rest` spread so a consumer (the editor) can wrap it in a
+// context-menu trigger / attach drag + data-* + event handlers on the root.
+export const SlideRow = forwardRef<
+  HTMLDivElement,
+  { item: SlideData } & React.HTMLAttributes<HTMLDivElement>
+>(function SlideRow({ item, className, ...rest }, ref) {
   const numLeft = item.sub ? "left-[36px]" : "left-[12px]";
   // Row height tracks the responsive thumbnail. An in-flow spacer uses the same
   // left-gutter + 12px-right margins, so it fills the remaining width; aspect-ratio
   // then sets its height, and the row grows/shrinks with the panel width. Vertical
-  // margins reserve the 8px above/below the thumb (+12px for stacked peek cards).
+  // margins reserve the 8px above/below the thumb (+12px for stacked peek cards),
+  // plus room for the name + range captions below.
   const spacerLeft = item.sub ? 68 : 44;
   const spacerBottom = item.stacked ? 20 : 8; // 8, plus 12 for the stacked cards
+  const hasCaption = item.name != null || item.nameNode != null || item.range != null;
   return (
-    <div className="relative w-full shrink-0 cursor-pointer" onClick={item.onClick}>
+    <div
+      ref={ref}
+      className={clsx("group relative w-full shrink-0 cursor-pointer select-none", className)}
+      onClick={item.onClick}
+      onDoubleClick={item.onDoubleClick}
+      {...rest}
+    >
+      {/* drag-reorder drop indicators */}
+      {item.dropBefore && <div aria-hidden className="absolute left-[8px] right-[8px] top-0 h-[2px] rounded-full bg-c-border-selected-strong" />}
+      {item.dropAfter && <div aria-hidden className="absolute left-[8px] right-[8px] bottom-0 h-[2px] rounded-full bg-c-border-selected-strong" />}
+
       {/* height spacer — invisible box matching the thumbnail width + aspect ratio */}
       <div aria-hidden className="invisible" style={{ aspectRatio: THUMB_RATIO, marginLeft: spacerLeft, marginRight: 12, marginTop: 8, marginBottom: spacerBottom }} />
 
@@ -82,6 +118,7 @@ export function SlideListItem({ item }: { item: SlideData }) {
           it sits a few px further out so the tint is visible as a margin/frame
           around the thumbnail rather than the two edges coinciding (touching) */}
       {item.selected && <div className="absolute inset-y-0 left-[8px] right-[8px] rounded-[5px] bg-c-bg-selected" />}
+      {!item.selected && <div className="absolute inset-y-[2px] left-[8px] right-[8px] rounded-[5px] bg-c-bg-hover opacity-0 group-hover:opacity-100" />}
 
       {/* stacked-group cards (peek behind/below the thumbnail) */}
       {item.stacked && (
@@ -94,7 +131,9 @@ export function SlideListItem({ item }: { item: SlideData }) {
         </>
       )}
 
-      <SlideThumb item={item} />
+      <div className={clsx(item.skipped && "opacity-50")}>
+        <SlideThumb item={item} />
+      </div>
 
       {/* number (+ group chevron) */}
       <div className={clsx("absolute top-[6px] flex flex-col items-center", item.group && "gap-[4px]", numLeft)}>
@@ -110,16 +149,53 @@ export function SlideListItem({ item }: { item: SlideData }) {
           <ChevronRight size={16} className={clsx("text-c-text transition-transform", item.expanded && "rotate-90")} />
         )}
       </div>
+
+      {/* name + range captions (below the thumbnail) */}
+      {hasCaption && (
+        <div className="relative flex flex-col gap-[1px] pb-[6px] pr-[12px]" style={{ paddingLeft: spacerLeft }}>
+          {item.nameNode
+            ? item.nameNode
+            : item.name != null && (
+                <span
+                  className={clsx(
+                    "text-[11px] font-[450] leading-[16px] tracking-[0.055px] truncate",
+                    item.selected ? "text-c-text" : "text-c-text",
+                    item.skipped && "line-through opacity-60",
+                  )}
+                  style={INTER}
+                >
+                  {item.name}
+                </span>
+              )}
+          {item.range != null && (
+            <span className="text-[10px] font-[450] leading-[14px] tracking-[0.05px] tabular-nums text-c-text-secondary truncate" style={INTER}>
+              {item.range}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
+});
+
+// ── One slide row (self-mapping form for the standalone `slides` prop) ─────────
+export function SlideListItem({ item }: { item: SlideData }) {
+  return <SlideRow item={item} />;
 }
 
 // ── Panel ─────────────────────────────────────────────────────────────────────
-export function SlidesPanel({ slides, title = "Product review", subtitle = "native" }: {
-  slides: SlideData[];
+export interface SlidesPanelProps {
+  /** Standalone/demo data — ignored when `children` is provided. */
+  slides?: SlideData[];
+  /** Consumer-composed rows (a list of <SlideRow>). Takes precedence over slides. */
+  children?: ReactNode;
   title?: string;
   subtitle?: string;
-}) {
+  /** "New slide" button handler. */
+  onAddSlide?: () => void;
+}
+
+export function SlidesPanel({ slides, children, title = "Product review", subtitle = "native", onAddSlide }: SlidesPanelProps) {
   return (
     <div className="w-[200px] shrink-0 h-full flex flex-col bg-c-bg overflow-hidden border-r border-c-border">
       {/* Header — title + subtitle only */}
@@ -136,7 +212,11 @@ export function SlidesPanel({ slides, title = "Product review", subtitle = "nati
 
       {/* New slide (split: label + chevron on the left, plus on the right) */}
       <div className="shrink-0 p-[8px] border-t border-b border-c-border">
-        <button className="relative w-full h-[24px] rounded-[6px] border border-c-border bg-c-bg flex items-center justify-center gap-[2px] hover:bg-c-bg-hover">
+        <button
+          type="button"
+          onClick={onAddSlide}
+          className="relative w-full h-[24px] rounded-[6px] border border-c-border bg-c-bg flex items-center justify-center gap-[2px] hover:bg-c-bg-hover"
+        >
           <span className="text-c-text text-[11px] font-[450] leading-[16px] tracking-[0.055px]" style={INTER}>New slide</span>
           <ChevronDown size={12} className="text-c-text" />
           <Plus size={16} className="text-c-text absolute right-[4px] top-1/2 -translate-y-1/2" />
@@ -146,7 +226,7 @@ export function SlidesPanel({ slides, title = "Product review", subtitle = "nati
       {/* Slide list — overlay scrollbar (theme-aware thumb) */}
       <ScrollArea>
         <div className="flex flex-col">
-          {slides.map((s, i) => <SlideListItem key={i} item={s} />)}
+          {children ?? slides?.map((s, i) => <SlideListItem key={i} item={s} />)}
         </div>
       </ScrollArea>
     </div>
