@@ -64,6 +64,8 @@ interface ToolGroupButtonProps {
   /** Sub-menu items — when present the button becomes a split button. */
   menu?: MenuItem[];
   onSelect: (tool: ToolId) => void;
+  /** Consumer DOM attributes (e.g. editor data-* hooks) on the primary button. */
+  rootAttrs?: Record<string, string | undefined>;
 }
 
 // Standard "has a menu" chevron-down affordance (the menu itself opens upward
@@ -76,7 +78,7 @@ function ChevronDownGlyph() {
   );
 }
 
-function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps) {
+function ToolGroupButton({ tool, active, menu, onSelect, rootAttrs }: ToolGroupButtonProps) {
   const [open, setOpen] = useState(false);
   const { icon, label } = TOOLS[tool];
   const hasMenu = !!menu && menu.length > 0;
@@ -108,6 +110,7 @@ function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps)
             ? "bg-c-bg-brand text-c-text-on-brand"
             : "text-c-icon hover:bg-c-bg-hover active:bg-c-bg-secondary",
         )}
+        {...rootAttrs}
       >
         {icon}
       </button>
@@ -136,6 +139,7 @@ function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps)
               ? "bg-c-bg-brand text-c-text-on-brand rounded-c-md"
               : "bg-c-bg text-c-icon hover:bg-c-bg-hover active:bg-c-bg-secondary rounded-l-c-md",
           )}
+          {...rootAttrs}
         >
           {icon}
         </button>
@@ -196,17 +200,30 @@ function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps)
 // ─── CreationToolbar ──────────────────────────────────────────────────────────
 // Self-contained floating pill: rounded, elevated, centered over the canvas.
 
+/** Stable ids for the four tool groups (left→right). */
+export type ToolGroupId = "move" | "region" | "shape" | "type";
+
 export interface CreationToolbarProps {
   /** Controlled active tool. Defaults to "move" when uncontrolled. */
   activeTool?: ToolId;
   onToolChange?: (tool: ToolId) => void;
   className?: string;
+  /**
+   * Bind the built-in keyboard shortcuts (V/H/F/R/O/L/T, Escape→Move).
+   * Default true for the standalone playground. Consumers that own their own
+   * global shortcut system (e.g. the editor) pass false to stay presentational.
+   */
+  enableShortcuts?: boolean;
+  /** Extra DOM attributes on each group's primary button, keyed by group id. */
+  groupAttrs?: Partial<Record<ToolGroupId, Record<string, string | undefined>>>;
 }
 
 export function CreationToolbar({
   activeTool: activeToolProp,
   onToolChange,
   className,
+  enableShortcuts = true,
+  groupAttrs,
 }: CreationToolbarProps) {
   const [activeTool, setActiveTool] = useState<ToolId>(activeToolProp ?? "move");
 
@@ -222,8 +239,10 @@ export function CreationToolbar({
 
   const isActive = (id: ToolId) => activeTool === id;
 
-  // Keyboard shortcuts (spec: V/H/F/R/O/L/T, Escape → Move).
+  // Keyboard shortcuts (spec: V/H/F/R/O/L/T, Escape → Move). Skipped when the
+  // consumer owns its own global shortcut system (enableShortcuts=false).
   useEffect(() => {
+    if (!enableShortcuts) return;
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -270,6 +289,7 @@ export function CreationToolbar({
           { tool: "hand", active: isActive("hand") },
         ]}
         onSelect={selectTool}
+        rootAttrs={groupAttrs?.move}
       />
 
       {/* Region ▾ — Frame */}
@@ -278,6 +298,7 @@ export function CreationToolbar({
         active={isActive("frame")}
         menu={[{ tool: "frame", active: isActive("frame") }]}
         onSelect={selectTool}
+        rootAttrs={groupAttrs?.region}
       />
 
       {/* Shape ▾ — Rectangle / Ellipse / Line */}
@@ -290,6 +311,7 @@ export function CreationToolbar({
           { tool: "line",      active: isActive("line") },
         ]}
         onSelect={selectTool}
+        rootAttrs={groupAttrs?.shape}
       />
 
       {/* Type — single IconButton (no menu in V1) */}
@@ -297,6 +319,7 @@ export function CreationToolbar({
         tool="text"
         active={isActive("text")}
         onSelect={selectTool}
+        rootAttrs={groupAttrs?.type}
       />
     </div>
   );
