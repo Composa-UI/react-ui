@@ -92,7 +92,7 @@ function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps)
           "transition-colors duration-100 outline-none",
           "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-c-focus-ring",
           active
-            ? "bg-c-bg-brand text-white"
+            ? "bg-c-bg-brand text-c-text-on-brand"
             : "text-c-icon hover:bg-c-bg-hover active:bg-c-bg-secondary",
         )}
       >
@@ -101,7 +101,7 @@ function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps)
           <ChevronDown
             size={10}
             strokeWidth={2}
-            className={active ? "text-white/80" : "text-c-icon-secondary"}
+            className={active ? "text-c-text-on-brand/80" : "text-c-icon-secondary"}
           />
         )}
       </button>
@@ -117,7 +117,7 @@ function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps)
                 return (
                   <MenuRow
                     key={t}
-                    type="checkmark"
+                    type="toolbar"
                     label={item.label}
                     shortcut={item.shortcut}
                     checked={a}

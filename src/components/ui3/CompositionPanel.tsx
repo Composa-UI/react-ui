@@ -100,7 +100,7 @@ export function CompositionPanel({
       {/* Top — Slides (min 80px). `[&>*]:!w-full` stretches the fixed-width child to
           the 240px column; `[&>*]:!border-r-0` drops its own right border (the
           container owns it). */}
-      <div className="min-h-[80px] overflow-hidden [&>*]:!w-full [&>*]:!border-r-0" style={{ flexBasis: `${split * 100}%`, flexGrow: 0, flexShrink: 1 }}>
+      <div className="min-h-[80px] overflow-hidden [&>*]:!w-full [&>*]:!border-r-0" style={{ flexBasis: `calc(${split} * (100% - ${DIVIDER_PX}px))`, flexGrow: 0, flexShrink: 1 }}>
         <SlidesPanel slides={slides} title={slidesTitle} subtitle={slidesSubtitle} />
       </div>
 
