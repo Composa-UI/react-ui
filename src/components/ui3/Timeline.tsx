@@ -67,8 +67,8 @@ function Lane({ prop, height }: { prop: PropTrack; height: number }) {
           style={{ left: ms(prop.bar[0]), width: ms(prop.bar[1] - prop.bar[0]) }}
         >
           {/* trim handles (edge-drag to trim start/end) — inset + wider to read as grips */}
-          <span className="absolute left-[3px] top-1/2 -translate-y-1/2 h-[10px] w-[4px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
-          <span className="absolute right-[3px] top-1/2 -translate-y-1/2 h-[10px] w-[4px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
+          <span className="absolute left-[3px] top-1/2 -translate-y-1/2 h-[10px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
+          <span className="absolute right-[3px] top-1/2 -translate-y-1/2 h-[10px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
         </div>
       )}
       {kfs.length > 1 && (
@@ -105,8 +105,8 @@ function TrackRows({ track }: { track: Track }) {
               className="absolute top-1/2 -translate-y-1/2 h-[14px] rounded-[4px] bg-c-bg-secondary"
               style={{ left: ms(track.bar[0]), width: ms(track.bar[1] - track.bar[0]) }}
             >
-              <span className="absolute left-[3px] top-1/2 -translate-y-1/2 h-[10px] w-[4px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
-              <span className="absolute right-[3px] top-1/2 -translate-y-1/2 h-[10px] w-[4px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
+              <span className="absolute left-[3px] top-1/2 -translate-y-1/2 h-[10px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
+              <span className="absolute right-[3px] top-1/2 -translate-y-1/2 h-[10px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
             </div>
           )}
         </div>

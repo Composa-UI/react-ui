@@ -11,7 +11,7 @@ import { LayoutGrid, Sparkles, Image as ImageIcon } from "lucide-react";
 // labels: Composition · Agent · Assets).
 
 const FONT = "font-[family-name:var(--composa-font-family)]";
-const S = 20;
+const S = 18;
 
 export interface NavItem {
   id: string;
@@ -41,7 +41,7 @@ export function NavRail({
   const select = (id: string) => { if (controlled === undefined) setInternal(id); onSelect?.(id); };
 
   return (
-    <nav aria-label="Navigation" className="w-[68px] shrink-0 h-full flex flex-col items-center gap-[4px] pt-[8px] bg-c-bg border-r border-c-border">
+    <nav aria-label="Navigation" className="w-[60px] shrink-0 h-full flex flex-col items-center gap-[6px] pt-[8px] bg-c-bg border-r border-c-border">
       {items.map(it => {
         const on = active === it.id;
         return (
@@ -52,7 +52,7 @@ export function NavRail({
               aria-pressed={on}
               aria-label={it.label}
               className={clsx(
-                "size-[40px] rounded-c-md flex items-center justify-center transition-colors",
+                "size-[32px] rounded-c-md flex items-center justify-center transition-colors",
                 on ? "bg-c-bg-selected text-c-text-brand" : "text-c-icon hover:bg-c-bg-hover",
               )}
             >

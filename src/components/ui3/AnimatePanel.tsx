@@ -3,6 +3,7 @@ import { clsx } from "clsx";
 import { SlidersHorizontal, Plus, Trash2, MonitorPlay, Clock, ArrowRight, ArrowDown, Type, SquareDashedMousePointer } from "lucide-react";
 import { PanelSection, PanelActionBtn, ScrollArea } from "./Panel";
 import { Dropdown } from "./Dropdown";
+import { ComboInput } from "./Input";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { Button } from "./Button";
 
@@ -67,7 +68,7 @@ function AnimationCard({ icon, title, badge, expanded, onToggle, onRemove, child
     );
   }
   return (
-    <div className="rounded-c-md border border-accent/50 overflow-hidden">
+    <div className="rounded-c-md border border-accent/70 overflow-hidden">
       {/* accent header — click to collapse; trash to remove */}
       <div className="h-[32px] flex items-center gap-[8px] pl-[8px] pr-[6px] bg-accent/15">
         <button onClick={onToggle} aria-expanded className="flex-1 min-w-0 flex items-center gap-[8px] h-full">
@@ -91,7 +92,7 @@ function SlideTransitionSection() {
   const [open, setOpen] = useState(true);
   if (!applied) {
     return (
-      <PanelSection title="Slide transition" rightActions={<PanelActionBtn icon={<SlidersHorizontal size={16} strokeWidth={1.5} />} label="Slide transition settings" />}>
+      <PanelSection title="Composition transition" rightActions={<PanelActionBtn icon={<SlidersHorizontal size={16} strokeWidth={1.5} />} label="Composition transition settings" />}>
         <div className="px-[16px] pt-[3px] pb-[8px]">
           <button onClick={() => setApplied(true)} className="h-[32px] w-full rounded-c-md border border-c-border bg-c-bg flex items-center gap-[8px] px-[8px] hover:bg-c-bg-hover">
             <MonitorPlay size={16} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" />
@@ -102,7 +103,7 @@ function SlideTransitionSection() {
     );
   }
   return (
-    <PanelSection title="Slide transition" rightActions={<PanelActionBtn icon={<SlidersHorizontal size={16} strokeWidth={1.5} />} label="Slide transition settings" />}>
+    <PanelSection title="Composition transition" rightActions={<PanelActionBtn icon={<SlidersHorizontal size={16} strokeWidth={1.5} />} label="Composition transition settings" />}>
       <div className="px-[16px] pt-[3px] pb-[8px]">
         <AnimationCard
           icon={<MonitorPlay size={16} strokeWidth={1.5} />}
@@ -114,9 +115,9 @@ function SlideTransitionSection() {
         >
           <LabeledRow label="Style"><Dropdown value="Smart animate" fullWidth /></LabeledRow>
           <LabeledRow label="Easing"><Dropdown value="Ease out" fullWidth /></LabeledRow>
-          <LabeledRow label="Duration"><Dropdown value="300ms" fullWidth leadingIcon={<Clock size={16} strokeWidth={1.5} />} /></LabeledRow>
+          <LabeledRow label="Duration"><ComboInput value="300ms" className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} /></LabeledRow>
           <LabeledRow label="Start"><Dropdown value="On click" fullWidth /></LabeledRow>
-          <LabeledRow label="Delay"><Dropdown value="0ms" fullWidth leadingIcon={<Clock size={16} strokeWidth={1.5} />} /></LabeledRow>
+          <LabeledRow label="Delay"><ComboInput value="0ms" className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} /></LabeledRow>
           <Button label="Apply to all slides" variant="Secondary" size="wide" />
         </AnimationCard>
       </div>
@@ -173,7 +174,7 @@ function ObjectAnimationsSection({ anims }: { anims: ObjAnim[] }) {
               >
                 <div className={clsx(FONT, "text-[11px] font-[550] leading-[16px] text-c-text")}>Build in</div>
                 <LabeledRow label="Style"><Dropdown value={a.style ?? "—"} fullWidth /></LabeledRow>
-                <LabeledRow label="Duration"><Dropdown value={a.buildDuration ?? "—"} fullWidth leadingIcon={<Clock size={16} strokeWidth={1.5} />} /></LabeledRow>
+                <LabeledRow label="Duration"><ComboInput value={a.buildDuration ?? "—"} className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} /></LabeledRow>
                 <LabeledRow label="Delivery"><Dropdown value={a.delivery ?? "—"} fullWidth /></LabeledRow>
               </AnimationCard>
             </div>

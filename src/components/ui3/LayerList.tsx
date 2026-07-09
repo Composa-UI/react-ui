@@ -9,7 +9,6 @@ import { ChevronRight, Frame, Folder, Type, Component, Image as ImageIcon, Squar
 // use the purple accent.
 
 const FONT = "font-[family-name:var(--composa-font-family)]";
-const PURPLE = "#9747ff";
 
 export type LayerType = "frame" | "group" | "text" | "component" | "instance" | "image" | "shape";
 
@@ -84,10 +83,10 @@ function LayerRow({ node, depth, selectedId, onSelect }: {
         ) : (
           <span className="size-[16px] shrink-0" />
         )}
-        {/* type icon */}
-        <Icon size={16} strokeWidth={1.5} className="shrink-0" style={isComponent ? { color: PURPLE } : undefined} />
+        {/* type icon — theme-aware (text-c-icon flips in dark mode); components use the accent token */}
+        <Icon size={16} strokeWidth={1.5} className={clsx("shrink-0", isComponent ? "text-accent-component" : "text-c-icon")} />
         {/* name */}
-        <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] leading-[16px] truncate", isComponent ? "text-[#9747ff]" : "text-c-text")}>
+        <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] leading-[16px] truncate", isComponent ? "text-accent-component" : "text-c-text")}>
           {node.name}
         </span>
         {/* trailing: lock (if locked) + visibility (hover or when hidden) */}
