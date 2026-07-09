@@ -37,6 +37,25 @@ export default function Playground() {
     );
   }
 
+  if (view === "editor") {
+    // Full reskinned design-mode editor shell: nav rail · layers · canvas · inspector · timeline
+    return (
+      <div style={{ height: "100vh", width: "100vw", display: "flex", flexDirection: "column", background: "#e6e6e6" }}>
+        <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+          <NavRail />
+          <LayerList />
+          <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: "70%", aspectRatio: "16/9", background: "#fff", borderRadius: 6, boxShadow: "0 1px 4px rgba(0,0,0,0.12)" }} />
+          </div>
+          <PropertyPanel elementType="frame" />
+        </div>
+        <div style={{ padding: 8, background: "#fff", borderTop: "1px solid #e6e6e6" }}>
+          <Timeline height={220} />
+        </div>
+      </div>
+    );
+  }
+
   if (view === "layers") {
     return (
       <div style={{ height: "100vh", width: "100vw", display: "flex", background: "#e6e6e6" }}>
