@@ -981,9 +981,8 @@ export function PropertyPanel({
           value={tab}
           onChange={setTab}
           tabs={[
-            { value: "design",    label: "Design" },
-            { value: "animate",   label: "Animate" },
-            { value: "prototype", label: "Prototype" },
+            { value: "design",  label: "Design" },
+            { value: "animate", label: "Animate" },
           ]}
         />
       </div>

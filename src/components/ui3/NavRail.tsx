@@ -1,71 +1,66 @@
 import { useState, type ReactNode } from "react";
 import { clsx } from "clsx";
-import { MousePointer2, Frame, Type, Image as ImageIcon, Square, Table, MessageCircle, Sparkles, Plus } from "lucide-react";
+import { LayoutGrid, Sparkles, Image as ImageIcon } from "lucide-react";
 
-// ─── Navigation / tool rail ─────────────────────────────────────────────────────
-// Vertical icon rail for the editor's left edge (tool switches), componentized from
-// the previous DS toolbelt + Dark export. Light theme. 48px wide, 32px icon buttons;
-// the active tool uses the accent selection (bg-c-bg-selected + text-c-text-brand).
+// ─── Navigation rail ──────────────────────────────────────────────────────────
+// The editor's left rail — a few primary destinations, each an icon button with a
+// LABEL BELOW (label style matches the property-panel sub-label: 9px secondary).
+// The active destination uses the accent (text-c-text-brand + tinted button).
+// NOTE: app-shell.md specs an icon-only 40px rail with hover tooltips + 2 items
+// (Composition, Assets); this follows the newer direct instruction (3 items +
+// labels: Composition · Agent · Assets).
 
-export interface NavTool {
+const FONT = "font-[family-name:var(--composa-font-family)]";
+const S = 20;
+
+export interface NavItem {
   id: string;
   icon: ReactNode;
   label: string;
 }
 
-const S = 16;
-const DEFAULT_TOOLS: NavTool[] = [
-  { id: "select",   icon: <MousePointer2 size={S} strokeWidth={1.5} />, label: "Move" },
-  { id: "frame",    icon: <Frame size={S} strokeWidth={1.5} />,         label: "Frame" },
-  { id: "text",     icon: <Type size={S} strokeWidth={1.5} />,          label: "Text" },
-  { id: "image",    icon: <ImageIcon size={S} strokeWidth={1.5} />,     label: "Image" },
-  { id: "shape",    icon: <Square size={S} strokeWidth={1.5} />,        label: "Shape" },
-  { id: "table",    icon: <Table size={S} strokeWidth={1.5} />,         label: "Table" },
-  { id: "comment",  icon: <MessageCircle size={S} strokeWidth={1.5} />, label: "Comment" },
-  { id: "magic",    icon: <Sparkles size={S} strokeWidth={1.5} />,      label: "Generate" },
+const DEFAULT_ITEMS: NavItem[] = [
+  { id: "composition", icon: <LayoutGrid size={S} strokeWidth={1.5} />, label: "Composition" },
+  { id: "agent",       icon: <Sparkles size={S} strokeWidth={1.5} />,   label: "Agent" },
+  { id: "assets",      icon: <ImageIcon size={S} strokeWidth={1.5} />,  label: "Assets" },
 ];
 
 export function NavRail({
-  tools = DEFAULT_TOOLS,
-  defaultActive = "select",
+  items = DEFAULT_ITEMS,
+  defaultActive = "composition",
   active: controlled,
   onSelect,
-  footer,
 }: {
-  tools?: NavTool[];
+  items?: NavItem[];
   defaultActive?: string;
   active?: string;
   onSelect?: (id: string) => void;
-  footer?: ReactNode;
 }) {
   const [internal, setInternal] = useState(defaultActive);
   const active = controlled ?? internal;
   const select = (id: string) => { if (controlled === undefined) setInternal(id); onSelect?.(id); };
 
   return (
-    <div className="w-[48px] shrink-0 h-full flex flex-col items-center py-[8px] bg-c-bg border-r border-c-border">
-      <div className="flex flex-col items-center gap-[4px]">
-        {tools.map(t => (
+    <nav aria-label="Navigation" className="w-[68px] shrink-0 h-full flex flex-col items-center gap-[4px] pt-[8px] bg-c-bg border-r border-c-border">
+      {items.map(it => {
+        const on = active === it.id;
+        return (
           <button
-            key={t.id}
-            onClick={() => select(t.id)}
-            aria-label={t.label}
-            aria-pressed={active === t.id}
+            key={it.id}
+            onClick={() => select(it.id)}
+            aria-pressed={on}
             className={clsx(
-              "size-[32px] rounded-c-md flex items-center justify-center transition-colors",
-              active === t.id ? "bg-c-bg-selected text-c-text-brand" : "text-c-icon hover:bg-c-bg-hover",
+              "w-[56px] flex flex-col items-center gap-[3px] pt-[6px] pb-[5px] rounded-c-md transition-colors",
+              on ? "bg-c-bg-selected text-c-text-brand" : "text-c-icon hover:bg-c-bg-hover",
             )}
           >
-            {t.icon}
+            <span className="size-[24px] flex items-center justify-center">{it.icon}</span>
+            <span className={clsx(FONT, "text-[9px] font-[450] leading-[12px] tracking-[0.045px]", on ? "text-c-text-brand" : "text-c-text-secondary")}>
+              {it.label}
+            </span>
           </button>
-        ))}
-      </div>
-      <div className="flex-1" />
-      {footer ?? (
-        <button aria-label="Add" className="size-[32px] rounded-c-md flex items-center justify-center bg-c-bg-secondary text-c-icon hover:bg-c-bg-hover">
-          <Plus size={S} strokeWidth={1.5} />
-        </button>
-      )}
-    </div>
+        );
+      })}
+    </nav>
   );
 }

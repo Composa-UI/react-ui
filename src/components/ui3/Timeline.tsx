@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { clsx } from "clsx";
-import { Play, Diamond, Repeat, PanelBottomClose, Hash, Square, Type, Minus, Eye, EyeOff, ChevronLeft, ChevronRight } from "lucide-react";
+import { Play, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Hash, Square, Type, Minus, Eye, EyeOff, ChevronLeft, ChevronRight } from "lucide-react";
 
 // ─── Timeline ───────────────────────────────────────────────────────────────────
 // Horizontal keyframe timeline (After-Effects / Figma-Slides style), componentized
@@ -63,9 +63,13 @@ function Lane({ prop, height }: { prop: PropTrack; height: number }) {
     <div className="flex-1 relative" style={{ height }}>
       {prop.bar && (
         <div
-          className="absolute top-1/2 -translate-y-1/2 h-[10px] rounded-[3px] bg-[#e6e6e6]"
+          className="absolute top-1/2 -translate-y-1/2 h-[10px] rounded-[3px] bg-c-bg-secondary group/bar"
           style={{ left: ms(prop.bar[0]), width: ms(prop.bar[1] - prop.bar[0]) }}
-        />
+        >
+          {/* trim handles (edge-drag to trim start/end) */}
+          <span className="absolute left-0 top-0 h-full w-[3px] rounded-l-[3px] bg-c-border cursor-ew-resize" />
+          <span className="absolute right-0 top-0 h-full w-[3px] rounded-r-[3px] bg-c-border cursor-ew-resize" />
+        </div>
       )}
       {kfs.length > 1 && (
         <div
@@ -98,9 +102,12 @@ function TrackRows({ track }: { track: Track }) {
         <div className="flex-1 relative" style={{ height: ROW_LAYER }}>
           {track.bar && (
             <div
-              className="absolute top-1/2 -translate-y-1/2 h-[10px] rounded-[3px] bg-[#ececec]"
+              className="absolute top-1/2 -translate-y-1/2 h-[10px] rounded-[3px] bg-c-bg-secondary"
               style={{ left: ms(track.bar[0]), width: ms(track.bar[1] - track.bar[0]) }}
-            />
+            >
+              <span className="absolute left-0 top-0 h-full w-[3px] rounded-l-[3px] bg-c-border cursor-ew-resize" />
+              <span className="absolute right-0 top-0 h-full w-[3px] rounded-r-[3px] bg-c-border cursor-ew-resize" />
+            </div>
           )}
         </div>
       </div>
@@ -149,8 +156,8 @@ function Transport({ current, duration }: { current: number; duration: number })
         </button>
       </div>
       <div className="flex-1" />
-      <button aria-label="Collapse layers" className="size-[24px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover">
-        <PanelBottomClose size={16} strokeWidth={1.5} />
+      <button aria-label="Collapse track list" className="size-[24px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover">
+        <PanelLeftClose size={16} strokeWidth={1.5} />
       </button>
     </div>
   );
@@ -182,7 +189,7 @@ export function Timeline({ tracks = DEMO_TRACKS, height = 320, duration = 10000 
   const [drag, setDrag] = useState(false);
 
   return (
-    <div className="flex flex-col bg-c-bg border border-c-border rounded-c-md overflow-hidden" style={{ height }}>
+    <div className="flex flex-col bg-c-bg border-t border-c-border overflow-hidden" style={{ height }}>
       {/* header: transport | ruler | zoom */}
       <div className="flex h-[40px] shrink-0 border-b border-c-border">
         <Transport current={playhead} duration={duration} />
@@ -210,7 +217,7 @@ export function Timeline({ tracks = DEMO_TRACKS, height = 320, duration = 10000 
             <div className="absolute size-[12px] rounded-full bg-white shadow-[0px_1px_3px_rgba(0,0,0,0.2)] top-1/2 -translate-y-1/2" style={{ left: 6 }} />
           </div>
           <button aria-label="Collapse timeline" className="size-[24px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover">
-            <PanelBottomClose size={16} strokeWidth={1.5} className="rotate-90" />
+            <PanelBottomClose size={16} strokeWidth={1.5} />
           </button>
         </div>
       </div>
