@@ -415,8 +415,9 @@ function LayoutAutoSection({
         {indivPadding ? (
           // Same reserved icon column as the combined state below (shrink-0, right
           // edge) — the field grid is flex-1 so it shrinks to leave that room,
-          // instead of the icon getting bumped to its own row underneath.
-          <div className="flex items-center gap-[4px]">
+          // instead of the icon getting bumped to its own row underneath. Top-
+          // aligned (not centered) since the field block is two rows tall here.
+          <div className="flex items-start gap-[4px]">
             <div className="grid grid-cols-2 gap-[4px] flex-1 min-w-0">
               <NumericInput iconLead={<span className={FONT}>↑</span>} defaultValue={paddingTop}    min={0} />
               <NumericInput iconLead={<span className={FONT}>→</span>} defaultValue={paddingRight}  min={0} />
@@ -1358,8 +1359,8 @@ export function PropertyPanel({
               )}
               <PanelFieldRow
                 label="Dimensions"
-                left={<NumericInput iconLead={<span className={FONT}>W</span>} defaultValue={width} />}
-                right={<NumericInput iconLead={<span className={FONT}>H</span>} defaultValue={height} />}
+                left={<ComboInput iconLead={<span className={FONT}>W</span>} value={String(width)} className="w-full" />}
+                right={<ComboInput iconLead={<span className={FONT}>H</span>} value={String(height)} className="w-full" />}
                 rightAction={
                   <PanelActionBtn icon={<Link2Off size={16} strokeWidth={1.5} />} label="Lock aspect ratio" />
                 }
