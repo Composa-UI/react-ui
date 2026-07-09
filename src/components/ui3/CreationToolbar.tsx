@@ -2,7 +2,7 @@ import { useState, useEffect, type ReactNode } from "react";
 import { clsx } from "clsx";
 import {
   MousePointer2, Hand, Frame, Square, Circle, Minus,
-  Type, ChevronDown,
+  Type, ChevronDown, Check,
 } from "lucide-react";
 import { Menu, MenuRow } from "./Menu";
 
@@ -68,9 +68,20 @@ function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps)
   const { icon, label } = TOOLS[tool];
   const hasMenu = !!menu && menu.length > 0;
 
+  // Close on outside-click / Escape while open (mirrors PopoverMenu behaviour).
+  // We keep a self-contained popover here because the shared PopoverMenu only
+  // opens downward, and this toolbar floats above the canvas so its sub-menus
+  // must open upward.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
   const handleClick = () => {
     if (hasMenu) {
-      // Open the menu; also (re)activate the group's current tool.
+      // Toggle the menu; also (re)activate the group's current tool.
       setOpen(v => !v);
       onSelect(tool);
     } else {
@@ -88,7 +99,7 @@ function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps)
         onClick={handleClick}
         className={clsx(
           "relative flex items-center justify-center gap-[2px] shrink-0",
-          "h-[32px] rounded-c-md px-[6px]",
+          "h-[32px] rounded-c-md pl-[6px] pr-[4px]",
           "transition-colors duration-100 outline-none",
           "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-c-focus-ring",
           active
@@ -99,7 +110,7 @@ function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps)
         {icon}
         {hasMenu && (
           <ChevronDown
-            size={10}
+            size={12}
             strokeWidth={2}
             className={active ? "text-c-text-on-brand/80" : "text-c-icon-secondary"}
           />
@@ -117,11 +128,30 @@ function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps)
                 return (
                   <MenuRow
                     key={t}
-                    type="toolbar"
+                    // `simple` renders the interactive-row path with a leading
+                    // slot (shown because `leading` is set), a label, a right-
+                    // aligned shortcut, and a trailing check for the active
+                    // tool. NB: `type="toolbar"` only renders `children`, which
+                    // is why the previous label/leading/checked props produced
+                    // an empty menu.
+                    type="simple"
                     label={item.label}
-                    shortcut={item.shortcut}
-                    checked={a}
                     leading={item.icon}
+                    // MenuRow suppresses `shortcut` whenever `trailing` is set
+                    // (they share one right-aligned slot), so for the active
+                    // tool we pack the shortcut AND check into `trailing`
+                    // together; inactive rows use the plain `shortcut` prop.
+                    shortcut={a ? undefined : item.shortcut}
+                    trailing={
+                      a ? (
+                        <span className="flex items-center gap-[6px]">
+                          <span className="text-[11px] leading-[16px] tracking-[0.055px] font-[450]">
+                            {item.shortcut}
+                          </span>
+                          <Check size={14} strokeWidth={2.5} />
+                        </span>
+                      ) : undefined
+                    }
                     onClick={() => {
                       onSelect(t);
                       setOpen(false);

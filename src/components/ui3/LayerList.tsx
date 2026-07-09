@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { clsx } from "clsx";
-import { ChevronRight, Frame, Folder, Type, Component, Image as ImageIcon, Square, Eye, EyeOff, Lock } from "lucide-react";
+import { ChevronRight, Frame, Folder, Type, Component, Image as ImageIcon, Square, Eye, EyeOff, LockOpen } from "lucide-react";
+import { Lock as LockDuotone } from "@phosphor-icons/react";
+import { ScrollArea } from "./Panel";
 
 // ─── Layer list ─────────────────────────────────────────────────────────────────
 // A layers tree (Figma-style), componentized from the previous DS tree + Dark export.
@@ -65,35 +67,39 @@ function LayerRow({ node, depth, selectedId, onSelect }: {
           else if (e.key === "ArrowLeft" && hasChildren && open) setOpen(false);
         }}
         className={clsx(
-          "group/layer flex items-center gap-[6px] h-[28px] pr-[8px] cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-c-border-selected",
-          selected ? "bg-c-bg-selected" : "hover:bg-c-bg-hover",
+          "group/layer relative flex items-center gap-[6px] h-[30px] pr-[8px] cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-c-border-selected",
+          !selected && "hover:bg-c-bg-hover",
           node.hidden && "opacity-40",
         )}
         style={{ paddingLeft: 8 + depth * 16 }}
       >
+        {/* contained selection pill — inset from row edges, small radius */}
+        {selected && <span aria-hidden className="pointer-events-none absolute inset-y-[2px] left-[4px] right-[4px] rounded-c-sm bg-c-bg-selected" />}
         {/* disclosure */}
         {hasChildren ? (
           <button
             onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
             aria-label={open ? "Collapse" : "Expand"}
-            className="size-[16px] flex items-center justify-center shrink-0 text-c-icon-secondary"
+            className="relative size-[16px] flex items-center justify-center shrink-0 text-c-icon-secondary"
           >
             <ChevronRight size={12} strokeWidth={2} className={clsx("transition-transform", open && "rotate-90")} />
           </button>
         ) : (
           <span className="size-[16px] shrink-0" />
         )}
-        {/* type icon — theme-aware (text-c-icon flips in dark mode); components use the accent token */}
-        <Icon size={16} strokeWidth={1.5} className={clsx("shrink-0", isComponent ? "text-accent-component" : "text-c-icon")} />
+        {/* type icon — uniform: text-c-icon @ strokeWidth 1.5, size 16; components/instances use the accent token */}
+        <Icon size={16} strokeWidth={1.5} className={clsx("relative shrink-0", isComponent ? "text-accent-component" : "text-c-icon")} />
         {/* name */}
-        <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] leading-[16px] truncate", isComponent ? "text-accent-component" : "text-c-text")}>
+        <span className={clsx(FONT, "relative flex-1 min-w-0 text-[11px] font-[450] leading-[16px] truncate", isComponent ? "text-accent-component" : "text-c-text")}>
           {node.name}
         </span>
-        {/* trailing: lock (if locked) + visibility (hover or when hidden) */}
-        {node.locked && <Lock size={14} strokeWidth={1.5} className="shrink-0 text-c-icon-secondary" />}
+        {/* trailing: visibility (hover; eye-off persistent when hidden) + lock (open padlock on hover; closed duotone padlock when locked) */}
         {node.hidden
-          ? <EyeOff size={14} strokeWidth={1.5} className="shrink-0 text-c-icon-secondary" />
-          : <Eye size={14} strokeWidth={1.5} className="shrink-0 text-c-icon-secondary opacity-0 group-hover/layer:opacity-100" />}
+          ? <EyeOff size={14} strokeWidth={1.5} className="relative shrink-0 text-c-icon-secondary" />
+          : <Eye size={14} strokeWidth={1.5} className="relative shrink-0 text-c-icon-secondary opacity-0 group-hover/layer:opacity-100" />}
+        {node.locked
+          ? <LockDuotone size={14} weight="duotone" className="relative shrink-0 text-c-icon-secondary" />
+          : <LockOpen size={14} strokeWidth={1.5} className="relative shrink-0 text-c-icon-secondary opacity-0 group-hover/layer:opacity-100" />}
       </div>
       {hasChildren && open && node.children!.map(c => (
         <LayerRow key={c.id} node={c} depth={depth + 1} selectedId={selectedId} onSelect={onSelect} />
@@ -110,12 +116,14 @@ export function LayerList({ layers = DEMO_LAYERS, title = "Layers" }: { layers?:
       <div className="shrink-0 h-[40px] flex items-center px-[16px] border-b border-c-border">
         <span className={clsx(FONT, "text-[11px] font-[550] leading-[16px] text-c-text")}>{title}</span>
       </div>
-      {/* tree */}
-      <div role="tree" aria-label={title} className="flex-1 overflow-y-auto py-[4px]">
-        {layers.map(n => (
-          <LayerRow key={n.id} node={n} depth={0} selectedId={selected} onSelect={setSelected} />
-        ))}
-      </div>
+      {/* tree — overlay scrollbar (theme-aware thumb), matching inspector/slides panels */}
+      <ScrollArea className="py-[4px]">
+        <div role="tree" aria-label={title}>
+          {layers.map(n => (
+            <LayerRow key={n.id} node={n} depth={0} selectedId={selected} onSelect={setSelected} />
+          ))}
+        </div>
+      </ScrollArea>
     </div>
   );
 }

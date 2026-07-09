@@ -82,10 +82,10 @@ export default function Playground() {
     );
   }
 
-  if (view === "timeline") {
+  if (view === "timeline" || view === "timeline-master") {
     return (
       <div style={{ height: "100vh", width: "100vw", background: "#e6e6e6", padding: 24, boxSizing: "border-box" }}>
-        <Timeline height={360} />
+        <Timeline height={360} mode={view === "timeline-master" ? "master" : "slide"} />
       </div>
     );
   }

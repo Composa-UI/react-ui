@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { clsx } from "clsx";
-import { ChevronRight, ChevronDown, Plus, PanelLeft, LayoutGrid, Sparkles } from "lucide-react";
+import { ChevronRight, ChevronDown, Plus, Sparkles } from "lucide-react";
 import { ScrollArea } from "./Panel";
 
 // ─── Slides left panel ──────────────────────────────────────────────────────────
@@ -27,10 +26,14 @@ export interface SlideData {
 }
 
 // ── Slide thumbnail (+ motion badge) ──────────────────────────────────────────
+// RESPONSIVE: the thumbnail fills the available width between a left number-gutter
+// offset and an 8px right inset; its height is driven by the slide-canvas aspect
+// ratio (~140/79) rather than a fixed width. Sub-slides carry a deeper left inset.
+const THUMB_RATIO = 140 / 79; // slide canvas ratio
 function SlideThumb({ item }: { item: SlideData }) {
-  const dims = item.sub ? "left-[68px] w-[116px] h-[65px]" : "left-[44px] w-[140px] h-[79px]";
+  const gutter = item.sub ? "left-[68px]" : "left-[44px]";
   return (
-    <div className={clsx("absolute top-[8px] rounded-[5px]", dims)}>
+    <div className={clsx("absolute top-[8px] right-[8px] rounded-[5px]", gutter)} style={{ aspectRatio: THUMB_RATIO }}>
       <div className="absolute inset-0 rounded-[5px] overflow-hidden bg-white">
         {item.thumb
           ? <img alt="" className="absolute inset-0 size-full object-cover" src={item.thumb} />
@@ -46,24 +49,20 @@ function SlideThumb({ item }: { item: SlideData }) {
   );
 }
 
-// ── Comment pin (speech-bubble + avatar) ──────────────────────────────────────
-function CommentPin({ count }: { count: number }) {
-  return (
-    <div className="absolute right-[12px] top-[4px] size-[24px]">
-      <div className="absolute inset-0 bg-c-bg-danger rounded-tl-[12px] rounded-tr-[12px] rounded-br-[12px] rounded-bl-[4px] shadow-[0px_0px_0.5px_0px_rgba(0,0,0,0.18),0px_3px_8px_0px_rgba(0,0,0,0.1),0px_1px_3px_0px_rgba(0,0,0,0.1)]" />
-      <div className="absolute left-[3px] top-[3px] size-[18px] rounded-full border-[0.75px] border-c-bg-danger flex items-center justify-center">
-        <span className="text-c-text-on-brand text-[10.5px] leading-[18px]" style={INTER}>{count}</span>
-      </div>
-    </div>
-  );
-}
-
 // ── One slide row ─────────────────────────────────────────────────────────────
 export function SlideListItem({ item }: { item: SlideData }) {
-  const h = item.stacked ? "h-[107px]" : item.sub ? "h-[81px]" : "h-[95px]";
   const numLeft = item.sub ? "left-[36px]" : "left-[12px]";
+  // Row height tracks the responsive thumbnail. An in-flow spacer uses the same
+  // left-gutter + 8px-right margins, so it fills the remaining width; aspect-ratio
+  // then sets its height, and the row grows/shrinks with the panel width. Vertical
+  // margins reserve the 8px above/below the thumb (+12px for stacked peek cards).
+  const spacerLeft = item.sub ? 68 : 44;
+  const spacerBottom = item.stacked ? 20 : 8; // 8, plus 12 for the stacked cards
   return (
-    <div className={clsx("relative w-full shrink-0 cursor-pointer", h)} onClick={item.onClick}>
+    <div className="relative w-full shrink-0 cursor-pointer" onClick={item.onClick}>
+      {/* height spacer — invisible box matching the thumbnail width + aspect ratio */}
+      <div aria-hidden className="invisible" style={{ aspectRatio: THUMB_RATIO, marginLeft: spacerLeft, marginRight: 8, marginTop: 8, marginBottom: spacerBottom }} />
+
       {/* selection tint */}
       {item.selected && <div className="absolute inset-[0_8px] rounded-[5px] bg-c-bg-selected" />}
 
@@ -94,29 +93,6 @@ export function SlideListItem({ item }: { item: SlideData }) {
           <ChevronRight size={16} className={clsx("text-c-text transition-transform", item.expanded && "rotate-90")} />
         )}
       </div>
-
-      {item.comment != null && <CommentPin count={item.comment} />}
-    </div>
-  );
-}
-
-// ── View toggle (list / grid) ─────────────────────────────────────────────────
-function ViewToggle({ view, onChange }: { view: "list" | "grid"; onChange: (v: "list" | "grid") => void }) {
-  const Tab = ({ v, children }: { v: "list" | "grid"; children: React.ReactNode }) => (
-    <button
-      onClick={() => onChange(v)}
-      className={clsx(
-        "flex-1 h-[24px] flex items-center justify-center rounded-[5px] transition-colors",
-        view === v ? "bg-c-bg shadow-sm" : "bg-transparent",
-      )}
-    >
-      {children}
-    </button>
-  );
-  return (
-    <div className="flex bg-c-bg-secondary rounded-[5px] w-[88px] overflow-hidden">
-      <Tab v="list"><PanelLeft size={16} className={view === "list" ? "text-c-text" : "text-c-text-secondary"} /></Tab>
-      <Tab v="grid"><LayoutGrid size={16} className={view === "grid" ? "text-c-text" : "text-c-text-secondary"} /></Tab>
     </div>
   );
 }
@@ -127,19 +103,10 @@ export function SlidesPanel({ slides, title = "Product review", subtitle = "nati
   title?: string;
   subtitle?: string;
 }) {
-  const [view, setView] = useState<"list" | "grid">("list");
   return (
     <div className="w-[200px] shrink-0 h-full flex flex-col bg-c-bg overflow-hidden border-r border-c-border">
-      {/* Header */}
+      {/* Header — title + subtitle only */}
       <div className="shrink-0 flex flex-col pt-[8px] pb-[12px] px-[8px]">
-        <div className="flex items-center justify-between w-full">
-          {/* app menu */}
-          <button className="flex items-center pr-[4px] rounded-[5px] hover:bg-c-bg-hover">
-            <span className="p-[4px] flex"><FigmaGlyph /></span>
-            <ChevronDown size={11} className="text-c-text" />
-          </button>
-          <ViewToggle view={view} onChange={setView} />
-        </div>
         {/* title + subtitle */}
         <div className="flex flex-col px-[8px] pt-[4px]">
           <div className="flex gap-[4px] items-center h-[24px]">
@@ -166,18 +133,5 @@ export function SlidesPanel({ slides, title = "Product review", subtitle = "nati
         </div>
       </ScrollArea>
     </div>
-  );
-}
-
-// Figma-style app menu mark (original glyph, not a lifted asset)
-function FigmaGlyph() {
-  return (
-    <svg width="11" height="16" viewBox="0 0 11 16" fill="none">
-      <path d="M3.5 16a2.5 2.5 0 0 0 2.5-2.5V11H3.5a2.5 2.5 0 1 0 0 5Z" fill="#0ACF83" />
-      <path d="M1 8.5A2.5 2.5 0 0 1 3.5 6H6v5H3.5A2.5 2.5 0 0 1 1 8.5Z" fill="#A259FF" />
-      <path d="M1 3.5A2.5 2.5 0 0 1 3.5 1H6v5H3.5A2.5 2.5 0 0 1 1 3.5Z" fill="#F24E1E" />
-      <path d="M6 1h2.5a2.5 2.5 0 1 1 0 5H6V1Z" fill="#FF7262" />
-      <path d="M11 8.5A2.5 2.5 0 1 1 6 8.5a2.5 2.5 0 0 1 5 0Z" fill="#1ABCFE" />
-    </svg>
   );
 }
