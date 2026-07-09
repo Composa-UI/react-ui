@@ -63,12 +63,12 @@ function Lane({ prop, height }: { prop: PropTrack; height: number }) {
     <div className="flex-1 relative" style={{ height }}>
       {prop.bar && (
         <div
-          className="absolute top-1/2 -translate-y-1/2 h-[10px] rounded-[3px] bg-c-bg-secondary group/bar"
+          className="absolute top-1/2 -translate-y-1/2 h-[14px] rounded-[4px] bg-c-bg-secondary"
           style={{ left: ms(prop.bar[0]), width: ms(prop.bar[1] - prop.bar[0]) }}
         >
-          {/* trim handles (edge-drag to trim start/end) */}
-          <span className="absolute left-0 top-0 h-full w-[3px] rounded-l-[3px] bg-c-border cursor-ew-resize" />
-          <span className="absolute right-0 top-0 h-full w-[3px] rounded-r-[3px] bg-c-border cursor-ew-resize" />
+          {/* trim handles (edge-drag to trim start/end) — inset + wider to read as grips */}
+          <span className="absolute left-[3px] top-1/2 -translate-y-1/2 h-[10px] w-[4px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
+          <span className="absolute right-[3px] top-1/2 -translate-y-1/2 h-[10px] w-[4px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
         </div>
       )}
       {kfs.length > 1 && (
@@ -102,11 +102,11 @@ function TrackRows({ track }: { track: Track }) {
         <div className="flex-1 relative" style={{ height: ROW_LAYER }}>
           {track.bar && (
             <div
-              className="absolute top-1/2 -translate-y-1/2 h-[10px] rounded-[3px] bg-c-bg-secondary"
+              className="absolute top-1/2 -translate-y-1/2 h-[14px] rounded-[4px] bg-c-bg-secondary"
               style={{ left: ms(track.bar[0]), width: ms(track.bar[1] - track.bar[0]) }}
             >
-              <span className="absolute left-0 top-0 h-full w-[3px] rounded-l-[3px] bg-c-border cursor-ew-resize" />
-              <span className="absolute right-0 top-0 h-full w-[3px] rounded-r-[3px] bg-c-border cursor-ew-resize" />
+              <span className="absolute left-[3px] top-1/2 -translate-y-1/2 h-[10px] w-[4px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
+              <span className="absolute right-[3px] top-1/2 -translate-y-1/2 h-[10px] w-[4px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
             </div>
           )}
         </div>
@@ -168,7 +168,7 @@ function Ruler({ maxMs }: { maxMs: number }) {
   const ticks: number[] = [];
   for (let t = 1000; t <= maxMs; t += 1000) ticks.push(t);
   return (
-    <div className="flex-1 relative overflow-hidden">
+    <div className="absolute inset-0 overflow-hidden">
       {ticks.map(t => (
         <span key={t} className={clsx(FONT, "absolute top-1/2 -translate-y-1/2 text-[11px] text-c-text-secondary tabular-nums")} style={{ left: ms(t) }}>{t}</span>
       ))}
@@ -206,7 +206,7 @@ export function Timeline({ tracks = DEMO_TRACKS, height = 320, duration = 10000 
         >
           <Ruler maxMs={maxMs} />
           {/* playhead handle */}
-          <div className="absolute top-0 -translate-x-1/2 pointer-events-none" style={{ left: ms(playhead) }}>
+          <div className="absolute top-[4px] -translate-x-1/2 pointer-events-none" style={{ left: ms(playhead) }}>
             <svg width="12" height="10" viewBox="0 0 12 10"><path d="M0 0h12v4l-6 6-6-6V0Z" fill={BLUE} /></svg>
           </div>
         </div>

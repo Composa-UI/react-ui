@@ -45,20 +45,23 @@ export function NavRail({
       {items.map(it => {
         const on = active === it.id;
         return (
-          <button
-            key={it.id}
-            onClick={() => select(it.id)}
-            aria-pressed={on}
-            className={clsx(
-              "w-[56px] flex flex-col items-center gap-[3px] pt-[6px] pb-[5px] rounded-c-md transition-colors",
-              on ? "bg-c-bg-selected text-c-text-brand" : "text-c-icon hover:bg-c-bg-hover",
-            )}
-          >
-            <span className="size-[24px] flex items-center justify-center">{it.icon}</span>
+          <div key={it.id} className="flex flex-col items-center gap-[3px]">
+            {/* icon button — label sits BELOW it, outside the button */}
+            <button
+              onClick={() => select(it.id)}
+              aria-pressed={on}
+              aria-label={it.label}
+              className={clsx(
+                "size-[40px] rounded-c-md flex items-center justify-center transition-colors",
+                on ? "bg-c-bg-selected text-c-text-brand" : "text-c-icon hover:bg-c-bg-hover",
+              )}
+            >
+              {it.icon}
+            </button>
             <span className={clsx(FONT, "text-[9px] font-[450] leading-[12px] tracking-[0.045px]", on ? "text-c-text-brand" : "text-c-text-secondary")}>
               {it.label}
             </span>
-          </button>
+          </div>
         );
       })}
     </nav>

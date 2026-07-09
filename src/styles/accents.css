@@ -1,0 +1,10 @@
+/* Brand / feature accents. Single source so they're easy to reskin.
+   The animation accent drives the expanded animation-card header (used at low
+   opacity for the tint + a stronger opacity for the stroke, via `bg-accent/NN`
+   and `border-accent/NN`). Swap `--color-accent` to grey to de-orange the UI. */
+@theme {
+  --color-accent: #ff5c16;          /* animation-card header accent */
+  --color-accent-timeline: #0d99ff; /* playhead / keyframes */
+  --color-accent-component: #9747ff;/* component / instance layers */
+  --color-accent-motion: #8638e5;   /* selected timeline track */
+}
