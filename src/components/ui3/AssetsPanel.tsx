@@ -59,6 +59,7 @@ function AssetCard({
   onDelete,
   onContextMenu,
   onRetry,
+  rootAttrs,
 }: {
   item: AssetItem;
   selected: boolean;
@@ -68,13 +69,15 @@ function AssetCard({
   onDelete: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
   onRetry: () => void;
+  /** Consumer-supplied DOM attributes (e.g. editor data-* hooks) on the card root. */
+  rootAttrs?: Record<string, string | undefined>;
 }) {
   const status = item.status ?? "ready";
   const uploading = status === "uploading";
   const error = status === "error";
 
   return (
-    <div className="flex flex-col gap-[4px] select-none">
+    <div className="flex flex-col gap-[4px] select-none" {...rootAttrs}>
       {/* thumbnail */}
       <button
         type="button"
@@ -263,6 +266,8 @@ export interface AssetsPanelProps {
   onDelete?: (id: string) => void;
   onContextMenu?: (id: string, e: React.MouseEvent) => void;
   onRetry?: (id: string) => void;
+  /** Per-item extra DOM attributes (e.g. editor data-* hooks) spread onto each card root. */
+  itemAttrs?: (item: AssetItem) => Record<string, string | undefined>;
 }
 
 export function AssetsPanel({
@@ -281,6 +286,7 @@ export function AssetsPanel({
   onDelete,
   onContextMenu,
   onRetry,
+  itemAttrs,
 }: AssetsPanelProps) {
   // Uncontrolled fallbacks so the panel renders standalone.
   const [filterInner, setFilterInner] = useState<AssetFilter>("all");
@@ -374,6 +380,7 @@ export function AssetsPanel({
                   if (onContextMenu) { e.preventDefault(); onContextMenu(item.id, e); }
                 }}
                 onRetry={() => onRetry?.(item.id)}
+                rootAttrs={itemAttrs?.(item)}
               />
             ))}
           </div>
