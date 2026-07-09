@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { PropertyPanel } from "./components/ui3/PropertyPanel";
 import SlidesTemplate from "./imports/SlidesTemplate";
 import { SlidesPanel, type SlideData } from "./components/ui3/SlidesPanel";
@@ -28,6 +29,7 @@ export default function Playground() {
   // ?view=slides = componentized SlidesPanel; ?view=slides-raw = the raw Figma export
   // (side-by-side fidelity check); default = property-panel fidelity set.
   const view = new URLSearchParams(window.location.search).get("view");
+  const [nav, setNav] = useState("composition");
 
   if (view === "slides-raw") {
     return (
@@ -46,8 +48,14 @@ export default function Playground() {
         style={{ height: "100vh", width: "100vw", display: "flex", flexDirection: "column", background: dark ? "#1e1e1e" : "#e6e6e6" }}
       >
         <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
-          <NavRail />
-          <LayerList />
+          <NavRail active={nav} onSelect={setNav} />
+          {nav === "composition" ? <LayerList /> : (
+            <div className="w-[240px] shrink-0 h-full flex items-center justify-center bg-c-bg border-r border-c-border">
+              <span className="text-[11px] text-c-text-secondary font-[family-name:var(--composa-font-family)]">
+                {nav === "agent" ? "Agent" : "Assets"} — coming soon
+              </span>
+            </div>
+          )}
           <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <div style={{ width: "70%", aspectRatio: "16/9", background: dark ? "#2c2c2c" : "#fff", borderRadius: 6, boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }} />
           </div>
