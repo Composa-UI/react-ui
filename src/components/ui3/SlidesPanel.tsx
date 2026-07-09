@@ -1,6 +1,11 @@
 import { clsx } from "clsx";
-import { ChevronRight, ChevronDown, Plus, Sparkles } from "lucide-react";
+import { ChevronRight, ChevronDown, Plus } from "lucide-react";
 import { ScrollArea } from "./Panel";
+
+// Figma "animate" glyph (icon.24.animate.small → svgPaths.p75f4980 in the
+// `imports/SlidesTemplate` study export). Drawn in a 24×24 viewBox.
+const ANIMATE_GLYPH =
+  "M15 8C17.2091 8 19 9.79086 19 12C19 14.2091 17.2091 16 15 16C12.7909 16 11 14.2091 11 12C11 9.79086 12.7909 8 15 8ZM10.5 14.5C10.7761 14.5 11 14.7239 11 15C11 15.2761 10.7761 15.5 10.5 15.5H7.5C7.22386 15.5 7 15.2761 7 15C7 14.7239 7.22386 14.5 7.5 14.5H10.5ZM15 9C13.3431 9 12 10.3431 12 12C12 13.6569 13.3431 15 15 15C16.6569 15 18 13.6569 18 12C18 10.3431 16.6569 9 15 9ZM9.5 12.5C9.77614 12.5 10 12.7239 10 13C10 13.2761 9.77614 13.5 9.5 13.5H5.5C5.22386 13.5 5 13.2761 5 13C5 12.7239 5.22386 12.5 5.5 12.5H9.5ZM9.5 10.5C9.77614 10.5 10 10.7239 10 11C10 11.2761 9.77614 11.5 9.5 11.5H5.5C5.22386 11.5 5 11.2761 5 11C5 10.7239 5.22386 10.5 5.5 10.5H9.5ZM10.5 8.5C10.7761 8.5 11 8.72386 11 9C11 9.27614 10.7761 9.5 10.5 9.5H7.5C7.22386 9.5 7 9.27614 7 9C7 8.72386 7.22386 8.5 7.5 8.5H10.5Z";
 
 // ─── Slides left panel ──────────────────────────────────────────────────────────
 // Componentized from the study Figma export (`imports/SlidesTemplate`). Theme-aware:
@@ -27,22 +32,32 @@ export interface SlideData {
 
 // ── Slide thumbnail (+ motion badge) ──────────────────────────────────────────
 // RESPONSIVE: the thumbnail fills the available width between a left number-gutter
-// offset and an 8px right inset; its height is driven by the slide-canvas aspect
-// ratio (~140/79) rather than a fixed width. Sub-slides carry a deeper left inset.
+// offset and a 12px right inset — matching the 12px left inset before the number
+// gutter so the gaps read symmetrically. Its height is driven by the slide-canvas
+// aspect ratio (~140/79) rather than a fixed width. Sub-slides carry a deeper left inset.
 const THUMB_RATIO = 140 / 79; // slide canvas ratio
 function SlideThumb({ item }: { item: SlideData }) {
   const gutter = item.sub ? "left-[68px]" : "left-[44px]";
   return (
-    <div className={clsx("absolute top-[8px] right-[8px] rounded-[5px]", gutter)} style={{ aspectRatio: THUMB_RATIO }}>
+    <div className={clsx("absolute top-[8px] right-[12px] rounded-[5px]", gutter)} style={{ aspectRatio: THUMB_RATIO }}>
       <div className="absolute inset-0 rounded-[5px] overflow-hidden bg-white">
         {item.thumb
           ? <img alt="" className="absolute inset-0 size-full object-cover" src={item.thumb} />
           : <div className="absolute inset-0" style={{ background: item.tint ?? "#111" }} />}
       </div>
       <div aria-hidden className="absolute inset-0 rounded-[5px] border border-c-border" />
+      {/* motion badge — Figma icon.24.animate.small: 18px rounded chip, bottom-left,
+          with the animate glyph (24-viewBox path inset −3px to sit centred in 18px). */}
       {item.motion && (
-        <div className="absolute bottom-[5px] left-[5px] size-[18px] rounded-[2px] bg-c-bg border border-c-border flex items-center justify-center">
-          <Sparkles size={11} className="text-c-text-secondary" />
+        <div className="absolute bottom-[5px] left-[5px] size-[18px] rounded-[2px] bg-c-bg border border-c-border">
+          <svg
+            className="absolute inset-[-3px] size-[24px] text-c-icon-secondary"
+            fill="none"
+            viewBox="0 0 24 24"
+            aria-hidden
+          >
+            <path d={ANIMATE_GLYPH} fill="currentColor" />
+          </svg>
         </div>
       )}
     </div>
@@ -53,7 +68,7 @@ function SlideThumb({ item }: { item: SlideData }) {
 export function SlideListItem({ item }: { item: SlideData }) {
   const numLeft = item.sub ? "left-[36px]" : "left-[12px]";
   // Row height tracks the responsive thumbnail. An in-flow spacer uses the same
-  // left-gutter + 8px-right margins, so it fills the remaining width; aspect-ratio
+  // left-gutter + 12px-right margins, so it fills the remaining width; aspect-ratio
   // then sets its height, and the row grows/shrinks with the panel width. Vertical
   // margins reserve the 8px above/below the thumb (+12px for stacked peek cards).
   const spacerLeft = item.sub ? 68 : 44;
@@ -61,7 +76,7 @@ export function SlideListItem({ item }: { item: SlideData }) {
   return (
     <div className="relative w-full shrink-0 cursor-pointer" onClick={item.onClick}>
       {/* height spacer — invisible box matching the thumbnail width + aspect ratio */}
-      <div aria-hidden className="invisible" style={{ aspectRatio: THUMB_RATIO, marginLeft: spacerLeft, marginRight: 8, marginTop: 8, marginBottom: spacerBottom }} />
+      <div aria-hidden className="invisible" style={{ aspectRatio: THUMB_RATIO, marginLeft: spacerLeft, marginRight: 12, marginTop: 8, marginBottom: spacerBottom }} />
 
       {/* selection tint */}
       {item.selected && <div className="absolute inset-[0_8px] rounded-[5px] bg-c-bg-selected" />}

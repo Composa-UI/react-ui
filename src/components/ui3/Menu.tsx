@@ -119,14 +119,22 @@ export function MenuRow({
 
   const mutedColor = active ? "text-white" : "text-c-text-secondary";
 
-  const hasLeadingSlot = type === "checkmark" || type === "toggle" || !!leading;
+  // A checkmark row reserves a fixed LEFT check slot (kept even when unchecked
+  // so labels align across the menu) and may ALSO carry a leading icon in a
+  // separate slot AFTER the check → [check] [icon] [label] … [shortcut].
+  const isCheckmark = type === "checkmark";
+  const hasCheckSlot = isCheckmark;
+  // The secondary leading-icon slot: checkmark rows show it only when a
+  // `leading` icon is supplied; other rows keep their existing behaviour.
+  const hasLeadingSlot = type === "toggle" || (!isCheckmark && !!leading) || (isCheckmark && !!leading);
+
+  const checkContent = (() => {
+    if (checked) return <Check size={12} strokeWidth={2.5} className={active ? "text-white" : "text-c-text-brand"} />;
+    if (mixed)   return <Minus size={12} strokeWidth={2.5} className={active ? "text-white" : "text-c-text-brand"} />;
+    return null;
+  })();
 
   const leadingContent = (() => {
-    if (type === "checkmark") {
-      if (checked) return <Check size={12} strokeWidth={2.5} className={active ? "text-white" : "text-c-text"} />;
-      if (mixed)   return <Minus size={12} strokeWidth={2.5} className={mutedColor} />;
-      return null;
-    }
     if (type === "toggle") {
       return (
         <span
@@ -171,7 +179,17 @@ export function MenuRow({
         className,
       )}
     >
-      {/* Leading 24px slot */}
+      {/* Reserved LEFT check slot — always present on checkmark rows so labels
+          align whether or not a row is checked. The check is accent-coloured. */}
+      {hasCheckSlot && (
+        <span className="shrink-0 flex items-center justify-center size-[24px]">
+          <span className="flex items-center justify-center size-[16px]">
+            {checkContent}
+          </span>
+        </span>
+      )}
+
+      {/* Leading 24px slot (icon / toggle) — sits AFTER the reserved check. */}
       {hasLeadingSlot && (
         <span className="shrink-0 flex items-center justify-center size-[24px]">
           <span className="flex items-center justify-center size-[16px]">
@@ -183,7 +201,7 @@ export function MenuRow({
       {/* Text */}
       <span className={clsx(
         "flex-1 min-w-0 flex flex-col justify-center py-[4px]",
-        !hasLeadingSlot && "pl-[4px]",
+        !(hasCheckSlot || hasLeadingSlot) && "pl-[4px]",
         !(trailing || shortcut || type === "expand") && "pr-[8px]",
       )}>
         <span className={clsx(LABEL_CLASS, labelColor, "truncate")}>{label}</span>

@@ -2,7 +2,7 @@ import { useState, useEffect, type ReactNode } from "react";
 import { clsx } from "clsx";
 import {
   MousePointer2, Hand, Frame, Square, Circle, Minus,
-  Type, ChevronDown, Check,
+  Type,
 } from "lucide-react";
 import { Menu, MenuRow } from "./Menu";
 
@@ -45,9 +45,12 @@ const SHORTCUTS: Record<string, ToolId> = {
 };
 
 // ─── Tool group button ─────────────────────────────────────────────────────────
-// A single button showing the group's current tool icon. When `menu` items are
-// supplied it becomes a MenuButton: a small chevron indicates the sub-menu, and
-// clicking the button opens it. Active groups take the accent/filled state.
+// A tool group is a SPLIT BUTTON (see SplitButton.tsx for the base pattern):
+//   • primary segment — the tool icon; clicking selects/activates the tool and
+//     carries the active/accent state.
+//   • chevron segment — a DISTINCT division (thin separator between them);
+//     clicking only opens the upward sub-menu. Never carries the active state.
+// Groups with a single tool and no menu (Type) render as a plain button instead.
 
 interface MenuItem {
   tool: ToolId;
@@ -58,9 +61,18 @@ interface ToolGroupButtonProps {
   /** The tool whose icon the button currently shows (last-used in group). */
   tool: ToolId;
   active: boolean;
-  /** Sub-menu items — when present the button gains a chevron + menu. */
+  /** Sub-menu items — when present the button becomes a split button. */
   menu?: MenuItem[];
   onSelect: (tool: ToolId) => void;
+}
+
+// Upward chevron (points up because the menu opens above the toolbar).
+function ChevronUpGlyph() {
+  return (
+    <svg width="6" height="4" viewBox="0 0 6 4" fill="none" aria-hidden>
+      <path d="M0.5 3.5L3 1L5.5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps) {
@@ -79,27 +91,16 @@ function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps)
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const handleClick = () => {
-    if (hasMenu) {
-      // Toggle the menu; also (re)activate the group's current tool.
-      setOpen(v => !v);
-      onSelect(tool);
-    } else {
-      onSelect(tool);
-    }
-  };
-
-  return (
-    <div className="relative flex items-stretch">
+  // ── Plain button (single tool, no menu — e.g. Type) ──────────────────────
+  if (!hasMenu) {
+    return (
       <button
-        aria-label={hasMenu ? `${label} tools` : label}
-        aria-haspopup={hasMenu ? "menu" : undefined}
-        aria-expanded={hasMenu ? open : undefined}
+        aria-label={label}
         aria-pressed={active}
-        onClick={handleClick}
+        onClick={() => onSelect(tool)}
         className={clsx(
-          "relative flex items-center justify-center gap-[2px] shrink-0",
-          "h-[32px] rounded-c-md pl-[6px] pr-[4px]",
+          "relative flex items-center justify-center shrink-0",
+          "h-[32px] w-[32px] rounded-c-md",
           "transition-colors duration-100 outline-none",
           "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-c-focus-ring",
           active
@@ -108,17 +109,54 @@ function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps)
         )}
       >
         {icon}
-        {hasMenu && (
-          <ChevronDown
-            size={12}
-            strokeWidth={2}
-            className={active ? "text-c-text-on-brand/80" : "text-c-icon-secondary"}
-          />
-        )}
       </button>
+    );
+  }
+
+  // ── Split button (primary tool segment + separate chevron segment) ───────
+  return (
+    <div className="relative flex items-stretch">
+      {/* gap-px reveals a thin separator (the container bg) between segments,
+          matching SplitButton.tsx. */}
+      <div className="flex items-stretch gap-px h-[32px] rounded-c-md overflow-hidden bg-c-bg-secondary">
+        {/* Primary segment — selects/activates the tool; carries active state. */}
+        <button
+          aria-label={label}
+          aria-pressed={active}
+          onClick={() => onSelect(tool)}
+          className={clsx(
+            "relative flex items-center justify-center shrink-0",
+            "h-full px-[6px] rounded-l-c-md",
+            "transition-colors duration-100 outline-none",
+            "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-c-focus-ring",
+            active
+              ? "bg-c-bg-brand text-c-text-on-brand"
+              : "bg-c-bg text-c-icon hover:bg-c-bg-hover active:bg-c-bg-secondary",
+          )}
+        >
+          {icon}
+        </button>
+
+        {/* Chevron segment — opens the menu only; never carries active state. */}
+        <button
+          aria-label={`${label} tools`}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          onClick={() => setOpen(v => !v)}
+          className={clsx(
+            "flex items-center justify-center self-stretch w-[16px] shrink-0",
+            "rounded-r-c-md transition-colors duration-100 outline-none",
+            "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-c-focus-ring",
+            "bg-c-bg text-c-icon-secondary hover:bg-c-bg-hover active:bg-c-bg-secondary",
+            open && "bg-c-bg-hover",
+          )}
+        >
+          <ChevronUpGlyph />
+        </button>
+      </div>
 
       {/* Floating sub-menu — opens upward (toolbar floats above canvas). */}
-      {hasMenu && open && (
+      {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute bottom-[calc(100%+6px)] left-1/2 -translate-x-1/2 z-50">
@@ -128,30 +166,15 @@ function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps)
                 return (
                   <MenuRow
                     key={t}
-                    // `simple` renders the interactive-row path with a leading
-                    // slot (shown because `leading` is set), a label, a right-
-                    // aligned shortcut, and a trailing check for the active
-                    // tool. NB: `type="toolbar"` only renders `children`, which
-                    // is why the previous label/leading/checked props produced
-                    // an empty menu.
-                    type="simple"
+                    // Fixed Menu rows (see Menu.tsx): checkmark type reserves a
+                    // LEFT accent-check slot, renders the leading tool icon AFTER
+                    // it, then the label, then a right-aligned shortcut →
+                    // [check] [icon] [label] … [shortcut].
+                    type="checkmark"
                     label={item.label}
                     leading={item.icon}
-                    // MenuRow suppresses `shortcut` whenever `trailing` is set
-                    // (they share one right-aligned slot), so for the active
-                    // tool we pack the shortcut AND check into `trailing`
-                    // together; inactive rows use the plain `shortcut` prop.
-                    shortcut={a ? undefined : item.shortcut}
-                    trailing={
-                      a ? (
-                        <span className="flex items-center gap-[6px]">
-                          <span className="text-[11px] leading-[16px] tracking-[0.055px] font-[450]">
-                            {item.shortcut}
-                          </span>
-                          <Check size={14} strokeWidth={2.5} />
-                        </span>
-                      ) : undefined
-                    }
+                    checked={a}
+                    shortcut={item.shortcut}
                     onClick={() => {
                       onSelect(t);
                       setOpen(false);

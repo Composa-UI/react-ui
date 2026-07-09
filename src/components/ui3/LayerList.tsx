@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { clsx } from "clsx";
-import { ChevronRight, Frame, Folder, Type, Component, Image as ImageIcon, Square, Eye, EyeOff, LockOpen } from "lucide-react";
+import { ChevronRight, Hash, Folder, Type, Component, Image as ImageIcon, Square, Eye, EyeOff, LockOpen } from "lucide-react";
 import { Lock as LockDuotone } from "@phosphor-icons/react";
 import { ScrollArea } from "./Panel";
 
@@ -23,8 +23,8 @@ export interface LayerNode {
   locked?: boolean;
 }
 
-const TYPE_ICON: Record<LayerType, typeof Frame> = {
-  frame: Frame, group: Folder, text: Type, component: Component, instance: Component, image: ImageIcon, shape: Square,
+const TYPE_ICON: Record<LayerType, typeof Hash> = {
+  frame: Hash, group: Folder, text: Type, component: Component, instance: Component, image: ImageIcon, shape: Square,
 };
 
 const DEMO_LAYERS: LayerNode[] = [
@@ -68,13 +68,14 @@ function LayerRow({ node, depth, selectedId, onSelect }: {
         }}
         className={clsx(
           "group/layer relative flex items-center gap-[6px] h-[30px] pr-[8px] cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-c-border-selected",
-          !selected && "hover:bg-c-bg-hover",
           node.hidden && "opacity-40",
         )}
         style={{ paddingLeft: 8 + depth * 16 }}
       >
-        {/* contained selection pill — inset from row edges, small radius */}
-        {selected && <span aria-hidden className="pointer-events-none absolute inset-y-[2px] left-[4px] right-[4px] rounded-c-sm bg-c-bg-selected" />}
+        {/* contained highlight pill — inset from row edges, small radius; hover + selected share the treatment */}
+        {selected
+          ? <span aria-hidden className="pointer-events-none absolute inset-y-[2px] left-[4px] right-[4px] rounded-c-sm bg-c-bg-selected" />
+          : <span aria-hidden className="pointer-events-none absolute inset-y-[2px] left-[4px] right-[4px] rounded-c-sm bg-c-bg-hover opacity-0 group-hover/layer:opacity-100" />}
         {/* disclosure */}
         {hasChildren ? (
           <button
@@ -113,7 +114,7 @@ export function LayerList({ layers = DEMO_LAYERS, title = "Layers" }: { layers?:
   return (
     <div className="w-[240px] shrink-0 h-full flex flex-col bg-c-bg border-r border-c-border overflow-hidden">
       {/* header */}
-      <div className="shrink-0 h-[40px] flex items-center px-[16px] border-b border-c-border">
+      <div className="shrink-0 h-[40px] flex items-center px-[16px] border-t border-b border-c-border">
         <span className={clsx(FONT, "text-[11px] font-[550] leading-[16px] text-c-text")}>{title}</span>
       </div>
       {/* tree — overlay scrollbar (theme-aware thumb), matching inspector/slides panels */}

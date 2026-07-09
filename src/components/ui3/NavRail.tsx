@@ -41,7 +41,14 @@ export function NavRail({
   const select = (id: string) => { if (controlled === undefined) setInternal(id); onSelect?.(id); };
 
   return (
-    <nav aria-label="Navigation" className="w-[60px] shrink-0 h-full flex flex-col items-center gap-[6px] pt-[8px] bg-c-bg border-r border-c-border">
+    <nav aria-label="Navigation" className="w-[60px] shrink-0 h-full flex flex-col items-center bg-c-bg border-r border-c-border">
+      {/* reserved brand/app icon slot — divider separates it from destinations.
+          icon not designed yet; slot stays blank for now (32px + padding). */}
+      <div className="w-full flex justify-center py-[8px] border-b border-c-border">
+        <div aria-hidden className="size-[32px] rounded-c-md" />
+      </div>
+      {/* nav destinations */}
+      <div className="flex flex-col items-center gap-[6px] pt-[12px]">
       {items.map(it => {
         const on = active === it.id;
         return (
@@ -64,6 +71,7 @@ export function NavRail({
           </div>
         );
       })}
+      </div>
     </nav>
   );
 }
