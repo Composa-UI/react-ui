@@ -66,11 +66,12 @@ interface ToolGroupButtonProps {
   onSelect: (tool: ToolId) => void;
 }
 
-// Upward chevron (points up because the menu opens above the toolbar).
-function ChevronUpGlyph() {
+// Standard "has a menu" chevron-down affordance (the menu itself opens upward
+// since the toolbar floats above the canvas, but the indicator stays conventional).
+function ChevronDownGlyph() {
   return (
     <svg width="6" height="4" viewBox="0 0 6 4" fill="none" aria-hidden>
-      <path d="M0.5 3.5L3 1L5.5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M0.5 0.5L3 3L5.5 0.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -126,12 +127,14 @@ function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps)
           onClick={() => onSelect(tool)}
           className={clsx(
             "relative flex items-center justify-center shrink-0",
-            "h-full px-[6px] rounded-l-c-md",
+            "h-full px-[6px]",
             "transition-colors duration-100 outline-none",
             "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-c-focus-ring",
             active
-              ? "bg-c-bg-brand text-c-text-on-brand"
-              : "bg-c-bg text-c-icon hover:bg-c-bg-hover active:bg-c-bg-secondary",
+              // Active = a fully-rounded accent pill (all 4 corners), distinct from
+              // the neutral chevron segment sitting beside it.
+              ? "bg-c-bg-brand text-c-text-on-brand rounded-c-md"
+              : "bg-c-bg text-c-icon hover:bg-c-bg-hover active:bg-c-bg-secondary rounded-l-c-md",
           )}
         >
           {icon}
@@ -151,7 +154,7 @@ function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps)
             open && "bg-c-bg-hover",
           )}
         >
-          <ChevronUpGlyph />
+          <ChevronDownGlyph />
         </button>
       </div>
 

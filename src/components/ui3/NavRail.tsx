@@ -42,9 +42,9 @@ export function NavRail({
 
   return (
     <nav aria-label="Navigation" className="w-[60px] shrink-0 h-full flex flex-col items-center bg-c-bg border-r border-c-border">
-      {/* reserved brand/app icon slot — divider separates it from destinations.
-          icon not designed yet; slot stays blank for now (32px + padding). */}
-      <div className="w-full flex justify-center py-[8px] border-b border-c-border">
+      {/* reserved brand/app icon slot — icon not designed yet; slot stays blank
+          for now (32px + padding). No divider — just the inset/spacing. */}
+      <div className="w-full flex justify-center py-[8px]">
         <div aria-hidden className="size-[32px] rounded-c-md" />
       </div>
       {/* nav destinations */}

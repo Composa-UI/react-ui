@@ -128,9 +128,12 @@ export function MenuRow({
   // `leading` icon is supplied; other rows keep their existing behaviour.
   const hasLeadingSlot = type === "toggle" || (!isCheckmark && !!leading) || (isCheckmark && !!leading);
 
+  // Checkmark + leading icon track the row's TEXT color (labelColor) rather than
+  // an independent accent/hardcoded color, so they read as one consistent color
+  // with the label at every state (rest/hover/disabled/destructive).
   const checkContent = (() => {
-    if (checked) return <Check size={12} strokeWidth={2.5} className={active ? "text-white" : "text-c-text-brand"} />;
-    if (mixed)   return <Minus size={12} strokeWidth={2.5} className={active ? "text-white" : "text-c-text-brand"} />;
+    if (checked) return <Check size={12} strokeWidth={2.5} />;
+    if (mixed)   return <Minus size={12} strokeWidth={2.5} />;
     return null;
   })();
 
@@ -182,16 +185,18 @@ export function MenuRow({
       {/* Reserved LEFT check slot — always present on checkmark rows so labels
           align whether or not a row is checked. The check is accent-coloured. */}
       {hasCheckSlot && (
-        <span className="shrink-0 flex items-center justify-center size-[24px]">
+        <span className={clsx("shrink-0 flex items-center justify-center size-[24px]", labelColor)}>
           <span className="flex items-center justify-center size-[16px]">
             {checkContent}
           </span>
         </span>
       )}
 
-      {/* Leading 24px slot (icon / toggle) — sits AFTER the reserved check. */}
+      {/* Leading 24px slot (icon / toggle) — sits AFTER the reserved check.
+          `labelColor` here lets any `currentColor`-based icon (e.g. a lucide
+          glyph) inherit the same color as the label text. */}
       {hasLeadingSlot && (
-        <span className="shrink-0 flex items-center justify-center size-[24px]">
+        <span className={clsx("shrink-0 flex items-center justify-center size-[24px]", type !== "toggle" && labelColor)}>
           <span className="flex items-center justify-center size-[16px]">
             {leadingContent}
           </span>
