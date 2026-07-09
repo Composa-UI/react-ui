@@ -69,16 +69,17 @@ function collectGroupIds(nodes: LayerNode[], out: string[] = []): string[] {
   return out;
 }
 
+const ROW_H = 30;
+// Outer inset for the hover/selection shapes — matches the slides panel's 8px gutter.
+const INSET = 8;
+
 // ── One row ───────────────────────────────────────────────────────────────────────
-function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, highlighted, roundTop, roundBottom, onSelect }: {
+function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect }: {
   row: FlatRow;
   hasChildren: boolean;
   open: boolean;
   onToggle: () => void;
   isSelfSelected: boolean;
-  highlighted: boolean;
-  roundTop: boolean;
-  roundBottom: boolean;
   onSelect: () => void;
 }) {
   const { node, depth } = row;
@@ -100,21 +101,9 @@ function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, highlighte
       className="group/layer relative flex items-center gap-[6px] h-[30px] pr-[8px] cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-c-border-selected"
       style={{ paddingLeft: 8 + depth * 16 }}
     >
-      {/* highlight — one continuous block across a selected parent + its visible
-          descendants; rounded only at the very top/bottom of the run, square between */}
-      {highlighted && (
-        <span
-          aria-hidden
-          className={clsx(
-            "pointer-events-none absolute left-[4px] right-[4px] bg-c-bg-selected",
-            roundTop ? "top-[2px] rounded-t-c-md" : "top-0",
-            roundBottom ? "bottom-[2px] rounded-b-c-md" : "bottom-0",
-          )}
-        />
-      )}
-      {!highlighted && (
-        <span aria-hidden className="pointer-events-none absolute inset-y-[2px] left-[4px] right-[4px] rounded-c-md bg-c-bg-hover opacity-0 group-hover/layer:opacity-100" />
-      )}
+      {/* hover — single row only (the cascade selection highlight renders once, as
+          a single shape, in the parent — see LayerList) */}
+      <span aria-hidden className={clsx("pointer-events-none absolute inset-y-[2px] rounded-c-md bg-c-bg-hover opacity-0 group-hover/layer:opacity-100")} style={{ left: INSET, right: INSET }} />
       {/* disclosure */}
       {hasChildren ? (
         <button
@@ -154,7 +143,21 @@ export function LayerList({ layers = DEMO_LAYERS, title = "Layers" }: { layers?:
     return out;
   }, [layers, expanded]);
 
-  const isHighlighted = (row: FlatRow) => selected != null && (row.node.id === selected || row.ancestors.includes(selected));
+  // The selection highlight is rendered ONCE as a single continuous shape spanning
+  // the selected node + its visible descendants (not one pill per row) — this is
+  // what makes it read as one seamless block rather than N adjacent translucent
+  // rows (which produced faint seams at the row boundaries).
+  const highlightRange = useMemo(() => {
+    if (selected == null) return null;
+    let first = -1, last = -1;
+    flat.forEach((row, i) => {
+      if (row.node.id === selected || row.ancestors.includes(selected)) {
+        if (first === -1) first = i;
+        last = i;
+      }
+    });
+    return first === -1 ? null : { top: first * ROW_H, height: (last - first + 1) * ROW_H };
+  }, [flat, selected]);
 
   return (
     <div className="w-[240px] shrink-0 h-full flex flex-col bg-c-bg border-r border-c-border overflow-hidden">
@@ -164,12 +167,16 @@ export function LayerList({ layers = DEMO_LAYERS, title = "Layers" }: { layers?:
       </div>
       {/* tree — overlay scrollbar (theme-aware thumb), matching inspector/slides panels */}
       <ScrollArea className="py-[4px]">
-        <div role="tree" aria-label={title}>
-          {flat.map((row, i) => {
+        <div role="tree" aria-label={title} className="relative">
+          {highlightRange && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute rounded-t-c-md rounded-b-c-md bg-c-bg-selected"
+              style={{ left: INSET, right: INSET, top: highlightRange.top + 2, height: highlightRange.height - 4 }}
+            />
+          )}
+          {flat.map(row => {
             const hasChildren = !!row.node.children?.length;
-            const highlighted = isHighlighted(row);
-            const prevHighlighted = i > 0 && isHighlighted(flat[i - 1]);
-            const nextHighlighted = i < flat.length - 1 && isHighlighted(flat[i + 1]);
             return (
               <LayerRow
                 key={row.node.id}
@@ -182,9 +189,6 @@ export function LayerList({ layers = DEMO_LAYERS, title = "Layers" }: { layers?:
                   return next;
                 })}
                 isSelfSelected={selected === row.node.id}
-                highlighted={highlighted}
-                roundTop={highlighted && !prevHighlighted}
-                roundBottom={highlighted && !nextHighlighted}
                 onSelect={() => setSelected(row.node.id)}
               />
             );

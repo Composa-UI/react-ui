@@ -309,9 +309,11 @@ export function AssetsPanel({
 
   return (
     <div className="relative w-[240px] shrink-0 h-full flex flex-col bg-c-bg border-r border-c-border overflow-hidden">
-      {/* Header — Assets label + Upload */}
+      {/* Header — Assets label + Upload. Title uses the same hierarchy as the
+          composition panel's "Product review" title (13px/550), not the smaller
+          11px section-label size. */}
       <div className="shrink-0 h-[40px] flex items-center pl-[16px] pr-[8px] border-b border-c-border">
-        <span className={clsx(LABEL, "flex-1")}>{title}</span>
+        <span className={clsx(FONT, "flex-1 text-c-text text-[13px] font-[550] leading-[22px] tracking-[-0.0325px] truncate")}>{title}</span>
         <IconButton icon={<Upload size={16} strokeWidth={1.75} />} label="Upload" onClick={onUpload} />
       </div>
 

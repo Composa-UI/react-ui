@@ -1168,7 +1168,7 @@ function MultiplayerBar() {
       <div className="flex-1" />
       <SplitButton
         size="large"
-        icon={<Play size={18} fill="currentColor" strokeWidth={0} />}
+        icon={<Play size={18} strokeWidth={1.5} />}
         onIconClick={() => {}}
         onChevronClick={() => {}}
       />

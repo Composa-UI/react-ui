@@ -78,9 +78,10 @@ export function SlideListItem({ item }: { item: SlideData }) {
       {/* height spacer — invisible box matching the thumbnail width + aspect ratio */}
       <div aria-hidden className="invisible" style={{ aspectRatio: THUMB_RATIO, marginLeft: spacerLeft, marginRight: 12, marginTop: 8, marginBottom: spacerBottom }} />
 
-      {/* selection tint — inset matches the thumbnail's right inset (12px), so the
-          tint doesn't extend past the thumbnail and read as tighter padding */}
-      {item.selected && <div className="absolute inset-y-0 left-[8px] right-[12px] rounded-[5px] bg-c-bg-selected" />}
+      {/* selection tint — deliberately does NOT match the thumbnail's right inset;
+          it sits a few px further out so the tint is visible as a margin/frame
+          around the thumbnail rather than the two edges coinciding (touching) */}
+      {item.selected && <div className="absolute inset-y-0 left-[8px] right-[8px] rounded-[5px] bg-c-bg-selected" />}
 
       {/* stacked-group cards (peek behind/below the thumbnail) */}
       {item.stacked && (

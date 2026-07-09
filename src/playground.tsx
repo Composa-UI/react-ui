@@ -111,6 +111,10 @@ export default function Playground() {
         <PropertyPanel elementType="frame" />
       </div>
       <div style={{ height: "96%", flex: "0 0 auto" }}>
+        <div style={{ font: "600 11px system-ui", marginBottom: 6, color: "#555" }}>frame-auto (auto layout — alignment + gap)</div>
+        <PropertyPanel elementType="frame-auto" />
+      </div>
+      <div style={{ height: "96%", flex: "0 0 auto" }}>
         <div style={{ font: "600 11px system-ui", marginBottom: 6, color: "#555" }}>multiSelect (§5.8 — ColorInput)</div>
         <PropertyPanel multiSelect />
       </div>

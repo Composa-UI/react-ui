@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { clsx } from "clsx";
-import { LayoutGrid, Sparkles, Image as ImageIcon } from "lucide-react";
+import { LayoutGrid, Sparkles, Image as ImageIcon, Layers } from "lucide-react";
 
 // ─── Navigation rail ──────────────────────────────────────────────────────────
 // The editor's left rail — a few primary destinations, each an icon button with a
@@ -42,10 +42,13 @@ export function NavRail({
 
   return (
     <nav aria-label="Navigation" className="w-[60px] shrink-0 h-full flex flex-col items-center bg-c-bg border-r border-c-border">
-      {/* reserved brand/app icon slot — icon not designed yet; slot stays blank
-          for now (32px + padding). No divider — just the inset/spacing. */}
+      {/* brand/app icon slot — a plain icon button, no label below (unlike the
+          nav destinations). Standing in with lucide Layers until the real mark
+          is designed. */}
       <div className="w-full flex justify-center py-[8px]">
-        <div aria-hidden className="size-[32px] rounded-c-md" />
+        <button aria-label="Composa" className="size-[32px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover">
+          <Layers size={18} strokeWidth={1.5} />
+        </button>
       </div>
       {/* nav destinations */}
       <div className="flex flex-col items-center gap-[6px] pt-[12px]">

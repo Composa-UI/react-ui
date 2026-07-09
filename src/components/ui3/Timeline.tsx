@@ -169,7 +169,7 @@ function Transport({ current, duration, mode }: { current: number; duration: num
   return (
     <div className="shrink-0 flex items-center gap-[8px] px-[8px] border-r border-c-border" style={{ width: LEFT_W }}>
       {/* shared transport controls */}
-      <IconBtn label="Play"><Play size={16} fill="currentColor" strokeWidth={0} /></IconBtn>
+      <IconBtn label="Play"><Play size={16} strokeWidth={1.5} /></IconBtn>
       <IconBtn label="Stop"><Square size={14} fill="currentColor" strokeWidth={0} /></IconBtn>
       {/* keyframe add — slide-only (keyframes live in the slide-animation timeline) */}
       {slide && <IconBtn label="Add keyframe"><Diamond size={16} strokeWidth={1.5} /></IconBtn>}

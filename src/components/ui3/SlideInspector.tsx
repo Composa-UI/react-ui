@@ -28,7 +28,7 @@ function HeaderDual() {
           {/* Play / present split */}
           <div className="flex gap-px items-stretch rounded-[5px] overflow-hidden w-[41px] h-[32px]">
             <button className="flex-1 flex items-center justify-center hover:bg-white/10">
-              <Play size={14} fill="white" strokeWidth={0} className="text-white" />
+              <Play size={14} strokeWidth={1.5} className="text-white" />
             </button>
             <button className="w-[16px] flex items-center justify-center hover:bg-white/10">
               <ChevronDown size={11} className="text-white" />
