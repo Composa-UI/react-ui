@@ -20,7 +20,7 @@ export interface NavItem {
 }
 
 const DEFAULT_ITEMS: NavItem[] = [
-  { id: "composition", icon: <LayoutGrid size={S} strokeWidth={1.5} />, label: "Composition" },
+  { id: "composition", icon: <LayoutGrid size={S} strokeWidth={1.5} />, label: "Comp" },
   { id: "agent",       icon: <Sparkles size={S} strokeWidth={1.5} />,   label: "Agent" },
   { id: "assets",      icon: <ImageIcon size={S} strokeWidth={1.5} />,  label: "Assets" },
 ];

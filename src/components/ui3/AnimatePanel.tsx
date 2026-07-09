@@ -68,9 +68,9 @@ function AnimationCard({ icon, title, badge, expanded, onToggle, onRemove, child
     );
   }
   return (
-    <div className="rounded-c-md border border-accent/70 overflow-hidden">
-      {/* accent header — click to collapse; trash to remove */}
-      <div className="h-[32px] flex items-center gap-[8px] pl-[8px] pr-[6px] bg-accent/15">
+    <div className="rounded-c-md border border-c-border overflow-hidden">
+      {/* accent header (orange fill) over a gray-bordered card; gray divider to the white body */}
+      <div className="h-[32px] flex items-center gap-[8px] pl-[8px] pr-[6px] bg-accent/15 border-b border-c-border">
         <button onClick={onToggle} aria-expanded className="flex-1 min-w-0 flex items-center gap-[8px] h-full">
           <span className="shrink-0 flex text-c-icon">{icon}</span>
           <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] text-c-text text-left truncate")}>{title}</span>
@@ -92,7 +92,7 @@ function SlideTransitionSection() {
   const [open, setOpen] = useState(true);
   if (!applied) {
     return (
-      <PanelSection title="Composition transition" rightActions={<PanelActionBtn icon={<SlidersHorizontal size={16} strokeWidth={1.5} />} label="Composition transition settings" />}>
+      <PanelSection title="Comp transition" rightActions={<PanelActionBtn icon={<SlidersHorizontal size={16} strokeWidth={1.5} />} label="Comp transition settings" />}>
         <div className="px-[16px] pt-[3px] pb-[8px]">
           <button onClick={() => setApplied(true)} className="h-[32px] w-full rounded-c-md border border-c-border bg-c-bg flex items-center gap-[8px] px-[8px] hover:bg-c-bg-hover">
             <MonitorPlay size={16} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" />
@@ -103,7 +103,7 @@ function SlideTransitionSection() {
     );
   }
   return (
-    <PanelSection title="Composition transition" rightActions={<PanelActionBtn icon={<SlidersHorizontal size={16} strokeWidth={1.5} />} label="Composition transition settings" />}>
+    <PanelSection title="Comp transition" rightActions={<PanelActionBtn icon={<SlidersHorizontal size={16} strokeWidth={1.5} />} label="Comp transition settings" />}>
       <div className="px-[16px] pt-[3px] pb-[8px]">
         <AnimationCard
           icon={<MonitorPlay size={16} strokeWidth={1.5} />}
