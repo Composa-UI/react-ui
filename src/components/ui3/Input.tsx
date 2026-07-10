@@ -80,6 +80,11 @@ interface InputFieldProps {
   inlineDropdown?: { value: string; onClick?: () => void };
   hint?: string;
   onChange?: (value: string) => void;
+  /** aria-label for the underlying input (e2e / a11y). */
+  ariaLabel?: string;
+  /** Commit on blur / Enter — mirrors NumericInput's commit model (one commit,
+   *  not per-keystroke), so consumers can write once per edit. */
+  onCommit?: (value: string) => void;
   className?: string;
 }
 
@@ -99,6 +104,8 @@ export function InputField({
   inlineDropdown,
   hint,
   onChange,
+  ariaLabel,
+  onCommit,
   className,
 }: InputFieldProps) {
   const id = useId();
@@ -169,6 +176,7 @@ export function InputField({
           <input
             id={id}
             type="text"
+            aria-label={ariaLabel}
             value={value}
             defaultValue={defaultValue}
             placeholder={placeholder}
@@ -176,7 +184,8 @@ export function InputField({
             readOnly={readOnly}
             onChange={e => onChange?.(e.target.value)}
             onFocus={e => { setFocused(true); e.target.select(); }}
-            onBlur={() => setFocused(false)}
+            onBlur={e => { setFocused(false); onCommit?.(e.currentTarget.value); }}
+            onKeyDown={e => { if (e.key === "Enter") { onCommit?.(e.currentTarget.value); e.currentTarget.blur(); } }}
             className={inputClass}
           />
           {trailingIcon && !inlineDropdown && (

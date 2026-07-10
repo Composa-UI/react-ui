@@ -16,6 +16,7 @@ interface DropdownProps {
   editable?: boolean;         // combo-style (type-to-edit) — only these highlight the value text when active
   fullWidth?: boolean;        // fill the container instead of the fixed 117px
   leadingIcon?: ReactNode;    // optional icon slot (large size only)
+  ariaLabel?: string;         // aria-label on the trigger (e2e / a11y)
   onClick?: () => void;
   className?: string;
 }
@@ -31,6 +32,7 @@ export function Dropdown({
   editable = false,
   fullWidth = false,
   leadingIcon,
+  ariaLabel,
   onClick,
   className,
 }: DropdownProps) {
@@ -60,6 +62,7 @@ export function Dropdown({
 
   return (
     <button
+      aria-label={ariaLabel}
       onClick={disabled ? undefined : (e) => { setInternalActive(true); onClick?.(); }}
       onBlur={() => setInternalActive(false)}
       disabled={disabled}

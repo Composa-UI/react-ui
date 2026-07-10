@@ -1121,15 +1121,31 @@ function ProjectExportSection() {
 // derived End − Start). Both specs use the identical Range+Duration pattern, so
 // this one section covers both (title differs: "Timing" for Slide mode,
 // "Timeline" for Video Clip mode).
-function SlideTimingSection({
+export function SlideTimingSection({
   title = "Timing",
   start = 0,
   end = 5,
+  onStartChange,
+  onEndChange,
+  onDurationChange,
+  startAriaLabel,
+  endAriaLabel,
+  durationAriaLabel,
 }: {
   title?: string;
   start?: number;
   end?: number;
+  onStartChange?: (value: number) => void;
+  onEndChange?: (value: number) => void;
+  onDurationChange?: (value: number) => void;
+  startAriaLabel?: string;
+  endAriaLabel?: string;
+  durationAriaLabel?: string;
 }) {
+  // Controlled when the consumer wires any callback; otherwise the playground
+  // keeps its uncontrolled demo values.
+  const controlled = Boolean(onStartChange || onEndChange || onDurationChange);
+  const duration = Math.max(0, end - start);
   return (
     <PanelSection title={title}>
       <PanelFieldRow
@@ -1138,7 +1154,9 @@ function SlideTimingSection({
         left={
           <NumericInput
             iconLead={<span className={clsx(FONT, "text-[10px]")}>Start</span>}
-            defaultValue={start}
+            {...(controlled ? { value: start } : { defaultValue: start })}
+            onChange={onStartChange}
+            ariaLabel={startAriaLabel}
             min={0}
             suffix="s"
           />
@@ -1146,7 +1164,9 @@ function SlideTimingSection({
         right={
           <NumericInput
             iconLead={<span className={clsx(FONT, "text-[10px]")}>End</span>}
-            defaultValue={end}
+            {...(controlled ? { value: end } : { defaultValue: end })}
+            onChange={onEndChange}
+            ariaLabel={endAriaLabel}
             min={0}
             suffix="s"
           />
@@ -1158,7 +1178,9 @@ function SlideTimingSection({
         left={
           <NumericInput
             iconLead={<span className={FONT}>↔</span>}
-            defaultValue={Math.max(0, end - start)}
+            {...(controlled ? { value: duration } : { defaultValue: duration })}
+            onChange={onDurationChange}
+            ariaLabel={durationAriaLabel}
             min={0}
             suffix="s"
           />
@@ -1300,7 +1322,7 @@ function SlideBackgroundSection() {
 // Playback. No dialogs; no Background/Fill/Selection-colors (clips aren't slides).
 
 // Source §Source — read-only metadata about the source video file.
-function ClipSourceSection({
+export function ClipSourceSection({
   file = "hero-cover.mp4",
   resolution = "1920 × 1080",
   sourceDuration = "1:24.00",
@@ -1317,7 +1339,7 @@ function ClipSourceSection({
   return (
     <PanelSection title="Source">
       {row("File", file)}
-      {row("Resolution", resolution)}
+      {resolution ? row("Resolution", resolution) : null}
       {row("Source duration", sourceDuration)}
     </PanelSection>
   );
@@ -1325,23 +1347,54 @@ function ClipSourceSection({
 
 // Trim §Trim — which portion of the source plays within the clip block.
 // Clipped duration is derived (trimOut − trimIn) and read-only.
-function ClipTrimSection({
+export function ClipTrimSection({
   trimIn = 0,
   trimOut = 8,
+  onTrimInChange,
+  onTrimOutChange,
+  clippedDurationLabel,
+  trimInAriaLabel,
+  trimOutAriaLabel,
 }: {
   trimIn?: number;
   trimOut?: number;
+  onTrimInChange?: (value: number) => void;
+  onTrimOutChange?: (value: number) => void;
+  /** Display override for the derived readout (consumer passes engine value). */
+  clippedDurationLabel?: string;
+  trimInAriaLabel?: string;
+  trimOutAriaLabel?: string;
 }) {
+  const controlled = Boolean(onTrimInChange || onTrimOutChange);
+  const clipped = clippedDurationLabel ?? `${Math.max(0, trimOut - trimIn)}s`;
   return (
     <PanelSection title="Trim">
       <DualField
         leftLabel="Trim in"
-        left={<NumericInput iconLead={<Crosshair size={16} strokeWidth={1.5} />} defaultValue={trimIn} min={0} suffix="s" />}
+        left={
+          <NumericInput
+            iconLead={<Crosshair size={16} strokeWidth={1.5} />}
+            {...(controlled ? { value: trimIn } : { defaultValue: trimIn })}
+            onChange={onTrimInChange}
+            ariaLabel={trimInAriaLabel}
+            min={0}
+            suffix="s"
+          />
+        }
         rightLabel="Trim out"
-        right={<NumericInput iconLead={<Crosshair size={16} strokeWidth={1.5} />} defaultValue={trimOut} min={0} suffix="s" />}
+        right={
+          <NumericInput
+            iconLead={<Crosshair size={16} strokeWidth={1.5} />}
+            {...(controlled ? { value: trimOut } : { defaultValue: trimOut })}
+            onChange={onTrimOutChange}
+            ariaLabel={trimOutAriaLabel}
+            min={0}
+            suffix="s"
+          />
+        }
       />
       <PanelFullRow label="Clipped duration" height={24}>
-        <span className={clsx(FONT, "text-[11px] text-c-text-secondary")}>{Math.max(0, trimOut - trimIn)}s</span>
+        <span className={clsx(FONT, "text-[11px] text-c-text-secondary")}>{clipped}</span>
       </PanelFullRow>
     </PanelSection>
   );
@@ -1349,12 +1402,49 @@ function ClipTrimSection({
 
 // Playback §Playback — Speed dropdown (default 1x); Volume deferred to V2
 // (disabled row, "Audio coming soon" per spec).
-function ClipPlaybackSection({ speed = "1x" }: { speed?: string }) {
+export function ClipPlaybackSection({
+  speed = "1x",
+  speedOptions,
+  onSpeedChange,
+  speedAriaLabel,
+}: {
+  speed?: string;
+  speedOptions?: { label: string; value: string }[];
+  onSpeedChange?: (value: string) => void;
+  speedAriaLabel?: string;
+}) {
+  const opts =
+    speedOptions ??
+    ["0.25x", "0.5x", "0.75x", "1x", "1.25x", "1.5x", "2x"].map((s) => ({ label: s, value: s }));
+  const current = opts.find((o) => o.value === speed)?.label ?? speed;
+  const trigger = <Dropdown value={current} fullWidth ariaLabel={speedAriaLabel} />;
   return (
     <PanelSection title="Playback">
       <DualField
         leftLabel="Speed"
-        left={<Dropdown value={speed} fullWidth />}
+        left={
+          onSpeedChange ? (
+            <PopoverMenu align="right" trigger={trigger}>
+              {(close) => (
+                <Menu minWidth={120}>
+                  {opts.map((o) => (
+                    <MenuRow
+                      key={o.value}
+                      type="simple"
+                      label={o.label}
+                      onClick={() => {
+                        onSpeedChange(o.value);
+                        close();
+                      }}
+                    />
+                  ))}
+                </Menu>
+              )}
+            </PopoverMenu>
+          ) : (
+            trigger
+          )
+        }
         rightLabel="Volume"
         right={
           <div className="w-full" title="Audio coming soon">
