@@ -53,6 +53,35 @@ const BLEND_GROUPS: string[][] = [
 
 const FONT = "font-[family-name:var(--composa-font-family)]";
 const BODY = clsx(FONT, "text-[11px] font-[450] leading-[16px] tracking-[0.055px] text-c-text");
+const SUBLABEL = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary");
+
+// Two independently-labeled fields side by side. Used by the project/slide/clip
+// panels (not the element PropertyPanel) where two related controls read better as
+// one two-column row — e.g. Speed | Volume, Trim in | Trim out, Total dur | Playhead.
+function DualField({
+  leftLabel,
+  left,
+  rightLabel,
+  right,
+}: {
+  leftLabel?: string;
+  left: ReactNode;
+  rightLabel?: string;
+  right: ReactNode;
+}) {
+  return (
+    <div className="h-[48px] flex items-center gap-[8px] px-[16px]">
+      <div className="flex-1 min-w-0 flex flex-col pt-[3px] pb-[4px]">
+        {leftLabel && <span className={clsx(SUBLABEL, "mb-[3px]")}>{leftLabel}</span>}
+        <div className="min-h-[24px] flex items-center">{left}</div>
+      </div>
+      <div className="flex-1 min-w-0 flex flex-col pt-[3px] pb-[4px]">
+        {rightLabel && <span className={clsx(SUBLABEL, "mb-[3px]")}>{rightLabel}</span>}
+        <div className="min-h-[24px] flex items-center">{right}</div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Small icon for panel use ─────────────────────────────────────────────────
 const S = 16; // icon size in panel (24px button frame, 16px glyph = Figma inset)
@@ -968,31 +997,30 @@ function CanvasSection({
   height?: number;
 }) {
   const [aspect, setAspect] = useState("16:9");
-  const aspectSegments = [
-    { value: "16:9", label: "16:9" },
-    { value: "9:16", label: "9:16" },
-    { value: "1:1", label: "1:1" },
-    { value: "4:3", label: "4:3" },
-    { value: "custom", label: "Custom" },
-  ];
+  const aspectOptions = ["16:9", "9:16", "1:1", "4:3", "Custom"];
   return (
     <PanelSection title="Canvas">
-      {/* Aspect ratio — segmented with Custom as the trailing option */}
+      {/* Aspect ratio — dropdown (full width) */}
       <PanelFieldRow
         label="Aspect ratio"
+        reserveRightSlot={false}
         left={
-          <SegmentedControl
-            segments={aspectSegments}
-            value={aspect}
-            onChange={setAspect}
-            className="w-full"
-          />
+          <PopoverMenu align="right" trigger={<Dropdown value={aspect} fullWidth />}>
+            {(close) => (
+              <Menu minWidth={140}>
+                {aspectOptions.map((o) => (
+                  <MenuRow key={o} type="simple" label={o} onClick={() => { setAspect(o); close(); }} />
+                ))}
+              </Menu>
+            )}
+          </PopoverMenu>
         }
       />
 
       {/* Dimensions — W | H numeric (px) */}
       <PanelFieldRow
         label="Dimensions"
+        reserveRightSlot={false}
         left={
           <NumericInput
             iconLead={<span className={FONT}>W</span>}
@@ -1011,9 +1039,10 @@ function CanvasSection({
         }
       />
 
-      {/* Frame rate — dropdown */}
+      {/* Frame rate — dropdown (full width) */}
       <PanelFieldRow
         label="Frame rate"
+        reserveRightSlot={false}
         left={<Dropdown value="30 fps" fullWidth />}
       />
     </PanelSection>
@@ -1030,8 +1059,8 @@ function MasterTimelineSection({
 }) {
   return (
     <PanelSection title="Master timeline">
-      <PanelFieldRow
-        label="Total duration"
+      <DualField
+        leftLabel="Total duration"
         left={
           <NumericInput
             iconLead={<span className={FONT}>T</span>}
@@ -1040,10 +1069,8 @@ function MasterTimelineSection({
             suffix="s"
           />
         }
-      />
-      <PanelFieldRow
-        label="Playhead"
-        left={
+        rightLabel="Playhead"
+        right={
           <NumericInput
             iconLead={<span className={FONT}>▸</span>}
             defaultValue={playhead}
@@ -1063,6 +1090,7 @@ function ProjectExportSection() {
     <PanelSection title="Export">
       <PanelFieldRow
         label="Format"
+        reserveRightSlot={false}
         left={<Dropdown value="MP4" fullWidth disabled />}
       />
       <PanelFullRow height={40}>
@@ -1093,6 +1121,7 @@ function SlideTimingSection({
     <PanelSection title={title}>
       <PanelFieldRow
         label="Range"
+        reserveRightSlot={false}
         left={
           <NumericInput
             iconLead={<span className={clsx(FONT, "text-[10px]")}>Start</span>}
@@ -1112,6 +1141,7 @@ function SlideTimingSection({
       />
       <PanelFieldRow
         label="Duration"
+        reserveRightSlot={false}
         left={
           <NumericInput
             iconLead={<span className={FONT}>↔</span>}
@@ -1153,7 +1183,12 @@ function SlideFillTypeIcon({ type }: { type: "solid" | "gradient" | "image" | "v
 // Ported from the Figma-referenced SlideInspector.tsx, onto light c-* tokens.
 function TemplateStyleSection({ name = "Radicle", fonts = "Whyte Inktrap, Inter" }: { name?: string; fonts?: string }) {
   return (
-    <PanelSection title="Template style">
+    <PanelSection
+      title="Slide template"
+      rightActions={
+        <PanelActionBtn icon={<Settings2 size={16} strokeWidth={1.5} />} label="Template settings" />
+      }
+    >
       <div className="px-[16px] pb-[8px]">
         <button className="w-full h-[48px] rounded-c-md border border-c-border flex items-center pl-[7px] pr-[3px] gap-[8px] hover:bg-c-bg-hover">
           {/* 3-colour preview swatch */}
@@ -1190,6 +1225,7 @@ function SlideBackgroundSection() {
           fill-type tabs (not text-labeled) */}
       <PanelFieldRow
         label="Fill type"
+        reserveRightSlot={false}
         left={
           <SegmentedControl
             segments={fillSegments}
@@ -1226,12 +1262,16 @@ function SlideBackgroundSection() {
         </div>
       )}
       {(fillType === "image" || fillType === "video") && (
-        <div className="flex items-center gap-[8px] px-[16px] h-[32px]">
-          <span className="shrink-0 size-[24px] rounded-c-sm bg-c-bg-secondary ring-1 ring-inset ring-c-border" />
+        <div className="flex items-center px-[16px] h-[32px]">
           <div className="flex-1 min-w-0">
-            <Dropdown value="Fill" fullWidth />
+            {/* Same ColorInput row as Solid/Gradient — only the chit + label change */}
+            <ColorInput
+              fullWidth
+              fillType="Image"
+              fillLabel={fillType === "video" ? "clip.mp4" : "cover.png"}
+              onSwatchClick={() => setColorOpen(true)}
+            />
           </div>
-          <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Replace" />
         </div>
       )}
 
@@ -1281,13 +1321,11 @@ function ClipTrimSection({
 }) {
   return (
     <PanelSection title="Trim">
-      <PanelFieldRow
-        label="Trim in"
+      <DualField
+        leftLabel="Trim in"
         left={<NumericInput iconLead={<Crosshair size={16} strokeWidth={1.5} />} defaultValue={trimIn} min={0} suffix="s" />}
-      />
-      <PanelFieldRow
-        label="Trim out"
-        left={<NumericInput iconLead={<Crosshair size={16} strokeWidth={1.5} />} defaultValue={trimOut} min={0} suffix="s" />}
+        rightLabel="Trim out"
+        right={<NumericInput iconLead={<Crosshair size={16} strokeWidth={1.5} />} defaultValue={trimOut} min={0} suffix="s" />}
       />
       <PanelFullRow label="Clipped duration" height={24}>
         <span className={clsx(FONT, "text-[11px] text-c-text-secondary")}>{Math.max(0, trimOut - trimIn)}s</span>
@@ -1301,15 +1339,14 @@ function ClipTrimSection({
 function ClipPlaybackSection({ speed = "1x" }: { speed?: string }) {
   return (
     <PanelSection title="Playback">
-      <PanelFieldRow
-        label="Speed"
+      <DualField
+        leftLabel="Speed"
         left={<Dropdown value={speed} fullWidth />}
-      />
-      <PanelFieldRow
-        label="Volume"
-        left={<Dropdown value="—" disabled fullWidth />}
-        rightAction={
-          <span title="Audio coming soon" className={clsx(FONT, "text-[9px] text-c-text-tertiary")}>V2</span>
+        rightLabel="Volume"
+        right={
+          <div className="w-full" title="Audio coming soon">
+            <Dropdown value="—" disabled fullWidth />
+          </div>
         }
       />
     </PanelSection>
@@ -1441,10 +1478,9 @@ export function PropertyPanel({
             </PopoverMenu>
           </div>
 
-          <SlideTimingSection />
-          {/* Template style — sits directly before Background, matching the
-              Figma-referenced order (SlideInspector.tsx / SlidesTemplate export) */}
+          {/* Slide template first, ahead of Timing (user's preferred order). */}
           <TemplateStyleSection />
+          <SlideTimingSection />
           <SlideBackgroundSection />
           {/* Selection colors — reuse the existing element-mode section */}
           <SelectionColorsSection />
@@ -1467,8 +1503,10 @@ export function PropertyPanel({
           </div>
 
           <ClipSourceSection />
-          <SlideTimingSection title="Timeline" />
-          <ClipTrimSection />
+          {/* Demo data kept consistent per spec: Clipped duration (trimOut −
+              trimIn = 8s) equals the Timeline duration (end − start = 8s). */}
+          <SlideTimingSection title="Timeline" start={0} end={8} />
+          <ClipTrimSection trimIn={10} trimOut={18} />
           <ClipPlaybackSection />
         </ScrollArea>
       )}

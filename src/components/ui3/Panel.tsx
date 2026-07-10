@@ -138,19 +138,27 @@ interface PanelFieldRowProps {
   right?: ReactNode;
   /** Optional action pinned to far right (chain-link, settings, etc.) */
   rightAction?: ReactNode;
+  /**
+   * Reserve the 24px right-action column even when empty. Default true keeps the
+   * element PropertyPanel's aligned right gutter. The project/slide/clip panels
+   * pass false so their fields go edge-to-edge (full width).
+   */
+  reserveRightSlot?: boolean;
 }
 
-export function PanelFieldRow({ label, left, right, rightAction }: PanelFieldRowProps) {
+export function PanelFieldRow({ label, left, right, rightAction, reserveRightSlot = true }: PanelFieldRowProps) {
   return (
     <div className="h-[48px] flex flex-col justify-center pt-[3px] pb-[4px]">
       {label && (
         <span className={clsx(SUBLABEL, "px-[16px] mb-[3px]")}>{label}</span>
       )}
-      {/* 16dp left · fluid primitives (equal split, grow with panel) · 8dp gaps · reserved right-action slot */}
+      {/* 16dp left · fluid primitives (equal split, grow with panel) · 8dp gaps · optional right-action slot */}
       <div className="flex items-center pl-[16px] pr-[16px] gap-[8px] min-h-[24px]">
         {left  && <div className="flex-1 min-w-0">{left}</div>}
         {right && <div className="flex-1 min-w-0">{right}</div>}
-        <div className="shrink-0 flex items-center justify-end min-w-[24px]">{rightAction}</div>
+        {(rightAction || reserveRightSlot) && (
+          <div className="shrink-0 flex items-center justify-end min-w-[24px]">{rightAction}</div>
+        )}
       </div>
     </div>
   );
