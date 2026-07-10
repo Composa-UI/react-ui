@@ -217,6 +217,8 @@ export function InputField({
 
 interface NumericInputProps {
   iconLead?: ReactNode;       // scrubber label (e.g. "W", "X", or an icon)
+  /** Accessible name for the input (e.g. "X", "Opacity") — role is textbox. */
+  ariaLabel?: string;
   value?: number;
   defaultValue?: number;
   min?: number;
@@ -229,12 +231,14 @@ interface NumericInputProps {
   mixed?: boolean;            // multi-select with differing values — shows "Mixed", edits commit to all (v5 §7)
   variableValue?: string;     // if set, shows ChipVariable instead of raw number
   onVariableDetach?: () => void;
+  /** Committed value — fires on Enter, blur, arrow-step, and scrub (not per keystroke). */
   onChange?: (value: number) => void;
   className?: string;
 }
 
 export function NumericInput({
   iconLead,
+  ariaLabel,
   value,
   defaultValue = 0,
   min,
@@ -253,12 +257,18 @@ export function NumericInput({
   const [focused, setFocused] = useState(false);
   const [scrubbing, setScrubbing] = useState(false);
   const [internal, setInternal] = useState(defaultValue);
+  // Draft holds in-progress typed text; the value only COMMITS on Enter/blur
+  // (not per keystroke) so a consumer wiring onChange to a document write gets
+  // one undo entry per edit, not one per character.
+  const [draft, setDraft] = useState<string | null>(null);
   const scrubStart = useRef<{ x: number; value: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const current = value !== undefined ? value : internal;
   // Mixed (v5 §7): multi-select with differing values shows "Mixed" until focused; typing commits to all.
   const displayMixed = mixed && !focused && !scrubbing;
+  const rounded = Math.round(current * 100) / 100;
+  const shown = draft ?? (displayMixed ? "" : String(rounded));
 
   const clampVal = useCallback((n: number) => {
     let v = n;
@@ -272,6 +282,12 @@ export function NumericInput({
     if (value === undefined) setInternal(final);
     onChange?.(final);
   }, [clampVal, value, onChange]);
+
+  const commit = useCallback((raw: string) => {
+    setDraft(null);
+    const parsed = parseFloat(raw);
+    if (Number.isFinite(parsed) && parsed !== rounded) set(parsed);
+  }, [rounded, set]);
 
   const onLabelPointerDown = (e: React.PointerEvent) => {
     if (disabled) return;
@@ -297,8 +313,10 @@ export function NumericInput({
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const mult = e.shiftKey ? 10 : 1;
-    if (e.key === "ArrowUp")   { e.preventDefault(); set(current + step * mult); }
-    if (e.key === "ArrowDown") { e.preventDefault(); set(current - step * mult); }
+    if (e.key === "Enter")     { e.preventDefault(); commit(e.currentTarget.value); }
+    else if (e.key === "Escape") { setDraft(null); e.currentTarget.blur(); }
+    else if (e.key === "ArrowUp")   { e.preventDefault(); setDraft(null); set(current + step * mult); }
+    else if (e.key === "ArrowDown") { e.preventDefault(); setDraft(null); set(current - step * mult); }
   };
 
   return (
@@ -332,17 +350,16 @@ export function NumericInput({
       ) : (
         <input
           ref={inputRef}
-          type="number"
-          value={displayMixed ? "" : current}
+          type="text"
+          inputMode="decimal"
+          aria-label={ariaLabel}
+          value={shown}
           placeholder={mixed ? "Mixed" : undefined}
-          min={min}
-          max={max}
-          step={step}
           disabled={disabled}
-          onChange={e => set(parseFloat(e.target.value) || 0)}
+          onChange={e => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
           onFocus={e => { setFocused(true); e.target.select(); }}
-          onBlur={() => setFocused(false)}
+          onBlur={e => { setFocused(false); commit(e.currentTarget.value); }}
           className={clsx(
             "flex-1 min-w-0 h-full bg-transparent outline-none text-left",
             FONT, T[size], "text-c-text",

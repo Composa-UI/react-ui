@@ -150,33 +150,42 @@ function AlignmentGrid({
 
 // ─── Section: Position ────────────────────────────────────────────────────────
 
-interface PositionSectionProps {
+export type AlignEdge = "left" | "hcenter" | "right" | "top" | "vcenter" | "bottom";
+
+export interface PositionSectionProps {
   x?: number; y?: number; rotation?: number;
+  xMixed?: boolean; yMixed?: boolean;
   onXChange?: (v: number) => void;
   onYChange?: (v: number) => void;
   onRotationChange?: (v: number) => void;
+  onAlign?: (edge: AlignEdge) => void;
+  onRotate90?: () => void;
+  onFlipH?: () => void;
+  onFlipV?: () => void;
   multiSelect?: boolean;
 }
 
-function PositionSection({
+export function PositionSection({
   x = 0, y = 0, rotation = 0,
+  xMixed = false, yMixed = false,
   onXChange, onYChange, onRotationChange,
+  onAlign, onRotate90, onFlipH, onFlipV,
   multiSelect = false,
 }: PositionSectionProps) {
   const hAlignBtns: IconBtn[] = [
-    { icon: <AlignLeft       size={S} strokeWidth={1.5} />, label: "Align left",   value: "left" },
-    { icon: <AlignCenter     size={S} strokeWidth={1.5} />, label: "Align center", value: "hcenter" },
-    { icon: <AlignRight      size={S} strokeWidth={1.5} />, label: "Align right",  value: "right" },
+    { icon: <AlignLeft       size={S} strokeWidth={1.5} />, label: "Align left",   value: "left",    onClick: () => onAlign?.("left") },
+    { icon: <AlignCenter     size={S} strokeWidth={1.5} />, label: "Align center", value: "hcenter", onClick: () => onAlign?.("hcenter") },
+    { icon: <AlignRight      size={S} strokeWidth={1.5} />, label: "Align right",  value: "right",   onClick: () => onAlign?.("right") },
   ];
   const vAlignBtns: IconBtn[] = [
-    { icon: <AlignStartVertical size={S} strokeWidth={1.5} />, label: "Align top",    value: "top" },
-    { icon: <AlignCenterVertical size={S} strokeWidth={1.5} />, label: "Align middle", value: "vcenter" },
-    { icon: <AlignEndVertical   size={S} strokeWidth={1.5} />, label: "Align bottom", value: "bottom" },
+    { icon: <AlignStartVertical size={S} strokeWidth={1.5} />, label: "Align top",    value: "top",     onClick: () => onAlign?.("top") },
+    { icon: <AlignCenterVertical size={S} strokeWidth={1.5} />, label: "Align middle", value: "vcenter", onClick: () => onAlign?.("vcenter") },
+    { icon: <AlignEndVertical   size={S} strokeWidth={1.5} />, label: "Align bottom", value: "bottom",  onClick: () => onAlign?.("bottom") },
   ];
   const rotateBtns: IconBtn[] = [
-    { icon: <RotateCw       size={S} strokeWidth={1.5} />, label: "Rotate 90° CW" },
-    { icon: <FlipHorizontal size={S} strokeWidth={1.5} />, label: "Flip horizontal" },
-    { icon: <FlipVertical   size={S} strokeWidth={1.5} />, label: "Flip vertical" },
+    { icon: <RotateCw       size={S} strokeWidth={1.5} />, label: "Rotate 90° CW",  onClick: () => onRotate90?.() },
+    { icon: <FlipHorizontal size={S} strokeWidth={1.5} />, label: "Flip horizontal", onClick: () => onFlipH?.() },
+    { icon: <FlipVertical   size={S} strokeWidth={1.5} />, label: "Flip vertical",   onClick: () => onFlipV?.() },
   ];
 
   return (
@@ -201,14 +210,16 @@ function PositionSection({
         label="Position"
         left={
           <NumericInput
+            ariaLabel="X"
             iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>X</span>}
-            value={x} onChange={onXChange} defaultValue={0}
+            value={x} onChange={onXChange} defaultValue={0} mixed={xMixed}
           />
         }
         right={
           <NumericInput
+            ariaLabel="Y"
             iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>}
-            value={y} onChange={onYChange} defaultValue={0}
+            value={y} onChange={onYChange} defaultValue={0} mixed={yMixed}
           />
         }
       />
@@ -218,6 +229,7 @@ function PositionSection({
         label="Rotation"
         left={
           <NumericInput
+            ariaLabel="Rotation"
             iconLead={<RotateCw size={16} strokeWidth={1.5} />}
             value={rotation} onChange={onRotationChange} min={-360} max={360} suffix="°"
           />
@@ -458,14 +470,15 @@ function LayoutAutoSection({
 
 // ─── Section: Appearance ──────────────────────────────────────────────────────
 
-interface AppearanceSectionProps {
+export interface AppearanceSectionProps {
   opacity?: number;
   blendMode?: BlendMode;
+  opacityMixed?: boolean;
   onOpacityChange?: (v: number) => void;
 }
 
-function AppearanceSection({
-  opacity = 100, blendMode = "Pass through", onOpacityChange,
+export function AppearanceSection({
+  opacity = 100, blendMode = "Pass through", opacityMixed = false, onOpacityChange,
 }: AppearanceSectionProps) {
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
   const [indivCorners, setIndivCorners] = useState(false);
@@ -491,7 +504,7 @@ function AppearanceSection({
       <div className="flex items-end gap-[8px] pl-[16px] pr-[16px] pt-[3px]">
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Opacity</div>
-          <NumericInput value={opacity} onChange={onOpacityChange} min={0} max={100} suffix="%" />
+          <NumericInput ariaLabel="Opacity" value={opacity} onChange={onOpacityChange} min={0} max={100} suffix="%" mixed={opacityMixed} />
         </div>
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Corner radius</div>
