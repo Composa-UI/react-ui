@@ -72,6 +72,25 @@ export default function Playground() {
     );
   }
 
+  if (view === "inspector-modes") {
+    return (
+      <div style={{ display: "flex", gap: 20, padding: 24, height: "100%", background: "#e6e6e6", boxSizing: "border-box", overflowX: "auto" }}>
+        <div style={{ height: "96%", flex: "0 0 auto" }}>
+          <div style={{ font: "600 11px system-ui", marginBottom: 6, color: "#555" }}>mode=project</div>
+          <PropertyPanel mode="project" />
+        </div>
+        <div style={{ height: "96%", flex: "0 0 auto" }}>
+          <div style={{ font: "600 11px system-ui", marginBottom: 6, color: "#555" }}>mode=slide</div>
+          <PropertyPanel mode="slide" />
+        </div>
+        <div style={{ height: "96%", flex: "0 0 auto" }}>
+          <div style={{ font: "600 11px system-ui", marginBottom: 6, color: "#555" }}>mode=video-clip</div>
+          <PropertyPanel mode="video-clip" />
+        </div>
+      </div>
+    );
+  }
+
   if (view === "layers") {
     return (
       <div style={{ height: "100vh", width: "100vw", display: "flex", background: "#e6e6e6" }}>

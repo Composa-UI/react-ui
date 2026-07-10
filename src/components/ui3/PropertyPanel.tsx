@@ -12,6 +12,7 @@ import {
   Crosshair, Grid3x3, ExternalLink, Unlink,
   Minus, EyeOff, SlidersHorizontal, AlignJustify, Maximize, ChevronDown,
   MoveHorizontal, MoveVertical, Play,
+  Image as ImageIcon, Video, Clock,
 } from "lucide-react";
 import { CirclesFour } from "@phosphor-icons/react";
 import {
@@ -35,7 +36,7 @@ import { Button } from "./Button";
 
 export type ElementType = "text" | "frame" | "frame-auto" | "shape" | "component" | "group";
 
-export type PanelMode = "project" | "slide" | "element";
+export type PanelMode = "project" | "slide" | "element" | "video-clip";
 
 type BlendMode = string;
 
@@ -1075,16 +1076,21 @@ function ProjectExportSection() {
 // Active when a slide is selected. Header = slide-name text field + options
 // IconButton; body = Timing, Background, Selection colors.
 
-// Timing §Timing — Range Start|End (s), Duration (s, derived End − Start).
+// Timing §Timing / Video Clip §Timeline — Range Start|End (s), Duration (s,
+// derived End − Start). Both specs use the identical Range+Duration pattern, so
+// this one section covers both (title differs: "Timing" for Slide mode,
+// "Timeline" for Video Clip mode).
 function SlideTimingSection({
+  title = "Timing",
   start = 0,
   end = 5,
 }: {
+  title?: string;
   start?: number;
   end?: number;
 }) {
   return (
-    <PanelSection title="Timing">
+    <PanelSection title={title}>
       <PanelFieldRow
         label="Range"
         left={
@@ -1119,20 +1125,69 @@ function SlideTimingSection({
   );
 }
 
+// Fill-type glyphs — ported from ColorDialog's toolbar tabs (same house
+// iconography: solid = filled square, gradient = a diagonal css-gradient swatch,
+// image/video = the matching lucide icon), so Slide-mode's Background reads
+// consistent with the Fill/Color dialog rather than text-labeled segments.
+function SlideFillTypeIcon({ type }: { type: "solid" | "gradient" | "image" | "video" }) {
+  if (type === "solid") {
+    return (
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <rect x="1" y="1" width="10" height="10" rx="1.5" fill="currentColor" />
+      </svg>
+    );
+  }
+  if (type === "gradient") {
+    return (
+      <div className="size-[12px] rounded-[1.5px] overflow-hidden">
+        <div className="size-full" style={{ background: "linear-gradient(to right, currentColor, transparent)" }} />
+      </div>
+    );
+  }
+  if (type === "image") return <ImageIcon size={12} strokeWidth={1.5} />;
+  return <Video size={12} strokeWidth={1.5} />;
+}
+
+// Template style §Template style — a dropdown-shaped trigger (3-colour preview
+// swatch + template name/fonts + chevron) that opens the template picker.
+// Ported from the Figma-referenced SlideInspector.tsx, onto light c-* tokens.
+function TemplateStyleSection({ name = "Radicle", fonts = "Whyte Inktrap, Inter" }: { name?: string; fonts?: string }) {
+  return (
+    <PanelSection title="Template style">
+      <div className="px-[16px] pb-[8px]">
+        <button className="w-full h-[48px] rounded-c-md border border-c-border flex items-center pl-[7px] pr-[3px] gap-[8px] hover:bg-c-bg-hover">
+          {/* 3-colour preview swatch */}
+          <span className="size-[32px] rounded-[2.667px] border border-c-border overflow-hidden relative bg-white shrink-0">
+            <span className="absolute inset-y-0 left-0 w-[10.67px] bg-[#e95000]" />
+            <span className="absolute inset-y-0 left-[10.67px] w-[10.67px] bg-[#ffcd00]" />
+            <span className="absolute inset-y-0 left-[21.33px] w-[10.67px] bg-[#100f10]" />
+          </span>
+          <span className="flex flex-col gap-[2px] items-start min-w-0 flex-1">
+            <span className={clsx(FONT, "text-[11px] font-[550] text-c-text leading-[16px]")}>{name}</span>
+            <span className={clsx(FONT, "text-[11px] text-c-text-secondary leading-[16px] truncate w-full text-left")}>{fonts}</span>
+          </span>
+          <ChevronDown size={16} strokeWidth={1.5} className="text-c-icon shrink-0" />
+        </button>
+      </div>
+    </PanelSection>
+  );
+}
+
 // Background §Background — fill-type segmented (Solid · Gradient · Image · Video)
 // switching the control below. Solid shows a compact ColorInput swatch trigger.
 function SlideBackgroundSection() {
   const [fillType, setFillType] = useState("solid");
   const [colorOpen, setColorOpen] = useState(false);
   const fillSegments = [
-    { value: "solid", label: "Solid" },
-    { value: "gradient", label: "Gradient" },
-    { value: "image", label: "Image" },
-    { value: "video", label: "Video" },
+    { value: "solid", icon: <SlideFillTypeIcon type="solid" /> },
+    { value: "gradient", icon: <SlideFillTypeIcon type="gradient" /> },
+    { value: "image", icon: <SlideFillTypeIcon type="image" /> },
+    { value: "video", icon: <SlideFillTypeIcon type="video" /> },
   ];
   return (
     <PanelSection title="Background">
-      {/* Fill type — segmented within the section */}
+      {/* Fill type — icon-only segmented, matching the Figma reference / ColorDialog's
+          fill-type tabs (not text-labeled) */}
       <PanelFieldRow
         label="Fill type"
         left={
@@ -1185,6 +1240,82 @@ function SlideBackgroundSection() {
   );
 }
 
+// ─── Video Clip mode sections ─────────────────────────────────────────────────
+// video-clip-inspector-mode.md — shown when a base-video clip block is selected
+// in the master timeline (a distinct inspector mode, not a slide). Sections:
+// Source (read-only) · Timeline (shared with Slide's Timing, see above) · Trim ·
+// Playback. No dialogs; no Background/Fill/Selection-colors (clips aren't slides).
+
+// Source §Source — read-only metadata about the source video file.
+function ClipSourceSection({
+  file = "hero-cover.mp4",
+  resolution = "1920 × 1080",
+  sourceDuration = "1:24.00",
+}: {
+  file?: string;
+  resolution?: string;
+  sourceDuration?: string;
+}) {
+  const row = (label: string, value: string) => (
+    <PanelFullRow label={label} height={24}>
+      <span className={clsx(FONT, "text-[11px] text-c-text-secondary truncate block")} title={value}>{value}</span>
+    </PanelFullRow>
+  );
+  return (
+    <PanelSection title="Source">
+      {row("File", file)}
+      {row("Resolution", resolution)}
+      {row("Source duration", sourceDuration)}
+    </PanelSection>
+  );
+}
+
+// Trim §Trim — which portion of the source plays within the clip block.
+// Clipped duration is derived (trimOut − trimIn) and read-only.
+function ClipTrimSection({
+  trimIn = 0,
+  trimOut = 8,
+}: {
+  trimIn?: number;
+  trimOut?: number;
+}) {
+  return (
+    <PanelSection title="Trim">
+      <PanelFieldRow
+        label="Trim in"
+        left={<NumericInput iconLead={<Crosshair size={16} strokeWidth={1.5} />} defaultValue={trimIn} min={0} suffix="s" />}
+      />
+      <PanelFieldRow
+        label="Trim out"
+        left={<NumericInput iconLead={<Crosshair size={16} strokeWidth={1.5} />} defaultValue={trimOut} min={0} suffix="s" />}
+      />
+      <PanelFullRow label="Clipped duration" height={24}>
+        <span className={clsx(FONT, "text-[11px] text-c-text-secondary")}>{Math.max(0, trimOut - trimIn)}s</span>
+      </PanelFullRow>
+    </PanelSection>
+  );
+}
+
+// Playback §Playback — Speed dropdown (default 1x); Volume deferred to V2
+// (disabled row, "Audio coming soon" per spec).
+function ClipPlaybackSection({ speed = "1x" }: { speed?: string }) {
+  return (
+    <PanelSection title="Playback">
+      <PanelFieldRow
+        label="Speed"
+        left={<Dropdown value={speed} fullWidth />}
+      />
+      <PanelFieldRow
+        label="Volume"
+        left={<Dropdown value="—" disabled fullWidth />}
+        rightAction={
+          <span title="Audio coming soon" className={clsx(FONT, "text-[9px] text-c-text-tertiary")}>V2</span>
+        }
+      />
+    </PanelSection>
+  );
+}
+
 // ─── PropertyPanel ────────────────────────────────────────────────────────────
 
 export interface PropertyPanelProps {
@@ -1198,6 +1329,8 @@ export interface PropertyPanelProps {
   blendMode?: BlendMode;
   /** Slide mode — initial slide name shown in the header text field. */
   slideName?: string;
+  /** Video Clip mode — initial clip name shown in the header text field. */
+  clipName?: string;
   className?: string;
 }
 
@@ -1234,6 +1367,7 @@ export function PropertyPanel({
   opacity = 100,
   blendMode = "Pass through",
   slideName = "Slide 1",
+  clipName = "hero-cover",
   className,
 }: PropertyPanelProps) {
   const [tab, setTab] = useState("design");
@@ -1308,9 +1442,34 @@ export function PropertyPanel({
           </div>
 
           <SlideTimingSection />
+          {/* Template style — sits directly before Background, matching the
+              Figma-referenced order (SlideInspector.tsx / SlidesTemplate export) */}
+          <TemplateStyleSection />
           <SlideBackgroundSection />
           {/* Selection colors — reuse the existing element-mode section */}
           <SelectionColorsSection />
+        </ScrollArea>
+      )}
+
+      {/* ── VIDEO CLIP mode (video-clip-inspector-mode.md) ───────────────────
+          Active exclusively when a base-video clip block is selected in the
+          master timeline (not a slide — Slides/Layers panels don't update).
+          Header = clip-name field only, per spec — NO options-menu affordance
+          (Slide mode has one; the spec doesn't carry it over here, which reads
+          as a possible spec gap rather than an intentional omission — flagging
+          rather than silently adding one). No tabs, no dialogs. */}
+      {mode === "video-clip" && (
+        <ScrollArea>
+          <div className="h-[40px] flex items-center gap-[8px] px-[16px] border-b border-c-border">
+            <div className="flex-1 min-w-0">
+              <InputField defaultValue={clipName} placeholder="Clip name" />
+            </div>
+          </div>
+
+          <ClipSourceSection />
+          <SlideTimingSection title="Timeline" />
+          <ClipTrimSection />
+          <ClipPlaybackSection />
         </ScrollArea>
       )}
 
