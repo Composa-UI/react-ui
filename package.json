@@ -12,7 +12,9 @@
   "main": "./src/index.ts",
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "vite build",
+    "check": "npm run typecheck && npm run build"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

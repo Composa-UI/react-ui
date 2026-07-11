@@ -33,6 +33,24 @@ export default function Playground() {
   // (side-by-side fidelity check); default = property-panel fidelity set.
   const view = new URLSearchParams(window.location.search).get("view");
   const [nav, setNav] = useState("composition");
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>("2b");
+  const [contractPlayhead, setContractPlayhead] = useState(300);
+  const [contractX, setContractX] = useState(270);
+
+  if (view === "controlled-contracts") {
+    return (
+      <div style={{ height: "100vh", width: "100vw", display: "flex", flexDirection: "column", background: "#e6e6e6" }}>
+        <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+          <LayerList selectedId={selectedLayerId} onSelectionChange={setSelectedLayerId} />
+          <div style={{ flex: 1, display: "grid", placeItems: "center", font: "11px Inter, sans-serif" }}>
+            Controlled layer: {selectedLayerId ?? "none"} · X: {contractX} · playhead: {contractPlayhead}ms
+          </div>
+          <PropertyPanel elementType="text" x={contractX} onXChange={setContractX} />
+        </div>
+        <Timeline height={220} playhead={contractPlayhead} onPlayheadChange={setContractPlayhead} />
+      </div>
+    );
+  }
 
   if (view === "slides-raw") {
     return (

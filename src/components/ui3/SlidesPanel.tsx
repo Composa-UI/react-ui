@@ -115,10 +115,12 @@ export function SlideListItem({ item }: { item: SlideData }) {
 }
 
 // ── Panel ─────────────────────────────────────────────────────────────────────
-export function SlidesPanel({ slides, title = "Product review", subtitle = "native" }: {
+export function SlidesPanel({ slides, title = "Product review", subtitle = "native", onNewSlide, onNewSlideMenu }: {
   slides: SlideData[];
   title?: string;
   subtitle?: string;
+  onNewSlide?: () => void;
+  onNewSlideMenu?: () => void;
 }) {
   return (
     <div className="w-[200px] shrink-0 h-full flex flex-col bg-c-bg overflow-hidden border-r border-c-border">
@@ -136,11 +138,15 @@ export function SlidesPanel({ slides, title = "Product review", subtitle = "nati
 
       {/* New slide (split: label + chevron on the left, plus on the right) */}
       <div className="shrink-0 p-[8px] border-t border-b border-c-border">
-        <button className="relative w-full h-[24px] rounded-[6px] border border-c-border bg-c-bg flex items-center justify-center gap-[2px] hover:bg-c-bg-hover">
-          <span className="text-c-text text-[11px] font-[450] leading-[16px] tracking-[0.055px]" style={INTER}>New slide</span>
-          <ChevronDown size={12} className="text-c-text" />
-          <Plus size={16} className="text-c-text absolute right-[4px] top-1/2 -translate-y-1/2" />
-        </button>
+        <div className="w-full h-[24px] rounded-[6px] border border-c-border bg-c-bg flex items-stretch overflow-hidden">
+          <button onClick={onNewSlideMenu} aria-label="New slide options" className="relative flex-1 flex items-center justify-center gap-[2px] hover:bg-c-bg-hover">
+            <span className="text-c-text text-[11px] font-[450] leading-[16px] tracking-[0.055px]" style={INTER}>New slide</span>
+            <ChevronDown size={12} className="text-c-text" />
+          </button>
+          <button onClick={onNewSlide} aria-label="Add slide" className="w-[24px] flex items-center justify-center border-l border-c-border hover:bg-c-bg-hover">
+            <Plus size={16} className="text-c-text" />
+          </button>
+        </div>
       </div>
 
       {/* Slide list — overlay scrollbar (theme-aware thumb) */}

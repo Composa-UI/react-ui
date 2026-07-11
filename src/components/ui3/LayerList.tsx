@@ -133,8 +133,23 @@ function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect }
   );
 }
 
-export function LayerList({ layers = DEMO_LAYERS, title = "Layers" }: { layers?: LayerNode[]; title?: string }) {
-  const [selected, setSelected] = useState<string | null>("2b");
+export interface LayerListProps {
+  layers?: LayerNode[];
+  title?: string;
+  selectedId?: string | null;
+  defaultSelectedId?: string | null;
+  onSelectionChange?: (id: string) => void;
+}
+
+export function LayerList({
+  layers = DEMO_LAYERS,
+  title = "Layers",
+  selectedId,
+  defaultSelectedId = "2b",
+  onSelectionChange,
+}: LayerListProps) {
+  const [internalSelected, setInternalSelected] = useState<string | null>(defaultSelectedId);
+  const selected = selectedId === undefined ? internalSelected : selectedId;
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(collectGroupIds(layers)));
 
   const flat = useMemo(() => {
@@ -192,7 +207,10 @@ export function LayerList({ layers = DEMO_LAYERS, title = "Layers" }: { layers?:
                   return next;
                 })}
                 isSelfSelected={selected === row.node.id}
-                onSelect={() => setSelected(row.node.id)}
+                onSelect={() => {
+                  if (selectedId === undefined) setInternalSelected(row.node.id);
+                  onSelectionChange?.(row.node.id);
+                }}
               />
             );
           })}

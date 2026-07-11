@@ -1361,8 +1361,14 @@ export interface PropertyPanelProps {
   elementType?: ElementType;
   multiSelect?: boolean;
   x?: number; y?: number; rotation?: number;
+  onXChange?: (value: number) => void;
+  onYChange?: (value: number) => void;
+  onRotationChange?: (value: number) => void;
   width?: number; height?: number;
+  onWidthChange?: (value: number) => void;
+  onHeightChange?: (value: number) => void;
   opacity?: number;
+  onOpacityChange?: (value: number) => void;
   blendMode?: BlendMode;
   /** Slide mode — initial slide name shown in the header text field. */
   slideName?: string;
@@ -1400,8 +1406,11 @@ export function PropertyPanel({
   elementType = "text",
   multiSelect = false,
   x = 0, y = 0, rotation = 0,
+  onXChange, onYChange, onRotationChange,
   width = 1200, height = 115,
+  onWidthChange, onHeightChange,
   opacity = 100,
+  onOpacityChange,
   blendMode = "Pass through",
   slideName = "Slide 1",
   clipName = "hero-cover",
@@ -1540,10 +1549,13 @@ export function PropertyPanel({
           {isInstance && <ComponentPropertiesSection />}
 
           {/* Position — always present */}
-          <PositionSection x={x} y={y} rotation={rotation} />
+          <PositionSection
+            x={x} y={y} rotation={rotation}
+            onXChange={onXChange} onYChange={onYChange} onRotationChange={onRotationChange}
+          />
 
           {/* Layout — polymorphic */}
-          {(isFrame)       && <LayoutFrameSection width={width} height={height} onEnableAutoLayout={() => setAutoLayoutOn(true)} />}
+          {(isFrame)       && <LayoutFrameSection width={width} height={height} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onEnableAutoLayout={() => setAutoLayoutOn(true)} />}
           {(isAutoLayout)  && <LayoutAutoSection  width={width} height={height} onDisableAutoLayout={() => setAutoLayoutOn(false)} />}
           {(isShape || isText) && (
             <PanelSection title="Layout">
@@ -1556,8 +1568,8 @@ export function PropertyPanel({
               )}
               <PanelFieldRow
                 label="Dimensions"
-                left={<ComboInput iconLead={<span className={FONT}>W</span>} value={String(width)} className="w-full" />}
-                right={<ComboInput iconLead={<span className={FONT}>H</span>} value={String(height)} className="w-full" />}
+                left={<ComboInput iconLead={<span className={FONT}>W</span>} value={String(width)} onInputChange={value => onWidthChange?.(Number(value) || 1)} className="w-full" />}
+                right={<ComboInput iconLead={<span className={FONT}>H</span>} value={String(height)} onInputChange={value => onHeightChange?.(Number(value) || 1)} className="w-full" />}
                 rightAction={
                   <PanelActionBtn icon={<Link2Off size={16} strokeWidth={1.5} />} label="Lock aspect ratio" />
                 }
@@ -1567,7 +1579,7 @@ export function PropertyPanel({
           )}
 
           {/* Appearance — always present */}
-          <AppearanceSection opacity={opacity} blendMode={blendMode} />
+          <AppearanceSection opacity={opacity} blendMode={blendMode} onOpacityChange={onOpacityChange} />
 
           {/* Typography — text only */}
           {isText && <TypographySection />}

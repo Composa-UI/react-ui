@@ -19,6 +19,10 @@ const MAX_WIDTH = 360;      // spec: max panel width
 export interface CompositionPanelProps {
   slides?: SlideData[];
   layers?: LayerNode[];
+  selectedLayerId?: string | null;
+  onLayerSelectionChange?: (id: string) => void;
+  onNewSlide?: () => void;
+  onNewSlideMenu?: () => void;
   slidesTitle?: string;
   slidesSubtitle?: string;
   layersTitle?: string;
@@ -38,6 +42,10 @@ export interface CompositionPanelProps {
 export function CompositionPanel({
   slides = DEMO_SLIDES,
   layers,
+  selectedLayerId,
+  onLayerSelectionChange,
+  onNewSlide,
+  onNewSlideMenu,
   slidesTitle,
   slidesSubtitle,
   layersTitle,
@@ -157,7 +165,7 @@ export function CompositionPanel({
       {/* Top — Slides (min 80px). `[&>*]:!w-full` stretches the child to the column
           width; `[&>*]:!border-r-0` drops its own right border (the container owns it). */}
       <div className="min-h-[80px] overflow-hidden [&>*]:!w-full [&>*]:!border-r-0" style={{ flexBasis: `calc(${split} * 100%)`, flexGrow: 0, flexShrink: 1 }}>
-        <SlidesPanel slides={slides} title={slidesTitle} subtitle={slidesSubtitle} />
+        <SlidesPanel slides={slides} title={slidesTitle} subtitle={slidesSubtitle} onNewSlide={onNewSlide} onNewSlideMenu={onNewSlideMenu} />
       </div>
 
       {/* Bottom — Layers (min 80px, fills the rest). Same stretch/border overrides. */}
@@ -176,7 +184,7 @@ export function CompositionPanel({
           onKeyDown={onKeyDown}
           className="absolute top-0 inset-x-0 h-[4px] z-10 cursor-ns-resize select-none outline-none -translate-y-1/2 focus-visible:bg-c-border-selected/40"
         />
-        <LayerList layers={layers} title={layersTitle} />
+          <LayerList layers={layers} title={layersTitle} selectedId={selectedLayerId} onSelectionChange={onLayerSelectionChange} />
       </div>
 
       {/* Width resize affordance — thin invisible vertical strip on the RIGHT EDGE.

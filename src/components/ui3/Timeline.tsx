@@ -44,6 +44,7 @@ export interface Track {
 
 // master-view slide block — a slide's [start,end] range (ms) on the project timeline
 export interface SlideBlock {
+  id: string;
   name: string;
   range: [number, number];     // [start,end] ms on the master timeline
   active?: boolean;            // canvas focus — visually distinct
@@ -72,10 +73,10 @@ const DEMO_TRACKS: Track[] = [
 ];
 
 const DEMO_BLOCKS: SlideBlock[] = [
-  { name: "Intro", range: [0, 4000] },
-  { name: "Overview of the quarter", range: [4000, 9000], active: true },
-  { name: "Metrics deep dive", range: [9000, 16000] },
-  { name: "Outro", range: [16000, 20000] },
+  { id: "intro", name: "Intro", range: [0, 4000] },
+  { id: "overview", name: "Overview of the quarter", range: [4000, 9000], active: true },
+  { id: "metrics", name: "Metrics deep dive", range: [9000, 16000] },
+  { id: "outro", name: "Outro", range: [16000, 20000] },
 ];
 
 // ── keyframe lane (bar + diamonds + connecting line) ──────────────────────────────
@@ -229,7 +230,7 @@ function SecondRuler({ maxMs }: { maxMs: number }) {
 }
 
 // ── master track rows: "Slides" block track + "Base video" placeholder ──────────────
-function BlockTrack({ blocks }: { blocks: SlideBlock[] }) {
+function BlockTrack({ blocks, onSelect, onOpen }: { blocks: SlideBlock[]; onSelect?: (id: string) => void; onOpen?: (id: string) => void }) {
   return (
     <div className="flex" style={{ height: ROW_BLOCK }}>
       {/* left label */}
@@ -244,7 +245,9 @@ function BlockTrack({ blocks }: { blocks: SlideBlock[] }) {
           const width = sec(b.range[1] - b.range[0]);
           return (
             <div
-              key={i}
+              key={b.id}
+              onClick={() => onSelect?.(b.id)}
+              onDoubleClick={() => onOpen?.(b.id)}
               className={clsx(
                 "absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] flex items-center px-[10px] overflow-hidden border",
                 b.active
@@ -284,6 +287,11 @@ export function Timeline({
   blocks = DEMO_BLOCKS,
   height = 320,
   duration = mode === "master" ? 20000 : 10000,
+  playhead: controlledPlayhead,
+  defaultPlayhead = 300,
+  onPlayheadChange,
+  onBlockSelect,
+  onBlockOpen,
   onBack,
 }: {
   mode?: TimelineMode;
@@ -291,10 +299,20 @@ export function Timeline({
   blocks?: SlideBlock[];
   height?: number;
   duration?: number;
+  playhead?: number;
+  defaultPlayhead?: number;
+  onPlayheadChange?: (timeMs: number) => void;
+  onBlockSelect?: (id: string) => void;
+  onBlockOpen?: (id: string) => void;
   onBack?: () => void;
 }) {
   const master = mode === "master";
-  const [playhead, setPlayhead] = useState(300); // shared playhead, in ms
+  const [internalPlayhead, setInternalPlayhead] = useState(defaultPlayhead);
+  const playhead = controlledPlayhead ?? internalPlayhead;
+  const setPlayhead = (timeMs: number) => {
+    if (controlledPlayhead === undefined) setInternalPlayhead(timeMs);
+    onPlayheadChange?.(timeMs);
+  };
   const maxMs = duration;
   const toPx = master ? sec : ms;                 // shared time→px scale per view
   const pxPer = master ? PX_PER_S / 1000 : PX_PER_MS;
@@ -345,7 +363,7 @@ export function Timeline({
       <div className="flex-1 overflow-y-auto relative">
         {master ? (
           <>
-            <BlockTrack blocks={blocks} />
+            <BlockTrack blocks={blocks} onSelect={onBlockSelect} onOpen={onBlockOpen} />
             <BaseVideoTrack />
           </>
         ) : (
