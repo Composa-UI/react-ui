@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PropertyPanel, type SlideBackgroundType, type SlideTransitionDirection, type SlideTransitionEasing, type SlideTransitionType } from "./components/ui3/PropertyPanel";
+import { PropertyPanel, type ClipSpeed, type SlideBackgroundType, type SlideTransitionDirection, type SlideTransitionEasing, type SlideTransitionType } from "./components/ui3/PropertyPanel";
 import SlidesTemplate from "./imports/SlidesTemplate";
 import { SlidesPanel, type SlideData } from "./components/ui3/SlidesPanel";
 import { SlideInspector } from "./components/ui3/SlideInspector";
@@ -41,6 +41,9 @@ export default function Playground() {
   const [assetQuery, setAssetQuery] = useState("");
   const [assetFilter, setAssetFilter] = useState<AssetFilter>("all");
   const [assetSelection, setAssetSelection] = useState<string | null>("asset-image");
+  const [clipContract, setClipContract] = useState<{ name: string; start: number; duration: number; trimIn: number; trimOut: number; speed: ClipSpeed }>({
+    name: "hero-cover", start: 0, duration: 8, trimIn: 10, trimOut: 18, speed: 1,
+  });
   const contractAssets: AssetItem[] = [
     { id: "asset-image", name: "cover.png", kind: "image", tint: "linear-gradient(135deg,#7c5cff,#ff6ac1)" },
     { id: "asset-video", name: "intro.mp4", kind: "video", tint: "linear-gradient(135deg,#111827,#374151)", duration: "0:24" },
@@ -113,6 +116,21 @@ export default function Playground() {
         selectedId={assetSelection} onSelect={setAssetSelection} onUpload={() => console.info("Upload")}
         onDropFiles={files => console.info("Dropped", files.map(file => file.name))} />
       <div style={{ flex: 1 }} />
+    </div>;
+  }
+
+  if (view === "clip-contract") {
+    return <div style={{ height: "100vh", width: "100vw", display: "flex", justifyContent: "flex-end", background: "#e6e6e6" }}>
+      <PropertyPanel mode="video-clip" clipName={clipContract.name} onClipNameChange={name => setClipContract(value => ({ ...value, name }))}
+        clipSourceFile="hero-cover.mp4" clipSourceResolution="1920 × 1080" clipSourceDuration="1:24.00"
+        clipStart={clipContract.start} clipDuration={clipContract.duration}
+        onClipStartChange={start => setClipContract(value => ({ ...value, start }))}
+        onClipDurationChange={duration => setClipContract(value => ({ ...value, duration }))}
+        clipTrimIn={clipContract.trimIn} clipTrimOut={clipContract.trimOut}
+        onClipTrimInChange={trimIn => setClipContract(value => ({ ...value, trimIn }))}
+        onClipTrimOutChange={trimOut => setClipContract(value => ({ ...value, trimOut }))}
+        clipSpeed={clipContract.speed} onClipSpeedChange={speed => setClipContract(value => ({ ...value, speed }))}
+        onReplaceClip={() => console.info("Replace video")} onDeleteClip={() => console.info("Delete clip")} />
     </div>;
   }
 

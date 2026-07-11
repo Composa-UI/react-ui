@@ -42,6 +42,7 @@ export type SlideBackgroundType = "solid" | "gradient" | "image" | "video";
 export type SlideTransitionType = "none" | "fade" | "push" | "slide" | "wipe";
 export type SlideTransitionDirection = "left" | "right" | "up" | "down";
 export type SlideTransitionEasing = "linear" | "ease-in" | "ease-out" | "ease-in-out";
+export type ClipSpeed = 0.25 | 0.5 | 0.75 | 1 | 1.25 | 1.5 | 2 | 4;
 
 type BlendMode = string;
 
@@ -1355,7 +1356,7 @@ function ChoiceDropdown<T extends string>({ value, options, labels, onChange }: 
   onChange?: (value: T) => void;
 }) {
   return (
-    <PopoverMenu align="right" trigger={<Dropdown value={labels[value]} fullWidth />}>
+    <PopoverMenu align="right" className="w-full" trigger={<Dropdown value={labels[value]} fullWidth />}>
       {close => <Menu minWidth={160}>{options.map(option => (
         <MenuRow key={option} type="checkmark" checked={option === value} label={labels[option]} onClick={() => { onChange?.(option); close(); }} />
       ))}</Menu>}
@@ -1430,20 +1431,28 @@ function ClipSourceSection({
 function ClipTrimSection({
   trimIn = 0,
   trimOut = 8,
+  onTrimInChange,
+  onTrimOutChange,
 }: {
   trimIn?: number;
   trimOut?: number;
+  onTrimInChange?: (value: number) => void;
+  onTrimOutChange?: (value: number) => void;
 }) {
+  const [internalTrimIn, setInternalTrimIn] = useState(trimIn);
+  const [internalTrimOut, setInternalTrimOut] = useState(trimOut);
+  const renderedTrimIn = onTrimInChange ? trimIn : internalTrimIn;
+  const renderedTrimOut = onTrimOutChange ? trimOut : internalTrimOut;
   return (
     <PanelSection title="Trim">
       <DualField
         leftLabel="Trim in"
-        left={<NumericInput iconLead={<Crosshair size={16} strokeWidth={1.5} />} defaultValue={trimIn} min={0} suffix="s" />}
+        left={<NumericInput iconLead={<Crosshair size={16} strokeWidth={1.5} />} value={renderedTrimIn} onChange={value => { if (!onTrimInChange) setInternalTrimIn(value); onTrimInChange?.(value); }} min={0} suffix="s" />}
         rightLabel="Trim out"
-        right={<NumericInput iconLead={<Crosshair size={16} strokeWidth={1.5} />} defaultValue={trimOut} min={0} suffix="s" />}
+        right={<NumericInput iconLead={<Crosshair size={16} strokeWidth={1.5} />} value={renderedTrimOut} onChange={value => { if (!onTrimOutChange) setInternalTrimOut(value); onTrimOutChange?.(value); }} min={0} suffix="s" />}
       />
       <PanelFullRow label="Clipped duration" height={24}>
-        <span className={clsx(FONT, "text-[11px] text-c-text-secondary")}>{Math.max(0, trimOut - trimIn)}s</span>
+        <span className={clsx(FONT, "text-[11px] text-c-text-secondary")}>{Math.max(0, renderedTrimOut - renderedTrimIn)}s</span>
       </PanelFullRow>
     </PanelSection>
   );
@@ -1451,12 +1460,17 @@ function ClipTrimSection({
 
 // Playback §Playback — Speed dropdown (default 1x); Volume deferred to V2
 // (disabled row, "Audio coming soon" per spec).
-function ClipPlaybackSection({ speed = "1x" }: { speed?: string }) {
+const CLIP_SPEEDS: ClipSpeed[] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 4];
+const CLIP_SPEED_LABELS = Object.fromEntries(CLIP_SPEEDS.map(speed => [String(speed), `${speed}×`])) as Record<string, string>;
+
+function ClipPlaybackSection({ speed = 1, onSpeedChange }: { speed?: ClipSpeed; onSpeedChange?: (value: ClipSpeed) => void }) {
+  const [internalSpeed, setInternalSpeed] = useState<ClipSpeed>(speed);
+  const renderedSpeed = onSpeedChange ? speed : internalSpeed;
   return (
     <PanelSection title="Playback">
       <DualField
         leftLabel="Speed"
-        left={<Dropdown value={speed} fullWidth />}
+        left={<ChoiceDropdown value={String(renderedSpeed)} options={CLIP_SPEEDS.map(String)} labels={CLIP_SPEED_LABELS} onChange={value => { const next = Number(value) as ClipSpeed; if (!onSpeedChange) setInternalSpeed(next); onSpeedChange?.(next); }} />}
         rightLabel="Volume"
         right={
           <div className="w-full" title="Audio coming soon">
@@ -1510,8 +1524,24 @@ export interface PropertyPanelProps {
   onSlideTransitionEasingChange?: (value: SlideTransitionEasing) => void;
   onDuplicateSlide?: () => void;
   onDeleteSlide?: () => void;
-  /** Video Clip mode — initial clip name shown in the header text field. */
+  /** Video Clip mode — controlled when callbacks are supplied; demo fallbacks remain editable. */
   clipName?: string;
+  onClipNameChange?: (value: string) => void;
+  clipSourceFile?: string;
+  clipSourceResolution?: string;
+  clipSourceDuration?: string;
+  clipStart?: number;
+  clipDuration?: number;
+  onClipStartChange?: (value: number) => void;
+  onClipDurationChange?: (value: number) => void;
+  clipTrimIn?: number;
+  clipTrimOut?: number;
+  onClipTrimInChange?: (value: number) => void;
+  onClipTrimOutChange?: (value: number) => void;
+  clipSpeed?: ClipSpeed;
+  onClipSpeedChange?: (value: ClipSpeed) => void;
+  onReplaceClip?: () => void;
+  onDeleteClip?: () => void;
   className?: string;
 }
 
@@ -1575,6 +1605,22 @@ export function PropertyPanel({
   onDuplicateSlide,
   onDeleteSlide,
   clipName = "hero-cover",
+  onClipNameChange,
+  clipSourceFile = "hero-cover.mp4",
+  clipSourceResolution = "1920 × 1080",
+  clipSourceDuration = "1:24.00",
+  clipStart = 0,
+  clipDuration = 8,
+  onClipStartChange,
+  onClipDurationChange,
+  clipTrimIn = 10,
+  clipTrimOut = 18,
+  onClipTrimInChange,
+  onClipTrimOutChange,
+  clipSpeed = 1,
+  onClipSpeedChange,
+  onReplaceClip,
+  onDeleteClip,
   className,
 }: PropertyPanelProps) {
   const [tab, setTab] = useState("design");
@@ -1584,12 +1630,14 @@ export function PropertyPanel({
   const [demoTransitionDirection, setDemoTransitionDirection] = useState<SlideTransitionDirection>(slideTransitionDirection ?? "right");
   const [demoTransitionDuration, setDemoTransitionDuration] = useState(slideTransitionDuration ?? 500);
   const [demoTransitionEasing, setDemoTransitionEasing] = useState<SlideTransitionEasing>(slideTransitionEasing ?? "ease-in-out");
+  const [demoClipName, setDemoClipName] = useState(clipName);
   const renderedSlideName = onSlideNameChange || slideName !== "Slide 1" ? slideName : demoSlideName;
   const renderedSkipped = onSlideSkippedChange || slideSkipped ? slideSkipped : demoSkipped;
   const renderedTransitionType = slideTransitionType ?? demoTransitionType;
   const renderedTransitionDirection = slideTransitionDirection ?? demoTransitionDirection;
   const renderedTransitionDuration = slideTransitionDuration ?? demoTransitionDuration;
   const renderedTransitionEasing = slideTransitionEasing ?? demoTransitionEasing;
+  const renderedClipName = onClipNameChange || clipName !== "hero-cover" ? clipName : demoClipName;
   const [textResize, setTextResize] = useState("auto-w");
   const textResizeSegments = [
     { value: "auto-w", icon: <MoveHorizontal size={S} strokeWidth={1.5} /> },
@@ -1696,24 +1744,31 @@ export function PropertyPanel({
       {/* ── VIDEO CLIP mode (video-clip-inspector-mode.md) ───────────────────
           Active exclusively when a base-video clip block is selected in the
           master timeline (not a slide — Slides/Layers panels don't update).
-          Header = clip-name field only, per spec — NO options-menu affordance
-          (Slide mode has one; the spec doesn't carry it over here, which reads
-          as a possible spec gap rather than an intentional omission — flagging
-          rather than silently adding one). No tabs, no dialogs. */}
+          Header = clip-name field plus the requested replace/delete actions in
+          the shared options-menu pattern. No tabs or dialogs. */}
       {mode === "video-clip" && (
         <ScrollArea>
           <div className="h-[40px] flex items-center gap-[8px] px-[16px] border-b border-c-border">
             <div className="flex-1 min-w-0">
-              <InputField defaultValue={clipName} placeholder="Clip name" />
+              <InputField value={renderedClipName} onChange={value => { if (!onClipNameChange) setDemoClipName(value); onClipNameChange?.(value); }} placeholder="Clip name" />
             </div>
+            <PopoverMenu align="right" trigger={<PanelActionBtn icon={<MoreHorizontal size={16} strokeWidth={1.5} />} label="Video clip options" />}>
+              {close => <Menu minWidth={180}>
+                <MenuRow type="simple" label="Replace video" onClick={() => { onReplaceClip?.(); close(); }} />
+                <MenuRow type="simple" label="Delete clip" destructive onClick={() => { onDeleteClip?.(); close(); }} />
+              </Menu>}
+            </PopoverMenu>
           </div>
 
-          <ClipSourceSection />
+          <ClipSourceSection file={clipSourceFile} resolution={clipSourceResolution} sourceDuration={clipSourceDuration} />
           {/* Demo data kept consistent per spec: Clipped duration (trimOut −
               trimIn = 8s) equals the Timeline duration (end − start = 8s). */}
-          <SlideTimingSection title="Timeline" start={0} end={8} />
-          <ClipTrimSection trimIn={10} trimOut={18} />
-          <ClipPlaybackSection />
+          <SlideTimingSection title="Timeline" start={clipStart} end={clipStart + clipDuration}
+            onStartChange={onClipStartChange}
+            onEndChange={value => onClipDurationChange?.(Math.max(0, value - clipStart))}
+            onDurationChange={onClipDurationChange} />
+          <ClipTrimSection trimIn={clipTrimIn} trimOut={clipTrimOut} onTrimInChange={onClipTrimInChange} onTrimOutChange={onClipTrimOutChange} />
+          <ClipPlaybackSection speed={clipSpeed} onSpeedChange={onClipSpeedChange} />
         </ScrollArea>
       )}
 
