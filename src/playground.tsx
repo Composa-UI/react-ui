@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PropertyPanel, type ClipSpeed, type SlideBackgroundType, type SlideTransitionDirection, type SlideTransitionEasing, type SlideTransitionType } from "./components/ui3/PropertyPanel";
+import { PropertyPanel, type ClipSpeed, type InspectorExportSetting, type ProjectFrameRate, type SlideBackgroundType, type SlideTransitionDirection, type SlideTransitionEasing, type SlideTransitionType } from "./components/ui3/PropertyPanel";
 import SlidesTemplate from "./imports/SlidesTemplate";
 import { SlidesPanel, type SlideData } from "./components/ui3/SlidesPanel";
 import { SlideInspector } from "./components/ui3/SlideInspector";
@@ -44,6 +44,12 @@ export default function Playground() {
   const [clipContract, setClipContract] = useState<{ name: string; start: number; duration: number; trimIn: number; trimOut: number; speed: ClipSpeed }>({
     name: "hero-cover", start: 0, duration: 8, trimIn: 10, trimOut: 18, speed: 1,
   });
+  const [projectContract, setProjectContract] = useState<{ width: number; height: number; frameRate: ProjectFrameRate; duration: number; playhead: number }>({
+    width: 1920, height: 1080, frameRate: 30, duration: 30, playhead: 0,
+  });
+  const [exportContract, setExportContract] = useState<InspectorExportSetting[]>([
+    { id: "export-1", scale: 1, suffix: "", format: "PNG" },
+  ]);
   const contractAssets: AssetItem[] = [
     { id: "asset-image", name: "cover.png", kind: "image", tint: "linear-gradient(135deg,#7c5cff,#ff6ac1)" },
     { id: "asset-video", name: "intro.mp4", kind: "video", tint: "linear-gradient(135deg,#111827,#374151)", duration: "0:24" },
@@ -131,6 +137,28 @@ export default function Playground() {
         onClipTrimOutChange={trimOut => setClipContract(value => ({ ...value, trimOut }))}
         clipSpeed={clipContract.speed} onClipSpeedChange={speed => setClipContract(value => ({ ...value, speed }))}
         onReplaceClip={() => console.info("Replace video")} onDeleteClip={() => console.info("Delete clip")} />
+    </div>;
+  }
+
+  if (view === "project-contract") {
+    return <div style={{ height: "100vh", width: "100vw", display: "flex", justifyContent: "flex-end", background: "#e6e6e6" }}>
+      <PropertyPanel mode="project" projectName="Launch video" projectWidth={projectContract.width} projectHeight={projectContract.height}
+        projectFrameRate={projectContract.frameRate} projectDuration={projectContract.duration} projectPlayhead={projectContract.playhead}
+        onProjectWidthChange={width => setProjectContract(value => ({ ...value, width }))}
+        onProjectHeightChange={height => setProjectContract(value => ({ ...value, height }))}
+        onProjectFrameRateChange={frameRate => setProjectContract(value => ({ ...value, frameRate }))}
+        onProjectDurationChange={duration => setProjectContract(value => ({ ...value, duration }))}
+        onProjectPlayheadChange={playhead => setProjectContract(value => ({ ...value, playhead }))} />
+    </div>;
+  }
+
+  if (view === "export-contract") {
+    return <div style={{ height: "100vh", width: "100vw", display: "flex", justifyContent: "flex-end", background: "#e6e6e6" }}>
+      <PropertyPanel mode="slide" slideName="Opening title" exportSettings={exportContract} exportTargetName="Opening title"
+        onAddExportSetting={() => setExportContract(value => [...value, { id: `export-${value.length + 1}`, scale: 1, suffix: "", format: "PNG" }])}
+        onRemoveExportSetting={id => setExportContract(value => value.filter(setting => setting.id !== id))}
+        onUpdateExportSetting={(id, patch) => setExportContract(value => value.map(setting => setting.id === id ? { ...setting, ...patch } : setting))}
+        onExport={() => console.info("Export still image")} />
     </div>;
   }
 

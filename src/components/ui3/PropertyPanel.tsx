@@ -43,6 +43,9 @@ export type SlideTransitionType = "none" | "fade" | "push" | "slide" | "wipe";
 export type SlideTransitionDirection = "left" | "right" | "up" | "down";
 export type SlideTransitionEasing = "linear" | "ease-in" | "ease-out" | "ease-in-out";
 export type ClipSpeed = 0.25 | 0.5 | 0.75 | 1 | 1.25 | 1.5 | 2 | 4;
+export type ExportFormat = "PNG" | "JPG";
+export interface InspectorExportSetting { id: string; scale: number; suffix: string; format: ExportFormat; }
+export type ProjectFrameRate = 24 | 25 | 30 | 60;
 
 type BlendMode = string;
 
@@ -832,10 +835,28 @@ function EffectsSection() {
 
 // ─── Section: Export ──────────────────────────────────────────────────────────
 
-function ExportSection() {
-  const [exports, setExports] = useState<{ id: string; scale: number; suffix: string; format: string }[]>([]);
-  const add = () => setExports(e => [...e, { id: String(Date.now()), scale: 1, suffix: "", format: "PNG" }]);
-  const remove = (id: string) => setExports(e => e.filter(x => x.id !== id));
+function ExportSection({ settings, targetName = "selection", onAdd, onRemove, onUpdate, onExport }: {
+  settings?: InspectorExportSetting[];
+  targetName?: string;
+  onAdd?: () => void;
+  onRemove?: (id: string) => void;
+  onUpdate?: (id: string, patch: Partial<Omit<InspectorExportSetting, "id">>) => void;
+  onExport?: () => void;
+}) {
+  const [internal, setInternal] = useState<InspectorExportSetting[]>([]);
+  const exports = settings ?? internal;
+  const add = () => {
+    if (settings === undefined) setInternal(current => [...current, { id: String(Date.now()), scale: 1, suffix: "", format: "PNG" }]);
+    onAdd?.();
+  };
+  const remove = (id: string) => {
+    if (settings === undefined) setInternal(current => current.filter(item => item.id !== id));
+    onRemove?.(id);
+  };
+  const update = (id: string, patch: Partial<Omit<InspectorExportSetting, "id">>) => {
+    if (settings === undefined) setInternal(current => current.map(item => item.id === id ? { ...item, ...patch } : item));
+    onUpdate?.(id, patch);
+  };
 
   return (
     <PanelSection
@@ -846,15 +867,19 @@ function ExportSection() {
       {exports.map(exp => (
         <div key={exp.id} className="group/row flex items-center h-[32px] pr-[16px]">
           <DragGutter />
-          <div className="flex-1 min-w-0 flex items-center gap-[8px]">
-            <ComboInput iconLead={<span className={FONT}>×</span>} defaultValue={String(exp.scale)} />
-            <Dropdown value={exp.format} fullWidth />
+          <div className="flex-1 min-w-0 flex items-center gap-[4px]">
+            <div className="w-[54px] shrink-0"><NumericInput value={exp.scale} min={0.01} step={0.25} suffix="×" onChange={scale => update(exp.id, { scale })} /></div>
+            <div className="flex-1 min-w-0"><InputField value={exp.suffix} placeholder="Suffix" onChange={suffix => update(exp.id, { suffix })} /></div>
+            <div className="w-[64px] shrink-0"><ChoiceDropdown value={exp.format} options={["PNG", "JPG"]} labels={{ PNG: "PNG", JPG: "JPG" }} onChange={format => update(exp.id, { format })} /></div>
           </div>
           <div className="shrink-0 flex items-center gap-[4px] pl-[8px]">
             <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove export" onClick={() => remove(exp.id)} />
           </div>
         </div>
       ))}
+      {exports.length > 0 && <PanelFullRow height={40}>
+        <Button label={`Export ${targetName}`} variant="Secondary" size="wide" onClick={onExport} />
+      </PanelFullRow>}
     </PanelSection>
   );
 }
@@ -998,11 +1023,25 @@ function SelectionColorsSection() {
 function CanvasSection({
   width = 1920,
   height = 1080,
+  frameRate = 30,
+  onWidthChange,
+  onHeightChange,
+  onFrameRateChange,
 }: {
   width?: number;
   height?: number;
+  frameRate?: ProjectFrameRate;
+  onWidthChange?: (value: number) => void;
+  onHeightChange?: (value: number) => void;
+  onFrameRateChange?: (value: ProjectFrameRate) => void;
 }) {
   const [aspect, setAspect] = useState("16:9");
+  const [internalWidth, setInternalWidth] = useState(width);
+  const [internalHeight, setInternalHeight] = useState(height);
+  const [internalFrameRate, setInternalFrameRate] = useState<ProjectFrameRate>(frameRate);
+  const renderedWidth = onWidthChange ? width : internalWidth;
+  const renderedHeight = onHeightChange ? height : internalHeight;
+  const renderedFrameRate = onFrameRateChange ? frameRate : internalFrameRate;
   const aspectOptions = ["16:9", "9:16", "1:1", "4:3", "Custom"];
   return (
     <PanelSection title="Canvas">
@@ -1030,7 +1069,8 @@ function CanvasSection({
         left={
           <NumericInput
             iconLead={<span className={FONT}>W</span>}
-            defaultValue={width}
+            value={renderedWidth}
+            onChange={value => { if (!onWidthChange) setInternalWidth(value); onWidthChange?.(value); }}
             min={1}
             suffix="px"
           />
@@ -1038,7 +1078,8 @@ function CanvasSection({
         right={
           <NumericInput
             iconLead={<span className={FONT}>H</span>}
-            defaultValue={height}
+            value={renderedHeight}
+            onChange={value => { if (!onHeightChange) setInternalHeight(value); onHeightChange?.(value); }}
             min={1}
             suffix="px"
           />
@@ -1049,7 +1090,7 @@ function CanvasSection({
       <PanelFieldRow
         label="Frame rate"
         reserveRightSlot={false}
-        left={<Dropdown value="30 fps" fullWidth />}
+        left={<ChoiceDropdown value={String(renderedFrameRate)} options={["24", "25", "30", "60"]} labels={{ "24": "24 fps", "25": "25 fps", "30": "30 fps", "60": "60 fps" }} onChange={value => { const next = Number(value) as ProjectFrameRate; if (!onFrameRateChange) setInternalFrameRate(next); onFrameRateChange?.(next); }} />}
       />
     </PanelSection>
   );
@@ -1059,10 +1100,18 @@ function CanvasSection({
 function MasterTimelineSection({
   totalDuration = 30,
   playhead = 0,
+  onTotalDurationChange,
+  onPlayheadChange,
 }: {
   totalDuration?: number;
   playhead?: number;
+  onTotalDurationChange?: (value: number) => void;
+  onPlayheadChange?: (value: number) => void;
 }) {
+  const [internalDuration, setInternalDuration] = useState(totalDuration);
+  const [internalPlayhead, setInternalPlayhead] = useState(playhead);
+  const renderedDuration = onTotalDurationChange ? totalDuration : internalDuration;
+  const renderedPlayhead = onPlayheadChange ? playhead : internalPlayhead;
   return (
     <PanelSection title="Master timeline">
       <DualField
@@ -1070,7 +1119,8 @@ function MasterTimelineSection({
         left={
           <NumericInput
             iconLead={<span className={FONT}>T</span>}
-            defaultValue={totalDuration}
+            value={renderedDuration}
+            onChange={value => { if (!onTotalDurationChange) setInternalDuration(value); onTotalDurationChange?.(value); }}
             min={0}
             suffix="s"
           />
@@ -1079,7 +1129,8 @@ function MasterTimelineSection({
         right={
           <NumericInput
             iconLead={<span className={FONT}>▸</span>}
-            defaultValue={playhead}
+            value={renderedPlayhead}
+            onChange={value => { if (!onPlayheadChange) setInternalPlayhead(value); onPlayheadChange?.(value); }}
             min={0}
             suffix="s"
           />
@@ -1097,10 +1148,10 @@ function ProjectExportSection() {
       <PanelFieldRow
         label="Format"
         reserveRightSlot={false}
-        left={<Dropdown value="MP4" fullWidth disabled />}
+        left={<div className="w-full" title="Video export coming soon"><Dropdown value="MP4" fullWidth disabled /></div>}
       />
       <PanelFullRow height={40}>
-        <Button label="Export project" variant="Secondary" size="wide" disabled />
+        <div className="w-full" title="Video export coming soon"><Button label="Export project" variant="Secondary" size="wide" disabled /></div>
       </PanelFullRow>
     </PanelSection>
   );
@@ -1499,6 +1550,25 @@ export interface PropertyPanelProps {
   opacity?: number;
   onOpacityChange?: (value: number) => void;
   blendMode?: BlendMode;
+  /** Project mode keeps the name a static label in V1. */
+  projectName?: string;
+  projectWidth?: number;
+  projectHeight?: number;
+  projectFrameRate?: ProjectFrameRate;
+  projectDuration?: number;
+  projectPlayhead?: number;
+  onProjectWidthChange?: (value: number) => void;
+  onProjectHeightChange?: (value: number) => void;
+  onProjectFrameRateChange?: (value: ProjectFrameRate) => void;
+  onProjectDurationChange?: (value: number) => void;
+  onProjectPlayheadChange?: (value: number) => void;
+  /** Shared element/selection/slide still-image export contract. */
+  exportSettings?: InspectorExportSetting[];
+  exportTargetName?: string;
+  onAddExportSetting?: () => void;
+  onRemoveExportSetting?: (id: string) => void;
+  onUpdateExportSetting?: (id: string, patch: Partial<Omit<InspectorExportSetting, "id">>) => void;
+  onExport?: () => void;
   /** Slide mode — controlled when provided; demo fallback remains editable. */
   slideName?: string;
   onSlideNameChange?: (value: string) => void;
@@ -1580,6 +1650,23 @@ export function PropertyPanel({
   opacity = 100,
   onOpacityChange,
   blendMode = "Pass through",
+  projectName = "Project",
+  projectWidth = 1920,
+  projectHeight = 1080,
+  projectFrameRate = 30,
+  projectDuration = 30,
+  projectPlayhead = 0,
+  onProjectWidthChange,
+  onProjectHeightChange,
+  onProjectFrameRateChange,
+  onProjectDurationChange,
+  onProjectPlayheadChange,
+  exportSettings,
+  exportTargetName,
+  onAddExportSetting,
+  onRemoveExportSetting,
+  onUpdateExportSetting,
+  onExport,
   slideName = "Slide 1",
   onSlideNameChange,
   slideStart = 0,
@@ -1676,11 +1763,13 @@ export function PropertyPanel({
         <ScrollArea>
           {/* Panel header — static "Project" label */}
           <div className="h-[40px] flex items-center px-[16px] border-b border-c-border">
-            <span className={clsx(FONT, "text-[11px] font-[550] text-c-text")}>Project</span>
+            <span className={clsx(FONT, "text-[11px] font-[550] text-c-text")}>{projectName}</span>
           </div>
 
-          <CanvasSection width={width} height={height} />
-          <MasterTimelineSection />
+          <CanvasSection width={projectWidth} height={projectHeight} frameRate={projectFrameRate}
+            onWidthChange={onProjectWidthChange} onHeightChange={onProjectHeightChange} onFrameRateChange={onProjectFrameRateChange} />
+          <MasterTimelineSection totalDuration={projectDuration} playhead={projectPlayhead}
+            onTotalDurationChange={onProjectDurationChange} onPlayheadChange={onProjectPlayheadChange} />
           <ProjectExportSection />
         </ScrollArea>
       )}
@@ -1738,6 +1827,8 @@ export function PropertyPanel({
             onDurationChange={value => { if (slideTransitionDuration === undefined) setDemoTransitionDuration(value); onSlideTransitionDurationChange?.(value); }}
             onEasingChange={value => { if (slideTransitionEasing === undefined) setDemoTransitionEasing(value); onSlideTransitionEasingChange?.(value); }}
           />
+          <ExportSection settings={exportSettings} targetName={exportTargetName ?? renderedSlideName}
+            onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
         </ScrollArea>
       )}
 
@@ -1847,7 +1938,8 @@ export function PropertyPanel({
           {/* Layout Guide — frames only (§5.6) */}
           {(isFrame || isAutoLayout) && <LayoutGuideSection />}
 
-          <ExportSection />
+          <ExportSection settings={exportSettings} targetName={exportTargetName ?? elementLabel[elementType]}
+            onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
         </ScrollArea>
       )}
 
