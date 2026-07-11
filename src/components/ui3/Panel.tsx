@@ -288,17 +288,20 @@ interface PanelActionBtnProps {
   label: string;
   active?: boolean;     // pressed/open — neutral grey
   selected?: boolean;   // toggle "on" — accent (selected) color variant
+  disabled?: boolean;
   onClick?: () => void;
 }
 
-export function PanelActionBtn({ icon, label, active, selected, onClick }: PanelActionBtnProps) {
+export function PanelActionBtn({ icon, label, active, selected, disabled = false, onClick }: PanelActionBtnProps) {
   return (
     <button
       aria-label={label}
+      disabled={disabled}
       onClick={onClick}
       className={clsx(
         "flex items-center justify-center size-[24px] rounded-c-md transition-colors",
-        selected ? "bg-c-bg-selected text-c-text-brand"
+        disabled ? "text-c-icon opacity-30 cursor-not-allowed"
+          : selected ? "bg-c-bg-selected text-c-text-brand"
           : active ? "bg-c-bg-secondary text-c-icon"
           : "text-c-icon hover:bg-c-bg-hover",
       )}

@@ -1,11 +1,12 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { clsx } from "clsx";
-import { SlidersHorizontal, Plus, Trash2, MonitorPlay, Clock, ArrowRight, ArrowDown, Type, SquareDashedMousePointer } from "lucide-react";
+import { SlidersHorizontal, Plus, Trash2, MonitorPlay, Clock, ArrowRight, ArrowDown, Type, SquareDashedMousePointer, GripVertical } from "lucide-react";
 import { PanelSection, PanelActionBtn, ScrollArea } from "./Panel";
 import { Dropdown } from "./Dropdown";
 import { ComboInput, NumericInput } from "./Input";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { Button } from "./Button";
+import { SegmentedControl } from "./SegmentedControl";
 
 // ─── Animate panel ──────────────────────────────────────────────────────────────
 // The "Animate" tab body. Two always-present sections (Slide transition · Object
@@ -20,13 +21,17 @@ type AnimKind = "In" | "Out" | "Action";
 
 export interface ObjectAnimationItem {
   id?: string;
+  elementId?: string;
   n: number;
   name: string;
   kind: AnimKind;
   duration: string;
   style?: string;
   buildDuration?: string;
+  direction?: "left" | "right" | "up" | "down";
   delivery?: string;
+  intensity?: "small" | "medium" | "large";
+  selected?: boolean;
 }
 export type ObjectAnimationPhase = "build-in" | "action" | "build-out";
 export interface ObjectAnimationSequenceSettings { start: "on-click" | "automatically"; delayMs: number; }
@@ -34,6 +39,11 @@ export interface ObjectAnimationCallbacks {
   onAdd?: (phase: ObjectAnimationPhase) => void;
   onRemove?: (id: string) => void;
   onDurationChange?: (id: string, durationMs: number) => void;
+  onStyleChange?: (id: string, style: string) => void;
+  onDirectionChange?: (id: string, direction: "left" | "right" | "up" | "down") => void;
+  onDeliveryChange?: (id: string, delivery: "all-at-once" | "by-object" | "by-word" | "by-character") => void;
+  onIntensityChange?: (id: string, intensity: "small" | "medium" | "large") => void;
+  onReorder?: (id: string, targetId: string, placement: "before" | "after" | "with") => void;
   onStartChange?: (start: ObjectAnimationSequenceSettings["start"]) => void;
   onDelayChange?: (delayMs: number) => void;
 }
@@ -186,6 +196,7 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
   anims: ObjectAnimationItem[]; callbacks?: ObjectAnimationCallbacks; settings?: ObjectAnimationSequenceSettings; addablePhases?: ObjectAnimationPhase[];
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [dragged, setDragged] = useState<string | null>(null);
   const phaseOptions: Array<{ value: ObjectAnimationPhase; label: string }> = [
     { value: "build-in", label: "Build in" }, { value: "action", label: "Action" }, { value: "build-out", label: "Build out" },
   ];
@@ -200,7 +211,7 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
       rightActions={
         <>
           <PanelActionBtn icon={<SquareDashedMousePointer size={16} strokeWidth={1.5} />} label="Select object" />
-          <PopoverMenu align="right" trigger={<PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add animation" />}>
+          <PopoverMenu align="right" trigger={<PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add animation" disabled={addablePhases.length === 0} />}>
             {addMenu}
           </PopoverMenu>
           <PanelActionBtn icon={<SlidersHorizontal size={16} strokeWidth={1.5} />} label="Object animation settings" />
@@ -215,21 +226,45 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
         <div className="px-[16px] pt-[3px] pb-[8px] flex flex-col gap-[8px]">
           {anims.map((a, i) => {
             const id = a.id ?? String(i);
-            return <div key={id}>
-              <div className={clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.045px] text-c-text-secondary mb-[2px]")}>{a.n}</div>
-              <AnimationCard
-                icon={<Type size={14} strokeWidth={1.5} />}
-                title={a.name}
-                badge={<><KindGlyph kind={a.kind} /><DurationPill duration={a.duration} kind={a.kind} /></>}
-                expanded={expanded === id}
-                onToggle={() => setExpanded(current => current === id ? null : id)}
-                onRemove={() => callbacks?.onRemove?.(id)}
-              >
-                <div className={clsx(FONT, "text-[11px] font-[550] leading-[16px] text-c-text")}>Build in</div>
-                <LabeledRow label="Style"><Dropdown value={a.style ?? "—"} fullWidth /></LabeledRow>
-                <LabeledRow label="Duration"><NumericInput value={Number.parseFloat(a.buildDuration ?? a.duration) * (a.buildDuration?.includes("ms") ? 1 : 1000)} min={0} suffix="ms" commitOnBlur className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} onChange={durationMs => callbacks?.onDurationChange?.(id, durationMs)} /></LabeledRow>
-                <LabeledRow label="Delivery"><Dropdown value={a.delivery ?? "—"} fullWidth /></LabeledRow>
-              </AnimationCard>
+            const phase = a.kind === "In" ? "build-in" : a.kind === "Out" ? "build-out" : "action";
+            const phaseLabel = phase === "build-in" ? "Build in" : phase === "build-out" ? "Build out" : "Action";
+            const styleOptions = phase === "build-in" ? ["fade-in", "move-in", "slide-in", "wipe-in"] : phase === "build-out" ? ["fade-out", "move-out", "slide-out", "wipe-out"] : ["pulse", "jiggle", "bounce", "shake"];
+            const directional = !!a.style && /^(move|slide|wipe)-/.test(a.style);
+            const styleLabels = Object.fromEntries(styleOptions.map(style => [style, style.split("-").map(word => word[0].toUpperCase() + word.slice(1)).join(" ")])) as Record<string, string>;
+            const deliveryLabels = { "all-at-once": "All at once", "by-object": "By object", "by-word": "By word", "by-character": "By character" };
+            const deliveryValue = Object.entries(deliveryLabels).find(([, label]) => label === a.delivery)?.[0] as keyof typeof deliveryLabels | undefined;
+            return <div key={id} className={clsx("group flex items-start gap-[4px] rounded-c-md", a.selected && "bg-c-bg-selected")}
+              onDragOver={event => { if (dragged && dragged !== id) { event.preventDefault(); event.dataTransfer.dropEffect = "move"; } }}
+              onDrop={event => {
+                event.preventDefault();
+                if (!dragged || dragged === id) return;
+                const rect = event.currentTarget.getBoundingClientRect();
+                const placement = event.clientX > rect.left + rect.width * 0.72 ? "with" : event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+                callbacks?.onReorder?.(dragged, id, placement);
+                setDragged(null);
+              }}>
+              <div className={clsx(FONT, "w-[16px] shrink-0 pt-[8px] text-center text-[9px] font-[450] leading-[14px] tracking-[0.045px] text-c-text-secondary")}>
+                <span className="group-hover:hidden">{a.n}</span>
+                <button type="button" draggable={!!callbacks?.onReorder} aria-label={`Drag ${a.name} animation`} className="hidden group-hover:flex size-[16px] items-center justify-center cursor-grab"
+                  onDragStart={event => { setDragged(id); event.dataTransfer.effectAllowed = "move"; }} onDragEnd={() => setDragged(null)}>
+                  <GripVertical size={14} />
+                </button>
+              </div>
+              <div className="min-w-0 flex-1"><AnimationCard
+                  icon={<Type size={14} strokeWidth={1.5} />}
+                  title={a.name}
+                  badge={<><KindGlyph kind={a.kind} /><DurationPill duration={a.duration} kind={a.kind} /></>}
+                  expanded={expanded === id}
+                  onToggle={() => setExpanded(current => current === id ? null : id)}
+                  onRemove={() => callbacks?.onRemove?.(id)}
+                >
+                  <div className={clsx(FONT, "text-[11px] font-[550] leading-[16px] text-c-text")}>{phaseLabel}</div>
+                  <LabeledRow label="Style"><ChoiceDropdown value={a.style ?? styleOptions[0]} options={styleOptions} labels={styleLabels} onChange={style => callbacks?.onStyleChange?.(id, style)} /></LabeledRow>
+                  <LabeledRow label="Duration"><NumericInput value={Number.parseFloat(a.buildDuration ?? a.duration) * (a.buildDuration?.includes("ms") ? 1 : 1000)} min={0} suffix="ms" commitOnBlur className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} onChange={durationMs => callbacks?.onDurationChange?.(id, durationMs)} /></LabeledRow>
+                  {directional && <LabeledRow label="Direction"><ChoiceDropdown value={a.direction ?? "left"} options={["left", "right", "up", "down"]} labels={{ left: phase === "build-out" ? "To left" : "From left", right: phase === "build-out" ? "To right" : "From right", up: phase === "build-out" ? "To top" : "From top", down: phase === "build-out" ? "To bottom" : "From bottom" }} onChange={direction => callbacks?.onDirectionChange?.(id, direction)} /></LabeledRow>}
+                  {deliveryValue && <LabeledRow label="Delivery"><ChoiceDropdown value={deliveryValue} options={["all-at-once", "by-object", "by-word", "by-character"]} labels={deliveryLabels} onChange={delivery => callbacks?.onDeliveryChange?.(id, delivery)} /></LabeledRow>}
+                  {phase === "action" && <LabeledRow label="Intensity"><SegmentedControl className="w-full" value={a.intensity ?? "medium"} segments={[{ value: "small", label: "Small" }, { value: "medium", label: "Medium" }, { value: "large", label: "Large" }]} onChange={value => callbacks?.onIntensityChange?.(id, value as "small" | "medium" | "large")} /></LabeledRow>}
+                </AnimationCard></div>
             </div>;
           })}
           <div className="flex flex-col gap-[8px] pt-[4px] border-t border-c-border">
