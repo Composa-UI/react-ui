@@ -51,6 +51,7 @@ export interface ElementStrokeSetting extends ElementFillSetting { weight: numbe
 export interface ElementEffectSetting { id: string; type: "Drop shadow" | "Inner shadow" | "Layer blur" | "Background blur"; visible: boolean; }
 export interface ElementLayoutGuideSetting { id: string; type: "Grid" | "Columns" | "Rows"; visible: boolean; size: number; }
 export interface ElementSelectionColorSetting { id: string; color: string; opacity: number; usageCount?: number; }
+export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; }
 export interface ElementTypographySettings {
   fontFamily: string; fontWeight: string; fontSize: number; lineHeight: number; letterSpacing: number;
   align: "left" | "center" | "right"; verticalAlign: "top" | "middle" | "bottom"; styleName?: string;
@@ -629,11 +630,11 @@ function StyleInput({ chit, value, onClick }: { chit: ReactNode; value: string; 
   );
 }
 
-function TypographySection({ value, onChange }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void }) {
+function TypographySection({ value, onChange, stylesAvailable }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean }) {
   const [internal, setInternal] = useState<ElementTypographySettings>({ fontFamily: "Inter", fontWeight: "Medium", fontSize: 11, lineHeight: 16, letterSpacing: 0, align: "left", verticalAlign: "top", styleName: "Title · 96/120" });
   const settings = value ?? internal;
   const update = (patch: Partial<ElementTypographySettings>) => { if (!value) setInternal(current => ({ ...current, ...patch })); onChange?.(patch); };
-  const hasStyle = !!settings.styleName;
+  const hasStyle = stylesAvailable && !!settings.styleName;
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
   const textAlignBtns: IconBtn[] = [
     { icon: <AlignLeft   size={S} strokeWidth={1.5} />, label: "Align left",   value: "left" },
@@ -649,9 +650,9 @@ function TypographySection({ value, onChange }: { value?: ElementTypographySetti
   return (
     <PanelSection
       title="Typography"
-      rightActions={
+      rightActions={stylesAvailable ? (
         <PanelActionBtn icon={<StylesIcon />} label="Text styles" />
-      }
+      ) : undefined}
     >
       {hasStyle ? (
         /* A text style is applied — only the style input + alignment row show */
@@ -706,9 +707,10 @@ function TypographySection({ value, onChange }: { value?: ElementTypographySetti
 
 type FillEntry = ElementFillSetting;
 
-function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove }: {
+function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities }: {
   entries?: FillEntry[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<FillEntry, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
+  capabilities: Required<InspectorCapabilities>;
 }) {
   const [internal, setInternal] = useState<FillEntry[]>([
     { id: "1", color: "#1e1e1e", opacity: 100, visible: true, label: "Black" },
@@ -728,9 +730,9 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove }
       muted={fills.length === 0}
       rightActions={
         <>
-          <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+          {capabilities.styles && <span className="opacity-0 group-hover:opacity-100 transition-opacity">
             <PanelActionBtn icon={<StylesIcon />} label="Styles" />
-          </span>
+          </span>}
           <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add fill" onClick={addFill} />
         </>
       }
@@ -761,6 +763,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove }
       ))}
 
       <ColorDialog
+        capabilities={capabilities}
         open={colorOpen}
         onClose={() => setColorOpen(false)}
         hex={fills.find(f => f.id === activeFill)?.color.replace("#", "") ?? "1e1e1e"}
@@ -772,9 +775,10 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove }
 
 // ─── Section: Stroke ──────────────────────────────────────────────────────────
 
-function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove }: {
+function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities }: {
   entries?: ElementStrokeSetting[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<ElementStrokeSetting, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
+  capabilities: Required<InspectorCapabilities>;
 }) {
   const [internal, setInternal] = useState<ElementStrokeSetting[]>([]);
   const strokes = entries ?? internal;
@@ -792,9 +796,9 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
       muted={strokes.length === 0}
       rightActions={
         <>
-          <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+          {capabilities.styles && <span className="opacity-0 group-hover:opacity-100 transition-opacity">
             <PanelActionBtn icon={<StylesIcon />} label="Styles" />
-          </span>
+          </span>}
           <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add stroke" onClick={add} />
         </>
       }
@@ -840,6 +844,7 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
       ))}
 
       <ColorDialog
+        capabilities={capabilities}
         open={colorOpen}
         onClose={() => setColorOpen(false)}
         hex={strokes.find(s => s.id === activeStroke)?.color.replace("#", "") ?? "000000"}
@@ -851,9 +856,10 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
 
 // ─── Section: Effects ─────────────────────────────────────────────────────────
 
-function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove }: {
+function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, stylesAvailable }: {
   entries?: ElementEffectSetting[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<ElementEffectSetting, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
+  stylesAvailable: boolean;
 }) {
   const [internal, setInternal] = useState<ElementEffectSetting[]>([]);
   const effects = entries ?? internal;
@@ -868,9 +874,9 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
       muted={effects.length === 0}
       rightActions={
         <>
-          <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+          {stylesAvailable && <span className="opacity-0 group-hover:opacity-100 transition-opacity">
             <PanelActionBtn icon={<StylesIcon />} label="Styles" />
-          </span>
+          </span>}
           <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add effect" onClick={add} />
         </>
       }
@@ -1033,10 +1039,11 @@ const DEMO_SELECTION_COLORS: ElementSelectionColorSetting[] = [
   { id: "demo-selection-6", color: "#9747FF", opacity: 100 },
 ];
 
-function SelectionColorsSection({ colors = DEMO_SELECTION_COLORS, onUpdate, onSelectAll }: {
+function SelectionColorsSection({ colors = DEMO_SELECTION_COLORS, onUpdate, onSelectAll, capabilities = { templates: true, styles: true, variables: true, libraries: true } }: {
   colors?: ElementSelectionColorSetting[];
   onUpdate?: (id: string, patch: Partial<Omit<ElementSelectionColorSetting, "id">>) => void;
   onSelectAll?: (id: string) => void;
+  capabilities?: Required<InspectorCapabilities>;
 }) {
   const [collapsed, setCollapsed] = useState(true);
   const [colorOpen, setColorOpen] = useState(false);
@@ -1071,13 +1078,13 @@ function SelectionColorsSection({ colors = DEMO_SELECTION_COLORS, onUpdate, onSe
           </div>
           {/* Reserved slot; actions reveal on this row's hover — no reflow (§5.8) */}
           <div className="shrink-0 flex items-center gap-[4px] opacity-0 group-hover/row:opacity-100 transition-opacity duration-100">
-            <PanelActionBtn icon={<StylesIcon />} label="Apply color style" />
+            {capabilities.styles && <PanelActionBtn icon={<StylesIcon />} label="Apply color style" />}
             <PanelActionBtn icon={<Crosshair size={16} strokeWidth={1.5} />} label={c.usageCount ? `Select all ${c.usageCount} using this color` : "Select all using this color"} onClick={() => onSelectAll?.(c.id)} />
           </div>
         </div>
       ))}
 
-      <ColorDialog key={active?.id ?? "selection-color"} open={colorOpen} onClose={() => setColorOpen(false)} hex={(active?.color ?? "#1e1e1e").replace(/^#/, "")} opacity={active?.opacity ?? 100}
+      <ColorDialog key={active?.id ?? "selection-color"} capabilities={capabilities} open={colorOpen} onClose={() => setColorOpen(false)} hex={(active?.color ?? "#1e1e1e").replace(/^#/, "")} opacity={active?.opacity ?? 100}
         onHexChange={hex => active && onUpdate?.(active.id, { color: `#${hex.replace(/^#/, "")}` })}
         onOpacityChange={opacity => active && onUpdate?.(active.id, { opacity })} />
     </PanelSection>
@@ -1364,6 +1371,7 @@ function SlideBackgroundSection({
   onTypeChange,
   onColorChange,
   onOpacityChange,
+  capabilities,
 }: {
   type?: SlideBackgroundType;
   color?: string;
@@ -1371,6 +1379,7 @@ function SlideBackgroundSection({
   onTypeChange?: (value: SlideBackgroundType) => void;
   onColorChange?: (value: string) => void;
   onOpacityChange?: (value: number) => void;
+  capabilities: Required<InspectorCapabilities>;
 }) {
   const [internalType, setInternalType] = useState<SlideBackgroundType>("solid");
   const [internalColor, setInternalColor] = useState("#1e1e1e");
@@ -1454,6 +1463,7 @@ function SlideBackgroundSection({
       )}
 
       <ColorDialog
+        capabilities={capabilities}
         open={colorOpen}
         onClose={() => setColorOpen(false)}
         fillType={fillType === "gradient" ? "linear" : fillType === "image" || fillType === "video" ? "image" : "solid"}
@@ -1614,6 +1624,8 @@ function ClipPlaybackSection({ speed = 1, onSpeedChange, controlled = false }: {
 // ─── PropertyPanel ────────────────────────────────────────────────────────────
 
 export interface PropertyPanelProps {
+  /** Host-owned feature availability; UI only hides unsupported entry points. */
+  capabilities?: InspectorCapabilities;
   /** Inspector mode. Defaults to "element" — the current selection inspector. */
   mode?: PanelMode;
   elementType?: ElementType;
@@ -1737,6 +1749,7 @@ function MultiplayerBar() {
 
 export function PropertyPanel(props: PropertyPanelProps) {
   const {
+  capabilities: capabilityOverrides,
   mode = "element",
   elementType = "text",
   multiSelect = false,
@@ -1814,6 +1827,12 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onDeleteClip,
   className,
   } = props;
+  const capabilities: Required<InspectorCapabilities> = {
+    templates: capabilityOverrides?.templates ?? true,
+    styles: capabilityOverrides?.styles ?? true,
+    variables: capabilityOverrides?.variables ?? true,
+    libraries: capabilityOverrides?.libraries ?? true,
+  };
   const [tab, setTab] = useState("design");
   const [demoSlideName, setDemoSlideName] = useState(slideName);
   const [demoSkipped, setDemoSkipped] = useState(slideSkipped);
@@ -1911,7 +1930,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           </div>
 
           {/* Slide template first, ahead of Timing (user's preferred order). */}
-          <TemplateStyleSection />
+          {capabilities.templates && <TemplateStyleSection />}
           <SlideTimingSection
             start={slideStart}
             end={slideStart + slideDuration}
@@ -1921,6 +1940,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onDurationChange={onSlideDurationChange}
           />
           <SlideBackgroundSection
+            capabilities={capabilities}
             type={slideBackgroundType}
             color={slideBackgroundColor}
             opacity={slideBackgroundOpacity}
@@ -1929,7 +1949,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onOpacityChange={onSlideBackgroundOpacityChange}
           />
           {/* Selection colors — reuse the existing element-mode section */}
-          <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} />
+          <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} capabilities={capabilities} />
           <SlideTransitionSection
             type={renderedTransitionType}
             direction={renderedTransitionDirection}
@@ -2048,15 +2068,15 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <AppearanceSection opacity={opacity} blendMode={blendMode} cornerRadius={cornerRadius} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} />
 
           {/* Typography — text only */}
-          {isText && <TypographySection value={typography} onChange={onTypographyChange} />}
+          {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} />}
 
           {/* Stackable sections */}
-          <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill} />
-          <StrokeSection entries={strokes} onAdd={onAddStroke} onUpdate={onUpdateStroke} onToggle={onToggleStroke} onReorder={onReorderStroke} onRemove={onRemoveStroke} />
-          <EffectsSection entries={effects} onAdd={onAddEffect} onUpdate={onUpdateEffect} onToggle={onToggleEffect} onReorder={onReorderEffect} onRemove={onRemoveEffect} />
+          <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill} capabilities={capabilities} />
+          <StrokeSection entries={strokes} onAdd={onAddStroke} onUpdate={onUpdateStroke} onToggle={onToggleStroke} onReorder={onReorderStroke} onRemove={onRemoveStroke} capabilities={capabilities} />
+          <EffectsSection entries={effects} onAdd={onAddEffect} onUpdate={onUpdateEffect} onToggle={onToggleEffect} onReorder={onReorderEffect} onRemove={onRemoveEffect} stylesAvailable={capabilities.styles} />
 
           {/* Selection Colors — multi-select only (§5.8), positioned right after Effects */}
-          {multiSelect && <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} />}
+          {multiSelect && <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} capabilities={capabilities} />}
 
           {/* Layout Guide — frames only (§5.6) */}
           {(isFrame || isAutoLayout) && <LayoutGuideSection entries={layoutGuides} onAdd={onAddLayoutGuide} onUpdate={onUpdateLayoutGuide} onRemove={onRemoveLayoutGuide} />}

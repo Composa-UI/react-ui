@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { clsx } from "clsx";
 import { Image, Pipette, Blend, Contrast, Plus, Minus, RotateCcw, Disc, Diamond, Search, LayoutGrid, ChevronDown } from "lucide-react";
 import { Modal, ModalHeader, ModalBody, ModalDivider, MODAL_WIDTHS } from "./Dialog";
@@ -20,6 +20,8 @@ export interface GradientStop {
   color: string;    // hex without #
   opacity: number;  // 0–100
 }
+
+export interface ColorDialogCapabilities { styles?: boolean; variables?: boolean; libraries?: boolean; }
 
 interface ColorDialogProps {
   open: boolean;
@@ -43,6 +45,7 @@ interface ColorDialogProps {
    * variable id) so they can BIND rather than copy; without a handler the
    * dialog applies the hex like any picker change. */
   onSelectLibraryColor?: (color: LibraryColor, group: LibraryGroup) => void;
+  capabilities?: ColorDialogCapabilities;
   /** "On this page" swatch hexes (with #). Defaults to demo swatches. */
   swatches?: string[];
   imageExposure?: number;
@@ -343,6 +346,7 @@ export function ColorDialog({
   onStopsChange,
   libraries = MOCK_LIBRARY,
   onSelectLibraryColor,
+  capabilities,
   swatches = ["#383838", "#f5f5f5", "#1e1e1e", "#ffffff", "#0d99ff", "#ff24bd"],
   imageExposure = 0,
   imageContrast = 0,
@@ -354,6 +358,10 @@ export function ColorDialog({
 }: ColorDialogProps) {
   const [fillType, setFillType] = useState<FillType>(fillTypeProp ?? "solid");
   const [activeTab, setActiveTab] = useState("custom");
+  const stylesAvailable = capabilities?.styles ?? true;
+  const variablesAvailable = capabilities?.variables ?? true;
+  const librariesAvailable = capabilities?.libraries ?? true;
+  useEffect(() => { if (!librariesAvailable && activeTab === "libraries") setActiveTab("custom"); }, [activeTab, librariesAvailable]);
   const [hue,     setHue]     = useState(hueProp);
   const [opacity, setOpacity] = useState(opacityProp);
   const [hex,     setHex]     = useState(hexProp);
@@ -421,7 +429,7 @@ export function ColorDialog({
       onChange={setActiveTab}
       tabs={[
         { value: "custom",    label: "Custom" },
-        { value: "libraries", label: "Libraries" },
+        ...(librariesAvailable ? [{ value: "libraries", label: "Libraries" }] : []),
       ]}
     />
   );
@@ -435,11 +443,11 @@ export function ColorDialog({
         title="Color"
         tabs={headerTabs}
         onClose={onClose}
-        actions={
-          <Btn label="New style or variable">
+        actions={(stylesAvailable || variablesAvailable) ? (
+          <Btn label={stylesAvailable && variablesAvailable ? "New style or variable" : stylesAvailable ? "New style" : "New variable"}>
             <Plus size={14} strokeWidth={1.5} />
           </Btn>
-        }
+        ) : undefined}
       />
 
       {/* ── Custom tab: toolbar + body ───────────────────────────────────── */}
@@ -655,7 +663,7 @@ export function ColorDialog({
       )}
 
       {/* ── Libraries tab ────────────────────────────────────────────────── */}
-      {activeTab === "libraries" && (
+      {librariesAvailable && activeTab === "libraries" && (
         <ModalBody scrollable={false} className="flex flex-col overflow-hidden">
           <LibrariesTab
             groups={libraries}
