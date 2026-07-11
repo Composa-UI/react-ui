@@ -1045,33 +1045,13 @@ function SelectionColorsSection({ colors = DEMO_SELECTION_COLORS, onUpdate, onSe
   onSelectAll?: (id: string) => void;
   capabilities?: Required<InspectorCapabilities>;
 }) {
-  const [collapsed, setCollapsed] = useState(true);
   const [colorOpen, setColorOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const active = colors.find(color => color.id === activeId);
-  const maxChips = 4;
   return (
-    <PanelSection
-      title="Selection colors"
-      onHeaderClick={() => setCollapsed(v => !v)}
-      rightActions={collapsed && colors.length ? (
-        /* Collapsed only: color chips + overflow on the right (no chevron). Click to expand. */
-        <button
-          onClick={() => setCollapsed(false)}
-          aria-label="Expand selection colors"
-          className="flex items-center gap-[3px]"
-        >
-          {colors.slice(0, maxChips).map(c => (
-            <span key={c.id} className="size-[16px] rounded-[3px] ring-1 ring-inset ring-[rgba(0,0,0,0.1)]" style={{ background: c.color }} />
-          ))}
-          {colors.length > maxChips && (
-            <span className={clsx(FONT, "text-[10px] font-[550] text-c-text-secondary ml-[1px]")}>+{colors.length - maxChips}</span>
-          )}
-        </button>
-      ) : undefined}
-    >
+    <PanelSection title="Selection colors">
       {colors.length === 0 && <div className={clsx(FONT, "h-[32px] flex items-center px-[16px] text-[11px] text-c-text-secondary")}>No shared colors</div>}
-      {!collapsed && colors.map(c => (
+      {colors.map(c => (
         <div key={c.id} className="group/row flex items-center px-[16px] h-[32px] gap-[8px]">
           <div className="flex-1 min-w-0">
             <ColorInput fullWidth color={c.color} opacity={c.opacity} onSwatchClick={() => { setActiveId(c.id); setColorOpen(true); }} />

@@ -131,6 +131,12 @@ export default function Playground() {
     );
   }
 
+  if (view === "selection-colors-empty") {
+    return <div style={{ height: "100vh", width: "100vw", display: "flex", justifyContent: "flex-end", background: "#e6e6e6" }}>
+      <PropertyPanel multiSelect selectionColors={[]} />
+    </div>;
+  }
+
   if (view === "overlay-theme-contract") {
     return (
       <TooltipProvider>
