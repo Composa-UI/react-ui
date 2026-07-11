@@ -91,7 +91,7 @@ export function SlideListItem({ item, tabIndex = 0, onNavigate, onFocus, itemRef
       {/* selection tint — deliberately does NOT match the thumbnail's right inset;
           it sits a few px further out so the tint is visible as a margin/frame
           around the thumbnail rather than the two edges coinciding (touching) */}
-      {(item.selected || item.inView) && <div className={clsx(
+      {(item.selected || item.inView) && <div data-slide-highlight={item.selected ? "selected" : "in-view"} className={clsx(
         "absolute inset-y-0 left-[8px] right-[8px] rounded-[5px]",
         item.selected ? "bg-c-bg-selected" : "bg-c-bg-selected/50",
       )} />}
