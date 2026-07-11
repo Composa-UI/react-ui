@@ -18,7 +18,7 @@ const FONT = "font-[family-name:var(--composa-font-family)]";
 
 type AnimKind = "In" | "Out" | "Action";
 
-interface ObjAnim {
+export interface ObjectAnimationItem {
   n: number;
   name: string;
   kind: AnimKind;
@@ -28,7 +28,7 @@ interface ObjAnim {
   delivery?: string;
 }
 
-const DEMO_ANIMS: ObjAnim[] = [
+const DEMO_ANIMS: ObjectAnimationItem[] = [
   { n: 1, name: "Motto", kind: "In",     duration: "0.6s", style: "Drift & Scale", buildDuration: "600ms", delivery: "By object" },
   { n: 2, name: "Body",  kind: "Out",    duration: "0.6s" },
   { n: 3, name: "Body",  kind: "Action", duration: "0.6s" },
@@ -135,7 +135,7 @@ function DurationPill({ duration, kind }: { duration: string; kind: AnimKind }) 
   );
 }
 
-function ObjectAnimationsSection({ anims }: { anims: ObjAnim[] }) {
+function ObjectAnimationsSection({ anims }: { anims: ObjectAnimationItem[] }) {
   const [expanded, setExpanded] = useState<number | null>(anims.length ? 0 : null);
   const addMenu = (close: () => void) => (
     <Menu minWidth={140}>
@@ -185,7 +185,7 @@ function ObjectAnimationsSection({ anims }: { anims: ObjAnim[] }) {
   );
 }
 
-export function AnimatePanel({ anims = DEMO_ANIMS, transition }: { anims?: ObjAnim[]; transition?: ReactNode }) {
+export function AnimatePanel({ anims = DEMO_ANIMS, transition }: { anims?: ObjectAnimationItem[]; transition?: ReactNode }) {
   return (
     <ScrollArea>
       {transition ?? <SlideTransitionSection />}

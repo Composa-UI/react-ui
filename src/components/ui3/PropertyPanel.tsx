@@ -1639,6 +1639,8 @@ export interface PropertyPanelProps {
   selectionColors?: ElementSelectionColorSetting[];
   onUpdateSelectionColor?: (id: string, patch: Partial<Omit<ElementSelectionColorSetting, "id">>) => void;
   onSelectAllUsingColor?: (id: string) => void;
+  /** Controlled object-animation rows. Pass an empty list for the canonical null state. */
+  objectAnimations?: import("./AnimatePanel").ObjectAnimationItem[];
   /** Project mode keeps the name a static label in V1. */
   projectName?: string;
   projectWidth?: number;
@@ -1747,7 +1749,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   strokes, onAddStroke, onUpdateStroke, onToggleStroke, onReorderStroke, onRemoveStroke,
   effects, onAddEffect, onUpdateEffect, onToggleEffect, onReorderEffect, onRemoveEffect,
   layoutGuides, onAddLayoutGuide, onUpdateLayoutGuide, onRemoveLayoutGuide,
-  selectionColors, onUpdateSelectionColor, onSelectAllUsingColor,
+  selectionColors, onUpdateSelectionColor, onSelectAllUsingColor, objectAnimations,
   projectName = "Project",
   projectWidth = 1920,
   projectHeight = 1080,
@@ -1896,13 +1898,13 @@ export function PropertyPanel(props: PropertyPanelProps) {
               value={tab}
               onChange={setTab}
               tabs={[
-                { value: "design", label: "Design" },
-                { value: "animate", label: "Animate" },
+                { value: "design", label: "Design", panelId: "slide-design-panel" },
+                { value: "animate", label: "Animate", panelId: "slide-animate-panel" },
               ]}
             />
           </div>
 
-          {tab === "design" && <ScrollArea>
+          {tab === "design" && <div role="tabpanel" id="slide-design-panel" aria-labelledby="slide-design-panel-tab" className="contents"><ScrollArea>
           {/* Panel header — inline-editable slide name + options IconButton */}
           <div className="h-[40px] flex items-center gap-[8px] px-[16px] border-b border-c-border">
             <div className="flex-1 min-w-0">
@@ -1945,9 +1947,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} capabilities={capabilities} />
           <ExportSection settings={exportSettings} targetName={exportTargetName ?? renderedSlideName}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
-          </ScrollArea>}
+          </ScrollArea></div>}
 
-          {tab === "animate" && <AnimatePanel transition={<SlideTransitionSection
+          {tab === "animate" && <div role="tabpanel" id="slide-animate-panel" aria-labelledby="slide-animate-panel-tab" className="contents"><AnimatePanel anims={objectAnimations} transition={<SlideTransitionSection
               type={renderedTransitionType}
               direction={renderedTransitionDirection}
               duration={renderedTransitionDuration}
@@ -1956,7 +1958,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
               onDirectionChange={value => { if (slideTransitionDirection === undefined) setDemoTransitionDirection(value); onSlideTransitionDirectionChange?.(value); }}
               onDurationChange={value => { if (slideTransitionDuration === undefined) setDemoTransitionDuration(value); onSlideTransitionDurationChange?.(value); }}
               onEasingChange={value => { if (slideTransitionEasing === undefined) setDemoTransitionEasing(value); onSlideTransitionEasingChange?.(value); }}
-            />} />}
+            />} /></div>}
         </>
       )}
 
@@ -2001,15 +2003,15 @@ export function PropertyPanel(props: PropertyPanelProps) {
           value={tab}
           onChange={setTab}
           tabs={[
-            { value: "design",  label: "Design" },
-            { value: "animate", label: "Animate" },
+            { value: "design",  label: "Design", panelId: "element-design-panel" },
+            { value: "animate", label: "Animate", panelId: "element-animate-panel" },
           ]}
         />
       </div>
 
       {/* Design tab content */}
       {tab === "design" && (
-        <ScrollArea>
+        <div role="tabpanel" id="element-design-panel" aria-labelledby="element-design-panel-tab" className="contents"><ScrollArea>
           {/* Element type label */}
           <div className="h-[40px] flex items-center px-[16px] border-b border-c-border">
             <span className={clsx(FONT, "text-[11px] font-[550] text-c-text")}>
@@ -2078,11 +2080,11 @@ export function PropertyPanel(props: PropertyPanelProps) {
 
           <ExportSection settings={exportSettings} targetName={exportTargetName ?? elementLabel[elementType]}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
-        </ScrollArea>
+        </ScrollArea></div>
       )}
 
       {/* Animate tab — the animation panel */}
-      {tab === "animate" && <AnimatePanel />}
+      {tab === "animate" && <div role="tabpanel" id="element-animate-panel" aria-labelledby="element-animate-panel-tab" className="contents"><AnimatePanel anims={objectAnimations} /></div>}
 
       {/* Prototype placeholder */}
       {tab === "prototype" && (

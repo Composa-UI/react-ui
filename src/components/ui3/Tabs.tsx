@@ -10,6 +10,7 @@ interface Tab {
   value: string;
   label: string;
   icon?: ReactNode;
+  panelId?: string;
 }
 
 interface TabsProps {
@@ -28,14 +29,31 @@ export function Tabs({ tabs, value, defaultValue, onChange, className }: TabsPro
     <div role="tablist" className={clsx("flex items-start gap-[4px]", className)}>
       {tabs.map(tab => {
         const isActive = tab.value === selected;
+        const activate = () => {
+          if (value === undefined) setInternal(tab.value);
+          onChange?.(tab.value);
+        };
         return (
           <button
             key={tab.value}
             role="tab"
+            id={tab.panelId ? `${tab.panelId}-tab` : undefined}
+            aria-controls={tab.panelId}
             aria-selected={isActive}
-            onClick={() => {
-              if (!value) setInternal(tab.value);
-              onChange?.(tab.value);
+            tabIndex={isActive ? 0 : -1}
+            onClick={activate}
+            onKeyDown={event => {
+              const currentIndex = tabs.indexOf(tab);
+              const nextIndex = event.key === "ArrowRight" ? (currentIndex + 1) % tabs.length
+                : event.key === "ArrowLeft" ? (currentIndex - 1 + tabs.length) % tabs.length
+                : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : -1;
+              if (nextIndex < 0) return;
+              event.preventDefault();
+              const next = tabs[nextIndex];
+              if (value === undefined) setInternal(next.value);
+              onChange?.(next.value);
+              const buttons = event.currentTarget.parentElement?.querySelectorAll<HTMLElement>('[role="tab"]');
+              buttons?.[nextIndex]?.focus();
             }}
             className={clsx(
               "relative flex gap-[4px] h-[24px] items-center px-[8px] rounded-c-md",
