@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PropertyPanel, type ClipSpeed, type InspectorExportSetting, type ProjectFrameRate, type SlideBackgroundType, type SlideTransitionDirection, type SlideTransitionEasing, type SlideTransitionType } from "./components/ui3/PropertyPanel";
+import { PropertyPanel, type ClipSpeed, type ElementEffectSetting, type ElementFillSetting, type ElementLayoutGuideSetting, type ElementLayoutSettings, type ElementStrokeSetting, type ElementTypographySettings, type InspectorExportSetting, type ProjectFrameRate, type SlideBackgroundType, type SlideTransitionDirection, type SlideTransitionEasing, type SlideTransitionType } from "./components/ui3/PropertyPanel";
 import SlidesTemplate from "./imports/SlidesTemplate";
 import { SlidesPanel, type SlideData } from "./components/ui3/SlidesPanel";
 import { SlideInspector } from "./components/ui3/SlideInspector";
@@ -58,6 +58,16 @@ export default function Playground() {
     { id: "frame", name: "Hero", type: "frame", children: [{ id: "title", name: "Title", type: "text" }] },
     { id: "image", name: "Cover", type: "image", locked: true },
   ]);
+  const [elementContract, setElementContract] = useState<{
+    typography: ElementTypographySettings; layout: ElementLayoutSettings; fills: ElementFillSetting[]; strokes: ElementStrokeSetting[]; effects: ElementEffectSetting[]; guides: ElementLayoutGuideSetting[];
+  }>({
+    typography: { fontFamily: "Inter", fontWeight: "Medium", fontSize: 48, lineHeight: 58, letterSpacing: 0, align: "left", verticalAlign: "middle" },
+    layout: { mode: "vertical", gap: 8, padding: { top: 16, right: 16, bottom: 16, left: 16 }, align: "mc", widthMode: "fixed", heightMode: "hug", clipsContent: true },
+    fills: [{ id: "fill-1", color: "#1e1e1e", opacity: 100, visible: true }],
+    strokes: [{ id: "stroke-1", color: "#0d99ff", opacity: 100, visible: true, weight: 1, align: "inside" }],
+    effects: [{ id: "effect-1", type: "Drop shadow", visible: true }],
+    guides: [{ id: "guide-1", type: "Grid", visible: true, size: 8 }],
+  });
   const contractAssets: AssetItem[] = [
     { id: "asset-image", name: "cover.png", kind: "image", tint: "linear-gradient(135deg,#7c5cff,#ff6ac1)" },
     { id: "asset-video", name: "intro.mp4", kind: "video", tint: "linear-gradient(135deg,#111827,#374151)", duration: "0:24" },
@@ -189,6 +199,17 @@ export default function Playground() {
         onReorder={(sourceId, targetId, position) => console.info("Reorder", sourceId, targetId, position)}
         onReparent={(sourceId, parentId) => console.info("Reparent", sourceId, parentId)} />
       <div style={{ flex: 1 }} />
+    </div>;
+  }
+
+  if (view === "element-contract") {
+    return <div style={{ height: "100vh", width: "100vw", display: "flex", gap: 20, justifyContent: "flex-end", background: "#e6e6e6" }}>
+      <PropertyPanel elementType="text" typography={elementContract.typography} onTypographyChange={patch => setElementContract(value => ({ ...value, typography: { ...value.typography, ...patch } }))}
+        fills={elementContract.fills} onUpdateFill={(id, patch) => setElementContract(value => ({ ...value, fills: value.fills.map(item => item.id === id ? { ...item, ...patch } : item) }))}
+        strokes={elementContract.strokes} onUpdateStroke={(id, patch) => setElementContract(value => ({ ...value, strokes: value.strokes.map(item => item.id === id ? { ...item, ...patch } : item) }))}
+        effects={elementContract.effects} onUpdateEffect={(id, patch) => setElementContract(value => ({ ...value, effects: value.effects.map(item => item.id === id ? { ...item, ...patch } : item) }))} />
+      <PropertyPanel elementType="frame-auto" layout={elementContract.layout} onLayoutChange={patch => setElementContract(value => ({ ...value, layout: { ...value.layout, ...patch } }))}
+        layoutGuides={elementContract.guides} onUpdateLayoutGuide={(id, patch) => setElementContract(value => ({ ...value, guides: value.guides.map(item => item.id === id ? { ...item, ...patch } : item) }))} />
     </div>;
   }
 

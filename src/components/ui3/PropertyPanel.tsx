@@ -46,6 +46,19 @@ export type ClipSpeed = 0.25 | 0.5 | 0.75 | 1 | 1.25 | 1.5 | 2 | 4;
 export type ExportFormat = "PNG" | "JPG";
 export interface InspectorExportSetting { id: string; scale: number; suffix: string; format: ExportFormat; }
 export type ProjectFrameRate = 24 | 25 | 30 | 60;
+export interface ElementFillSetting { id: string; color: string; opacity: number; visible: boolean; label?: string; }
+export interface ElementStrokeSetting extends ElementFillSetting { weight: number; align: "inside" | "center" | "outside"; }
+export interface ElementEffectSetting { id: string; type: "Drop shadow" | "Inner shadow" | "Layer blur" | "Background blur"; visible: boolean; }
+export interface ElementLayoutGuideSetting { id: string; type: "Grid" | "Columns" | "Rows"; visible: boolean; size: number; }
+export interface ElementTypographySettings {
+  fontFamily: string; fontWeight: string; fontSize: number; lineHeight: number; letterSpacing: number;
+  align: "left" | "center" | "right"; verticalAlign: "top" | "middle" | "bottom"; styleName?: string;
+}
+export interface ElementLayoutSettings {
+  mode: "none" | "horizontal" | "vertical" | "wrap"; gap: number;
+  padding: { top: number; right: number; bottom: number; left: number };
+  align: string; widthMode: "fixed" | "hug" | "fill"; heightMode: "fixed" | "hug" | "fill"; clipsContent: boolean;
+}
 
 type BlendMode = string;
 
@@ -275,6 +288,7 @@ interface LayoutFrameProps {
   clipContent?: boolean;
   onWidthChange?: (v: number) => void;
   onHeightChange?: (v: number) => void;
+  onClipContentChange?: (value: boolean) => void;
   /** Auto-layout is reached from here two ways: the "+" button, or moving Flow
    * off its first ("Freeform") option. Both call this. */
   onEnableAutoLayout?: () => void;
@@ -283,7 +297,7 @@ interface LayoutFrameProps {
 function LayoutFrameSection({
   width = 0, height = 0, cornerRadius = 0,
   clipContent = false,
-  onWidthChange, onHeightChange,
+  onWidthChange, onHeightChange, onClipContentChange,
   onEnableAutoLayout,
 }: LayoutFrameProps) {
   const [lockAspect, setLockAspect] = useState(false);
@@ -339,7 +353,7 @@ function LayoutFrameSection({
 
       {/* Clip content */}
       <PanelFullRow height={28}>
-        <Checkbox defaultChecked={clipContent} label="Clip content" />
+        <Checkbox checked={onClipContentChange ? clipContent : undefined} defaultChecked={clipContent} onChange={onClipContentChange} label="Clip content" />
       </PanelFullRow>
     </PanelSection>
   );
@@ -355,6 +369,13 @@ interface LayoutAutoProps {
   paddingTop?: number; paddingRight?: number;
   paddingBottom?: number; paddingLeft?: number;
   alignValue?: string;
+  clipContent?: boolean;
+  onFlowChange?: (value: ElementLayoutSettings["mode"]) => void;
+  onGapChange?: (value: number) => void;
+  onPaddingChange?: (value: ElementLayoutSettings["padding"]) => void;
+  onAlignChange?: (value: string) => void;
+  onClipContentChange?: (value: boolean) => void;
+  onSizingModeChange?: (axis: "width" | "height", value: "fixed" | "hug" | "fill") => void;
   /** Flow's first (Freeform) option means "not auto-layout" — selecting it
    * reverts to the plain Layout section, symmetric with how Layout's Flow
    * reaches auto-layout by moving off its own first option. */
@@ -367,11 +388,14 @@ function LayoutAutoSection({
   gap = 0,
   paddingTop = 16, paddingRight = 0, paddingBottom = 8, paddingLeft = 0,
   alignValue = "mc",
+  clipContent = false,
+  onFlowChange, onGapChange, onPaddingChange, onAlignChange, onClipContentChange, onSizingModeChange,
   onDisableAutoLayout,
 }: LayoutAutoProps) {
   const [lockAspect, setLockAspect] = useState(false);
   const [flow, setFlow] = useState("v");
   const [align, setAlign] = useState(alignValue);
+  const renderedAlign = onAlignChange ? alignValue : align;
   const [indivPadding, setIndivPadding] = useState(false);
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
 
@@ -385,6 +409,7 @@ function LayoutAutoSection({
 
   const handleFlowChange = (v: string) => {
     setFlow(v);
+    onFlowChange?.(v === "h" ? "horizontal" : v === "v" ? "vertical" : v as "none" | "wrap");
     if (v === "none") onDisableAutoLayout?.();
   };
 
@@ -405,8 +430,8 @@ function LayoutAutoSection({
           control doesn't change shape between the two Layout variants */}
       <PanelFieldRow
         label="Dimensions"
-        left={<ComboInput iconLead={<span className={FONT}>W</span>} value={String(width)} className="w-full" />}
-        right={<ComboInput iconLead={<span className={FONT}>H</span>} value={String(height)} className="w-full" />}
+        left={<ComboInput iconLead={<span className={FONT}>W</span>} value={String(width)} onDropdownClick={() => onSizingModeChange?.("width", widthMode === "fixed" ? "hug" : widthMode === "hug" ? "fill" : "fixed")} className="w-full" />}
+        right={<ComboInput iconLead={<span className={FONT}>H</span>} value={String(height)} onDropdownClick={() => onSizingModeChange?.("height", heightMode === "fixed" ? "hug" : heightMode === "hug" ? "fill" : "fixed")} className="w-full" />}
         rightAction={
           <PanelActionBtn
             icon={lockAspect ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />}
@@ -425,14 +450,14 @@ function LayoutAutoSection({
         <div className="flex items-start gap-[8px]">
           <div className="shrink-0">
             <div className={subLabel}>Alignment</div>
-            <AlignmentGrid value={align} onChange={setAlign} />
+            <AlignmentGrid value={renderedAlign} onChange={value => { setAlign(value); onAlignChange?.(value); }} />
           </div>
           <div className="flex-1 min-w-0">
             <div className={subLabel}>Gap</div>
             <div className="flex flex-col gap-[4px]">
               <NumericInput
                 iconLead={<span className={FONT}>{"]·["}</span>}
-                defaultValue={gap} min={0} suffix="px"
+                value={onGapChange ? gap : undefined} defaultValue={gap} onChange={onGapChange} min={0} suffix="px"
               />
               <Dropdown value="Auto" fullWidth />
             </div>
@@ -458,10 +483,10 @@ function LayoutAutoSection({
           // aligned (not centered) since the field block is two rows tall here.
           <div className="flex items-start gap-[4px]">
             <div className="grid grid-cols-2 gap-[4px] flex-1 min-w-0">
-              <NumericInput iconLead={<span className={FONT}>↑</span>} defaultValue={paddingTop}    min={0} />
-              <NumericInput iconLead={<span className={FONT}>→</span>} defaultValue={paddingRight}  min={0} />
-              <NumericInput iconLead={<span className={FONT}>↓</span>} defaultValue={paddingBottom} min={0} />
-              <NumericInput iconLead={<span className={FONT}>←</span>} defaultValue={paddingLeft}   min={0} />
+              <NumericInput iconLead={<span className={FONT}>↑</span>} value={onPaddingChange ? paddingTop : undefined} defaultValue={paddingTop} onChange={top => onPaddingChange?.({ top, right: paddingRight, bottom: paddingBottom, left: paddingLeft })} min={0} />
+              <NumericInput iconLead={<span className={FONT}>→</span>} value={onPaddingChange ? paddingRight : undefined} defaultValue={paddingRight} onChange={right => onPaddingChange?.({ top: paddingTop, right, bottom: paddingBottom, left: paddingLeft })} min={0} />
+              <NumericInput iconLead={<span className={FONT}>↓</span>} value={onPaddingChange ? paddingBottom : undefined} defaultValue={paddingBottom} onChange={bottom => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom, left: paddingLeft })} min={0} />
+              <NumericInput iconLead={<span className={FONT}>←</span>} value={onPaddingChange ? paddingLeft : undefined} defaultValue={paddingLeft} onChange={left => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom: paddingBottom, left })} min={0} />
             </div>
             <PanelActionBtn
               icon={<Maximize size={16} strokeWidth={1.5} />}
@@ -473,10 +498,10 @@ function LayoutAutoSection({
         ) : (
           <div className="flex items-center gap-[4px]">
             <div className="flex-1 min-w-0">
-              <NumericInput iconLead={<span className={FONT}>↕</span>} defaultValue={paddingTop} min={0} />
+              <NumericInput iconLead={<span className={FONT}>↕</span>} value={onPaddingChange ? paddingTop : undefined} defaultValue={paddingTop} onChange={vertical => onPaddingChange?.({ top: vertical, right: paddingRight, bottom: vertical, left: paddingLeft })} min={0} />
             </div>
             <div className="flex-1 min-w-0">
-              <NumericInput iconLead={<span className={FONT}>↔</span>} defaultValue={paddingLeft} min={0} />
+              <NumericInput iconLead={<span className={FONT}>↔</span>} value={onPaddingChange ? paddingLeft : undefined} defaultValue={paddingLeft} onChange={horizontal => onPaddingChange?.({ top: paddingTop, right: horizontal, bottom: paddingBottom, left: horizontal })} min={0} />
             </div>
             <PanelActionBtn
               icon={<Maximize size={16} strokeWidth={1.5} />}
@@ -489,7 +514,7 @@ function LayoutAutoSection({
 
       {/* Clip content */}
       <PanelFullRow height={28}>
-        <Checkbox defaultChecked={false} label="Clip content" />
+        <Checkbox checked={onClipContentChange ? clipContent : undefined} defaultChecked={clipContent} onChange={onClipContentChange} label="Clip content" />
       </PanelFullRow>
     </PanelSection>
   );
@@ -500,15 +525,25 @@ function LayoutAutoSection({
 interface AppearanceSectionProps {
   opacity?: number;
   blendMode?: BlendMode;
+  cornerRadius?: number | { topLeft: number; topRight: number; bottomLeft: number; bottomRight: number };
   onOpacityChange?: (v: number) => void;
+  onBlendModeChange?: (value: BlendMode) => void;
+  onCornerRadiusChange?: (value: AppearanceSectionProps["cornerRadius"]) => void;
 }
 
 function AppearanceSection({
-  opacity = 100, blendMode = "Pass through", onOpacityChange,
+  opacity = 100, blendMode = "Pass through", cornerRadius = 0, onOpacityChange, onBlendModeChange, onCornerRadiusChange,
 }: AppearanceSectionProps) {
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
-  const [indivCorners, setIndivCorners] = useState(false);
+  const [indivCorners, setIndivCorners] = useState(typeof cornerRadius === "object");
   const [blend, setBlend] = useState<BlendMode>(blendMode);
+  const [internalCornerRadius, setInternalCornerRadius] = useState(cornerRadius);
+  const renderedBlend = onBlendModeChange ? blendMode : blend;
+  const renderedCornerRadius = onCornerRadiusChange ? cornerRadius : internalCornerRadius;
+  const corners = typeof renderedCornerRadius === "number" ? { topLeft: renderedCornerRadius, topRight: renderedCornerRadius, bottomLeft: renderedCornerRadius, bottomRight: renderedCornerRadius } : renderedCornerRadius;
+  const setBlendValue = (value: BlendMode) => { if (!onBlendModeChange) setBlend(value); onBlendModeChange?.(value); };
+  const setCornerValue = (value: NonNullable<AppearanceSectionProps["cornerRadius"]>) => { if (!onCornerRadiusChange) setInternalCornerRadius(value); onCornerRadiusChange?.(value); };
+  const cornerKeys = ["topLeft", "topRight", "bottomLeft", "bottomRight"] as const;
   const cornerGlyphs = ["┌", "┐", "└", "┘"]; // TL TR BL BR
   return (
     <PanelSection
@@ -519,9 +554,9 @@ function AppearanceSection({
           {/* Blend mode — dual-tone droplet; opens the grouped blend menu */}
           <PopoverMenu
             align="right"
-            trigger={<PanelActionBtn icon={<BlendDroplet size={16} />} label="Blend mode" active={blend !== "Pass through"} />}
+            trigger={<PanelActionBtn icon={<BlendDroplet size={16} />} label="Blend mode" active={renderedBlend !== "Pass through"} />}
           >
-            {blendMenu(blend, setBlend)}
+            {blendMenu(renderedBlend, setBlendValue)}
           </PopoverMenu>
         </>
       }
@@ -534,7 +569,7 @@ function AppearanceSection({
         </div>
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Corner radius</div>
-          <NumericInput iconLead={<Maximize size={11} strokeWidth={1.5} />} defaultValue={0} min={0} disabled={indivCorners} />
+          <NumericInput iconLead={<Maximize size={11} strokeWidth={1.5} />} value={corners.topLeft} onChange={setCornerValue} min={0} disabled={indivCorners} />
         </div>
         <PanelActionBtn icon={<Maximize size={16} strokeWidth={1.5} />} label="Independent corners" selected={indivCorners} onClick={() => setIndivCorners(v => !v)} />
       </div>
@@ -546,7 +581,7 @@ function AppearanceSection({
             <div key={ri} className="flex items-center gap-[8px]">
               {rowPair.map(i => (
                 <div key={i} className="flex-1 min-w-0">
-                  <NumericInput iconLead={<span className={clsx(FONT, "text-[11px]")}>{cornerGlyphs[i]}</span>} defaultValue={0} min={0} />
+                  <NumericInput iconLead={<span className={clsx(FONT, "text-[11px]")}>{cornerGlyphs[i]}</span>} value={corners[cornerKeys[i]]} onChange={value => setCornerValue({ ...corners, [cornerKeys[i]]: value })} min={0} />
                 </div>
               ))}
               <div className="shrink-0 min-w-[24px]" />
@@ -556,14 +591,14 @@ function AppearanceSection({
       )}
 
       {/* Blend mode — only shown when not the default "Pass through"; leading droplet, opens the menu */}
-      {blend !== "Pass through" && (
+      {renderedBlend !== "Pass through" && (
       <div className="pl-[16px] pr-[16px] pt-[6px] pb-[8px]">
         <div className={subLabel}>Blend mode</div>
         <div className="flex items-center gap-[8px]">
-          <PopoverMenu className="flex-1 min-w-0" trigger={<Dropdown value={blend} fullWidth leadingIcon={<BlendDroplet size={16} />} />}>
-            {blendMenu(blend, setBlend)}
+          <PopoverMenu className="flex-1 min-w-0" trigger={<Dropdown value={renderedBlend} fullWidth leadingIcon={<BlendDroplet size={16} />} />}>
+            {blendMenu(renderedBlend, setBlendValue)}
           </PopoverMenu>
-          <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove blend mode" onClick={() => setBlend("Pass through")} />
+          <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove blend mode" onClick={() => setBlendValue("Pass through")} />
         </div>
       </div>
       )}
@@ -587,8 +622,11 @@ function StyleInput({ chit, value, onClick }: { chit: ReactNode; value: string; 
   );
 }
 
-function TypographySection() {
-  const [hasStyle, setHasStyle] = useState(true);
+function TypographySection({ value, onChange }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void }) {
+  const [internal, setInternal] = useState<ElementTypographySettings>({ fontFamily: "Inter", fontWeight: "Medium", fontSize: 11, lineHeight: 16, letterSpacing: 0, align: "left", verticalAlign: "top", styleName: "Title · 96/120" });
+  const settings = value ?? internal;
+  const update = (patch: Partial<ElementTypographySettings>) => { if (!value) setInternal(current => ({ ...current, ...patch })); onChange?.(patch); };
+  const hasStyle = !!settings.styleName;
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
   const textAlignBtns: IconBtn[] = [
     { icon: <AlignLeft   size={S} strokeWidth={1.5} />, label: "Align left",   value: "left" },
@@ -612,22 +650,22 @@ function TypographySection() {
         /* A text style is applied — only the style input + alignment row show */
         <div className="flex items-center gap-[8px] pl-[16px] pr-[16px] pt-[3px]">
           <div className="flex-1 min-w-0">
-            <StyleInput chit="Ag" value="Title · 96/120" onClick={() => {}} />
+            <StyleInput chit="Ag" value={settings.styleName!} onClick={() => {}} />
           </div>
-          <PanelActionBtn icon={<Unlink size={16} strokeWidth={1.5} />} label="Detach style" onClick={() => setHasStyle(false)} />
+          <PanelActionBtn icon={<Unlink size={16} strokeWidth={1.5} />} label="Detach style" onClick={() => update({ styleName: undefined })} />
         </div>
       ) : (
         <>
           {/* Font family — dropdown + reserved right slot */}
           <div className="flex items-center gap-[8px] pl-[16px] pr-[16px] pt-[3px]">
-            <div className="flex-1 min-w-0"><Dropdown value="Inter" fullWidth /></div>
+            <div className="flex-1 min-w-0"><ChoiceDropdown value={settings.fontFamily} options={["Inter", "Whyte", "Roboto Mono"]} labels={{ Inter: "Inter", Whyte: "Whyte", "Roboto Mono": "Roboto Mono" }} onChange={fontFamily => update({ fontFamily })} /></div>
             <div className="shrink-0 min-w-[24px]" />
           </div>
 
           {/* Weight / Size — no labels (Figma); Size is a combo input */}
           <div className="flex items-center gap-[8px] pl-[16px] pr-[16px] pt-[3px]">
-            <div className="flex-1 min-w-0"><Dropdown value="Medium" fullWidth /></div>
-            <div className="flex-1 min-w-0"><ComboInput iconLead={<span className={FONT}>T</span>} defaultValue="11" /></div>
+            <div className="flex-1 min-w-0"><ChoiceDropdown value={settings.fontWeight} options={["Regular", "Medium", "Semibold", "Bold"]} labels={{ Regular: "Regular", Medium: "Medium", Semibold: "Semibold", Bold: "Bold" }} onChange={fontWeight => update({ fontWeight })} /></div>
+            <div className="flex-1 min-w-0"><ComboInput iconLead={<span className={FONT}>T</span>} value={String(settings.fontSize)} onInputChange={fontSize => update({ fontSize: Number(fontSize) })} /></div>
             <div className="shrink-0 min-w-[24px]" />
           </div>
 
@@ -635,11 +673,11 @@ function TypographySection() {
           <div className="flex items-end gap-[8px] pl-[16px] pr-[16px] pt-[6px]">
             <div className="flex-1 min-w-0">
               <div className={subLabel}>Line height</div>
-              <NumericInput iconLead={<span className={FONT}>↕</span>} defaultValue={16} min={0} />
+              <NumericInput iconLead={<span className={FONT}>↕</span>} value={settings.lineHeight} onChange={lineHeight => update({ lineHeight })} min={0} />
             </div>
             <div className="flex-1 min-w-0">
               <div className={subLabel}>Letter spacing</div>
-              <NumericInput iconLead={<span className={FONT}>AV</span>} defaultValue={0} suffix="%" />
+              <NumericInput iconLead={<span className={FONT}>AV</span>} value={settings.letterSpacing} onChange={letterSpacing => update({ letterSpacing })} suffix="%" />
             </div>
             <div className="shrink-0 min-w-[24px]" />
           </div>
@@ -649,8 +687,8 @@ function TypographySection() {
       {/* Alignment — always present, labeled */}
       <PanelFieldRow
         label="Alignment"
-        left={<IconButtonRow buttons={textAlignBtns} fill />}
-        right={<IconButtonRow buttons={vAlignBtns} fill />}
+        left={<IconButtonRow buttons={textAlignBtns} value={settings.align} onChange={align => update({ align: align as ElementTypographySettings["align"] })} fill />}
+        right={<IconButtonRow buttons={vAlignBtns} value={settings.verticalAlign} onChange={verticalAlign => update({ verticalAlign: verticalAlign as ElementTypographySettings["verticalAlign"] })} fill />}
         rightAction={<PanelActionBtn icon={<Settings2 size={16} strokeWidth={1.5} />} label="Type settings" />}
       />
     </PanelSection>
@@ -659,26 +697,23 @@ function TypographySection() {
 
 // ─── Section: Fill ────────────────────────────────────────────────────────────
 
-interface FillEntry {
-  id: string;
-  color: string;  // hex #rrggbb
-  opacity: number;
-  visible: boolean;
-  label?: string;
-}
+type FillEntry = ElementFillSetting;
 
-function FillSection() {
-  const [fills, setFills] = useState<FillEntry[]>([
+function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove }: {
+  entries?: FillEntry[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<FillEntry, "id">>) => void;
+  onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
+}) {
+  const [internal, setInternal] = useState<FillEntry[]>([
     { id: "1", color: "#1e1e1e", opacity: 100, visible: true, label: "Black" },
   ]);
+  const fills = entries ?? internal;
   const [colorOpen, setColorOpen] = useState(false);
   const [activeFill, setActiveFill] = useState<string | null>(null);
 
-  const addFill = () =>
-    setFills(f => [...f, { id: String(Date.now()), color: "#ffffff", opacity: 100, visible: true }]);
-  const removeFill = (id: string) => setFills(f => f.filter(x => x.id !== id));
-  const toggleFill = (id: string) =>
-    setFills(f => f.map(x => x.id === id ? { ...x, visible: !x.visible } : x));
+  const addFill = () => { if (!entries) setInternal(f => [...f, { id: String(Date.now()), color: "#ffffff", opacity: 100, visible: true }]); onAdd?.(); };
+  const updateFill = (id: string, patch: Partial<Omit<FillEntry, "id">>) => { if (!entries) setInternal(f => f.map(x => x.id === id ? { ...x, ...patch } : x)); onUpdate?.(id, patch); };
+  const removeFill = (id: string) => { if (!entries) setInternal(f => f.filter(x => x.id !== id)); onRemove?.(id); };
+  const toggleFill = (id: string) => { const fill = fills.find(item => item.id === id); if (!fill) return; if (!entries) setInternal(items => items.map(item => item.id === id ? { ...item, visible: !item.visible } : item)); onToggle?.(id, !fill.visible); };
 
   return (
     <PanelSection
@@ -695,13 +730,15 @@ function FillSection() {
     >
       {/* Entry = base ColorInput + eye + minus icon buttons on the right (matches ours) */}
       {fills.map(fill => (
-        <div key={fill.id} className="group/row flex items-center pr-[16px] h-[32px]">
+        <div key={fill.id} draggable={!!onReorder} onDragStart={event => event.dataTransfer.setData("text/plain", fill.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), fill.id); }} className="group/row flex items-center pr-[16px] h-[32px]">
           <DragGutter />
           <div className="flex-1 min-w-0">
             <ColorInput
               fullWidth
               color={fill.color}
               opacity={fill.opacity}
+              onColorChange={color => updateFill(fill.id, { color })}
+              onOpacityChange={opacity => updateFill(fill.id, { opacity })}
               onSwatchClick={() => { setActiveFill(fill.id); setColorOpen(true); }}
             />
           </div>
@@ -720,6 +757,7 @@ function FillSection() {
         open={colorOpen}
         onClose={() => setColorOpen(false)}
         hex={fills.find(f => f.id === activeFill)?.color.replace("#", "") ?? "1e1e1e"}
+        onHexChange={color => activeFill && updateFill(activeFill, { color: `#${color.replace(/^#/, "")}` })}
       />
     </PanelSection>
   );
@@ -727,13 +765,18 @@ function FillSection() {
 
 // ─── Section: Stroke ──────────────────────────────────────────────────────────
 
-function StrokeSection() {
-  const [strokes, setStrokes] = useState<{ id: string; color: string; opacity: number; visible: boolean }[]>([]);
+function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove }: {
+  entries?: ElementStrokeSetting[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<ElementStrokeSetting, "id">>) => void;
+  onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
+}) {
+  const [internal, setInternal] = useState<ElementStrokeSetting[]>([]);
+  const strokes = entries ?? internal;
   const [colorOpen, setColorOpen] = useState(false);
   const [activeStroke, setActiveStroke] = useState<string | null>(null);
-  const add = () => setStrokes(s => [...s, { id: String(Date.now()), color: "#000000", opacity: 100, visible: true }]);
-  const remove = (id: string) => setStrokes(s => s.filter(x => x.id !== id));
-  const toggle = (id: string) => setStrokes(s => s.map(x => x.id === id ? { ...x, visible: !x.visible } : x));
+  const update = (id: string, patch: Partial<Omit<ElementStrokeSetting, "id">>) => { if (!entries) setInternal(s => s.map(x => x.id === id ? { ...x, ...patch } : x)); onUpdate?.(id, patch); };
+  const add = () => { if (!entries) setInternal(s => [...s, { id: String(Date.now()), color: "#000000", opacity: 100, visible: true, weight: 1, align: "center" }]); onAdd?.(); };
+  const remove = (id: string) => { if (!entries) setInternal(s => s.filter(x => x.id !== id)); onRemove?.(id); };
+  const toggle = (id: string) => { const stroke = strokes.find(item => item.id === id); if (!stroke) return; if (!entries) setInternal(items => items.map(item => item.id === id ? { ...item, visible: !item.visible } : item)); onToggle?.(id, !stroke.visible); };
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
 
   return (
@@ -750,7 +793,7 @@ function StrokeSection() {
       }
     >
       {strokes.map(stroke => (
-        <div key={stroke.id} className="pb-[2px]">
+        <div key={stroke.id} draggable={!!onReorder} onDragStart={event => event.dataTransfer.setData("text/plain", stroke.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), stroke.id); }} className="pb-[2px]">
           {/* Row 1 — color + eye + minus (same as Fill) */}
           <div className="group/row flex items-center pr-[16px] h-[32px]">
             <DragGutter />
@@ -759,6 +802,8 @@ function StrokeSection() {
                 fullWidth
                 color={stroke.color}
                 opacity={stroke.opacity}
+                onColorChange={color => update(stroke.id, { color })}
+                onOpacityChange={opacity => update(stroke.id, { opacity })}
                 onSwatchClick={() => { setActiveStroke(stroke.id); setColorOpen(true); }}
               />
             </div>
@@ -775,11 +820,11 @@ function StrokeSection() {
           <div className="flex items-end gap-[8px] px-[16px] pb-[4px]">
             <div className="flex-1 min-w-0">
               <div className={subLabel}>Position</div>
-              <Dropdown value="Center" fullWidth />
+              <ChoiceDropdown value={stroke.align} options={["inside", "center", "outside"]} labels={{ inside: "Inside", center: "Center", outside: "Outside" }} onChange={align => update(stroke.id, { align })} />
             </div>
             <div className="flex-1 min-w-0">
               <div className={subLabel}>Weight</div>
-              <NumericInput iconLead={<AlignJustify size={16} strokeWidth={1.5} />} defaultValue={1} min={0} />
+              <NumericInput iconLead={<AlignJustify size={16} strokeWidth={1.5} />} value={stroke.weight} onChange={weight => update(stroke.id, { weight })} min={0} />
             </div>
             <PanelActionBtn icon={<SlidersHorizontal size={16} strokeWidth={1.5} />} label="Stroke settings" />
             <PanelActionBtn icon={<Square size={16} strokeWidth={1.5} />} label="Individual sides" />
@@ -791,6 +836,7 @@ function StrokeSection() {
         open={colorOpen}
         onClose={() => setColorOpen(false)}
         hex={strokes.find(s => s.id === activeStroke)?.color.replace("#", "") ?? "000000"}
+        onHexChange={color => activeStroke && update(activeStroke, { color: `#${color.replace(/^#/, "")}` })}
       />
     </PanelSection>
   );
@@ -798,11 +844,16 @@ function StrokeSection() {
 
 // ─── Section: Effects ─────────────────────────────────────────────────────────
 
-function EffectsSection() {
-  const [effects, setEffects] = useState<{ id: string; type: string; visible: boolean }[]>([]);
-  const add = () => setEffects(e => [...e, { id: String(Date.now()), type: "Drop shadow", visible: true }]);
-  const remove = (id: string) => setEffects(e => e.filter(x => x.id !== id));
-  const toggle = (id: string) => setEffects(e => e.map(x => x.id === id ? { ...x, visible: !x.visible } : x));
+function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove }: {
+  entries?: ElementEffectSetting[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<ElementEffectSetting, "id">>) => void;
+  onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
+}) {
+  const [internal, setInternal] = useState<ElementEffectSetting[]>([]);
+  const effects = entries ?? internal;
+  const update = (id: string, patch: Partial<Omit<ElementEffectSetting, "id">>) => { if (!entries) setInternal(e => e.map(x => x.id === id ? { ...x, ...patch } : x)); onUpdate?.(id, patch); };
+  const add = () => { if (!entries) setInternal(e => [...e, { id: String(Date.now()), type: "Drop shadow", visible: true }]); onAdd?.(); };
+  const remove = (id: string) => { if (!entries) setInternal(e => e.filter(x => x.id !== id)); onRemove?.(id); };
+  const toggle = (id: string) => { const effect = effects.find(item => item.id === id); if (!effect) return; if (!entries) setInternal(items => items.map(item => item.id === id ? { ...item, visible: !item.visible } : item)); onToggle?.(id, !effect.visible); };
 
   return (
     <PanelSection
@@ -818,10 +869,10 @@ function EffectsSection() {
       }
     >
       {effects.map(effect => (
-        <div key={effect.id} className="group/row flex items-center pr-[16px] h-[32px]">
+        <div key={effect.id} draggable={!!onReorder} onDragStart={event => event.dataTransfer.setData("text/plain", effect.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), effect.id); }} className="group/row flex items-center pr-[16px] h-[32px]">
           <DragGutter />
           <div className="flex-1 min-w-0">
-            <Dropdown value={effect.type} fullWidth />
+            <ChoiceDropdown value={effect.type} options={["Drop shadow", "Inner shadow", "Layer blur", "Background blur"]} labels={{ "Drop shadow": "Drop shadow", "Inner shadow": "Inner shadow", "Layer blur": "Layer blur", "Background blur": "Background blur" }} onChange={type => update(effect.id, { type })} />
           </div>
           <div className="shrink-0 flex items-center gap-[4px] pl-[8px]">
             <PanelActionBtn icon={effect.visible ? <Eye size={16} strokeWidth={1.5} /> : <EyeOff size={16} strokeWidth={1.5} />} label={effect.visible ? "Hide" : "Show"} onClick={() => toggle(effect.id)} />
@@ -931,11 +982,15 @@ function ComponentPropertiesSection() {
 
 // ─── Section: Layout Guide (§5.6) ─────────────────────────────────────────────
 // Frames only. Stackable: Grid / Columns / Rows guides.
-function LayoutGuideSection() {
-  const [guides, setGuides] = useState<{ id: string; type: string; visible: boolean }[]>([]);
-  const add = () => setGuides(g => [...g, { id: String(Date.now()), type: "Grid", visible: true }]);
-  const remove = (id: string) => setGuides(g => g.filter(x => x.id !== id));
-  const toggle = (id: string) => setGuides(g => g.map(x => x.id === id ? { ...x, visible: !x.visible } : x));
+function LayoutGuideSection({ entries, onAdd, onUpdate, onRemove }: {
+  entries?: ElementLayoutGuideSetting[]; onAdd?: () => void;
+  onUpdate?: (id: string, patch: Partial<Omit<ElementLayoutGuideSetting, "id">>) => void; onRemove?: (id: string) => void;
+}) {
+  const [internal, setInternal] = useState<ElementLayoutGuideSetting[]>([]);
+  const guides = entries ?? internal;
+  const update = (id: string, patch: Partial<Omit<ElementLayoutGuideSetting, "id">>) => { if (!entries) setInternal(g => g.map(x => x.id === id ? { ...x, ...patch } : x)); onUpdate?.(id, patch); };
+  const add = () => { if (!entries) setInternal(g => [...g, { id: String(Date.now()), type: "Grid", visible: true, size: 8 }]); onAdd?.(); };
+  const remove = (id: string) => { if (!entries) setInternal(g => g.filter(x => x.id !== id)); onRemove?.(id); };
   return (
     <PanelSection
       title="Layout guide"
@@ -946,11 +1001,11 @@ function LayoutGuideSection() {
         <div key={g.id} className="group/row flex items-center h-[32px] pr-[16px]">
           <DragGutter />
           <div className="flex-1 min-w-0 flex items-center gap-[8px]">
-            <Dropdown value={g.type} fullWidth />
-            <NumericInput iconLead={<Grid3x3 size={16} strokeWidth={1.5} />} defaultValue={8} min={1} />
+            <ChoiceDropdown value={g.type} options={["Grid", "Columns", "Rows"]} labels={{ Grid: "Grid", Columns: "Columns", Rows: "Rows" }} onChange={type => update(g.id, { type })} />
+            <NumericInput iconLead={<Grid3x3 size={16} strokeWidth={1.5} />} value={g.size} onChange={size => update(g.id, { size })} min={1} />
           </div>
           <div className="shrink-0 flex items-center gap-[4px] pl-[8px]">
-            <PanelActionBtn icon={g.visible ? <Eye size={16} strokeWidth={1.5} /> : <EyeOff size={16} strokeWidth={1.5} />} label={g.visible ? "Hide" : "Show"} onClick={() => toggle(g.id)} />
+            <PanelActionBtn icon={g.visible ? <Eye size={16} strokeWidth={1.5} /> : <EyeOff size={16} strokeWidth={1.5} />} label={g.visible ? "Hide" : "Show"} onClick={() => update(g.id, { visible: !g.visible })} />
             <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove guide" onClick={() => remove(g.id)} />
           </div>
         </div>
@@ -1550,6 +1605,21 @@ export interface PropertyPanelProps {
   opacity?: number;
   onOpacityChange?: (value: number) => void;
   blendMode?: BlendMode;
+  cornerRadius?: AppearanceSectionProps["cornerRadius"];
+  onBlendModeChange?: (value: BlendMode) => void;
+  onCornerRadiusChange?: AppearanceSectionProps["onCornerRadiusChange"];
+  layout?: ElementLayoutSettings;
+  onLayoutChange?: (patch: Partial<ElementLayoutSettings>) => void;
+  typography?: ElementTypographySettings;
+  onTypographyChange?: (patch: Partial<ElementTypographySettings>) => void;
+  fills?: ElementFillSetting[];
+  onAddFill?: () => void; onUpdateFill?: (id: string, patch: Partial<Omit<ElementFillSetting, "id">>) => void; onToggleFill?: (id: string, visible: boolean) => void; onReorderFill?: (id: string, targetId: string) => void; onRemoveFill?: (id: string) => void;
+  strokes?: ElementStrokeSetting[];
+  onAddStroke?: () => void; onUpdateStroke?: (id: string, patch: Partial<Omit<ElementStrokeSetting, "id">>) => void; onToggleStroke?: (id: string, visible: boolean) => void; onReorderStroke?: (id: string, targetId: string) => void; onRemoveStroke?: (id: string) => void;
+  effects?: ElementEffectSetting[];
+  onAddEffect?: () => void; onUpdateEffect?: (id: string, patch: Partial<Omit<ElementEffectSetting, "id">>) => void; onToggleEffect?: (id: string, visible: boolean) => void; onReorderEffect?: (id: string, targetId: string) => void; onRemoveEffect?: (id: string) => void;
+  layoutGuides?: ElementLayoutGuideSetting[];
+  onAddLayoutGuide?: () => void; onUpdateLayoutGuide?: (id: string, patch: Partial<Omit<ElementLayoutGuideSetting, "id">>) => void; onRemoveLayoutGuide?: (id: string) => void;
   /** Project mode keeps the name a static label in V1. */
   projectName?: string;
   projectWidth?: number;
@@ -1650,6 +1720,12 @@ export function PropertyPanel({
   opacity = 100,
   onOpacityChange,
   blendMode = "Pass through",
+  cornerRadius = 0, onBlendModeChange, onCornerRadiusChange,
+  layout, onLayoutChange, typography, onTypographyChange,
+  fills, onAddFill, onUpdateFill, onToggleFill, onReorderFill, onRemoveFill,
+  strokes, onAddStroke, onUpdateStroke, onToggleStroke, onReorderStroke, onRemoveStroke,
+  effects, onAddEffect, onUpdateEffect, onToggleEffect, onReorderEffect, onRemoveEffect,
+  layoutGuides, onAddLayoutGuide, onUpdateLayoutGuide, onRemoveLayoutGuide,
   projectName = "Project",
   projectWidth = 1920,
   projectHeight = 1080,
@@ -1895,11 +1971,19 @@ export function PropertyPanel({
           <PositionSection
             x={x} y={y} rotation={rotation}
             onXChange={onXChange} onYChange={onYChange} onRotationChange={onRotationChange}
+            multiSelect={multiSelect}
           />
 
           {/* Layout — polymorphic */}
-          {(isFrame)       && <LayoutFrameSection width={width} height={height} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onEnableAutoLayout={() => setAutoLayoutOn(true)} />}
-          {(isAutoLayout)  && <LayoutAutoSection  width={width} height={height} onDisableAutoLayout={() => setAutoLayoutOn(false)} />}
+          {(isFrame)       && <LayoutFrameSection width={width} height={height} clipContent={layout?.clipsContent} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onClipContentChange={onLayoutChange ? value => onLayoutChange({ clipsContent: value }) : undefined} onEnableAutoLayout={() => { setAutoLayoutOn(true); onLayoutChange?.({ mode: "vertical" }); }} />}
+          {(isAutoLayout)  && <LayoutAutoSection width={width} height={height}
+            gap={layout?.gap} paddingTop={layout?.padding.top} paddingRight={layout?.padding.right} paddingBottom={layout?.padding.bottom} paddingLeft={layout?.padding.left}
+            alignValue={layout?.align} clipContent={layout?.clipsContent}
+            widthMode={layout?.widthMode} heightMode={layout?.heightMode}
+            onFlowChange={onLayoutChange ? mode => onLayoutChange({ mode }) : undefined} onGapChange={onLayoutChange ? gap => onLayoutChange({ gap }) : undefined} onPaddingChange={onLayoutChange ? padding => onLayoutChange({ padding }) : undefined}
+            onAlignChange={onLayoutChange ? align => onLayoutChange({ align }) : undefined} onClipContentChange={onLayoutChange ? clipsContent => onLayoutChange({ clipsContent }) : undefined}
+            onSizingModeChange={onLayoutChange ? (axis, value) => onLayoutChange(axis === "width" ? { widthMode: value } : { heightMode: value }) : undefined}
+            onDisableAutoLayout={() => { setAutoLayoutOn(false); onLayoutChange?.({ mode: "none" }); }} />}
           {(isShape || isText) && (
             <PanelSection title="Layout">
               {/* Resizing — segmented (auto width / auto height / fixed); text only */}
@@ -1922,21 +2006,21 @@ export function PropertyPanel({
           )}
 
           {/* Appearance — always present */}
-          <AppearanceSection opacity={opacity} blendMode={blendMode} onOpacityChange={onOpacityChange} />
+          <AppearanceSection opacity={opacity} blendMode={blendMode} cornerRadius={cornerRadius} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} />
 
           {/* Typography — text only */}
-          {isText && <TypographySection />}
+          {isText && <TypographySection value={typography} onChange={onTypographyChange} />}
 
           {/* Stackable sections */}
-          <FillSection />
-          <StrokeSection />
-          <EffectsSection />
+          <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill} />
+          <StrokeSection entries={strokes} onAdd={onAddStroke} onUpdate={onUpdateStroke} onToggle={onToggleStroke} onReorder={onReorderStroke} onRemove={onRemoveStroke} />
+          <EffectsSection entries={effects} onAdd={onAddEffect} onUpdate={onUpdateEffect} onToggle={onToggleEffect} onReorder={onReorderEffect} onRemove={onRemoveEffect} />
 
           {/* Selection Colors — multi-select only (§5.8), positioned right after Effects */}
           {multiSelect && <SelectionColorsSection />}
 
           {/* Layout Guide — frames only (§5.6) */}
-          {(isFrame || isAutoLayout) && <LayoutGuideSection />}
+          {(isFrame || isAutoLayout) && <LayoutGuideSection entries={layoutGuides} onAdd={onAddLayoutGuide} onUpdate={onUpdateLayoutGuide} onRemove={onRemoveLayoutGuide} />}
 
           <ExportSection settings={exportSettings} targetName={exportTargetName ?? elementLabel[elementType]}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
