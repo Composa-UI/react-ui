@@ -1,7 +1,7 @@
 import { useRef, useState, useCallback } from "react";
 import { clsx } from "clsx";
 import { SlidesPanel, type SlideData } from "./SlidesPanel";
-import { LayerList, type LayerNode } from "./LayerList";
+import { LayerList, type LayerListProps, type LayerNode } from "./LayerList";
 
 // ─── Composition panel ────────────────────────────────────────────────────────
 // The default left-rail content (app-shell.md → "Composition view"). A vertical
@@ -21,6 +21,12 @@ export interface CompositionPanelProps {
   layers?: LayerNode[];
   selectedLayerId?: string | null;
   onLayerSelectionChange?: (id: string) => void;
+  onLayerVisibilityChange?: LayerListProps["onVisibilityChange"];
+  onLayerLockChange?: LayerListProps["onLockChange"];
+  onLayerRenameRequest?: LayerListProps["onRenameRequest"];
+  onLayerContextMenu?: LayerListProps["onContextMenu"];
+  onLayerReorder?: LayerListProps["onReorder"];
+  onLayerReparent?: LayerListProps["onReparent"];
   onNewSlide?: () => void;
   onNewSlideMenu?: () => void;
   slidesTitle?: string;
@@ -44,6 +50,12 @@ export function CompositionPanel({
   layers,
   selectedLayerId,
   onLayerSelectionChange,
+  onLayerVisibilityChange,
+  onLayerLockChange,
+  onLayerRenameRequest,
+  onLayerContextMenu,
+  onLayerReorder,
+  onLayerReparent,
   onNewSlide,
   onNewSlideMenu,
   slidesTitle,
@@ -184,7 +196,10 @@ export function CompositionPanel({
           onKeyDown={onKeyDown}
           className="absolute top-0 inset-x-0 h-[4px] z-10 cursor-ns-resize select-none outline-none -translate-y-1/2 focus-visible:bg-c-border-selected/40"
         />
-          <LayerList layers={layers} title={layersTitle} selectedId={selectedLayerId} onSelectionChange={onLayerSelectionChange} />
+          <LayerList layers={layers} title={layersTitle} selectedId={selectedLayerId} onSelectionChange={onLayerSelectionChange}
+            onVisibilityChange={onLayerVisibilityChange} onLockChange={onLayerLockChange}
+            onRenameRequest={onLayerRenameRequest} onContextMenu={onLayerContextMenu}
+            onReorder={onLayerReorder} onReparent={onLayerReparent} />
       </div>
 
       {/* Width resize affordance — thin invisible vertical strip on the RIGHT EDGE.

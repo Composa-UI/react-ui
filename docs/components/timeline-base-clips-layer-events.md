@@ -17,5 +17,6 @@ The existing layer row remains the visual and interaction owner.
 - Double-click requests rename; right-click emits the row context-menu event.
 - When reorder or reparent callbacks are supplied, existing rows become draggable. Dropping in a group row’s middle third requests reparenting; dropping above or below requests reorder before or after.
 - These callbacks do not mutate the provided tree. Controlled hosts update `layers`; omitted callbacks preserve the original demo and selection behavior.
+- `CompositionPanel` forwards every seam with the `onLayer…` prefix so the application can consume the composed Slides/Layers template without reaching into `LayerList`.
 
 Use `?view=base-clips-contract` and `?view=layers-contract` for controlled examples. No drag indicators, menus, or inline rename fields are added by these seams.
