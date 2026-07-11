@@ -24,9 +24,10 @@ interface TabsProps {
 export function Tabs({ tabs, value, defaultValue, onChange, className }: TabsProps) {
   const [internal, setInternal] = useState(defaultValue ?? tabs[0]?.value ?? "");
   const selected = value !== undefined ? value : internal;
+  const linkedPanels = tabs.length > 0 && tabs.every(tab => tab.panelId);
 
   return (
-    <div role="tablist" className={clsx("flex items-start gap-[4px]", className)}>
+    <div role={linkedPanels ? "tablist" : undefined} className={clsx("flex items-start gap-[4px]", className)}>
       {tabs.map(tab => {
         const isActive = tab.value === selected;
         const activate = () => {
@@ -36,11 +37,11 @@ export function Tabs({ tabs, value, defaultValue, onChange, className }: TabsPro
         return (
           <button
             key={tab.value}
-            role="tab"
+            role={linkedPanels ? "tab" : undefined}
             id={tab.panelId ? `${tab.panelId}-tab` : undefined}
             aria-controls={tab.panelId}
-            aria-selected={isActive}
-            tabIndex={isActive ? 0 : -1}
+            aria-selected={linkedPanels ? isActive : undefined}
+            tabIndex={linkedPanels ? (isActive ? 0 : -1) : 0}
             onClick={activate}
             onKeyDown={event => {
               const currentIndex = tabs.indexOf(tab);
