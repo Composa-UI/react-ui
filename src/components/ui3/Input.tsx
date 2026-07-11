@@ -258,6 +258,7 @@ export function NumericInput({
   const [internal, setInternal] = useState(defaultValue);
   const scrubStart = useRef<{ x: number; value: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const cancelBlurCommit = useRef(false);
 
   const current = value !== undefined ? value : internal;
   const [draft, setDraft] = useState(String(current));
@@ -303,7 +304,7 @@ export function NumericInput({
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const mult = e.shiftKey ? 10 : 1;
     if (e.key === "Enter" && commitOnBlur) { e.preventDefault(); e.currentTarget.blur(); return; }
-    if (e.key === "Escape" && commitOnBlur) { e.preventDefault(); setDraft(String(current)); e.currentTarget.blur(); return; }
+    if (e.key === "Escape" && commitOnBlur) { e.preventDefault(); cancelBlurCommit.current = true; setDraft(String(current)); e.currentTarget.blur(); return; }
     if (e.key === "ArrowUp" || e.key === "ArrowDown") {
       e.preventDefault();
       const base = commitOnBlur && Number.isFinite(Number(draft)) ? Number(draft) : current;
@@ -358,7 +359,11 @@ export function NumericInput({
           onChange={e => commitOnBlur ? setDraft(e.target.value) : set(parseFloat(e.target.value) || 0)}
           onKeyDown={onKeyDown}
           onFocus={e => { setFocused(true); e.target.select(); }}
-          onBlur={() => { if (commitOnBlur) commitDraft(); setFocused(false); }}
+          onBlur={() => {
+            if (cancelBlurCommit.current) cancelBlurCommit.current = false;
+            else if (commitOnBlur) commitDraft();
+            setFocused(false);
+          }}
           className={clsx(
             "flex-1 min-w-0 h-full bg-transparent outline-none text-left",
             FONT, T[size], "text-c-text",
