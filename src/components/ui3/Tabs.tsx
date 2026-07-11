@@ -25,12 +25,14 @@ export function Tabs({ tabs, value, defaultValue, onChange, className }: TabsPro
   const selected = value !== undefined ? value : internal;
 
   return (
-    <div className={clsx("flex items-start gap-[4px]", className)}>
+    <div role="tablist" className={clsx("flex items-start gap-[4px]", className)}>
       {tabs.map(tab => {
         const isActive = tab.value === selected;
         return (
           <button
             key={tab.value}
+            role="tab"
+            aria-selected={isActive}
             onClick={() => {
               if (!value) setInternal(tab.value);
               onChange?.(tab.value);
