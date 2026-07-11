@@ -22,6 +22,8 @@ export interface SlideData {
   thumb?: string;              // thumbnail image src
   tint?: string;               // solid thumb colour when no image (demo)
   selected?: boolean;
+  /** Slide currently rendered in the canvas, even when another editor surface owns selection. */
+  inView?: boolean;
   sub?: boolean;               // indented sub-slide (nested under a group)
   group?: boolean;             // expandable group header — shows a chevron
   expanded?: boolean;          // chevron rotation (open group)
@@ -76,7 +78,7 @@ export function SlideListItem({ item, tabIndex = 0, onNavigate, onFocus, itemRef
   const spacerBottom = item.stacked ? 20 : 8; // 8, plus 12 for the stacked cards
   return (
     <div className="relative w-full shrink-0 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-c-border-selected"
-      ref={itemRef} role="option" tabIndex={tabIndex} aria-selected={item.selected} aria-label={`Slide ${item.n}`}
+      ref={itemRef} role="option" tabIndex={tabIndex} aria-selected={item.selected} data-in-view={item.inView || undefined} aria-label={`Slide ${item.n}`}
       onFocus={onFocus}
       onClick={item.onClick}
       onKeyDown={event => {
@@ -89,7 +91,10 @@ export function SlideListItem({ item, tabIndex = 0, onNavigate, onFocus, itemRef
       {/* selection tint — deliberately does NOT match the thumbnail's right inset;
           it sits a few px further out so the tint is visible as a margin/frame
           around the thumbnail rather than the two edges coinciding (touching) */}
-      {item.selected && <div className="absolute inset-y-0 left-[8px] right-[8px] rounded-[5px] bg-c-bg-selected" />}
+      {(item.selected || item.inView) && <div className={clsx(
+        "absolute inset-y-0 left-[8px] right-[8px] rounded-[5px]",
+        item.selected ? "bg-c-bg-selected" : "bg-c-bg-selected/50",
+      )} />}
 
       {/* stacked-group cards (peek behind/below the thumbnail) */}
       {item.stacked && (
@@ -108,7 +113,7 @@ export function SlideListItem({ item, tabIndex = 0, onNavigate, onFocus, itemRef
       <div className={clsx("absolute top-[6px] flex flex-col items-center", item.group && "gap-[4px]", numLeft)}>
         <div className="w-[24px] h-[16px] flex items-center justify-center">
           <span
-            className={clsx("text-[11px] font-[450] leading-[16px] tracking-[0.055px]", item.selected ? "text-c-text-brand" : "text-c-text-secondary")}
+            className={clsx("text-[11px] font-[450] leading-[16px] tracking-[0.055px]", item.selected || item.inView ? "text-c-text-brand" : "text-c-text-secondary")}
             style={INTER}
           >
             {item.n}

@@ -185,10 +185,10 @@ function ObjectAnimationsSection({ anims }: { anims: ObjAnim[] }) {
   );
 }
 
-export function AnimatePanel({ anims = DEMO_ANIMS }: { anims?: ObjAnim[] }) {
+export function AnimatePanel({ anims = DEMO_ANIMS, transition }: { anims?: ObjAnim[]; transition?: ReactNode }) {
   return (
     <ScrollArea>
-      <SlideTransitionSection />
+      {transition ?? <SlideTransitionSection />}
       <ObjectAnimationsSection anims={anims} />
     </ScrollArea>
   );

@@ -1039,19 +1039,20 @@ const DEMO_SELECTION_COLORS: ElementSelectionColorSetting[] = [
   { id: "demo-selection-6", color: "#9747FF", opacity: 100 },
 ];
 
-function SelectionColorsSection({ colors = DEMO_SELECTION_COLORS, onUpdate, onSelectAll, capabilities = { templates: true, styles: true, variables: true, libraries: true } }: {
+function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = { templates: true, styles: true, variables: true, libraries: true } }: {
   colors?: ElementSelectionColorSetting[];
   onUpdate?: (id: string, patch: Partial<Omit<ElementSelectionColorSetting, "id">>) => void;
   onSelectAll?: (id: string) => void;
   capabilities?: Required<InspectorCapabilities>;
 }) {
+  const renderedColors = colors ?? DEMO_SELECTION_COLORS;
   const [colorOpen, setColorOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const active = colors.find(color => color.id === activeId);
+  const active = renderedColors.find(color => color.id === activeId);
+  if (renderedColors.length === 0) return null;
   return (
     <PanelSection title="Selection colors">
-      {colors.length === 0 && <div className={clsx(FONT, "h-[32px] flex items-center px-[16px] text-[11px] text-c-text-secondary")}>No shared colors</div>}
-      {colors.map(c => (
+      {renderedColors.map(c => (
         <div key={c.id} className="group/row flex items-center px-[16px] h-[32px] gap-[8px]">
           <div className="flex-1 min-w-0">
             <ColorInput fullWidth color={c.color} opacity={c.opacity} onSwatchClick={() => { setActiveId(c.id); setColorOpen(true); }} />
@@ -1886,10 +1887,22 @@ export function PropertyPanel(props: PropertyPanelProps) {
       )}
 
       {/* ── SLIDE mode (inspector-slide-mode.md) ─────────────────────────────
-          Active when a slide is selected. Header = slide-name field + options,
-          no tabs. */}
+          Active when a slide is selected. Design owns structural slide settings;
+          Animate owns transitions and object-animation sequencing. */}
       {mode === "slide" && (
-        <ScrollArea>
+        <>
+          <div className="border-b border-c-border px-[8px] pt-[6px] pb-[6px]">
+            <Tabs
+              value={tab}
+              onChange={setTab}
+              tabs={[
+                { value: "design", label: "Design" },
+                { value: "animate", label: "Animate" },
+              ]}
+            />
+          </div>
+
+          {tab === "design" && <ScrollArea>
           {/* Panel header — inline-editable slide name + options IconButton */}
           <div className="h-[40px] flex items-center gap-[8px] px-[16px] border-b border-c-border">
             <div className="flex-1 min-w-0">
@@ -1930,19 +1943,21 @@ export function PropertyPanel(props: PropertyPanelProps) {
           />
           {/* Selection colors — reuse the existing element-mode section */}
           <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} capabilities={capabilities} />
-          <SlideTransitionSection
-            type={renderedTransitionType}
-            direction={renderedTransitionDirection}
-            duration={renderedTransitionDuration}
-            easing={renderedTransitionEasing}
-            onTypeChange={value => { if (slideTransitionType === undefined) setDemoTransitionType(value); onSlideTransitionTypeChange?.(value); }}
-            onDirectionChange={value => { if (slideTransitionDirection === undefined) setDemoTransitionDirection(value); onSlideTransitionDirectionChange?.(value); }}
-            onDurationChange={value => { if (slideTransitionDuration === undefined) setDemoTransitionDuration(value); onSlideTransitionDurationChange?.(value); }}
-            onEasingChange={value => { if (slideTransitionEasing === undefined) setDemoTransitionEasing(value); onSlideTransitionEasingChange?.(value); }}
-          />
           <ExportSection settings={exportSettings} targetName={exportTargetName ?? renderedSlideName}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
-        </ScrollArea>
+          </ScrollArea>}
+
+          {tab === "animate" && <AnimatePanel transition={<SlideTransitionSection
+              type={renderedTransitionType}
+              direction={renderedTransitionDirection}
+              duration={renderedTransitionDuration}
+              easing={renderedTransitionEasing}
+              onTypeChange={value => { if (slideTransitionType === undefined) setDemoTransitionType(value); onSlideTransitionTypeChange?.(value); }}
+              onDirectionChange={value => { if (slideTransitionDirection === undefined) setDemoTransitionDirection(value); onSlideTransitionDirectionChange?.(value); }}
+              onDurationChange={value => { if (slideTransitionDuration === undefined) setDemoTransitionDuration(value); onSlideTransitionDurationChange?.(value); }}
+              onEasingChange={value => { if (slideTransitionEasing === undefined) setDemoTransitionEasing(value); onSlideTransitionEasingChange?.(value); }}
+            />} />}
+        </>
       )}
 
       {/* ── VIDEO CLIP mode (video-clip-inspector-mode.md) ───────────────────
