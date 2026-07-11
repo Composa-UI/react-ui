@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type DragEvent, type MouseEvent } from "react";
 import { clsx } from "clsx";
 import { ChevronRight, Hash, Folder, Type, Component, Image as ImageIcon, Square, Eye, EyeOff, LockOpen } from "lucide-react";
 import { Lock as LockDuotone } from "@phosphor-icons/react";
@@ -74,13 +74,21 @@ const ROW_H = 30;
 const INSET = 8;
 
 // ── One row ───────────────────────────────────────────────────────────────────────
-function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect }: {
+function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect, onVisibilityChange, onLockChange, onRenameRequest, onContextMenu, draggable, onDragStart, onDragOver, onDrop }: {
   row: FlatRow;
   hasChildren: boolean;
   open: boolean;
   onToggle: () => void;
   isSelfSelected: boolean;
-  onSelect: () => void;
+  onSelect: (event: MouseEvent<HTMLDivElement>) => void;
+  onVisibilityChange?: () => void;
+  onLockChange?: () => void;
+  onRenameRequest?: () => void;
+  onContextMenu?: (event: MouseEvent<HTMLDivElement>) => void;
+  draggable?: boolean;
+  onDragStart?: (event: DragEvent<HTMLDivElement>) => void;
+  onDragOver?: (event: DragEvent<HTMLDivElement>) => void;
+  onDrop?: (event: DragEvent<HTMLDivElement>) => void;
 }) {
   const { node, depth } = row;
   const Icon = TYPE_ICON[node.type];
@@ -93,8 +101,14 @@ function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect }
       aria-selected={isSelfSelected}
       aria-expanded={hasChildren ? open : undefined}
       onClick={onSelect}
+      onDoubleClick={onRenameRequest}
+      onContextMenu={onContextMenu}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
       onKeyDown={e => {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); }
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(e as unknown as MouseEvent<HTMLDivElement>); }
         else if (e.key === "ArrowRight" && hasChildren && !open) onToggle();
         else if (e.key === "ArrowLeft" && hasChildren && open) onToggle();
       }}
@@ -123,12 +137,12 @@ function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect }
         {node.name}
       </span>
       {/* trailing: lock first (open padlock on hover; closed duotone padlock persistent when locked), then visibility */}
-      {node.locked
-        ? <LockDuotone size={14} weight="duotone" className="relative shrink-0 text-c-icon-secondary" />
-        : <LockOpen size={14} strokeWidth={1.5} className="relative shrink-0 text-c-icon-secondary opacity-0 group-hover/layer:opacity-100" />}
-      {node.hidden
-        ? <EyeOff size={14} strokeWidth={1.5} className="relative shrink-0 text-c-icon-secondary" />
-        : <Eye size={14} strokeWidth={1.5} className="relative shrink-0 text-c-icon-secondary opacity-0 group-hover/layer:opacity-100" />}
+      <button type="button" aria-label={node.locked ? `Unlock ${node.name}` : `Lock ${node.name}`} onClick={event => { event.stopPropagation(); onLockChange?.(); }} className={clsx("relative shrink-0 size-[14px] flex items-center justify-center text-c-icon-secondary", !node.locked && "opacity-0 group-hover/layer:opacity-100")}>
+        {node.locked ? <LockDuotone size={14} weight="duotone" /> : <LockOpen size={14} strokeWidth={1.5} />}
+      </button>
+      <button type="button" aria-label={node.hidden ? `Show ${node.name}` : `Hide ${node.name}`} onClick={event => { event.stopPropagation(); onVisibilityChange?.(); }} className={clsx("relative shrink-0 size-[14px] flex items-center justify-center text-c-icon-secondary", !node.hidden && "opacity-0 group-hover/layer:opacity-100")}>
+        {node.hidden ? <EyeOff size={14} strokeWidth={1.5} /> : <Eye size={14} strokeWidth={1.5} />}
+      </button>
     </div>
   );
 }
@@ -139,6 +153,12 @@ export interface LayerListProps {
   selectedId?: string | null;
   defaultSelectedId?: string | null;
   onSelectionChange?: (id: string) => void;
+  onVisibilityChange?: (id: string, visible: boolean) => void;
+  onLockChange?: (id: string, locked: boolean) => void;
+  onRenameRequest?: (id: string) => void;
+  onContextMenu?: (id: string, event: MouseEvent<HTMLDivElement>) => void;
+  onReorder?: (sourceId: string, targetId: string, position: "before" | "after") => void;
+  onReparent?: (sourceId: string, parentId: string) => void;
 }
 
 export function LayerList({
@@ -147,6 +167,12 @@ export function LayerList({
   selectedId,
   defaultSelectedId = "2b",
   onSelectionChange,
+  onVisibilityChange,
+  onLockChange,
+  onRenameRequest,
+  onContextMenu,
+  onReorder,
+  onReparent,
 }: LayerListProps) {
   const [internalSelected, setInternalSelected] = useState<string | null>(defaultSelectedId);
   const selected = selectedId === undefined ? internalSelected : selectedId;
@@ -175,6 +201,7 @@ export function LayerList({
   }, [flat, selected]);
 
   const [scrolled, setScrolled] = useState(false);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
 
   return (
     <div className="w-[240px] shrink-0 h-full flex flex-col bg-c-bg border-r border-c-border overflow-hidden">
@@ -210,6 +237,23 @@ export function LayerList({
                 onSelect={() => {
                   if (selectedId === undefined) setInternalSelected(row.node.id);
                   onSelectionChange?.(row.node.id);
+                }}
+                onVisibilityChange={() => onVisibilityChange?.(row.node.id, !!row.node.hidden)}
+                onLockChange={() => onLockChange?.(row.node.id, !row.node.locked)}
+                onRenameRequest={() => onRenameRequest?.(row.node.id)}
+                onContextMenu={event => { if (onContextMenu) { event.preventDefault(); onContextMenu(row.node.id, event); } }}
+                draggable={!!(onReorder || onReparent)}
+                onDragStart={event => { setDraggedId(row.node.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", row.node.id); }}
+                onDragOver={event => { if (draggedId && draggedId !== row.node.id) event.preventDefault(); }}
+                onDrop={event => {
+                  event.preventDefault();
+                  const sourceId = draggedId ?? event.dataTransfer.getData("text/plain");
+                  setDraggedId(null);
+                  if (!sourceId || sourceId === row.node.id) return;
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  const ratio = (event.clientY - rect.top) / rect.height;
+                  if (hasChildren && ratio >= 0.33 && ratio <= 0.67 && onReparent) onReparent(sourceId, row.node.id);
+                  else onReorder?.(sourceId, row.node.id, ratio < 0.5 ? "before" : "after");
                 }}
               />
             );

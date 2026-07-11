@@ -3,8 +3,8 @@ import { PropertyPanel, type ClipSpeed, type InspectorExportSetting, type Projec
 import SlidesTemplate from "./imports/SlidesTemplate";
 import { SlidesPanel, type SlideData } from "./components/ui3/SlidesPanel";
 import { SlideInspector } from "./components/ui3/SlideInspector";
-import { Timeline } from "./components/ui3/Timeline";
-import { LayerList } from "./components/ui3/LayerList";
+import { Timeline, type BaseClipBlock } from "./components/ui3/Timeline";
+import { LayerList, type LayerNode } from "./components/ui3/LayerList";
 import { NavRail } from "./components/ui3/NavRail";
 import { CompositionPanel } from "./components/ui3/CompositionPanel";
 import { AssetsPanel, type AssetFilter, type AssetItem } from "./components/ui3/AssetsPanel";
@@ -49,6 +49,14 @@ export default function Playground() {
   });
   const [exportContract, setExportContract] = useState<InspectorExportSetting[]>([
     { id: "export-1", scale: 1, suffix: "", format: "PNG" },
+  ]);
+  const [clipBlocks, setClipBlocks] = useState<BaseClipBlock[]>([
+    { id: "clip-1", name: "hero-cover.mp4", range: [1000, 7000], selected: true, tint: "linear-gradient(135deg,#1f2937,#475569)" },
+    { id: "clip-2", name: "product.mp4", range: [8000, 12000], tint: "linear-gradient(135deg,#14532d,#16a34a)" },
+  ]);
+  const [layerContracts, setLayerContracts] = useState<LayerNode[]>([
+    { id: "frame", name: "Hero", type: "frame", children: [{ id: "title", name: "Title", type: "text" }] },
+    { id: "image", name: "Cover", type: "image", locked: true },
   ]);
   const contractAssets: AssetItem[] = [
     { id: "asset-image", name: "cover.png", kind: "image", tint: "linear-gradient(135deg,#7c5cff,#ff6ac1)" },
@@ -159,6 +167,28 @@ export default function Playground() {
         onRemoveExportSetting={id => setExportContract(value => value.filter(setting => setting.id !== id))}
         onUpdateExportSetting={(id, patch) => setExportContract(value => value.map(setting => setting.id === id ? { ...setting, ...patch } : setting))}
         onExport={() => console.info("Export still image")} />
+    </div>;
+  }
+
+  if (view === "base-clips-contract") {
+    return <div style={{ height: "100vh", width: "100vw", display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "#e6e6e6" }}>
+      <Timeline mode="master" height={220} baseClips={clipBlocks}
+        onClipSelect={id => setClipBlocks(value => value.map(clip => ({ ...clip, selected: clip.id === id })))}
+        onClipMove={(id, startMs) => setClipBlocks(value => value.map(clip => clip.id === id ? { ...clip, range: [startMs, startMs + clip.range[1] - clip.range[0]] } : clip))}
+        onClipTrim={(id, edge, timeMs) => setClipBlocks(value => value.map(clip => clip.id === id ? { ...clip, range: edge === "start" ? [timeMs, clip.range[1]] : [clip.range[0], timeMs] } : clip))} />
+    </div>;
+  }
+
+  if (view === "layers-contract") {
+    const updateLayer = (id: string, patch: Partial<LayerNode>, nodes: LayerNode[]): LayerNode[] => nodes.map(node => node.id === id ? { ...node, ...patch } : { ...node, children: node.children ? updateLayer(id, patch, node.children) : undefined });
+    return <div style={{ height: "100vh", width: "100vw", display: "flex", background: "#e6e6e6" }}>
+      <LayerList layers={layerContracts}
+        onVisibilityChange={(id, visible) => setLayerContracts(value => updateLayer(id, { hidden: !visible }, value))}
+        onLockChange={(id, locked) => setLayerContracts(value => updateLayer(id, { locked }, value))}
+        onRenameRequest={id => console.info("Rename layer", id)} onContextMenu={id => console.info("Layer menu", id)}
+        onReorder={(sourceId, targetId, position) => console.info("Reorder", sourceId, targetId, position)}
+        onReparent={(sourceId, parentId) => console.info("Reparent", sourceId, parentId)} />
+      <div style={{ flex: 1 }} />
     </div>;
   }
 

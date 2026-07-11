@@ -53,6 +53,14 @@ export interface SlideBlock {
   range: [number, number];     // [start,end] ms on the master timeline
   active?: boolean;            // canvas focus — visually distinct
 }
+export interface BaseClipBlock {
+  id: string;
+  name: string;
+  range: [number, number];
+  selected?: boolean;
+  thumbnail?: string;
+  tint?: string;
+}
 
 const TYPE_ICON: Record<TrackType, typeof Hash> = { group: Hash, frame: Square, text: Type, line: Minus };
 
@@ -339,15 +347,54 @@ function BlockTrack({ blocks, onSelect, onOpen, onMove, onTrim }: {
   );
 }
 
-function BaseVideoTrack() {
+function BaseVideoTrack({ clips, onSelect, onOpen, onMove, onTrim }: {
+  clips: BaseClipBlock[];
+  onSelect?: (id: string) => void;
+  onOpen?: (id: string) => void;
+  onMove?: (id: string, startMs: number) => void;
+  onTrim?: (id: string, edge: "start" | "end", timeMs: number) => void;
+}) {
+  const drag = useRef<{ id: string; kind: "move" | "start" | "end"; startX: number; range: [number, number] } | null>(null);
+  const begin = (event: React.PointerEvent, clip: BaseClipBlock, kind: "move" | "start" | "end") => {
+    event.stopPropagation();
+    drag.current = { id: clip.id, kind, startX: event.clientX, range: clip.range };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const update = (event: React.PointerEvent, clip: BaseClipBlock) => {
+    const active = drag.current;
+    if (!active || active.id !== clip.id) return;
+    const delta = Math.round((event.clientX - active.startX) / (PX_PER_S / 1000));
+    if (active.kind === "move") onMove?.(clip.id, Math.max(0, active.range[0] + delta));
+    if (active.kind === "start") onTrim?.(clip.id, "start", Math.min(active.range[1], Math.max(0, active.range[0] + delta)));
+    if (active.kind === "end") onTrim?.(clip.id, "end", Math.max(active.range[0], active.range[1] + delta));
+  };
   return (
     <div className="flex" style={{ height: ROW_BLOCK }}>
       <div className="shrink-0 flex items-center gap-[8px] pl-[8px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W }}>
         <Film size={16} strokeWidth={1.5} className="text-c-icon-secondary shrink-0 opacity-60" />
         <span className={clsx(FONT, "text-[11px] font-[450] text-c-text-secondary truncate")}>Base video</span>
       </div>
-      {/* empty placeholder lane (v1 stub) */}
-      <div className="flex-1 relative" style={{ height: ROW_BLOCK }} aria-label="Base video track (empty)" />
+      <div className="flex-1 relative" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Base video track" : "Base video track (empty)"}>
+        {clips.map(clip => {
+          const left = sec(clip.range[0]);
+          const width = sec(clip.range[1] - clip.range[0]);
+          const tintIsImage = clip.tint?.includes("gradient(");
+          return <div key={clip.id} role="button" tabIndex={0} aria-pressed={clip.selected}
+            onClick={() => onSelect?.(clip.id)} onDoubleClick={() => onOpen?.(clip.id)}
+            onPointerDown={event => begin(event, clip, "move")} onPointerMove={event => update(event, clip)} onPointerUp={() => { drag.current = null; }}
+            className={clsx("absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-c-bg-secondary",
+              clip.selected ? "border-c-border-selected-strong" : "border-c-border")}
+            style={{ left, width, backgroundColor: !clip.thumbnail && !tintIsImage ? clip.tint : undefined, backgroundImage: clip.thumbnail ? `linear-gradient(rgba(0,0,0,.25),rgba(0,0,0,.25)),url(${clip.thumbnail})` : tintIsImage ? clip.tint : undefined, backgroundSize: "cover", backgroundPosition: "center" }}>
+            <span aria-label={`Trim start of ${clip.name}`} role="slider" aria-valuemin={0} aria-valuemax={clip.range[1]} aria-valuenow={clip.range[0]} tabIndex={0}
+              onPointerDown={event => begin(event, clip, "start")} onPointerMove={event => update(event, clip)} onPointerUp={() => { drag.current = null; }}
+              className="absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
+            <span aria-label={`Trim end of ${clip.name}`} role="slider" aria-valuemin={clip.range[0]} aria-valuemax={Number.MAX_SAFE_INTEGER} aria-valuenow={clip.range[1]} tabIndex={0}
+              onPointerDown={event => begin(event, clip, "end")} onPointerMove={event => update(event, clip)} onPointerUp={() => { drag.current = null; }}
+              className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
+            <span className={clsx(FONT, "relative text-[11px] font-[450] truncate", clip.thumbnail || clip.tint ? "text-white" : "text-c-text-secondary")}>{clip.name}</span>
+          </div>;
+        })}
+      </div>
     </div>
   );
 }
@@ -356,6 +403,7 @@ export function Timeline({
   mode = "slide",
   tracks = DEMO_TRACKS,
   blocks = DEMO_BLOCKS,
+  baseClips = [],
   height = 320,
   duration = mode === "master" ? 20000 : 10000,
   playhead: controlledPlayhead,
@@ -377,11 +425,16 @@ export function Timeline({
   onBlockOpen,
   onBlockMove,
   onBlockTrim,
+  onClipSelect,
+  onClipOpen,
+  onClipMove,
+  onClipTrim,
   onBack,
 }: {
   mode?: TimelineMode;
   tracks?: Track[];
   blocks?: SlideBlock[];
+  baseClips?: BaseClipBlock[];
   height?: number;
   duration?: number;
   playhead?: number;
@@ -403,6 +456,10 @@ export function Timeline({
   onBlockOpen?: (id: string) => void;
   onBlockMove?: (id: string, startMs: number) => void;
   onBlockTrim?: (id: string, edge: "start" | "end", timeMs: number) => void;
+  onClipSelect?: (id: string) => void;
+  onClipOpen?: (id: string) => void;
+  onClipMove?: (id: string, startMs: number) => void;
+  onClipTrim?: (id: string, edge: "start" | "end", timeMs: number) => void;
   onBack?: () => void;
 }) {
   const master = mode === "master";
@@ -470,7 +527,7 @@ export function Timeline({
         {master ? (
           <>
             <BlockTrack blocks={blocks} onSelect={onBlockSelect} onOpen={onBlockOpen} onMove={onBlockMove} onTrim={onBlockTrim} />
-            <BaseVideoTrack />
+            <BaseVideoTrack clips={baseClips} onSelect={onClipSelect} onOpen={onClipOpen} onMove={onClipMove} onTrim={onClipTrim} />
           </>
         ) : (
           <>
