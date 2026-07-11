@@ -1,4 +1,5 @@
 import { clsx } from "clsx";
+import type { MouseEvent } from "react";
 import { ChevronRight, ChevronDown, Plus } from "lucide-react";
 import { ScrollArea } from "./Panel";
 
@@ -27,7 +28,7 @@ export interface SlideData {
   stacked?: boolean;           // stacked-group visual (offset cards behind)
   motion?: boolean;            // animation applied — badge on thumbnail
   comment?: number;            // comment-pin count (undefined = none)
-  onClick?: () => void;
+  onClick?: (event: MouseEvent<HTMLDivElement>) => void;
 }
 
 // ── Slide thumbnail (+ motion badge) ──────────────────────────────────────────

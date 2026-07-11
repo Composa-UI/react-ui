@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PropertyPanel } from "./components/ui3/PropertyPanel";
+import { PropertyPanel, type SlideBackgroundType, type SlideTransitionDirection, type SlideTransitionEasing, type SlideTransitionType } from "./components/ui3/PropertyPanel";
 import SlidesTemplate from "./imports/SlidesTemplate";
 import { SlidesPanel, type SlideData } from "./components/ui3/SlidesPanel";
 import { SlideInspector } from "./components/ui3/SlideInspector";
@@ -36,6 +36,50 @@ export default function Playground() {
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>("2b");
   const [contractPlayhead, setContractPlayhead] = useState(300);
   const [contractX, setContractX] = useState(270);
+  const [slideContract, setSlideContract] = useState<{
+    name: string; start: number; duration: number; skipped: boolean;
+    backgroundType: SlideBackgroundType; backgroundColor: string; backgroundOpacity: number;
+    transitionType: SlideTransitionType; transitionDirection: SlideTransitionDirection; transitionDuration: number; transitionEasing: SlideTransitionEasing;
+  }>({
+    name: "Opening title", start: 0, duration: 5, skipped: false,
+    backgroundType: "solid", backgroundColor: "#1e1e1e", backgroundOpacity: 100,
+    transitionType: "push", transitionDirection: "right", transitionDuration: 500,
+    transitionEasing: "ease-in-out",
+  });
+
+  if (view === "slide-contract") {
+    return (
+      <div style={{ height: "100vh", width: "100vw", display: "flex", justifyContent: "flex-end", background: "#e6e6e6" }}>
+        <PropertyPanel
+          mode="slide"
+          slideName={slideContract.name}
+          onSlideNameChange={name => setSlideContract(value => ({ ...value, name }))}
+          slideStart={slideContract.start}
+          slideDuration={slideContract.duration}
+          onSlideStartChange={start => setSlideContract(value => ({ ...value, start }))}
+          onSlideDurationChange={duration => setSlideContract(value => ({ ...value, duration }))}
+          slideSkipped={slideContract.skipped}
+          onSlideSkippedChange={skipped => setSlideContract(value => ({ ...value, skipped }))}
+          slideBackgroundType={slideContract.backgroundType}
+          slideBackgroundColor={slideContract.backgroundColor}
+          slideBackgroundOpacity={slideContract.backgroundOpacity}
+          onSlideBackgroundTypeChange={backgroundType => setSlideContract(value => ({ ...value, backgroundType }))}
+          onSlideBackgroundColorChange={backgroundColor => setSlideContract(value => ({ ...value, backgroundColor }))}
+          onSlideBackgroundOpacityChange={backgroundOpacity => setSlideContract(value => ({ ...value, backgroundOpacity }))}
+          slideTransitionType={slideContract.transitionType}
+          slideTransitionDirection={slideContract.transitionDirection}
+          slideTransitionDuration={slideContract.transitionDuration}
+          slideTransitionEasing={slideContract.transitionEasing}
+          onSlideTransitionTypeChange={transitionType => setSlideContract(value => ({ ...value, transitionType }))}
+          onSlideTransitionDirectionChange={transitionDirection => setSlideContract(value => ({ ...value, transitionDirection }))}
+          onSlideTransitionDurationChange={transitionDuration => setSlideContract(value => ({ ...value, transitionDuration }))}
+          onSlideTransitionEasingChange={transitionEasing => setSlideContract(value => ({ ...value, transitionEasing }))}
+          onDuplicateSlide={() => console.info("Duplicate slide")}
+          onDeleteSlide={() => console.info("Delete slide")}
+        />
+      </div>
+    );
+  }
 
   if (view === "controlled-contracts") {
     return (

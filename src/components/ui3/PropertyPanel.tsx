@@ -38,6 +38,11 @@ export type ElementType = "text" | "frame" | "frame-auto" | "shape" | "component
 
 export type PanelMode = "project" | "slide" | "element" | "video-clip";
 
+export type SlideBackgroundType = "solid" | "gradient" | "image" | "video";
+export type SlideTransitionType = "none" | "fade" | "push" | "slide" | "wipe";
+export type SlideTransitionDirection = "left" | "right" | "up" | "down";
+export type SlideTransitionEasing = "linear" | "ease-in" | "ease-out" | "ease-in-out";
+
 type BlendMode = string;
 
 // Full grouped list (matches the study panel); dividers render between groups.
@@ -1112,11 +1117,22 @@ function SlideTimingSection({
   title = "Timing",
   start = 0,
   end = 5,
+  onStartChange,
+  onEndChange,
+  onDurationChange,
 }: {
   title?: string;
   start?: number;
   end?: number;
+  onStartChange?: (value: number) => void;
+  onEndChange?: (value: number) => void;
+  onDurationChange?: (value: number) => void;
 }) {
+  const [internalStart, setInternalStart] = useState(start);
+  const [internalEnd, setInternalEnd] = useState(end);
+  const controlled = !!(onStartChange || onEndChange || onDurationChange);
+  const renderedStart = controlled ? start : internalStart;
+  const renderedEnd = controlled ? end : internalEnd;
   return (
     <PanelSection title={title}>
       <PanelFieldRow
@@ -1125,7 +1141,8 @@ function SlideTimingSection({
         left={
           <NumericInput
             iconLead={<span className={clsx(FONT, "text-[10px]")}>Start</span>}
-            defaultValue={start}
+            value={renderedStart}
+            onChange={value => { if (!controlled) setInternalStart(value); onStartChange?.(value); }}
             min={0}
             suffix="s"
           />
@@ -1133,7 +1150,8 @@ function SlideTimingSection({
         right={
           <NumericInput
             iconLead={<span className={clsx(FONT, "text-[10px]")}>End</span>}
-            defaultValue={end}
+            value={renderedEnd}
+            onChange={value => { if (!controlled) setInternalEnd(value); onEndChange?.(value); }}
             min={0}
             suffix="s"
           />
@@ -1145,7 +1163,8 @@ function SlideTimingSection({
         left={
           <NumericInput
             iconLead={<span className={FONT}>↔</span>}
-            defaultValue={Math.max(0, end - start)}
+            value={Math.max(0, renderedEnd - renderedStart)}
+            onChange={value => { if (!controlled) setInternalEnd(renderedStart + value); onDurationChange?.(value); }}
             min={0}
             suffix="s"
           />
@@ -1210,8 +1229,27 @@ function TemplateStyleSection({ name = "Radicle", fonts = "Whyte Inktrap, Inter"
 
 // Background §Background — fill-type segmented (Solid · Gradient · Image · Video)
 // switching the control below. Solid shows a compact ColorInput swatch trigger.
-function SlideBackgroundSection() {
-  const [fillType, setFillType] = useState("solid");
+function SlideBackgroundSection({
+  type: controlledType,
+  color: controlledColor,
+  opacity: controlledOpacity,
+  onTypeChange,
+  onColorChange,
+  onOpacityChange,
+}: {
+  type?: SlideBackgroundType;
+  color?: string;
+  opacity?: number;
+  onTypeChange?: (value: SlideBackgroundType) => void;
+  onColorChange?: (value: string) => void;
+  onOpacityChange?: (value: number) => void;
+}) {
+  const [internalType, setInternalType] = useState<SlideBackgroundType>("solid");
+  const [internalColor, setInternalColor] = useState("#1e1e1e");
+  const [internalOpacity, setInternalOpacity] = useState(100);
+  const fillType = controlledType ?? internalType;
+  const color = controlledColor ?? internalColor;
+  const opacity = controlledOpacity ?? internalOpacity;
   const [colorOpen, setColorOpen] = useState(false);
   const fillSegments = [
     { value: "solid", icon: <SlideFillTypeIcon type="solid" /> },
@@ -1230,7 +1268,11 @@ function SlideBackgroundSection() {
           <SegmentedControl
             segments={fillSegments}
             value={fillType}
-            onChange={setFillType}
+            onChange={value => {
+              const next = value as SlideBackgroundType;
+              if (controlledType === undefined) setInternalType(next);
+              onTypeChange?.(next);
+            }}
             className="w-full"
           />
         }
@@ -1242,9 +1284,17 @@ function SlideBackgroundSection() {
           <div className="flex-1 min-w-0">
             <ColorInput
               fullWidth
-              color="#1e1e1e"
-              opacity={100}
+              color={color}
+              opacity={opacity}
               onSwatchClick={() => setColorOpen(true)}
+              onColorChange={value => {
+                if (controlledColor === undefined) setInternalColor(value);
+                onColorChange?.(value);
+              }}
+              onOpacityChange={value => {
+                if (controlledOpacity === undefined) setInternalOpacity(value);
+                onOpacityChange?.(value);
+              }}
             />
           </div>
         </div>
@@ -1275,9 +1325,74 @@ function SlideBackgroundSection() {
         </div>
       )}
 
-      <ColorDialog open={colorOpen} onClose={() => setColorOpen(false)} hex="1e1e1e" />
+      <ColorDialog
+        open={colorOpen}
+        onClose={() => setColorOpen(false)}
+        fillType={fillType === "gradient" ? "linear" : fillType === "image" || fillType === "video" ? "image" : "solid"}
+        hex={color.replace(/^#/, "")}
+        opacity={opacity}
+        onHexChange={value => {
+          const next = `#${value.replace(/^#/, "")}`;
+          if (controlledColor === undefined) setInternalColor(next);
+          onColorChange?.(next);
+        }}
+        onOpacityChange={value => {
+          if (controlledOpacity === undefined) setInternalOpacity(value);
+          onOpacityChange?.(value);
+        }}
+      />
     </PanelSection>
   );
+}
+
+const TRANSITION_LABELS: Record<SlideTransitionType, string> = { none: "None", fade: "Fade", push: "Push", slide: "Slide", wipe: "Wipe" };
+const EASING_LABELS: Record<SlideTransitionEasing, string> = { linear: "Linear", "ease-in": "Ease in", "ease-out": "Ease out", "ease-in-out": "Ease" };
+
+function ChoiceDropdown<T extends string>({ value, options, labels, onChange }: {
+  value: T;
+  options: readonly T[];
+  labels: Record<T, string>;
+  onChange?: (value: T) => void;
+}) {
+  return (
+    <PopoverMenu align="right" trigger={<Dropdown value={labels[value]} fullWidth />}>
+      {close => <Menu minWidth={160}>{options.map(option => (
+        <MenuRow key={option} type="checkmark" checked={option === value} label={labels[option]} onClick={() => { onChange?.(option); close(); }} />
+      ))}</Menu>}
+    </PopoverMenu>
+  );
+}
+
+function SlideTransitionSection({ type, direction, duration, easing, onTypeChange, onDirectionChange, onDurationChange, onEasingChange }: {
+  type: SlideTransitionType;
+  direction: SlideTransitionDirection;
+  duration: number;
+  easing: SlideTransitionEasing;
+  onTypeChange?: (value: SlideTransitionType) => void;
+  onDirectionChange?: (value: SlideTransitionDirection) => void;
+  onDurationChange?: (value: number) => void;
+  onEasingChange?: (value: SlideTransitionEasing) => void;
+}) {
+  const directional = type === "push" || type === "slide" || type === "wipe";
+  return <PanelSection title="Transition">
+    <PanelFieldRow label="Type" reserveRightSlot={false} left={
+      <ChoiceDropdown value={type} options={["none", "fade", "push", "slide", "wipe"]} labels={TRANSITION_LABELS} onChange={onTypeChange} />
+    } />
+    {directional && <PanelFieldRow label="Direction" reserveRightSlot={false} left={
+      <SegmentedControl
+        segments={[{ value: "left", label: "←" }, { value: "right", label: "→" }, { value: "up", label: "↑" }, { value: "down", label: "↓" }]}
+        value={direction}
+        onChange={value => onDirectionChange?.(value as SlideTransitionDirection)}
+        className="w-full"
+      />
+    } />}
+    {type !== "none" && <>
+      <PanelFieldRow label="Duration" reserveRightSlot={false} left={<NumericInput value={duration} min={0} suffix="ms" onChange={onDurationChange} />} />
+      <PanelFieldRow label="Easing" reserveRightSlot={false} left={
+        <ChoiceDropdown value={easing} options={["linear", "ease-in-out", "ease-in", "ease-out"]} labels={EASING_LABELS} onChange={onEasingChange} />
+      } />
+    </>}
+  </PanelSection>;
 }
 
 // ─── Video Clip mode sections ─────────────────────────────────────────────────
@@ -1370,8 +1485,31 @@ export interface PropertyPanelProps {
   opacity?: number;
   onOpacityChange?: (value: number) => void;
   blendMode?: BlendMode;
-  /** Slide mode — initial slide name shown in the header text field. */
+  /** Slide mode — controlled when provided; demo fallback remains editable. */
   slideName?: string;
+  onSlideNameChange?: (value: string) => void;
+  slideStart?: number;
+  slideDuration?: number;
+  onSlideStartChange?: (value: number) => void;
+  onSlideDurationChange?: (value: number) => void;
+  slideSkipped?: boolean;
+  onSlideSkippedChange?: (value: boolean) => void;
+  slideBackgroundType?: SlideBackgroundType;
+  slideBackgroundColor?: string;
+  slideBackgroundOpacity?: number;
+  onSlideBackgroundTypeChange?: (value: SlideBackgroundType) => void;
+  onSlideBackgroundColorChange?: (value: string) => void;
+  onSlideBackgroundOpacityChange?: (value: number) => void;
+  slideTransitionType?: SlideTransitionType;
+  slideTransitionDirection?: SlideTransitionDirection;
+  slideTransitionDuration?: number;
+  slideTransitionEasing?: SlideTransitionEasing;
+  onSlideTransitionTypeChange?: (value: SlideTransitionType) => void;
+  onSlideTransitionDirectionChange?: (value: SlideTransitionDirection) => void;
+  onSlideTransitionDurationChange?: (value: number) => void;
+  onSlideTransitionEasingChange?: (value: SlideTransitionEasing) => void;
+  onDuplicateSlide?: () => void;
+  onDeleteSlide?: () => void;
   /** Video Clip mode — initial clip name shown in the header text field. */
   clipName?: string;
   className?: string;
@@ -1413,10 +1551,45 @@ export function PropertyPanel({
   onOpacityChange,
   blendMode = "Pass through",
   slideName = "Slide 1",
+  onSlideNameChange,
+  slideStart = 0,
+  slideDuration = 5,
+  onSlideStartChange,
+  onSlideDurationChange,
+  slideSkipped = false,
+  onSlideSkippedChange,
+  slideBackgroundType,
+  slideBackgroundColor,
+  slideBackgroundOpacity,
+  onSlideBackgroundTypeChange,
+  onSlideBackgroundColorChange,
+  onSlideBackgroundOpacityChange,
+  slideTransitionType,
+  slideTransitionDirection,
+  slideTransitionDuration,
+  slideTransitionEasing,
+  onSlideTransitionTypeChange,
+  onSlideTransitionDirectionChange,
+  onSlideTransitionDurationChange,
+  onSlideTransitionEasingChange,
+  onDuplicateSlide,
+  onDeleteSlide,
   clipName = "hero-cover",
   className,
 }: PropertyPanelProps) {
   const [tab, setTab] = useState("design");
+  const [demoSlideName, setDemoSlideName] = useState(slideName);
+  const [demoSkipped, setDemoSkipped] = useState(slideSkipped);
+  const [demoTransitionType, setDemoTransitionType] = useState<SlideTransitionType>(slideTransitionType ?? "none");
+  const [demoTransitionDirection, setDemoTransitionDirection] = useState<SlideTransitionDirection>(slideTransitionDirection ?? "right");
+  const [demoTransitionDuration, setDemoTransitionDuration] = useState(slideTransitionDuration ?? 500);
+  const [demoTransitionEasing, setDemoTransitionEasing] = useState<SlideTransitionEasing>(slideTransitionEasing ?? "ease-in-out");
+  const renderedSlideName = onSlideNameChange || slideName !== "Slide 1" ? slideName : demoSlideName;
+  const renderedSkipped = onSlideSkippedChange || slideSkipped ? slideSkipped : demoSkipped;
+  const renderedTransitionType = slideTransitionType ?? demoTransitionType;
+  const renderedTransitionDirection = slideTransitionDirection ?? demoTransitionDirection;
+  const renderedTransitionDuration = slideTransitionDuration ?? demoTransitionDuration;
+  const renderedTransitionEasing = slideTransitionEasing ?? demoTransitionEasing;
   const [textResize, setTextResize] = useState("auto-w");
   const textResizeSegments = [
     { value: "auto-w", icon: <MoveHorizontal size={S} strokeWidth={1.5} /> },
@@ -1472,7 +1645,7 @@ export function PropertyPanel({
           {/* Panel header — inline-editable slide name + options IconButton */}
           <div className="h-[40px] flex items-center gap-[8px] px-[16px] border-b border-c-border">
             <div className="flex-1 min-w-0">
-              <InputField defaultValue={slideName} placeholder="Slide name" />
+              <InputField value={renderedSlideName} onChange={value => { if (!onSlideNameChange) setDemoSlideName(value); onSlideNameChange?.(value); }} placeholder="Slide name" />
             </div>
             <PopoverMenu
               align="right"
@@ -1480,8 +1653,9 @@ export function PropertyPanel({
             >
               {(close) => (
                 <Menu minWidth={180}>
-                  <MenuRow type="simple" label="Duplicate slide" onClick={close} />
-                  <MenuRow type="simple" label="Delete slide" onClick={close} />
+                  <MenuRow type="simple" label="Duplicate slide" onClick={() => { onDuplicateSlide?.(); close(); }} />
+                  <MenuRow type="toggle" label="Skip slide" checked={renderedSkipped} onClick={() => { const next = !renderedSkipped; if (!onSlideSkippedChange) setDemoSkipped(next); onSlideSkippedChange?.(next); close(); }} />
+                  <MenuRow type="simple" label="Delete slide" destructive onClick={() => { onDeleteSlide?.(); close(); }} />
                 </Menu>
               )}
             </PopoverMenu>
@@ -1489,10 +1663,33 @@ export function PropertyPanel({
 
           {/* Slide template first, ahead of Timing (user's preferred order). */}
           <TemplateStyleSection />
-          <SlideTimingSection />
-          <SlideBackgroundSection />
+          <SlideTimingSection
+            start={slideStart}
+            end={slideStart + slideDuration}
+            onStartChange={onSlideStartChange}
+            onEndChange={value => onSlideDurationChange?.(Math.max(0, value - slideStart))}
+            onDurationChange={onSlideDurationChange}
+          />
+          <SlideBackgroundSection
+            type={slideBackgroundType}
+            color={slideBackgroundColor}
+            opacity={slideBackgroundOpacity}
+            onTypeChange={onSlideBackgroundTypeChange}
+            onColorChange={onSlideBackgroundColorChange}
+            onOpacityChange={onSlideBackgroundOpacityChange}
+          />
           {/* Selection colors — reuse the existing element-mode section */}
           <SelectionColorsSection />
+          <SlideTransitionSection
+            type={renderedTransitionType}
+            direction={renderedTransitionDirection}
+            duration={renderedTransitionDuration}
+            easing={renderedTransitionEasing}
+            onTypeChange={value => { if (slideTransitionType === undefined) setDemoTransitionType(value); onSlideTransitionTypeChange?.(value); }}
+            onDirectionChange={value => { if (slideTransitionDirection === undefined) setDemoTransitionDirection(value); onSlideTransitionDirectionChange?.(value); }}
+            onDurationChange={value => { if (slideTransitionDuration === undefined) setDemoTransitionDuration(value); onSlideTransitionDurationChange?.(value); }}
+            onEasingChange={value => { if (slideTransitionEasing === undefined) setDemoTransitionEasing(value); onSlideTransitionEasingChange?.(value); }}
+          />
         </ScrollArea>
       )}
 
