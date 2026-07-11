@@ -241,7 +241,12 @@ export function LayerList({
                   if (selectedId === undefined) setInternalSelected(row.node.id);
                   onSelectionChange?.(row.node.id);
                 }}
-                onVisibilityChange={() => onVisibilityChange?.(row.node.id, !!row.node.hidden)}
+                // Callback value is the requested next visibility: hidden → visible,
+                // visible → hidden. `hidden` therefore equals `nextVisible` here.
+                onVisibilityChange={() => {
+                  const nextVisible = !!row.node.hidden;
+                  onVisibilityChange?.(row.node.id, nextVisible);
+                }}
                 onLockChange={() => onLockChange?.(row.node.id, !row.node.locked)}
                 onRenameRequest={() => onRenameRequest?.(row.node.id)}
                 onContextMenu={event => { if (onContextMenu) { event.preventDefault(); onContextMenu(row.node.id, event); } }}
