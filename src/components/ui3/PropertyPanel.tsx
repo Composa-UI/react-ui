@@ -50,6 +50,7 @@ export interface ElementFillSetting { id: string; color: string; opacity: number
 export interface ElementStrokeSetting extends ElementFillSetting { weight: number; align: "inside" | "center" | "outside"; }
 export interface ElementEffectSetting { id: string; type: "Drop shadow" | "Inner shadow" | "Layer blur" | "Background blur"; visible: boolean; }
 export interface ElementLayoutGuideSetting { id: string; type: "Grid" | "Columns" | "Rows"; visible: boolean; size: number; }
+export interface ElementSelectionColorSetting { id: string; color: string; opacity: number; usageCount?: number; }
 export interface ElementTypographySettings {
   fontFamily: string; fontWeight: string; fontSize: number; lineHeight: number; letterSpacing: number;
   align: "left" | "center" | "right"; verticalAlign: "top" | "middle" | "bottom"; styleName?: string;
@@ -1023,32 +1024,38 @@ function LayoutGuideSection({ entries, onAdd, onUpdate, onRemove }: {
 // ─── Section: Selection Colors (§5.8) ─────────────────────────────────────────
 // Multi-select only, always last, no collapse. Derived colors across the selection;
 // each row edits every use of that color. No drag/eye/remove.
-function SelectionColorsSection() {
+const DEMO_SELECTION_COLORS: ElementSelectionColorSetting[] = [
+  { id: "demo-selection-1", color: "#1E1E1E", opacity: 100 },
+  { id: "demo-selection-2", color: "#0D99FF", opacity: 100 },
+  { id: "demo-selection-3", color: "#FFFFFF", opacity: 100 },
+  { id: "demo-selection-4", color: "#14AE5C", opacity: 100 },
+  { id: "demo-selection-5", color: "#FFCD29", opacity: 100 },
+  { id: "demo-selection-6", color: "#9747FF", opacity: 100 },
+];
+
+function SelectionColorsSection({ colors = DEMO_SELECTION_COLORS, onUpdate, onSelectAll }: {
+  colors?: ElementSelectionColorSetting[];
+  onUpdate?: (id: string, patch: Partial<Omit<ElementSelectionColorSetting, "id">>) => void;
+  onSelectAll?: (id: string) => void;
+}) {
   const [collapsed, setCollapsed] = useState(true);
   const [colorOpen, setColorOpen] = useState(false);
-  const [activeIdx, setActiveIdx] = useState(0);
-  const colors = [
-    { hex: "1E1E1E", opacity: 100 },
-    { hex: "0D99FF", opacity: 100 },
-    { hex: "FFFFFF", opacity: 100 },
-    { hex: "14AE5C", opacity: 100 },
-    { hex: "FFCD29", opacity: 100 },
-    { hex: "9747FF", opacity: 100 },
-  ];
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const active = colors.find(color => color.id === activeId);
   const maxChips = 4;
   return (
     <PanelSection
       title="Selection colors"
       onHeaderClick={() => setCollapsed(v => !v)}
-      rightActions={collapsed ? (
+      rightActions={collapsed && colors.length ? (
         /* Collapsed only: color chips + overflow on the right (no chevron). Click to expand. */
         <button
           onClick={() => setCollapsed(false)}
           aria-label="Expand selection colors"
           className="flex items-center gap-[3px]"
         >
-          {colors.slice(0, maxChips).map((c, i) => (
-            <span key={i} className="size-[16px] rounded-[3px] ring-1 ring-inset ring-[rgba(0,0,0,0.1)]" style={{ background: `#${c.hex}` }} />
+          {colors.slice(0, maxChips).map(c => (
+            <span key={c.id} className="size-[16px] rounded-[3px] ring-1 ring-inset ring-[rgba(0,0,0,0.1)]" style={{ background: c.color }} />
           ))}
           {colors.length > maxChips && (
             <span className={clsx(FONT, "text-[10px] font-[550] text-c-text-secondary ml-[1px]")}>+{colors.length - maxChips}</span>
@@ -1056,20 +1063,23 @@ function SelectionColorsSection() {
         </button>
       ) : undefined}
     >
-      {!collapsed && colors.map((c, i) => (
-        <div key={i} className="group/row flex items-center px-[16px] h-[32px] gap-[8px]">
+      {colors.length === 0 && <div className={clsx(FONT, "h-[32px] flex items-center px-[16px] text-[11px] text-c-text-secondary")}>No shared colors</div>}
+      {!collapsed && colors.map(c => (
+        <div key={c.id} className="group/row flex items-center px-[16px] h-[32px] gap-[8px]">
           <div className="flex-1 min-w-0">
-            <ColorInput fullWidth color={`#${c.hex}`} opacity={c.opacity} onSwatchClick={() => { setActiveIdx(i); setColorOpen(true); }} />
+            <ColorInput fullWidth color={c.color} opacity={c.opacity} onSwatchClick={() => { setActiveId(c.id); setColorOpen(true); }} />
           </div>
           {/* Reserved slot; actions reveal on this row's hover — no reflow (§5.8) */}
           <div className="shrink-0 flex items-center gap-[4px] opacity-0 group-hover/row:opacity-100 transition-opacity duration-100">
             <PanelActionBtn icon={<StylesIcon />} label="Apply color style" />
-            <PanelActionBtn icon={<Crosshair size={16} strokeWidth={1.5} />} label="Select all using this color" />
+            <PanelActionBtn icon={<Crosshair size={16} strokeWidth={1.5} />} label={c.usageCount ? `Select all ${c.usageCount} using this color` : "Select all using this color"} onClick={() => onSelectAll?.(c.id)} />
           </div>
         </div>
       ))}
 
-      <ColorDialog open={colorOpen} onClose={() => setColorOpen(false)} hex={colors[activeIdx]?.hex ?? "1e1e1e"} />
+      <ColorDialog key={active?.id ?? "selection-color"} open={colorOpen} onClose={() => setColorOpen(false)} hex={(active?.color ?? "#1e1e1e").replace(/^#/, "")} opacity={active?.opacity ?? 100}
+        onHexChange={hex => active && onUpdate?.(active.id, { color: `#${hex.replace(/^#/, "")}` })}
+        onOpacityChange={opacity => active && onUpdate?.(active.id, { opacity })} />
     </PanelSection>
   );
 }
@@ -1633,6 +1643,9 @@ export interface PropertyPanelProps {
   onAddEffect?: () => void; onUpdateEffect?: (id: string, patch: Partial<Omit<ElementEffectSetting, "id">>) => void; onToggleEffect?: (id: string, visible: boolean) => void; onReorderEffect?: (id: string, targetId: string) => void; onRemoveEffect?: (id: string) => void;
   layoutGuides?: ElementLayoutGuideSetting[];
   onAddLayoutGuide?: () => void; onUpdateLayoutGuide?: (id: string, patch: Partial<Omit<ElementLayoutGuideSetting, "id">>) => void; onRemoveLayoutGuide?: (id: string) => void;
+  selectionColors?: ElementSelectionColorSetting[];
+  onUpdateSelectionColor?: (id: string, patch: Partial<Omit<ElementSelectionColorSetting, "id">>) => void;
+  onSelectAllUsingColor?: (id: string) => void;
   /** Project mode keeps the name a static label in V1. */
   projectName?: string;
   projectWidth?: number;
@@ -1740,6 +1753,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   strokes, onAddStroke, onUpdateStroke, onToggleStroke, onReorderStroke, onRemoveStroke,
   effects, onAddEffect, onUpdateEffect, onToggleEffect, onReorderEffect, onRemoveEffect,
   layoutGuides, onAddLayoutGuide, onUpdateLayoutGuide, onRemoveLayoutGuide,
+  selectionColors, onUpdateSelectionColor, onSelectAllUsingColor,
   projectName = "Project",
   projectWidth = 1920,
   projectHeight = 1080,
@@ -1915,7 +1929,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onOpacityChange={onSlideBackgroundOpacityChange}
           />
           {/* Selection colors — reuse the existing element-mode section */}
-          <SelectionColorsSection />
+          <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} />
           <SlideTransitionSection
             type={renderedTransitionType}
             direction={renderedTransitionDirection}
@@ -2042,7 +2056,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <EffectsSection entries={effects} onAdd={onAddEffect} onUpdate={onUpdateEffect} onToggle={onToggleEffect} onReorder={onReorderEffect} onRemove={onRemoveEffect} />
 
           {/* Selection Colors — multi-select only (§5.8), positioned right after Effects */}
-          {multiSelect && <SelectionColorsSection />}
+          {multiSelect && <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} />}
 
           {/* Layout Guide — frames only (§5.6) */}
           {(isFrame || isAutoLayout) && <LayoutGuideSection entries={layoutGuides} onAdd={onAddLayoutGuide} onUpdate={onUpdateLayoutGuide} onRemove={onRemoveLayoutGuide} />}

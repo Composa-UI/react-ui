@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PropertyPanel, type ClipSpeed, type ElementEffectSetting, type ElementFillSetting, type ElementLayoutGuideSetting, type ElementLayoutSettings, type ElementStrokeSetting, type ElementTypographySettings, type InspectorExportSetting, type ProjectFrameRate, type SlideBackgroundType, type SlideTransitionDirection, type SlideTransitionEasing, type SlideTransitionType } from "./components/ui3/PropertyPanel";
+import { PropertyPanel, type ClipSpeed, type ElementEffectSetting, type ElementFillSetting, type ElementLayoutGuideSetting, type ElementLayoutSettings, type ElementSelectionColorSetting, type ElementStrokeSetting, type ElementTypographySettings, type InspectorExportSetting, type ProjectFrameRate, type SlideBackgroundType, type SlideTransitionDirection, type SlideTransitionEasing, type SlideTransitionType } from "./components/ui3/PropertyPanel";
 import SlidesTemplate from "./imports/SlidesTemplate";
 import { SlidesPanel, type SlideData } from "./components/ui3/SlidesPanel";
 import { SlideInspector } from "./components/ui3/SlideInspector";
@@ -45,6 +45,10 @@ export default function Playground() {
   const [assetQuery, setAssetQuery] = useState("");
   const [assetFilter, setAssetFilter] = useState<AssetFilter>("all");
   const [assetSelection, setAssetSelection] = useState<string | null>("asset-image");
+  const [selectionColors, setSelectionColors] = useState<ElementSelectionColorSetting[]>([
+    { id: "selection-brand", color: "#0D99FF", opacity: 100, usageCount: 4 },
+    { id: "selection-ink", color: "#1E1E1E", opacity: 80, usageCount: 2 },
+  ]);
   const [overlayContractOpen, setOverlayContractOpen] = useState(true);
   const [clipContract, setClipContract] = useState<{ name: string; start: number; duration: number; trimIn: number; trimOut: number; speed: ClipSpeed }>({
     name: "hero-cover", start: 0, duration: 8, trimIn: 10, trimOut: 18, speed: 1,
@@ -117,6 +121,9 @@ export default function Playground() {
           onSlideTransitionDirectionChange={transitionDirection => setSlideContract(value => ({ ...value, transitionDirection }))}
           onSlideTransitionDurationChange={transitionDuration => setSlideContract(value => ({ ...value, transitionDuration }))}
           onSlideTransitionEasingChange={transitionEasing => setSlideContract(value => ({ ...value, transitionEasing }))}
+          selectionColors={selectionColors}
+          onUpdateSelectionColor={(id, patch) => setSelectionColors(value => value.map(color => color.id === id ? { ...color, ...patch } : color))}
+          onSelectAllUsingColor={id => console.info("Select all using color", id)}
           onDuplicateSlide={() => console.info("Duplicate slide")}
           onDeleteSlide={() => console.info("Delete slide")}
         />
