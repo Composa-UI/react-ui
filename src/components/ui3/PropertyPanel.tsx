@@ -395,10 +395,11 @@ function LayoutAutoSection({
   onDisableAutoLayout,
 }: LayoutAutoProps) {
   const [lockAspect, setLockAspect] = useState(false);
+  const controlled = flowMode !== undefined;
   const [flow, setFlow] = useState("v");
   const renderedFlow = flowMode === "horizontal" ? "h" : flowMode === "vertical" ? "v" : flowMode ?? flow;
   const [align, setAlign] = useState(alignValue);
-  const renderedAlign = onAlignChange ? alignValue : align;
+  const renderedAlign = controlled ? alignValue : align;
   const [indivPadding, setIndivPadding] = useState(false);
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
 
@@ -460,7 +461,7 @@ function LayoutAutoSection({
             <div className="flex flex-col gap-[4px]">
               <NumericInput
                 iconLead={<span className={FONT}>{"]·["}</span>}
-                value={onGapChange ? gap : undefined} defaultValue={gap} onChange={onGapChange} min={0} suffix="px"
+                value={controlled ? gap : undefined} defaultValue={gap} onChange={onGapChange} min={0} suffix="px"
               />
               <Dropdown value="Auto" fullWidth />
             </div>
@@ -486,10 +487,10 @@ function LayoutAutoSection({
           // aligned (not centered) since the field block is two rows tall here.
           <div className="flex items-start gap-[4px]">
             <div className="grid grid-cols-2 gap-[4px] flex-1 min-w-0">
-              <NumericInput iconLead={<span className={FONT}>↑</span>} value={onPaddingChange ? paddingTop : undefined} defaultValue={paddingTop} onChange={top => onPaddingChange?.({ top, right: paddingRight, bottom: paddingBottom, left: paddingLeft })} min={0} />
-              <NumericInput iconLead={<span className={FONT}>→</span>} value={onPaddingChange ? paddingRight : undefined} defaultValue={paddingRight} onChange={right => onPaddingChange?.({ top: paddingTop, right, bottom: paddingBottom, left: paddingLeft })} min={0} />
-              <NumericInput iconLead={<span className={FONT}>↓</span>} value={onPaddingChange ? paddingBottom : undefined} defaultValue={paddingBottom} onChange={bottom => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom, left: paddingLeft })} min={0} />
-              <NumericInput iconLead={<span className={FONT}>←</span>} value={onPaddingChange ? paddingLeft : undefined} defaultValue={paddingLeft} onChange={left => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom: paddingBottom, left })} min={0} />
+              <NumericInput iconLead={<span className={FONT}>↑</span>} value={controlled ? paddingTop : undefined} defaultValue={paddingTop} onChange={top => onPaddingChange?.({ top, right: paddingRight, bottom: paddingBottom, left: paddingLeft })} min={0} />
+              <NumericInput iconLead={<span className={FONT}>→</span>} value={controlled ? paddingRight : undefined} defaultValue={paddingRight} onChange={right => onPaddingChange?.({ top: paddingTop, right, bottom: paddingBottom, left: paddingLeft })} min={0} />
+              <NumericInput iconLead={<span className={FONT}>↓</span>} value={controlled ? paddingBottom : undefined} defaultValue={paddingBottom} onChange={bottom => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom, left: paddingLeft })} min={0} />
+              <NumericInput iconLead={<span className={FONT}>←</span>} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} onChange={left => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom: paddingBottom, left })} min={0} />
             </div>
             <PanelActionBtn
               icon={<Maximize size={16} strokeWidth={1.5} />}
@@ -501,10 +502,10 @@ function LayoutAutoSection({
         ) : (
           <div className="flex items-center gap-[4px]">
             <div className="flex-1 min-w-0">
-              <NumericInput iconLead={<span className={FONT}>↕</span>} value={onPaddingChange ? paddingTop : undefined} defaultValue={paddingTop} onChange={vertical => onPaddingChange?.({ top: vertical, right: paddingRight, bottom: vertical, left: paddingLeft })} min={0} />
+              <NumericInput iconLead={<span className={FONT}>↕</span>} value={controlled ? paddingTop : undefined} defaultValue={paddingTop} onChange={vertical => onPaddingChange?.({ top: vertical, right: paddingRight, bottom: vertical, left: paddingLeft })} min={0} />
             </div>
             <div className="flex-1 min-w-0">
-              <NumericInput iconLead={<span className={FONT}>↔</span>} value={onPaddingChange ? paddingLeft : undefined} defaultValue={paddingLeft} onChange={horizontal => onPaddingChange?.({ top: paddingTop, right: horizontal, bottom: paddingBottom, left: horizontal })} min={0} />
+              <NumericInput iconLead={<span className={FONT}>↔</span>} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} onChange={horizontal => onPaddingChange?.({ top: paddingTop, right: horizontal, bottom: paddingBottom, left: horizontal })} min={0} />
             </div>
             <PanelActionBtn
               icon={<Maximize size={16} strokeWidth={1.5} />}
@@ -517,7 +518,7 @@ function LayoutAutoSection({
 
       {/* Clip content */}
       <PanelFullRow height={28}>
-        <Checkbox checked={onClipContentChange ? clipContent : undefined} defaultChecked={clipContent} onChange={onClipContentChange} label="Clip content" />
+        <Checkbox checked={controlled ? clipContent : undefined} defaultChecked={clipContent} onChange={onClipContentChange} label="Clip content" />
       </PanelFullRow>
     </PanelSection>
   );
@@ -532,20 +533,22 @@ interface AppearanceSectionProps {
   onOpacityChange?: (v: number) => void;
   onBlendModeChange?: (value: BlendMode) => void;
   onCornerRadiusChange?: (value: AppearanceSectionProps["cornerRadius"]) => void;
+  blendControlled?: boolean;
+  cornerControlled?: boolean;
 }
 
 function AppearanceSection({
-  opacity = 100, blendMode = "Pass through", cornerRadius = 0, onOpacityChange, onBlendModeChange, onCornerRadiusChange,
+  opacity = 100, blendMode = "Pass through", cornerRadius = 0, onOpacityChange, onBlendModeChange, onCornerRadiusChange, blendControlled = false, cornerControlled = false,
 }: AppearanceSectionProps) {
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
   const [indivCorners, setIndivCorners] = useState(typeof cornerRadius === "object");
   const [blend, setBlend] = useState<BlendMode>(blendMode);
   const [internalCornerRadius, setInternalCornerRadius] = useState(cornerRadius);
-  const renderedBlend = onBlendModeChange ? blendMode : blend;
-  const renderedCornerRadius = onCornerRadiusChange ? cornerRadius : internalCornerRadius;
+  const renderedBlend = blendControlled ? blendMode : blend;
+  const renderedCornerRadius = cornerControlled ? cornerRadius : internalCornerRadius;
   const corners = typeof renderedCornerRadius === "number" ? { topLeft: renderedCornerRadius, topRight: renderedCornerRadius, bottomLeft: renderedCornerRadius, bottomRight: renderedCornerRadius } : renderedCornerRadius;
-  const setBlendValue = (value: BlendMode) => { if (!onBlendModeChange) setBlend(value); onBlendModeChange?.(value); };
-  const setCornerValue = (value: NonNullable<AppearanceSectionProps["cornerRadius"]>) => { if (!onCornerRadiusChange) setInternalCornerRadius(value); onCornerRadiusChange?.(value); };
+  const setBlendValue = (value: BlendMode) => { if (!blendControlled) setBlend(value); onBlendModeChange?.(value); };
+  const setCornerValue = (value: NonNullable<AppearanceSectionProps["cornerRadius"]>) => { if (!cornerControlled) setInternalCornerRadius(value); onCornerRadiusChange?.(value); };
   const cornerKeys = ["topLeft", "topRight", "bottomLeft", "bottomRight"] as const;
   const cornerGlyphs = ["┌", "┐", "└", "┘"]; // TL TR BL BR
   return (
@@ -1085,6 +1088,7 @@ function CanvasSection({
   onWidthChange,
   onHeightChange,
   onFrameRateChange,
+  widthControlled = false, heightControlled = false, frameRateControlled = false,
 }: {
   width?: number;
   height?: number;
@@ -1092,14 +1096,15 @@ function CanvasSection({
   onWidthChange?: (value: number) => void;
   onHeightChange?: (value: number) => void;
   onFrameRateChange?: (value: ProjectFrameRate) => void;
+  widthControlled?: boolean; heightControlled?: boolean; frameRateControlled?: boolean;
 }) {
   const [aspect, setAspect] = useState("16:9");
   const [internalWidth, setInternalWidth] = useState(width);
   const [internalHeight, setInternalHeight] = useState(height);
   const [internalFrameRate, setInternalFrameRate] = useState<ProjectFrameRate>(frameRate);
-  const renderedWidth = onWidthChange ? width : internalWidth;
-  const renderedHeight = onHeightChange ? height : internalHeight;
-  const renderedFrameRate = onFrameRateChange ? frameRate : internalFrameRate;
+  const renderedWidth = widthControlled ? width : internalWidth;
+  const renderedHeight = heightControlled ? height : internalHeight;
+  const renderedFrameRate = frameRateControlled ? frameRate : internalFrameRate;
   const aspectOptions = ["16:9", "9:16", "1:1", "4:3", "Custom"];
   return (
     <PanelSection title="Canvas">
@@ -1128,7 +1133,7 @@ function CanvasSection({
           <NumericInput
             iconLead={<span className={FONT}>W</span>}
             value={renderedWidth}
-            onChange={value => { if (!onWidthChange) setInternalWidth(value); onWidthChange?.(value); }}
+            onChange={value => { if (!widthControlled) setInternalWidth(value); onWidthChange?.(value); }}
             min={1}
             suffix="px"
           />
@@ -1137,7 +1142,7 @@ function CanvasSection({
           <NumericInput
             iconLead={<span className={FONT}>H</span>}
             value={renderedHeight}
-            onChange={value => { if (!onHeightChange) setInternalHeight(value); onHeightChange?.(value); }}
+            onChange={value => { if (!heightControlled) setInternalHeight(value); onHeightChange?.(value); }}
             min={1}
             suffix="px"
           />
@@ -1148,7 +1153,7 @@ function CanvasSection({
       <PanelFieldRow
         label="Frame rate"
         reserveRightSlot={false}
-        left={<ChoiceDropdown value={String(renderedFrameRate)} options={["24", "25", "30", "60"]} labels={{ "24": "24 fps", "25": "25 fps", "30": "30 fps", "60": "60 fps" }} onChange={value => { const next = Number(value) as ProjectFrameRate; if (!onFrameRateChange) setInternalFrameRate(next); onFrameRateChange?.(next); }} />}
+        left={<ChoiceDropdown value={String(renderedFrameRate)} options={["24", "25", "30", "60"]} labels={{ "24": "24 fps", "25": "25 fps", "30": "30 fps", "60": "60 fps" }} onChange={value => { const next = Number(value) as ProjectFrameRate; if (!frameRateControlled) setInternalFrameRate(next); onFrameRateChange?.(next); }} />}
       />
     </PanelSection>
   );
@@ -1160,16 +1165,18 @@ function MasterTimelineSection({
   playhead = 0,
   onTotalDurationChange,
   onPlayheadChange,
+  durationControlled = false, playheadControlled = false,
 }: {
   totalDuration?: number;
   playhead?: number;
   onTotalDurationChange?: (value: number) => void;
   onPlayheadChange?: (value: number) => void;
+  durationControlled?: boolean; playheadControlled?: boolean;
 }) {
   const [internalDuration, setInternalDuration] = useState(totalDuration);
   const [internalPlayhead, setInternalPlayhead] = useState(playhead);
-  const renderedDuration = onTotalDurationChange ? totalDuration : internalDuration;
-  const renderedPlayhead = onPlayheadChange ? playhead : internalPlayhead;
+  const renderedDuration = durationControlled ? totalDuration : internalDuration;
+  const renderedPlayhead = playheadControlled ? playhead : internalPlayhead;
   return (
     <PanelSection title="Master timeline">
       <DualField
@@ -1178,7 +1185,7 @@ function MasterTimelineSection({
           <NumericInput
             iconLead={<span className={FONT}>T</span>}
             value={renderedDuration}
-            onChange={value => { if (!onTotalDurationChange) setInternalDuration(value); onTotalDurationChange?.(value); }}
+            onChange={value => { if (!durationControlled) setInternalDuration(value); onTotalDurationChange?.(value); }}
             min={0}
             suffix="s"
           />
@@ -1188,7 +1195,7 @@ function MasterTimelineSection({
           <NumericInput
             iconLead={<span className={FONT}>▸</span>}
             value={renderedPlayhead}
-            onChange={value => { if (!onPlayheadChange) setInternalPlayhead(value); onPlayheadChange?.(value); }}
+            onChange={value => { if (!playheadControlled) setInternalPlayhead(value); onPlayheadChange?.(value); }}
             min={0}
             suffix="s"
           />
@@ -1230,6 +1237,7 @@ function SlideTimingSection({
   onStartChange,
   onEndChange,
   onDurationChange,
+  controlled = false,
 }: {
   title?: string;
   start?: number;
@@ -1237,10 +1245,10 @@ function SlideTimingSection({
   onStartChange?: (value: number) => void;
   onEndChange?: (value: number) => void;
   onDurationChange?: (value: number) => void;
+  controlled?: boolean;
 }) {
   const [internalStart, setInternalStart] = useState(start);
   const [internalEnd, setInternalEnd] = useState(end);
-  const controlled = !!(onStartChange || onEndChange || onDurationChange);
   const renderedStart = controlled ? start : internalStart;
   const renderedEnd = controlled ? end : internalEnd;
   return (
@@ -1542,23 +1550,25 @@ function ClipTrimSection({
   trimOut = 8,
   onTrimInChange,
   onTrimOutChange,
+  controlled = false,
 }: {
   trimIn?: number;
   trimOut?: number;
   onTrimInChange?: (value: number) => void;
   onTrimOutChange?: (value: number) => void;
+  controlled?: boolean;
 }) {
   const [internalTrimIn, setInternalTrimIn] = useState(trimIn);
   const [internalTrimOut, setInternalTrimOut] = useState(trimOut);
-  const renderedTrimIn = onTrimInChange ? trimIn : internalTrimIn;
-  const renderedTrimOut = onTrimOutChange ? trimOut : internalTrimOut;
+  const renderedTrimIn = controlled ? trimIn : internalTrimIn;
+  const renderedTrimOut = controlled ? trimOut : internalTrimOut;
   return (
     <PanelSection title="Trim">
       <DualField
         leftLabel="Trim in"
-        left={<NumericInput iconLead={<Crosshair size={16} strokeWidth={1.5} />} value={renderedTrimIn} onChange={value => { if (!onTrimInChange) setInternalTrimIn(value); onTrimInChange?.(value); }} min={0} suffix="s" />}
+        left={<NumericInput iconLead={<Crosshair size={16} strokeWidth={1.5} />} value={renderedTrimIn} onChange={value => { if (!controlled) setInternalTrimIn(value); onTrimInChange?.(value); }} min={0} suffix="s" />}
         rightLabel="Trim out"
-        right={<NumericInput iconLead={<Crosshair size={16} strokeWidth={1.5} />} value={renderedTrimOut} onChange={value => { if (!onTrimOutChange) setInternalTrimOut(value); onTrimOutChange?.(value); }} min={0} suffix="s" />}
+        right={<NumericInput iconLead={<Crosshair size={16} strokeWidth={1.5} />} value={renderedTrimOut} onChange={value => { if (!controlled) setInternalTrimOut(value); onTrimOutChange?.(value); }} min={0} suffix="s" />}
       />
       <PanelFullRow label="Clipped duration" height={24}>
         <span className={clsx(FONT, "text-[11px] text-c-text-secondary")}>{Math.max(0, renderedTrimOut - renderedTrimIn)}s</span>
@@ -1572,14 +1582,14 @@ function ClipTrimSection({
 const CLIP_SPEEDS: ClipSpeed[] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 4];
 const CLIP_SPEED_LABELS = Object.fromEntries(CLIP_SPEEDS.map(speed => [String(speed), `${speed}×`])) as Record<string, string>;
 
-function ClipPlaybackSection({ speed = 1, onSpeedChange }: { speed?: ClipSpeed; onSpeedChange?: (value: ClipSpeed) => void }) {
+function ClipPlaybackSection({ speed = 1, onSpeedChange, controlled = false }: { speed?: ClipSpeed; onSpeedChange?: (value: ClipSpeed) => void; controlled?: boolean }) {
   const [internalSpeed, setInternalSpeed] = useState<ClipSpeed>(speed);
-  const renderedSpeed = onSpeedChange ? speed : internalSpeed;
+  const renderedSpeed = controlled ? speed : internalSpeed;
   return (
     <PanelSection title="Playback">
       <DualField
         leftLabel="Speed"
-        left={<ChoiceDropdown value={String(renderedSpeed)} options={CLIP_SPEEDS.map(String)} labels={CLIP_SPEED_LABELS} onChange={value => { const next = Number(value) as ClipSpeed; if (!onSpeedChange) setInternalSpeed(next); onSpeedChange?.(next); }} />}
+        left={<ChoiceDropdown value={String(renderedSpeed)} options={CLIP_SPEEDS.map(String)} labels={CLIP_SPEED_LABELS} onChange={value => { const next = Number(value) as ClipSpeed; if (!controlled) setInternalSpeed(next); onSpeedChange?.(next); }} />}
         rightLabel="Volume"
         right={
           <div className="w-full" title="Audio coming soon">
@@ -1712,7 +1722,8 @@ function MultiplayerBar() {
   );
 }
 
-export function PropertyPanel({
+export function PropertyPanel(props: PropertyPanelProps) {
+  const {
   mode = "element",
   elementType = "text",
   multiSelect = false,
@@ -1788,7 +1799,7 @@ export function PropertyPanel({
   onReplaceClip,
   onDeleteClip,
   className,
-}: PropertyPanelProps) {
+  } = props;
   const [tab, setTab] = useState("design");
   const [demoSlideName, setDemoSlideName] = useState(slideName);
   const [demoSkipped, setDemoSkipped] = useState(slideSkipped);
@@ -1797,13 +1808,16 @@ export function PropertyPanel({
   const [demoTransitionDuration, setDemoTransitionDuration] = useState(slideTransitionDuration ?? 500);
   const [demoTransitionEasing, setDemoTransitionEasing] = useState<SlideTransitionEasing>(slideTransitionEasing ?? "ease-in-out");
   const [demoClipName, setDemoClipName] = useState(clipName);
-  const renderedSlideName = onSlideNameChange || slideName !== "Slide 1" ? slideName : demoSlideName;
-  const renderedSkipped = onSlideSkippedChange || slideSkipped ? slideSkipped : demoSkipped;
+  const slideNameControlled = props.slideName !== undefined;
+  const slideSkippedControlled = props.slideSkipped !== undefined;
+  const clipNameControlled = props.clipName !== undefined;
+  const renderedSlideName = slideNameControlled ? slideName : demoSlideName;
+  const renderedSkipped = slideSkippedControlled ? slideSkipped : demoSkipped;
   const renderedTransitionType = slideTransitionType ?? demoTransitionType;
   const renderedTransitionDirection = slideTransitionDirection ?? demoTransitionDirection;
   const renderedTransitionDuration = slideTransitionDuration ?? demoTransitionDuration;
   const renderedTransitionEasing = slideTransitionEasing ?? demoTransitionEasing;
-  const renderedClipName = onClipNameChange || clipName !== "hero-cover" ? clipName : demoClipName;
+  const renderedClipName = clipNameControlled ? clipName : demoClipName;
   const [textResize, setTextResize] = useState("auto-w");
   const textResizeSegments = [
     { value: "auto-w", icon: <MoveHorizontal size={S} strokeWidth={1.5} /> },
@@ -1849,8 +1863,10 @@ export function PropertyPanel({
           </div>
 
           <CanvasSection width={projectWidth} height={projectHeight} frameRate={projectFrameRate}
+            widthControlled={props.projectWidth !== undefined} heightControlled={props.projectHeight !== undefined} frameRateControlled={props.projectFrameRate !== undefined}
             onWidthChange={onProjectWidthChange} onHeightChange={onProjectHeightChange} onFrameRateChange={onProjectFrameRateChange} />
           <MasterTimelineSection totalDuration={projectDuration} playhead={projectPlayhead}
+            durationControlled={props.projectDuration !== undefined} playheadControlled={props.projectPlayhead !== undefined}
             onTotalDurationChange={onProjectDurationChange} onPlayheadChange={onProjectPlayheadChange} />
           <ProjectExportSection />
         </ScrollArea>
@@ -1864,7 +1880,7 @@ export function PropertyPanel({
           {/* Panel header — inline-editable slide name + options IconButton */}
           <div className="h-[40px] flex items-center gap-[8px] px-[16px] border-b border-c-border">
             <div className="flex-1 min-w-0">
-              <InputField value={renderedSlideName} onChange={value => { if (!onSlideNameChange) setDemoSlideName(value); onSlideNameChange?.(value); }} placeholder="Slide name" />
+              <InputField value={renderedSlideName} onChange={value => { if (!slideNameControlled) setDemoSlideName(value); onSlideNameChange?.(value); }} placeholder="Slide name" />
             </div>
             <PopoverMenu
               align="right"
@@ -1873,7 +1889,7 @@ export function PropertyPanel({
               {(close) => (
                 <Menu minWidth={180}>
                   <MenuRow type="simple" label="Duplicate slide" onClick={() => { onDuplicateSlide?.(); close(); }} />
-                  <MenuRow type="toggle" label="Skip slide" checked={renderedSkipped} onClick={() => { const next = !renderedSkipped; if (!onSlideSkippedChange) setDemoSkipped(next); onSlideSkippedChange?.(next); close(); }} />
+                  <MenuRow type="toggle" label="Skip slide" checked={renderedSkipped} onClick={() => { const next = !renderedSkipped; if (!slideSkippedControlled) setDemoSkipped(next); onSlideSkippedChange?.(next); close(); }} />
                   <MenuRow type="simple" label="Delete slide" destructive onClick={() => { onDeleteSlide?.(); close(); }} />
                 </Menu>
               )}
@@ -1885,6 +1901,7 @@ export function PropertyPanel({
           <SlideTimingSection
             start={slideStart}
             end={slideStart + slideDuration}
+            controlled={props.slideStart !== undefined || props.slideDuration !== undefined}
             onStartChange={onSlideStartChange}
             onEndChange={value => onSlideDurationChange?.(Math.max(0, value - slideStart))}
             onDurationChange={onSlideDurationChange}
@@ -1923,7 +1940,7 @@ export function PropertyPanel({
         <ScrollArea>
           <div className="h-[40px] flex items-center gap-[8px] px-[16px] border-b border-c-border">
             <div className="flex-1 min-w-0">
-              <InputField value={renderedClipName} onChange={value => { if (!onClipNameChange) setDemoClipName(value); onClipNameChange?.(value); }} placeholder="Clip name" />
+              <InputField value={renderedClipName} onChange={value => { if (!clipNameControlled) setDemoClipName(value); onClipNameChange?.(value); }} placeholder="Clip name" />
             </div>
             <PopoverMenu align="right" trigger={<PanelActionBtn icon={<MoreHorizontal size={16} strokeWidth={1.5} />} label="Video clip options" />}>
               {close => <Menu minWidth={180}>
@@ -1937,11 +1954,12 @@ export function PropertyPanel({
           {/* Demo data kept consistent per spec: Clipped duration (trimOut −
               trimIn = 8s) equals the Timeline duration (end − start = 8s). */}
           <SlideTimingSection title="Timeline" start={clipStart} end={clipStart + clipDuration}
+            controlled={props.clipStart !== undefined || props.clipDuration !== undefined}
             onStartChange={onClipStartChange}
             onEndChange={value => onClipDurationChange?.(Math.max(0, value - clipStart))}
             onDurationChange={onClipDurationChange} />
-          <ClipTrimSection trimIn={clipTrimIn} trimOut={clipTrimOut} onTrimInChange={onClipTrimInChange} onTrimOutChange={onClipTrimOutChange} />
-          <ClipPlaybackSection speed={clipSpeed} onSpeedChange={onClipSpeedChange} />
+          <ClipTrimSection trimIn={clipTrimIn} trimOut={clipTrimOut} controlled={props.clipTrimIn !== undefined || props.clipTrimOut !== undefined} onTrimInChange={onClipTrimInChange} onTrimOutChange={onClipTrimOutChange} />
+          <ClipPlaybackSection speed={clipSpeed} controlled={props.clipSpeed !== undefined} onSpeedChange={onClipSpeedChange} />
         </ScrollArea>
       )}
 
@@ -2013,7 +2031,7 @@ export function PropertyPanel({
           )}
 
           {/* Appearance — always present */}
-          <AppearanceSection opacity={opacity} blendMode={blendMode} cornerRadius={cornerRadius} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} />
+          <AppearanceSection opacity={opacity} blendMode={blendMode} cornerRadius={cornerRadius} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} />
 
           {/* Typography — text only */}
           {isText && <TypographySection value={typography} onChange={onTypographyChange} />}
