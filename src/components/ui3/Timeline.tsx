@@ -94,21 +94,31 @@ const DEMO_BLOCKS: SlideBlock[] = [
 
 // ── keyframe lane (bar + diamonds + connecting line) ──────────────────────────────
 export interface KeyframeTarget { trackId: string; propertyId: string; keyframeId: string; timeMs: number; }
+export type TimelineGestureTarget =
+  | { kind: "keyframe"; id: string; action: "move"; keyframe: KeyframeTarget }
+  | { kind: "slide-block" | "base-clip"; id: string; action: "move" | "trim-start" | "trim-end" };
 
 const keyframeTime = (keyframe: TimelineKeyframeValue) => typeof keyframe === "number" ? keyframe : keyframe.timeMs;
 const keyframeId = (keyframe: TimelineKeyframeValue, index: number) => typeof keyframe === "number" ? `keyframe-${index}-${keyframe}` : keyframe.id;
 
-function Lane({ prop, trackId, propertyId, height, onSelect, onMove, onDelete }: {
+function Lane({ prop, trackId, propertyId, height, onSelect, onMove, onDelete, onGestureStart, onGestureEnd }: {
   prop: PropTrack; trackId: string; propertyId: string; height: number;
   onSelect?: (target: KeyframeTarget, additive: boolean) => void;
   onMove?: (target: KeyframeTarget, timeMs: number) => void;
   onDelete?: (target: KeyframeTarget) => void;
+  onGestureStart?: (target: TimelineGestureTarget) => void;
+  onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
 }) {
   const kfs = prop.keyframes;
   const times = kfs.map(keyframeTime);
   const first = times.length ? Math.min(...times) : 0;
   const last = times.length ? Math.max(...times) : 0;
   const drag = useRef<{ id: string; startX: number; startTime: number } | null>(null);
+  const finish = (target: KeyframeTarget, cancelled: boolean) => {
+    if (!drag.current) return;
+    drag.current = null;
+    onGestureEnd?.({ kind: "keyframe", id: target.keyframeId, action: "move", keyframe: target }, { cancelled });
+  };
   return (
     <div className="flex-1 relative" style={{ height }}>
       {prop.bar && (
@@ -143,14 +153,14 @@ function Lane({ prop, trackId, propertyId, height, onSelect, onMove, onDelete }:
           onKeyDown={event => {
             if (event.key === "Delete" || event.key === "Backspace") { event.preventDefault(); onDelete?.(target); }
             if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect?.(target, event.shiftKey); }
-            if (event.key === "Escape") drag.current = null;
+            if (event.key === "Escape") finish(target, true);
           }}
-          onPointerDown={event => { drag.current = { id, startX: event.clientX, startTime: timeMs }; event.currentTarget.setPointerCapture(event.pointerId); }}
+          onPointerDown={event => { drag.current = { id, startX: event.clientX, startTime: timeMs }; onGestureStart?.({ kind: "keyframe", id, action: "move", keyframe: target }); event.currentTarget.setPointerCapture(event.pointerId); }}
           onPointerMove={event => {
             if (drag.current?.id !== id) return;
             onMove?.(target, Math.max(0, Math.round(drag.current.startTime + (event.clientX - drag.current.startX) / PX_PER_MS)));
           }}
-          onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} onLostPointerCapture={() => { drag.current = null; }}
+          onPointerUp={() => finish(target, false)} onPointerCancel={() => finish(target, true)} onLostPointerCapture={() => finish(target, true)}
           className={clsx("absolute top-1/2 size-[7px] -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] outline-none", selected && "ring-2 ring-c-border-selected-strong")}
           style={{ left: ms(timeMs), backgroundColor: prop.accent ? "#8638e5" : BLUE }}
         />
@@ -160,12 +170,14 @@ function Lane({ prop, trackId, propertyId, height, onSelect, onMove, onDelete }:
 }
 
 // ── one track (layer row + its property rows) ─────────────────────────────────────
-function TrackRows({ track, trackIndex, onKeyframeSelect, onKeyframeMove, onKeyframeDelete, onPropertyAddKeyframe }: {
+function TrackRows({ track, trackIndex, onKeyframeSelect, onKeyframeMove, onKeyframeDelete, onPropertyAddKeyframe, onGestureStart, onGestureEnd }: {
   track: Track; trackIndex: number;
   onKeyframeSelect?: (target: KeyframeTarget, additive: boolean) => void;
   onKeyframeMove?: (target: KeyframeTarget, timeMs: number) => void;
   onKeyframeDelete?: (target: KeyframeTarget) => void;
   onPropertyAddKeyframe?: (trackId: string, propertyId: string) => void;
+  onGestureStart?: (target: TimelineGestureTarget) => void;
+  onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
 }) {
   const Icon = TYPE_ICON[track.type];
   const trackId = track.id ?? `track-${trackIndex}`;
@@ -202,7 +214,7 @@ function TrackRows({ track, trackIndex, onKeyframeSelect, onKeyframeMove, onKeyf
             <ChevronRight size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />
             {p.hidden ? <EyeOff size={14} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" /> : <Eye size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />}
           </div>
-          <Lane prop={p} trackId={trackId} propertyId={p.id ?? `property-${i}`} height={ROW_PROP} onSelect={onKeyframeSelect} onMove={onKeyframeMove} onDelete={onKeyframeDelete} />
+          <Lane prop={p} trackId={trackId} propertyId={p.id ?? `property-${i}`} height={ROW_PROP} onSelect={onKeyframeSelect} onMove={onKeyframeMove} onDelete={onKeyframeDelete} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
         </div>
       ))}
     </>
@@ -288,19 +300,28 @@ function SecondRuler({ maxMs }: { maxMs: number }) {
 }
 
 // ── master track rows: "Slides" block track + "Base video" placeholder ──────────────
-function BlockTrack({ blocks, onSelect, onOpen, onMove, onTrim }: {
+function BlockTrack({ blocks, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
   blocks: SlideBlock[];
   onSelect?: (id: string) => void;
   onOpen?: (id: string) => void;
   onMove?: (id: string, startMs: number) => void;
   onTrim?: (id: string, edge: "start" | "end", timeMs: number) => void;
+  onGestureStart?: (target: TimelineGestureTarget) => void;
+  onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
 }) {
   const drag = useRef<{ id: string; kind: "move" | "start" | "end"; startX: number; range: [number, number] } | null>(null);
   const begin = (event: React.PointerEvent, block: SlideBlock, kind: "move" | "start" | "end") => {
     event.stopPropagation();
     const index = blocks.indexOf(block);
     drag.current = { id: slideBlockId(block, index), kind, startX: event.clientX, range: block.range };
+    onGestureStart?.({ kind: "slide-block", id: slideBlockId(block, index), action: kind === "start" ? "trim-start" : kind === "end" ? "trim-end" : "move" });
     event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const finish = (cancelled: boolean) => {
+    const active = drag.current;
+    if (!active) return;
+    drag.current = null;
+    onGestureEnd?.({ kind: "slide-block", id: active.id, action: active.kind === "start" ? "trim-start" : active.kind === "end" ? "trim-end" : "move" }, { cancelled });
   };
   const update = (event: React.PointerEvent, block: SlideBlock) => {
     const active = drag.current;
@@ -333,11 +354,11 @@ function BlockTrack({ blocks, onSelect, onOpen, onMove, onTrim }: {
               onKeyDown={event => {
                 if (event.key === "Enter") { event.preventDefault(); onOpen?.(id); }
                 else if (event.key === " ") { event.preventDefault(); onSelect?.(id); }
-                else if (event.key === "Escape") drag.current = null;
+                else if (event.key === "Escape") finish(true);
               }}
               onPointerDown={event => begin(event, b, "move")}
               onPointerMove={event => update(event, b)}
-              onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} onLostPointerCapture={() => { drag.current = null; }}
+              onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
               className={clsx(
                 "absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] flex items-center px-[10px] overflow-hidden border",
                 b.active
@@ -347,8 +368,8 @@ function BlockTrack({ blocks, onSelect, onOpen, onMove, onTrim }: {
               style={{ left, width }}
             >
               {/* trim handles (edge-drag to trim start/end) */}
-              <span aria-label={`Trim start of ${b.name}`} role="slider" aria-valuemin={0} aria-valuemax={b.range[1]} aria-valuenow={b.range[0]} tabIndex={0} onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(id, "start", Math.min(b.range[1], Math.max(0, b.range[0] + (event.key === "ArrowLeft" ? -100 : 100)))); } }} onPointerDown={event => begin(event, b, "start")} onPointerMove={event => update(event, b)} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} className="absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
-              <span aria-label={`Trim end of ${b.name}`} role="slider" aria-valuemin={b.range[0]} aria-valuemax={Number.MAX_SAFE_INTEGER} aria-valuenow={b.range[1]} tabIndex={0} onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(id, "end", Math.max(b.range[0], b.range[1] + (event.key === "ArrowLeft" ? -100 : 100))); } }} onPointerDown={event => begin(event, b, "end")} onPointerMove={event => update(event, b)} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
+              <span aria-label={`Trim start of ${b.name}`} role="slider" aria-valuemin={0} aria-valuemax={b.range[1]} aria-valuenow={b.range[0]} tabIndex={0} onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(id, "start", Math.min(b.range[1], Math.max(0, b.range[0] + (event.key === "ArrowLeft" ? -100 : 100)))); } }} onPointerDown={event => begin(event, b, "start")} onPointerMove={event => update(event, b)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} className="absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
+              <span aria-label={`Trim end of ${b.name}`} role="slider" aria-valuemin={b.range[0]} aria-valuemax={Number.MAX_SAFE_INTEGER} aria-valuenow={b.range[1]} tabIndex={0} onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(id, "end", Math.max(b.range[0], b.range[1] + (event.key === "ArrowLeft" ? -100 : 100))); } }} onPointerDown={event => begin(event, b, "end")} onPointerMove={event => update(event, b)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
               <span className={clsx(FONT, "text-[11px] font-[450] truncate", b.active ? "text-c-text" : "text-c-text-secondary")}>{b.name}</span>
             </div>
           );
@@ -358,18 +379,27 @@ function BlockTrack({ blocks, onSelect, onOpen, onMove, onTrim }: {
   );
 }
 
-function BaseVideoTrack({ clips, onSelect, onOpen, onMove, onTrim }: {
+function BaseVideoTrack({ clips, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
   clips: BaseClipBlock[];
   onSelect?: (id: string) => void;
   onOpen?: (id: string) => void;
   onMove?: (id: string, startMs: number) => void;
   onTrim?: (id: string, edge: "start" | "end", timeMs: number) => void;
+  onGestureStart?: (target: TimelineGestureTarget) => void;
+  onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
 }) {
   const drag = useRef<{ id: string; kind: "move" | "start" | "end"; startX: number; range: [number, number] } | null>(null);
   const begin = (event: React.PointerEvent, clip: BaseClipBlock, kind: "move" | "start" | "end") => {
     event.stopPropagation();
     drag.current = { id: clip.id, kind, startX: event.clientX, range: clip.range };
+    onGestureStart?.({ kind: "base-clip", id: clip.id, action: kind === "start" ? "trim-start" : kind === "end" ? "trim-end" : "move" });
     event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const finish = (cancelled: boolean) => {
+    const active = drag.current;
+    if (!active) return;
+    drag.current = null;
+    onGestureEnd?.({ kind: "base-clip", id: active.id, action: active.kind === "start" ? "trim-start" : active.kind === "end" ? "trim-end" : "move" }, { cancelled });
   };
   const update = (event: React.PointerEvent, clip: BaseClipBlock) => {
     const active = drag.current;
@@ -392,18 +422,18 @@ function BaseVideoTrack({ clips, onSelect, onOpen, onMove, onTrim }: {
           const tintIsImage = clip.tint?.includes("gradient(");
           return <div key={clip.id} role="button" tabIndex={0} aria-pressed={clip.selected}
             onClick={() => onSelect?.(clip.id)} onDoubleClick={() => onOpen?.(clip.id)}
-            onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); onOpen?.(clip.id); } else if (event.key === " ") { event.preventDefault(); onSelect?.(clip.id); } else if (event.key === "Escape") drag.current = null; }}
-            onPointerDown={event => begin(event, clip, "move")} onPointerMove={event => update(event, clip)} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} onLostPointerCapture={() => { drag.current = null; }}
+            onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); onOpen?.(clip.id); } else if (event.key === " ") { event.preventDefault(); onSelect?.(clip.id); } else if (event.key === "Escape") finish(true); }}
+            onPointerDown={event => begin(event, clip, "move")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
             className={clsx("absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-c-bg-secondary",
               clip.selected ? "border-c-border-selected-strong" : "border-c-border")}
             style={{ left, width, backgroundColor: !clip.thumbnail && !tintIsImage ? clip.tint : undefined, backgroundImage: clip.thumbnail ? `linear-gradient(rgba(0,0,0,.25),rgba(0,0,0,.25)),url(${clip.thumbnail})` : tintIsImage ? clip.tint : undefined, backgroundSize: "cover", backgroundPosition: "center" }}>
             <span aria-label={`Trim start of ${clip.name}`} role="slider" aria-valuemin={0} aria-valuemax={clip.range[1]} aria-valuenow={clip.range[0]} tabIndex={0}
               onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "start", Math.min(clip.range[1], Math.max(0, clip.range[0] + (event.key === "ArrowLeft" ? -100 : 100)))); } }}
-              onPointerDown={event => begin(event, clip, "start")} onPointerMove={event => update(event, clip)} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}
+              onPointerDown={event => begin(event, clip, "start")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
               className="absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
             <span aria-label={`Trim end of ${clip.name}`} role="slider" aria-valuemin={clip.range[0]} aria-valuemax={Number.MAX_SAFE_INTEGER} aria-valuenow={clip.range[1]} tabIndex={0}
               onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "end", Math.max(clip.range[0], clip.range[1] + (event.key === "ArrowLeft" ? -100 : 100))); } }}
-              onPointerDown={event => begin(event, clip, "end")} onPointerMove={event => update(event, clip)} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}
+              onPointerDown={event => begin(event, clip, "end")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
               className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
             <span className={clsx(FONT, "relative text-[11px] font-[450] truncate", clip.thumbnail || clip.tint ? "text-white" : "text-c-text-secondary")}>{clip.name}</span>
           </div>;
@@ -443,6 +473,8 @@ export function Timeline({
   onClipOpen,
   onClipMove,
   onClipTrim,
+  onGestureStart,
+  onGestureEnd,
   onBack,
 }: {
   mode?: TimelineMode;
@@ -474,6 +506,8 @@ export function Timeline({
   onClipOpen?: (id: string) => void;
   onClipMove?: (id: string, startMs: number) => void;
   onClipTrim?: (id: string, edge: "start" | "end", timeMs: number) => void;
+  onGestureStart?: (target: TimelineGestureTarget) => void;
+  onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
   onBack?: () => void;
 }) {
   const master = mode === "master";
@@ -550,8 +584,8 @@ export function Timeline({
       <div className="flex-1 overflow-y-auto relative">
         {master ? (
           <>
-            <BlockTrack blocks={blocks} onSelect={onBlockSelect} onOpen={onBlockOpen} onMove={onBlockMove} onTrim={onBlockTrim} />
-            <BaseVideoTrack clips={baseClips} onSelect={onClipSelect} onOpen={onClipOpen} onMove={onClipMove} onTrim={onClipTrim} />
+            <BlockTrack blocks={blocks} onSelect={onBlockSelect} onOpen={onBlockOpen} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <BaseVideoTrack clips={baseClips} onSelect={onClipSelect} onOpen={onClipOpen} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
           </>
         ) : (
           <>
@@ -570,6 +604,7 @@ export function Timeline({
             </div>
             {tracks.map((t, i) => <TrackRows key={t.id ?? i} track={t} trackIndex={i}
               onKeyframeSelect={onKeyframeSelect} onKeyframeMove={onKeyframeMove} onKeyframeDelete={onKeyframeDelete}
+              onGestureStart={onGestureStart} onGestureEnd={onGestureEnd}
               onPropertyAddKeyframe={(trackId, propertyId) => onPropertyAddKeyframe?.(trackId, propertyId, playhead)} />)}
           </>
         )}
