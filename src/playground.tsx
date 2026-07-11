@@ -12,6 +12,7 @@ import { CreationToolbar } from "./components/ui3/CreationToolbar";
 import { Button } from "./components/ui3/Button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "./components/ui3/Dialog";
 import { Tooltip, TooltipProvider } from "./components/ui3/Tooltip";
+import { ComposaModeProvider } from "./components/ui3/useComposaMode";
 import thumb0 from "./imports/SlidesTemplate/9bf3285fa6c14222923aa8fcd4bf31f6e40807d9.png";
 import thumb1 from "./imports/SlidesTemplate/201951eb24dd285dd0794f4e790b8175c012bf20.png";
 import thumb2 from "./imports/SlidesTemplate/4f36d4cb9f77c2e380641dd47deb24943efa0b8a.png";
@@ -127,6 +128,7 @@ export default function Playground() {
     return (
       <TooltipProvider>
         <div data-composa-mode="dark" className="h-screen w-screen grid place-items-center bg-c-bg text-c-text">
+          <ComposaModeProvider>
           <div className="flex items-center gap-[8px]">
             <Tooltip label="Dark portal tooltip" delayDuration={0}>
               <Button label="Hover for tooltip" variant="Secondary" />
@@ -138,6 +140,7 @@ export default function Playground() {
             <ModalBody padding scrollable={false}>Portal content inherits the active Composa mode.</ModalBody>
             <ModalFooter><Button label="Done" onClick={() => setOverlayContractOpen(false)} /></ModalFooter>
           </Modal>
+          </ComposaModeProvider>
         </div>
       </TooltipProvider>
     );

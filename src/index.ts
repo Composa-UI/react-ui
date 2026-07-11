@@ -33,4 +33,5 @@ export * from "./components/ui3/Tabs";
 export * from "./components/ui3/TextPair";
 export * from "./components/ui3/ToolbarButton";
 export * from "./components/ui3/Tooltip";
+export { ComposaModeProvider } from "./components/ui3/useComposaMode";
 export { hexToHsb, hsbToHex } from "./lib/color";
