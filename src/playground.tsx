@@ -9,6 +9,9 @@ import { NavRail } from "./components/ui3/NavRail";
 import { CompositionPanel } from "./components/ui3/CompositionPanel";
 import { AssetsPanel, type AssetFilter, type AssetItem } from "./components/ui3/AssetsPanel";
 import { CreationToolbar } from "./components/ui3/CreationToolbar";
+import { Button } from "./components/ui3/Button";
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "./components/ui3/Dialog";
+import { Tooltip, TooltipProvider } from "./components/ui3/Tooltip";
 import thumb0 from "./imports/SlidesTemplate/9bf3285fa6c14222923aa8fcd4bf31f6e40807d9.png";
 import thumb1 from "./imports/SlidesTemplate/201951eb24dd285dd0794f4e790b8175c012bf20.png";
 import thumb2 from "./imports/SlidesTemplate/4f36d4cb9f77c2e380641dd47deb24943efa0b8a.png";
@@ -41,6 +44,7 @@ export default function Playground() {
   const [assetQuery, setAssetQuery] = useState("");
   const [assetFilter, setAssetFilter] = useState<AssetFilter>("all");
   const [assetSelection, setAssetSelection] = useState<string | null>("asset-image");
+  const [overlayContractOpen, setOverlayContractOpen] = useState(true);
   const [clipContract, setClipContract] = useState<{ name: string; start: number; duration: number; trimIn: number; trimOut: number; speed: ClipSpeed }>({
     name: "hero-cover", start: 0, duration: 8, trimIn: 10, trimOut: 18, speed: 1,
   });
@@ -116,6 +120,26 @@ export default function Playground() {
           onDeleteSlide={() => console.info("Delete slide")}
         />
       </div>
+    );
+  }
+
+  if (view === "overlay-theme-contract") {
+    return (
+      <TooltipProvider>
+        <div data-composa-mode="dark" className="h-screen w-screen grid place-items-center bg-c-bg text-c-text">
+          <div className="flex items-center gap-[8px]">
+            <Tooltip label="Dark portal tooltip" delayDuration={0}>
+              <Button label="Hover for tooltip" variant="Secondary" />
+            </Tooltip>
+            <Button label="Open modal" onClick={() => setOverlayContractOpen(true)} />
+          </div>
+          <Modal open={overlayContractOpen} onClose={() => setOverlayContractOpen(false)} width={320}>
+            <ModalHeader title="Dark portal contract" onClose={() => setOverlayContractOpen(false)} />
+            <ModalBody padding scrollable={false}>Portal content inherits the active Composa mode.</ModalBody>
+            <ModalFooter><Button label="Done" onClick={() => setOverlayContractOpen(false)} /></ModalFooter>
+          </Modal>
+        </div>
+      </TooltipProvider>
     );
   }
 

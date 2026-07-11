@@ -116,7 +116,7 @@ export function SlideListItem({ item }: { item: SlideData }) {
 }
 
 // ── Panel ─────────────────────────────────────────────────────────────────────
-export function SlidesPanel({ slides, title = "Product review", subtitle = "native", onNewSlide, onNewSlideMenu }: {
+export function SlidesPanel({ slides, title = "Product review", subtitle = "", onNewSlide, onNewSlideMenu }: {
   slides: SlideData[];
   title?: string;
   subtitle?: string;

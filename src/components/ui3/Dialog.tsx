@@ -2,6 +2,7 @@ import * as RadixDialog from "@radix-ui/react-dialog";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { clsx } from "clsx";
 import { type ReactNode } from "react";
+import { useComposaMode } from "./useComposaMode";
 
 // ─── Modal width presets ───────────────────────────────────────────────────────
 // From Figma UI3 Modal Attributes guidelines:
@@ -51,6 +52,7 @@ export function Modal({
   closeOnBackdrop = true,
   className,
 }: ModalProps) {
+  const mode = useComposaMode();
   return (
     <RadixDialog.Root open={open} onOpenChange={v => !v && onClose()}>
       <RadixDialog.Portal>
@@ -64,6 +66,7 @@ export function Modal({
 
         {/* Modal card */}
         <RadixDialog.Content
+          data-composa-mode={mode}
           onInteractOutside={closeOnBackdrop ? () => onClose() : e => e.preventDefault()}
           onEscapeKeyDown={() => onClose()}
           aria-describedby={undefined}

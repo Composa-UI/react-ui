@@ -1,6 +1,7 @@
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { clsx } from "clsx";
 import { type ReactNode } from "react";
+import { useComposaMode } from "./useComposaMode";
 
 // ─── Shared constants ─────────────────────────────────────────────────────────
 // Tooltip always renders dark (#1e1e1e) — it floats above any surface.
@@ -91,6 +92,7 @@ export function Tooltip({
   disabled = false,
 }: TooltipProps) {
   const { side, align } = DIRECTION_MAP[direction] ?? DIRECTION_MAP.TopCenter;
+  const mode = useComposaMode();
 
   if (disabled) return <>{children}</>;
 
@@ -101,6 +103,7 @@ export function Tooltip({
       </TooltipPrimitive.Trigger>
       <TooltipPrimitive.Portal>
         <TooltipPrimitive.Content
+          data-composa-mode={mode}
           side={side}
           align={align}
           sideOffset={6}
