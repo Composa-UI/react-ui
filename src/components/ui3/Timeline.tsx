@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { clsx } from "clsx";
-import { Play, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Hash, Square, Type, Minus, Eye, EyeOff, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film } from "lucide-react";
+import { Play, Pause, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Hash, Square, Type, Minus, Eye, EyeOff, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film } from "lucide-react";
 
 // ─── Timeline ───────────────────────────────────────────────────────────────────
 // Polymorphic timeline region (Composa editor spec: docs/composa/specs/timeline.md).
@@ -28,14 +28,18 @@ const sec = (t: number) => (t / 1000) * PX_PER_S; // ms input → px on the seco
 export type TimelineMode = "master" | "slide";
 
 export type TrackType = "group" | "frame" | "text" | "line";
+export interface TimelineKeyframe { id: string; timeMs: number; selected?: boolean; }
+export type TimelineKeyframeValue = number | TimelineKeyframe;
 export interface PropTrack {
+  id?: string;
   name: string;
-  keyframes: number[];         // times in ms
+  keyframes: TimelineKeyframeValue[]; // numbers preserve the demo/legacy contract
   bar?: [number, number];      // duration bar [start,end] ms
   hidden?: boolean;            // greyed + eye-off
   accent?: boolean;            // purple-selected track
 }
 export interface Track {
+  id?: string;
   name: string;
   type: TrackType;
   bar?: [number, number];
@@ -80,10 +84,22 @@ const DEMO_BLOCKS: SlideBlock[] = [
 ];
 
 // ── keyframe lane (bar + diamonds + connecting line) ──────────────────────────────
-function Lane({ prop, height }: { prop: PropTrack; height: number }) {
+export interface KeyframeTarget { trackId: string; propertyId: string; keyframeId: string; timeMs: number; }
+
+const keyframeTime = (keyframe: TimelineKeyframeValue) => typeof keyframe === "number" ? keyframe : keyframe.timeMs;
+const keyframeId = (keyframe: TimelineKeyframeValue, index: number) => typeof keyframe === "number" ? `keyframe-${index}-${keyframe}` : keyframe.id;
+
+function Lane({ prop, trackId, propertyId, height, onSelect, onMove, onDelete }: {
+  prop: PropTrack; trackId: string; propertyId: string; height: number;
+  onSelect?: (target: KeyframeTarget, additive: boolean) => void;
+  onMove?: (target: KeyframeTarget, timeMs: number) => void;
+  onDelete?: (target: KeyframeTarget) => void;
+}) {
   const kfs = prop.keyframes;
-  const first = kfs.length ? Math.min(...kfs) : 0;
-  const last = kfs.length ? Math.max(...kfs) : 0;
+  const times = kfs.map(keyframeTime);
+  const first = times.length ? Math.min(...times) : 0;
+  const last = times.length ? Math.max(...times) : 0;
+  const drag = useRef<{ id: string; startX: number; startTime: number } | null>(null);
   return (
     <div className="flex-1 relative" style={{ height }}>
       {prop.bar && (
@@ -102,20 +118,47 @@ function Lane({ prop, height }: { prop: PropTrack; height: number }) {
           style={{ left: ms(first), width: ms(last - first), backgroundColor: prop.accent ? "#8638e5" : "rgba(0,0,0,0.25)" }}
         />
       )}
-      {kfs.map((t, i) => (
+      {kfs.map((keyframe, i) => {
+        const timeMs = keyframeTime(keyframe);
+        const id = keyframeId(keyframe, i);
+        const target = { trackId, propertyId, keyframeId: id, timeMs };
+        const selected = typeof keyframe !== "number" && keyframe.selected;
+        return (
         <div
-          key={i}
-          className="absolute top-1/2 size-[7px] -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px]"
-          style={{ left: ms(t), backgroundColor: prop.accent ? "#8638e5" : BLUE }}
+          key={id}
+          role="button"
+          tabIndex={0}
+          aria-label={`${prop.name} keyframe at ${timeMs}ms`}
+          aria-pressed={selected}
+          onClick={event => onSelect?.(target, event.shiftKey)}
+          onKeyDown={event => {
+            if (event.key === "Delete" || event.key === "Backspace") { event.preventDefault(); onDelete?.(target); }
+            if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect?.(target, event.shiftKey); }
+          }}
+          onPointerDown={event => { drag.current = { id, startX: event.clientX, startTime: timeMs }; event.currentTarget.setPointerCapture(event.pointerId); }}
+          onPointerMove={event => {
+            if (drag.current?.id !== id) return;
+            onMove?.(target, Math.max(0, Math.round(drag.current.startTime + (event.clientX - drag.current.startX) / PX_PER_MS)));
+          }}
+          onPointerUp={() => { drag.current = null; }}
+          className={clsx("absolute top-1/2 size-[7px] -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] outline-none", selected && "ring-2 ring-c-border-selected-strong")}
+          style={{ left: ms(timeMs), backgroundColor: prop.accent ? "#8638e5" : BLUE }}
         />
-      ))}
+      );})}
     </div>
   );
 }
 
 // ── one track (layer row + its property rows) ─────────────────────────────────────
-function TrackRows({ track }: { track: Track }) {
+function TrackRows({ track, trackIndex, onKeyframeSelect, onKeyframeMove, onKeyframeDelete, onPropertyAddKeyframe }: {
+  track: Track; trackIndex: number;
+  onKeyframeSelect?: (target: KeyframeTarget, additive: boolean) => void;
+  onKeyframeMove?: (target: KeyframeTarget, timeMs: number) => void;
+  onKeyframeDelete?: (target: KeyframeTarget) => void;
+  onPropertyAddKeyframe?: (trackId: string, propertyId: string) => void;
+}) {
   const Icon = TYPE_ICON[track.type];
+  const trackId = track.id ?? `track-${trackIndex}`;
   return (
     <>
       {/* layer row */}
@@ -143,11 +186,13 @@ function TrackRows({ track }: { track: Track }) {
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate", p.accent ? "text-[#8638e5]" : "text-c-text-secondary")}>{p.name}</span>
             {/* keyframe stepper */}
             <ChevronLeft size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />
-            <Diamond size={12} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" />
+            <button aria-label={`Add ${p.name} keyframe`} onClick={() => onPropertyAddKeyframe?.(trackId, p.id ?? `property-${i}`)} className="shrink-0 flex items-center justify-center">
+              <Diamond size={12} strokeWidth={1.5} className="text-c-icon-secondary" />
+            </button>
             <ChevronRight size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />
             {p.hidden ? <EyeOff size={14} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" /> : <Eye size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />}
           </div>
-          <Lane prop={p} height={ROW_PROP} />
+          <Lane prop={p} trackId={trackId} propertyId={p.id ?? `property-${i}`} height={ROW_PROP} onSelect={onKeyframeSelect} onMove={onKeyframeMove} onDelete={onKeyframeDelete} />
         </div>
       ))}
     </>
@@ -158,22 +203,25 @@ function TrackRows({ track }: { track: Track }) {
 // Layout, Play/Stop icons, timecode group, and loop are the SAME in both modes.
 // Mode-specific: the keyframe (diamond) add button is slide-only — keyframes only exist
 // in the slide-animation timeline. Timecode is shown in ms (slide) or seconds (master).
-function Transport({ current, duration, mode }: { current: number; duration: number; mode: TimelineMode }) {
+function Transport({ current, duration, mode, playing, loop, onPlayingChange, onStop, onLoopChange, onAddKeyframe }: {
+  current: number; duration: number; mode: TimelineMode; playing: boolean; loop: boolean;
+  onPlayingChange: (playing: boolean) => void; onStop?: () => void; onLoopChange: (loop: boolean) => void; onAddKeyframe?: () => void;
+}) {
   const slide = mode === "slide";
   const fmt = slide
     ? (n: number) => String(Math.round(n)).padStart(5, "0")
     : (n: number) => (n / 1000).toFixed(2) + "s";
   const tcW = slide ? 42 : 54; // timecode cell width — ms strings are narrower than "4.20s"
-  const IconBtn = ({ children, label }: { children: React.ReactNode; label: string }) => (
-    <button aria-label={label} className="size-[24px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover">{children}</button>
+  const IconBtn = ({ children, label, onClick, active }: { children: React.ReactNode; label: string; onClick?: () => void; active?: boolean }) => (
+    <button aria-label={label} aria-pressed={active} onClick={onClick} className={clsx("size-[24px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover", active && "bg-c-bg-selected")}>{children}</button>
   );
   return (
     <div className="shrink-0 flex items-center gap-[8px] px-[8px] border-r border-c-border" style={{ width: LEFT_W }}>
       {/* shared transport controls */}
-      <IconBtn label="Play"><Play size={16} strokeWidth={1.5} /></IconBtn>
-      <IconBtn label="Stop"><Square size={14} strokeWidth={1.5} /></IconBtn>
+      <IconBtn label={playing ? "Pause" : "Play"} active={playing} onClick={() => onPlayingChange(!playing)}>{playing ? <Pause size={16} strokeWidth={1.5} /> : <Play size={16} strokeWidth={1.5} />}</IconBtn>
+      <IconBtn label="Stop" onClick={onStop}><Square size={14} strokeWidth={1.5} /></IconBtn>
       {/* keyframe add — slide-only (keyframes live in the slide-animation timeline) */}
-      {slide && <IconBtn label="Add keyframe"><Diamond size={16} strokeWidth={1.5} /></IconBtn>}
+      {slide && <IconBtn label="Add keyframe" onClick={onAddKeyframe}><Diamond size={16} strokeWidth={1.5} /></IconBtn>}
       <div className="w-[8px]" />
       {/* time group */}
       <div className="flex items-center h-[24px] rounded-c-md overflow-hidden">
@@ -188,7 +236,7 @@ function Transport({ current, duration, mode }: { current: number; duration: num
             <span className={clsx(FONT, "text-[11px] text-c-text-secondary")}>ms</span>
           </div>
         )}
-        <button aria-label="Loop" className="size-[24px] bg-c-bg-secondary ml-px flex items-center justify-center text-c-icon hover:bg-c-bg-hover">
+        <button aria-label="Loop" aria-pressed={loop} onClick={() => onLoopChange(!loop)} className={clsx("size-[24px] bg-c-bg-secondary ml-px flex items-center justify-center text-c-icon hover:bg-c-bg-hover", loop && "!bg-c-bg-selected")}>
           <Repeat size={14} strokeWidth={1.5} />
         </button>
       </div>
@@ -230,7 +278,27 @@ function SecondRuler({ maxMs }: { maxMs: number }) {
 }
 
 // ── master track rows: "Slides" block track + "Base video" placeholder ──────────────
-function BlockTrack({ blocks, onSelect, onOpen }: { blocks: SlideBlock[]; onSelect?: (id: string) => void; onOpen?: (id: string) => void }) {
+function BlockTrack({ blocks, onSelect, onOpen, onMove, onTrim }: {
+  blocks: SlideBlock[];
+  onSelect?: (id: string) => void;
+  onOpen?: (id: string) => void;
+  onMove?: (id: string, startMs: number) => void;
+  onTrim?: (id: string, edge: "start" | "end", timeMs: number) => void;
+}) {
+  const drag = useRef<{ id: string; kind: "move" | "start" | "end"; startX: number; range: [number, number] } | null>(null);
+  const begin = (event: React.PointerEvent, block: SlideBlock, kind: "move" | "start" | "end") => {
+    event.stopPropagation();
+    drag.current = { id: block.id, kind, startX: event.clientX, range: block.range };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const update = (event: React.PointerEvent, block: SlideBlock) => {
+    const active = drag.current;
+    if (!active || active.id !== block.id) return;
+    const delta = Math.round((event.clientX - active.startX) / (PX_PER_S / 1000));
+    if (active.kind === "move") onMove?.(block.id, Math.max(0, active.range[0] + delta));
+    if (active.kind === "start") onTrim?.(block.id, "start", Math.min(active.range[1], Math.max(0, active.range[0] + delta)));
+    if (active.kind === "end") onTrim?.(block.id, "end", Math.max(active.range[0], active.range[1] + delta));
+  };
   return (
     <div className="flex" style={{ height: ROW_BLOCK }}>
       {/* left label */}
@@ -248,6 +316,9 @@ function BlockTrack({ blocks, onSelect, onOpen }: { blocks: SlideBlock[]; onSele
               key={b.id}
               onClick={() => onSelect?.(b.id)}
               onDoubleClick={() => onOpen?.(b.id)}
+              onPointerDown={event => begin(event, b, "move")}
+              onPointerMove={event => update(event, b)}
+              onPointerUp={() => { drag.current = null; }}
               className={clsx(
                 "absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] flex items-center px-[10px] overflow-hidden border",
                 b.active
@@ -257,8 +328,8 @@ function BlockTrack({ blocks, onSelect, onOpen }: { blocks: SlideBlock[]; onSele
               style={{ left, width }}
             >
               {/* trim handles (edge-drag to trim start/end) */}
-              <span className="absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
-              <span className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
+              <span aria-label={`Trim start of ${b.name}`} role="slider" aria-valuemin={0} aria-valuemax={b.range[1]} aria-valuenow={b.range[0]} tabIndex={0} onPointerDown={event => begin(event, b, "start")} onPointerMove={event => update(event, b)} onPointerUp={() => { drag.current = null; }} className="absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
+              <span aria-label={`Trim end of ${b.name}`} role="slider" aria-valuemin={b.range[0]} aria-valuemax={Number.MAX_SAFE_INTEGER} aria-valuenow={b.range[1]} tabIndex={0} onPointerDown={event => begin(event, b, "end")} onPointerMove={event => update(event, b)} onPointerUp={() => { drag.current = null; }} className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
               <span className={clsx(FONT, "text-[11px] font-[450] truncate", b.active ? "text-c-text" : "text-c-text-secondary")}>{b.name}</span>
             </div>
           );
@@ -290,8 +361,22 @@ export function Timeline({
   playhead: controlledPlayhead,
   defaultPlayhead = 300,
   onPlayheadChange,
+  playing: controlledPlaying,
+  defaultPlaying = false,
+  onPlayingChange,
+  loop: controlledLoop,
+  defaultLoop = false,
+  onLoopChange,
+  onStop,
+  onAddKeyframe,
+  onPropertyAddKeyframe,
+  onKeyframeSelect,
+  onKeyframeMove,
+  onKeyframeDelete,
   onBlockSelect,
   onBlockOpen,
+  onBlockMove,
+  onBlockTrim,
   onBack,
 }: {
   mode?: TimelineMode;
@@ -302,17 +387,37 @@ export function Timeline({
   playhead?: number;
   defaultPlayhead?: number;
   onPlayheadChange?: (timeMs: number) => void;
+  playing?: boolean;
+  defaultPlaying?: boolean;
+  onPlayingChange?: (playing: boolean) => void;
+  loop?: boolean;
+  defaultLoop?: boolean;
+  onLoopChange?: (loop: boolean) => void;
+  onStop?: () => void;
+  onAddKeyframe?: (timeMs: number) => void;
+  onPropertyAddKeyframe?: (trackId: string, propertyId: string, timeMs: number) => void;
+  onKeyframeSelect?: (target: KeyframeTarget, additive: boolean) => void;
+  onKeyframeMove?: (target: KeyframeTarget, timeMs: number) => void;
+  onKeyframeDelete?: (target: KeyframeTarget) => void;
   onBlockSelect?: (id: string) => void;
   onBlockOpen?: (id: string) => void;
+  onBlockMove?: (id: string, startMs: number) => void;
+  onBlockTrim?: (id: string, edge: "start" | "end", timeMs: number) => void;
   onBack?: () => void;
 }) {
   const master = mode === "master";
   const [internalPlayhead, setInternalPlayhead] = useState(defaultPlayhead);
+  const [internalPlaying, setInternalPlaying] = useState(defaultPlaying);
+  const [internalLoop, setInternalLoop] = useState(defaultLoop);
   const playhead = controlledPlayhead ?? internalPlayhead;
+  const playing = controlledPlaying ?? internalPlaying;
+  const loop = controlledLoop ?? internalLoop;
   const setPlayhead = (timeMs: number) => {
     if (controlledPlayhead === undefined) setInternalPlayhead(timeMs);
     onPlayheadChange?.(timeMs);
   };
+  const setPlaying = (next: boolean) => { if (controlledPlaying === undefined) setInternalPlaying(next); onPlayingChange?.(next); };
+  const setLoop = (next: boolean) => { if (controlledLoop === undefined) setInternalLoop(next); onLoopChange?.(next); };
   const maxMs = duration;
   const toPx = master ? sec : ms;                 // shared time→px scale per view
   const pxPer = master ? PX_PER_S / 1000 : PX_PER_MS;
@@ -329,7 +434,8 @@ export function Timeline({
     <div className="flex flex-col bg-c-bg border-t border-c-border overflow-hidden" style={{ height }}>
       {/* header: transport | ruler | zoom */}
       <div className="flex h-[40px] shrink-0 border-b border-c-border">
-        <Transport current={playhead} duration={duration} mode={mode} />
+        <Transport current={playhead} duration={duration} mode={mode} playing={playing} loop={loop} onPlayingChange={setPlaying} onLoopChange={setLoop}
+          onStop={() => { setPlaying(false); onStop?.(); }} onAddKeyframe={() => onAddKeyframe?.(playhead)} />
         <div
           className="flex-1 relative cursor-ew-resize"
           role="slider"
@@ -363,7 +469,7 @@ export function Timeline({
       <div className="flex-1 overflow-y-auto relative">
         {master ? (
           <>
-            <BlockTrack blocks={blocks} onSelect={onBlockSelect} onOpen={onBlockOpen} />
+            <BlockTrack blocks={blocks} onSelect={onBlockSelect} onOpen={onBlockOpen} onMove={onBlockMove} onTrim={onBlockTrim} />
             <BaseVideoTrack />
           </>
         ) : (
@@ -381,7 +487,9 @@ export function Timeline({
                 <span>Project</span>
               </button>
             </div>
-            {tracks.map((t, i) => <TrackRows key={i} track={t} />)}
+            {tracks.map((t, i) => <TrackRows key={t.id ?? i} track={t} trackIndex={i}
+              onKeyframeSelect={onKeyframeSelect} onKeyframeMove={onKeyframeMove} onKeyframeDelete={onKeyframeDelete}
+              onPropertyAddKeyframe={(trackId, propertyId) => onPropertyAddKeyframe?.(trackId, propertyId, playhead)} />)}
           </>
         )}
         {/* shared playhead line spanning the body */}

@@ -7,7 +7,7 @@ import { Timeline } from "./components/ui3/Timeline";
 import { LayerList } from "./components/ui3/LayerList";
 import { NavRail } from "./components/ui3/NavRail";
 import { CompositionPanel } from "./components/ui3/CompositionPanel";
-import { AssetsPanel } from "./components/ui3/AssetsPanel";
+import { AssetsPanel, type AssetFilter, type AssetItem } from "./components/ui3/AssetsPanel";
 import { CreationToolbar } from "./components/ui3/CreationToolbar";
 import thumb0 from "./imports/SlidesTemplate/9bf3285fa6c14222923aa8fcd4bf31f6e40807d9.png";
 import thumb1 from "./imports/SlidesTemplate/201951eb24dd285dd0794f4e790b8175c012bf20.png";
@@ -35,7 +35,16 @@ export default function Playground() {
   const [nav, setNav] = useState("composition");
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>("2b");
   const [contractPlayhead, setContractPlayhead] = useState(300);
+  const [contractPlaying, setContractPlaying] = useState(false);
+  const [contractLoop, setContractLoop] = useState(false);
   const [contractX, setContractX] = useState(270);
+  const [assetQuery, setAssetQuery] = useState("");
+  const [assetFilter, setAssetFilter] = useState<AssetFilter>("all");
+  const [assetSelection, setAssetSelection] = useState<string | null>("asset-image");
+  const contractAssets: AssetItem[] = [
+    { id: "asset-image", name: "cover.png", kind: "image", tint: "linear-gradient(135deg,#7c5cff,#ff6ac1)" },
+    { id: "asset-video", name: "intro.mp4", kind: "video", tint: "linear-gradient(135deg,#111827,#374151)", duration: "0:24" },
+  ];
   const [slideContract, setSlideContract] = useState<{
     name: string; start: number; duration: number; skipped: boolean;
     backgroundType: SlideBackgroundType; backgroundColor: string; backgroundOpacity: number;
@@ -91,9 +100,20 @@ export default function Playground() {
           </div>
           <PropertyPanel elementType="text" x={contractX} onXChange={setContractX} />
         </div>
-        <Timeline height={220} playhead={contractPlayhead} onPlayheadChange={setContractPlayhead} />
+        <Timeline height={220} playhead={contractPlayhead} onPlayheadChange={setContractPlayhead}
+          playing={contractPlaying} onPlayingChange={setContractPlaying} loop={contractLoop} onLoopChange={setContractLoop}
+          onStop={() => setContractPlayhead(0)} onAddKeyframe={timeMs => console.info("Add keyframe", timeMs)} />
       </div>
     );
+  }
+
+  if (view === "assets-contract") {
+    return <div style={{ height: "100vh", width: "100vw", display: "flex", background: "#e6e6e6" }}>
+      <AssetsPanel assets={contractAssets} query={assetQuery} onQueryChange={setAssetQuery} filter={assetFilter} onFilterChange={setAssetFilter}
+        selectedId={assetSelection} onSelect={setAssetSelection} onUpload={() => console.info("Upload")}
+        onDropFiles={files => console.info("Dropped", files.map(file => file.name))} />
+      <div style={{ flex: 1 }} />
+    </div>;
   }
 
   if (view === "slides-raw") {

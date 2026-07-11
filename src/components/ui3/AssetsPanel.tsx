@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { clsx } from "clsx";
 import { Upload, Search, Image as ImageIcon, Film, Trash2, Plus } from "lucide-react";
 import { SegmentedControl } from "./SegmentedControl";
@@ -62,7 +62,7 @@ function AssetCard({
 }: {
   item: AssetItem;
   selected: boolean;
-  onSelect: () => void;
+  onSelect: (event: MouseEvent<HTMLButtonElement>) => void;
   onDoubleClick: () => void;
   onInsert: () => void;
   onDelete: () => void;
@@ -254,9 +254,12 @@ export interface AssetsPanelProps {
   query?: string;
   onQueryChange?: (q: string) => void;
   selectedId?: string | null;
-  onSelect?: (id: string) => void;
+  onSelect?: (id: string, event: MouseEvent<HTMLButtonElement>) => void;
   /** demo/controlled: force the OS drag-drop overlay */
   dropActive?: boolean;
+  defaultDropActive?: boolean;
+  onDropActiveChange?: (active: boolean) => void;
+  onDropFiles?: (files: File[]) => void;
   onUpload?: () => void;
   onInsert?: (id: string) => void;
   onAddToTimeline?: (id: string) => void;
@@ -274,7 +277,10 @@ export function AssetsPanel({
   onQueryChange,
   selectedId,
   onSelect,
-  dropActive = false,
+  dropActive,
+  defaultDropActive = false,
+  onDropActiveChange,
+  onDropFiles,
   onUpload,
   onInsert,
   onAddToTimeline,
@@ -286,6 +292,8 @@ export function AssetsPanel({
   const [filterInner, setFilterInner] = useState<AssetFilter>("all");
   const [queryInner, setQueryInner] = useState("");
   const [selInner, setSelInner] = useState<string | null>("a1");
+  const [dropInner, setDropInner] = useState(defaultDropActive);
+  const dragDepth = useRef(0);
   const [searchFocused, setSearchFocused] = useState(false);
 
   const activeFilter = filter ?? filterInner;
@@ -294,7 +302,32 @@ export function AssetsPanel({
 
   const setFilter = (f: AssetFilter) => (onFilterChange ?? setFilterInner)(f);
   const setQuery = (q: string) => (onQueryChange ?? setQueryInner)(q);
-  const select = (id: string) => (onSelect ?? setSelInner)(id);
+  const activeDrop = dropActive ?? dropInner;
+  const select = (id: string, event: MouseEvent<HTMLButtonElement>) => {
+    if (onSelect) onSelect(id, event);
+    else setSelInner(id);
+  };
+  const setDrop = (active: boolean) => {
+    if (dropActive === undefined) setDropInner(active);
+    onDropActiveChange?.(active);
+  };
+  const onDragEnter = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    dragDepth.current += 1;
+    setDrop(true);
+  };
+  const onDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setDrop(false);
+  };
+  const onDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    dragDepth.current = 0;
+    setDrop(false);
+    const files = Array.from(event.dataTransfer.files);
+    if (files.length) onDropFiles?.(files);
+  };
 
   const visible = useMemo(() => {
     return assets.filter((a) => {
@@ -308,7 +341,8 @@ export function AssetsPanel({
   const hasAny = assets.length > 0;
 
   return (
-    <div className="relative w-[240px] shrink-0 h-full flex flex-col bg-c-bg border-r border-c-border overflow-hidden">
+    <div className="relative w-[240px] shrink-0 h-full flex flex-col bg-c-bg border-r border-c-border overflow-hidden"
+      onDragEnter={onDragEnter} onDragOver={event => event.preventDefault()} onDragLeave={onDragLeave} onDrop={onDrop}>
       {/* Header — Assets label + Upload. Title uses the same hierarchy as the
           composition panel's "Product review" title (13px/550), not the smaller
           11px section-label size. */}
@@ -364,7 +398,7 @@ export function AssetsPanel({
                 key={item.id}
                 item={item}
                 selected={activeSel === item.id}
-                onSelect={() => select(item.id)}
+                onSelect={event => select(item.id, event)}
                 onDoubleClick={() =>
                   item.kind === "video" ? onAddToTimeline?.(item.id) : onInsert?.(item.id)
                 }
@@ -381,7 +415,7 @@ export function AssetsPanel({
       )}
 
       {/* OS drag-drop overlay */}
-      {dropActive && <DropOverlay />}
+      {activeDrop && <DropOverlay />}
     </div>
   );
 }
