@@ -163,14 +163,14 @@ export function SlidesPanel({ slides, title = "Product review", subtitle = "", o
         </div>
       </div>
 
-      {/* New slide (split: label + chevron on the left, plus on the right) */}
+      {/* New composition (split: label + chevron on the left, plus on the right) */}
       <div className="shrink-0 p-[8px] border-t border-b border-c-border">
         <div className="w-full h-[24px] rounded-[6px] border border-c-border bg-c-bg flex items-stretch overflow-hidden">
-          <button onClick={onNewSlideMenu} aria-label="New slide options" className="relative flex-1 flex items-center justify-center gap-[2px] hover:bg-c-bg-hover">
-            <span className="text-c-text text-[11px] font-[450] leading-[16px] tracking-[0.055px]" style={INTER}>New slide</span>
+          <button onClick={onNewSlideMenu} aria-label="New comp options" className="relative flex-1 flex items-center justify-center gap-[2px] hover:bg-c-bg-hover">
+            <span className="text-c-text text-[11px] font-[450] leading-[16px] tracking-[0.055px]" style={INTER}>New comp</span>
             <ChevronDown size={12} className="text-c-text" />
           </button>
-          <button onClick={onNewSlide} aria-label="Add slide" className="w-[24px] flex items-center justify-center border-l border-c-border hover:bg-c-bg-hover">
+          <button onClick={onNewSlide} aria-label="Add comp" className="w-[24px] flex items-center justify-center border-l border-c-border hover:bg-c-bg-hover">
             <Plus size={16} className="text-c-text" />
           </button>
         </div>
@@ -178,7 +178,7 @@ export function SlidesPanel({ slides, title = "Product review", subtitle = "", o
 
       {/* Slide list — overlay scrollbar (theme-aware thumb) */}
       <ScrollArea>
-        <div className="flex flex-col" role="listbox" aria-label="Slides">
+        <div className="flex flex-col" role="listbox" aria-label="Compositions">
           {slides.map((s, i) => <SlideListItem key={i} item={s} tabIndex={i === focusIndex ? 0 : -1}
             itemRef={node => { itemRefs.current[i] = node; }} onFocus={() => setFocusIndex(i)} onNavigate={event => navigate(i, event)} />)}
         </div>

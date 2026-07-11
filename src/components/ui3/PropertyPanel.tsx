@@ -1464,9 +1464,6 @@ function SlideBackgroundSection({
   );
 }
 
-const TRANSITION_LABELS: Record<SlideTransitionType, string> = { none: "None", fade: "Fade", push: "Push", slide: "Slide", wipe: "Wipe" };
-const EASING_LABELS: Record<SlideTransitionEasing, string> = { linear: "Linear", "ease-in": "Ease in", "ease-out": "Ease out", "ease-in-out": "Ease" };
-
 function ChoiceDropdown<T extends string>({ value, options, labels, onChange }: {
   value: T;
   options: readonly T[];
@@ -1480,38 +1477,6 @@ function ChoiceDropdown<T extends string>({ value, options, labels, onChange }: 
       ))}</Menu>}
     </PopoverMenu>
   );
-}
-
-function SlideTransitionSection({ type, direction, duration, easing, onTypeChange, onDirectionChange, onDurationChange, onEasingChange }: {
-  type: SlideTransitionType;
-  direction: SlideTransitionDirection;
-  duration: number;
-  easing: SlideTransitionEasing;
-  onTypeChange?: (value: SlideTransitionType) => void;
-  onDirectionChange?: (value: SlideTransitionDirection) => void;
-  onDurationChange?: (value: number) => void;
-  onEasingChange?: (value: SlideTransitionEasing) => void;
-}) {
-  const directional = type === "push" || type === "slide" || type === "wipe";
-  return <PanelSection title="Transition">
-    <PanelFieldRow label="Type" reserveRightSlot={false} left={
-      <ChoiceDropdown value={type} options={["none", "fade", "push", "slide", "wipe"]} labels={TRANSITION_LABELS} onChange={onTypeChange} />
-    } />
-    {directional && <PanelFieldRow label="Direction" reserveRightSlot={false} left={
-      <SegmentedControl
-        segments={[{ value: "left", label: "←" }, { value: "right", label: "→" }, { value: "up", label: "↑" }, { value: "down", label: "↓" }]}
-        value={direction}
-        onChange={value => onDirectionChange?.(value as SlideTransitionDirection)}
-        className="w-full"
-      />
-    } />}
-    {type !== "none" && <>
-      <PanelFieldRow label="Duration" reserveRightSlot={false} left={<NumericInput value={duration} min={0} suffix="ms" onChange={onDurationChange} />} />
-      <PanelFieldRow label="Easing" reserveRightSlot={false} left={
-        <ChoiceDropdown value={easing} options={["linear", "ease-in-out", "ease-in", "ease-out"]} labels={EASING_LABELS} onChange={onEasingChange} />
-      } />
-    </>}
-  </PanelSection>;
 }
 
 // ─── Video Clip mode sections ─────────────────────────────────────────────────
@@ -1683,6 +1648,7 @@ export interface PropertyPanelProps {
   onSlideTransitionDirectionChange?: (value: SlideTransitionDirection) => void;
   onSlideTransitionDurationChange?: (value: number) => void;
   onSlideTransitionEasingChange?: (value: SlideTransitionEasing) => void;
+  onApplySlideTransitionToAll?: () => void;
   onDuplicateSlide?: () => void;
   onDeleteSlide?: () => void;
   /** Video Clip mode — controlled when callbacks are supplied; demo fallbacks remain editable. */
@@ -1789,6 +1755,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onSlideTransitionDirectionChange,
   onSlideTransitionDurationChange,
   onSlideTransitionEasingChange,
+  onApplySlideTransitionToAll,
   onDuplicateSlide,
   onDeleteSlide,
   clipName = "hero-cover",
@@ -1949,16 +1916,15 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
           </ScrollArea></div>}
 
-          {tab === "animate" && <div role="tabpanel" id="slide-animate-panel" aria-labelledby="slide-animate-panel-tab" className="contents"><AnimatePanel anims={objectAnimations} transition={<SlideTransitionSection
-              type={renderedTransitionType}
-              direction={renderedTransitionDirection}
-              duration={renderedTransitionDuration}
-              easing={renderedTransitionEasing}
-              onTypeChange={value => { if (slideTransitionType === undefined) setDemoTransitionType(value); onSlideTransitionTypeChange?.(value); }}
-              onDirectionChange={value => { if (slideTransitionDirection === undefined) setDemoTransitionDirection(value); onSlideTransitionDirectionChange?.(value); }}
-              onDurationChange={value => { if (slideTransitionDuration === undefined) setDemoTransitionDuration(value); onSlideTransitionDurationChange?.(value); }}
-              onEasingChange={value => { if (slideTransitionEasing === undefined) setDemoTransitionEasing(value); onSlideTransitionEasingChange?.(value); }}
-            />} /></div>}
+          {tab === "animate" && <div role="tabpanel" id="slide-animate-panel" aria-labelledby="slide-animate-panel-tab" className="contents"><AnimatePanel anims={objectAnimations}
+            compTransition={{ style: renderedTransitionType, direction: renderedTransitionDirection, durationMs: renderedTransitionDuration, easing: renderedTransitionEasing }}
+            compTransitionCallbacks={{
+              onStyleChange: value => { if (slideTransitionType === undefined) setDemoTransitionType(value); onSlideTransitionTypeChange?.(value); },
+              onDirectionChange: value => { if (slideTransitionDirection === undefined) setDemoTransitionDirection(value); onSlideTransitionDirectionChange?.(value); },
+              onDurationChange: value => { if (slideTransitionDuration === undefined) setDemoTransitionDuration(value); onSlideTransitionDurationChange?.(value); },
+              onEasingChange: value => { if (slideTransitionEasing === undefined) setDemoTransitionEasing(value); onSlideTransitionEasingChange?.(value); },
+              onApplyToAll: onApplySlideTransitionToAll,
+            }} /></div>}
         </>
       )}
 

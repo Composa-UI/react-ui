@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { clsx } from "clsx";
 import { SlidersHorizontal, Plus, Trash2, MonitorPlay, Clock, ArrowRight, ArrowDown, Type, SquareDashedMousePointer } from "lucide-react";
 import { PanelSection, PanelActionBtn, ScrollArea } from "./Panel";
@@ -26,6 +26,23 @@ export interface ObjectAnimationItem {
   style?: string;
   buildDuration?: string;
   delivery?: string;
+}
+
+export type CompTransitionStyle = "none" | "fade" | "push" | "slide" | "wipe";
+export type CompTransitionDirection = "left" | "right" | "up" | "down";
+export type CompTransitionEasing = "linear" | "ease-in" | "ease-out" | "ease-in-out";
+export interface CompTransitionSettings {
+  style: CompTransitionStyle;
+  direction: CompTransitionDirection;
+  durationMs: number;
+  easing: CompTransitionEasing;
+}
+export interface CompTransitionCallbacks {
+  onStyleChange?: (value: CompTransitionStyle) => void;
+  onDirectionChange?: (value: CompTransitionDirection) => void;
+  onDurationChange?: (value: number) => void;
+  onEasingChange?: (value: CompTransitionEasing) => void;
+  onApplyToAll?: () => void;
 }
 
 const DEMO_ANIMS: ObjectAnimationItem[] = [
@@ -86,39 +103,58 @@ function AnimationCard({ icon, title, badge, expanded, onToggle, onRemove, child
   );
 }
 
-// ── Slide transition ──────────────────────────────────────────────────────────────
-function SlideTransitionSection() {
-  const [applied, setApplied] = useState(true);
-  const [open, setOpen] = useState(true);
-  if (!applied) {
-    return (
-      <PanelSection title="Comp transition" rightActions={<PanelActionBtn icon={<SlidersHorizontal size={16} strokeWidth={1.5} />} label="Comp transition settings" />}>
-        <div className="px-[16px] pt-[3px] pb-[8px]">
-          <button onClick={() => setApplied(true)} className="h-[32px] w-full rounded-c-md border border-c-border bg-c-bg flex items-center gap-[8px] px-[8px] hover:bg-c-bg-hover">
-            <MonitorPlay size={16} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" />
-            <span className={clsx(FONT, "text-[11px] text-c-text-secondary")}>None</span>
-          </button>
-        </div>
-      </PanelSection>
-    );
-  }
+const STYLE_LABELS: Record<CompTransitionStyle, string> = { none: "None", fade: "Fade", push: "Push", slide: "Slide", wipe: "Wipe" };
+const DIRECTION_LABELS: Record<CompTransitionDirection, string> = { left: "Left", right: "Right", up: "Up", down: "Down" };
+const EASING_LABELS: Record<CompTransitionEasing, string> = { linear: "Linear", "ease-in": "Ease in", "ease-out": "Ease out", "ease-in-out": "Ease in out" };
+
+function ChoiceDropdown<T extends string>({ value, options, labels, onChange }: { value: T; options: readonly T[]; labels: Record<T, string>; onChange?: (value: T) => void }) {
+  return <PopoverMenu align="right" className="w-full" trigger={<Dropdown value={labels[value]} fullWidth />}>
+    {close => <Menu minWidth={160}>{options.map(option => <MenuRow key={option} type="checkmark" checked={option === value} label={labels[option]} onClick={() => { onChange?.(option); close(); }} />)}</Menu>}
+  </PopoverMenu>;
+}
+
+// ── Composition transition ───────────────────────────────────────────────────────
+function CompTransitionSection({ value, callbacks }: { value?: CompTransitionSettings; callbacks?: CompTransitionCallbacks }) {
+  const [demo, setDemo] = useState<CompTransitionSettings>({ style: "fade", direction: "right", durationMs: 300, easing: "ease-out" });
+  const controlled = value !== undefined;
+  const rendered = value ?? demo;
+  const [open, setOpen] = useState(rendered.style !== "none");
+  useEffect(() => {
+    if (value?.style === "none") setOpen(false);
+  }, [value?.style]);
+  const update = (patch: Partial<CompTransitionSettings>) => {
+    if (!controlled) setDemo(current => ({ ...current, ...patch }));
+  };
+  const setStyle = (style: CompTransitionStyle) => { update({ style }); callbacks?.onStyleChange?.(style); };
+  const directional = rendered.style === "push" || rendered.style === "slide" || rendered.style === "wipe";
+  if (rendered.style === "none" && !open) return (
+    <PanelSection title="Comp transition" rightActions={<PanelActionBtn icon={<SlidersHorizontal size={16} strokeWidth={1.5} />} label="Comp transition settings" />}>
+      <div className="px-[16px] pt-[3px] pb-[8px]">
+        <button onClick={() => setOpen(true)} className="h-[32px] w-full rounded-c-md border border-c-border bg-c-bg flex items-center gap-[8px] px-[8px] hover:bg-c-bg-hover">
+          <MonitorPlay size={16} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" />
+          <span className={clsx(FONT, "text-[11px] text-c-text-secondary")}>None</span>
+        </button>
+      </div>
+    </PanelSection>
+  );
   return (
     <PanelSection title="Comp transition" rightActions={<PanelActionBtn icon={<SlidersHorizontal size={16} strokeWidth={1.5} />} label="Comp transition settings" />}>
       <div className="px-[16px] pt-[3px] pb-[8px]">
         <AnimationCard
           icon={<MonitorPlay size={16} strokeWidth={1.5} />}
-          title="Smart animate"
-          badge={<span className={clsx(FONT, "text-[9px] text-c-text-secondary")}>300ms</span>}
+          title={STYLE_LABELS[rendered.style]}
+          badge={rendered.style === "none" ? undefined : <span className={clsx(FONT, "text-[9px] text-c-text-secondary")}>{rendered.durationMs}ms</span>}
           expanded={open}
           onToggle={() => setOpen(o => !o)}
-          onRemove={() => setApplied(false)}
+          onRemove={rendered.style === "none" ? undefined : () => { setStyle("none"); setOpen(false); }}
         >
-          <LabeledRow label="Style"><Dropdown value="Smart animate" fullWidth /></LabeledRow>
-          <LabeledRow label="Easing"><Dropdown value="Ease out" fullWidth /></LabeledRow>
-          <LabeledRow label="Duration"><ComboInput value="300ms" className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} /></LabeledRow>
-          <LabeledRow label="Start"><Dropdown value="On click" fullWidth /></LabeledRow>
-          <LabeledRow label="Delay"><ComboInput value="0ms" className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} /></LabeledRow>
-          <Button label="Apply to all slides" variant="Secondary" size="wide" />
+          <LabeledRow label="Style"><ChoiceDropdown value={rendered.style} options={["none", "fade", "push", "slide", "wipe"]} labels={STYLE_LABELS} onChange={setStyle} /></LabeledRow>
+          {rendered.style !== "none" && <>
+            {directional && <LabeledRow label="Direction"><ChoiceDropdown value={rendered.direction} options={["left", "right", "up", "down"]} labels={DIRECTION_LABELS} onChange={direction => { update({ direction }); callbacks?.onDirectionChange?.(direction); }} /></LabeledRow>}
+            <LabeledRow label="Easing"><ChoiceDropdown value={rendered.easing} options={["linear", "ease-in", "ease-out", "ease-in-out"]} labels={EASING_LABELS} onChange={easing => { update({ easing }); callbacks?.onEasingChange?.(easing); }} /></LabeledRow>
+            <LabeledRow label="Duration"><ComboInput value={`${rendered.durationMs}ms`} className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} onInputChange={raw => { const durationMs = Number(raw.replace(/[^0-9.]/g, "")); if (Number.isFinite(durationMs)) { update({ durationMs }); callbacks?.onDurationChange?.(durationMs); } }} /></LabeledRow>
+            <Button label="Apply to all compositions" variant="Secondary" size="wide" onClick={callbacks?.onApplyToAll} />
+          </>}
         </AnimationCard>
       </div>
     </PanelSection>
@@ -185,10 +221,10 @@ function ObjectAnimationsSection({ anims }: { anims: ObjectAnimationItem[] }) {
   );
 }
 
-export function AnimatePanel({ anims = DEMO_ANIMS, transition }: { anims?: ObjectAnimationItem[]; transition?: ReactNode }) {
+export function AnimatePanel({ anims = DEMO_ANIMS, compTransition, compTransitionCallbacks }: { anims?: ObjectAnimationItem[]; compTransition?: CompTransitionSettings; compTransitionCallbacks?: CompTransitionCallbacks }) {
   return (
     <ScrollArea>
-      {transition ?? <SlideTransitionSection />}
+      <CompTransitionSection value={compTransition} callbacks={compTransitionCallbacks} />
       <ObjectAnimationsSection anims={anims} />
     </ScrollArea>
   );

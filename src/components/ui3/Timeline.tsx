@@ -337,7 +337,7 @@ function BlockTrack({ blocks, onSelect, onOpen, onMove, onTrim, onGestureStart, 
       {/* left label */}
       <div className="shrink-0 flex items-center gap-[8px] pl-[8px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W }}>
         <Film size={16} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" />
-        <span className={clsx(FONT, "text-[11px] font-[450] text-c-text truncate")}>Slides</span>
+        <span className={clsx(FONT, "text-[11px] font-[450] text-c-text truncate")}>Compositions</span>
       </div>
       {/* block lane */}
       <div className="flex-1 relative" style={{ height: ROW_BLOCK }}>
