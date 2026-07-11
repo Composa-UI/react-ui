@@ -1,6 +1,8 @@
 import { clsx } from "clsx";
-import { type ReactNode, useState, useRef, useEffect } from "react";
+import { type ReactNode, useState, useRef } from "react";
 import { Check, ChevronRight, Minus } from "lucide-react";
+import * as PopoverPrimitive from "@radix-ui/react-popover";
+import { useComposaMode } from "./useComposaMode";
 
 // ─── Menu ─────────────────────────────────────────────────────────────────────
 // Figma menus are always dark regardless of app mode. We apply
@@ -306,10 +308,8 @@ export function MenuMultiSelect({ items, value, onChange, className }: MenuMulti
 }
 
 // ─── PopoverMenu ──────────────────────────────────────────────────────────────
-// Anchors a Menu to a trigger with local open/close + click-away. The global
-// "one overlay at a time / z-stacking" policy stays the app shell's job; this
-// only owns the trigger→menu composition. `children` is a render fn receiving a
-// `close` callback so item handlers can dismiss.
+// Anchors a Menu to a trigger through a collision-aware portal. `children` is a
+// render fn receiving a `close` callback so item handlers can dismiss.
 export function PopoverMenu({
   trigger,
   children,
@@ -322,30 +322,34 @@ export function PopoverMenu({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const mode = useComposaMode();
 
   return (
-    <div ref={ref} className={clsx("relative", className)}>
-      <div onClick={() => setOpen(o => !o)}>{trigger}</div>
-      {open && (
-        <div className={clsx("absolute z-50 top-full mt-[4px]", align === "right" ? "right-0" : "left-0")}>
-          {children(() => setOpen(false))}
-        </div>
-      )}
-    </div>
+    <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
+      <div className={clsx("relative", className)}>
+        <PopoverPrimitive.Trigger asChild>
+          <div ref={triggerRef} tabIndex={-1}>{trigger}</div>
+        </PopoverPrimitive.Trigger>
+        <PopoverPrimitive.Portal>
+          <PopoverPrimitive.Content
+            data-composa-mode={mode}
+            side="bottom"
+            align={align === "right" ? "end" : "start"}
+            sideOffset={4}
+            collisionPadding={8}
+            avoidCollisions
+            sticky="partial"
+            onCloseAutoFocus={event => {
+              event.preventDefault();
+              triggerRef.current?.querySelector<HTMLElement>("button,[href],[tabindex]:not([tabindex='-1'])")?.focus();
+            }}
+            className="z-50 outline-none"
+          >
+            {children(() => setOpen(false))}
+          </PopoverPrimitive.Content>
+        </PopoverPrimitive.Portal>
+      </div>
+    </PopoverPrimitive.Root>
   );
 }
