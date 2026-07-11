@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import type { MouseEvent } from "react";
+import { useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { ChevronRight, ChevronDown, Plus } from "lucide-react";
 import { ScrollArea } from "./Panel";
 
@@ -66,7 +66,7 @@ function SlideThumb({ item }: { item: SlideData }) {
 }
 
 // ── One slide row ─────────────────────────────────────────────────────────────
-export function SlideListItem({ item }: { item: SlideData }) {
+export function SlideListItem({ item, tabIndex = 0, onNavigate, onFocus, itemRef }: { item: SlideData; tabIndex?: number; onNavigate?: (event: KeyboardEvent<HTMLDivElement>) => void; onFocus?: () => void; itemRef?: (node: HTMLDivElement | null) => void }) {
   const numLeft = item.sub ? "left-[36px]" : "left-[12px]";
   // Row height tracks the responsive thumbnail. An in-flow spacer uses the same
   // left-gutter + 12px-right margins, so it fills the remaining width; aspect-ratio
@@ -76,10 +76,12 @@ export function SlideListItem({ item }: { item: SlideData }) {
   const spacerBottom = item.stacked ? 20 : 8; // 8, plus 12 for the stacked cards
   return (
     <div className="relative w-full shrink-0 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-c-border-selected"
-      role="option" tabIndex={0} aria-selected={item.selected} aria-label={`Slide ${item.n}`}
+      ref={itemRef} role="option" tabIndex={tabIndex} aria-selected={item.selected} aria-label={`Slide ${item.n}`}
+      onFocus={onFocus}
       onClick={item.onClick}
       onKeyDown={event => {
         if (event.key === "Enter" || event.key === " ") { event.preventDefault(); item.onClick?.(event as unknown as MouseEvent<HTMLDivElement>); }
+        else onNavigate?.(event);
       }}>
       {/* height spacer — invisible box matching the thumbnail width + aspect ratio */}
       <div aria-hidden className="invisible" style={{ aspectRatio: THUMB_RATIO, marginLeft: spacerLeft, marginRight: 12, marginTop: 8, marginBottom: spacerBottom }} />
@@ -128,6 +130,20 @@ export function SlidesPanel({ slides, title = "Product review", subtitle = "", o
   onNewSlide?: () => void;
   onNewSlideMenu?: () => void;
 }) {
+  const initialFocus = Math.max(0, slides.findIndex(slide => slide.selected));
+  const [focusIndex, setFocusIndex] = useState(initialFocus);
+  const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const navigate = (index: number, event: KeyboardEvent<HTMLDivElement>) => {
+    let next = index;
+    if (event.key === "ArrowDown" || event.key === "ArrowRight") next = Math.min(slides.length - 1, index + 1);
+    else if (event.key === "ArrowUp" || event.key === "ArrowLeft") next = Math.max(0, index - 1);
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = slides.length - 1;
+    else return;
+    event.preventDefault();
+    setFocusIndex(next);
+    itemRefs.current[next]?.focus();
+  };
   return (
     <div className="w-[200px] shrink-0 h-full flex flex-col bg-c-bg overflow-hidden border-r border-c-border">
       {/* Header — title + subtitle only */}
@@ -158,7 +174,8 @@ export function SlidesPanel({ slides, title = "Product review", subtitle = "", o
       {/* Slide list — overlay scrollbar (theme-aware thumb) */}
       <ScrollArea>
         <div className="flex flex-col" role="listbox" aria-label="Slides">
-          {slides.map((s, i) => <SlideListItem key={i} item={s} />)}
+          {slides.map((s, i) => <SlideListItem key={i} item={s} tabIndex={i === focusIndex ? 0 : -1}
+            itemRef={node => { itemRefs.current[i] = node; }} onFocus={() => setFocusIndex(i)} onNavigate={event => navigate(i, event)} />)}
         </div>
       </ScrollArea>
     </div>

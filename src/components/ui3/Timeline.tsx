@@ -331,7 +331,8 @@ function BlockTrack({ blocks, onSelect, onOpen, onMove, onTrim }: {
               onClick={() => onSelect?.(id)}
               onDoubleClick={() => onOpen?.(id)}
               onKeyDown={event => {
-                if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect?.(id); }
+                if (event.key === "Enter") { event.preventDefault(); onOpen?.(id); }
+                else if (event.key === " ") { event.preventDefault(); onSelect?.(id); }
                 else if (event.key === "Escape") drag.current = null;
               }}
               onPointerDown={event => begin(event, b, "move")}
@@ -391,7 +392,7 @@ function BaseVideoTrack({ clips, onSelect, onOpen, onMove, onTrim }: {
           const tintIsImage = clip.tint?.includes("gradient(");
           return <div key={clip.id} role="button" tabIndex={0} aria-pressed={clip.selected}
             onClick={() => onSelect?.(clip.id)} onDoubleClick={() => onOpen?.(clip.id)}
-            onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect?.(clip.id); } else if (event.key === "Escape") drag.current = null; }}
+            onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); onOpen?.(clip.id); } else if (event.key === " ") { event.preventDefault(); onSelect?.(clip.id); } else if (event.key === "Escape") drag.current = null; }}
             onPointerDown={event => begin(event, clip, "move")} onPointerMove={event => update(event, clip)} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} onLostPointerCapture={() => { drag.current = null; }}
             className={clsx("absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-c-bg-secondary",
               clip.selected ? "border-c-border-selected-strong" : "border-c-border")}
