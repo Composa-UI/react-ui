@@ -1,4 +1,4 @@
-import { useState, Fragment, type ReactNode } from "react";
+import { useEffect, useState, Fragment, type ReactNode } from "react";
 import { clsx } from "clsx";
 import {
   AlignLeft, AlignCenter, AlignRight,
@@ -363,6 +363,7 @@ function LayoutFrameSection({
 
 interface LayoutAutoProps {
   width?: number; height?: number;
+  flowMode?: ElementLayoutSettings["mode"];
   widthMode?: "fixed" | "hug" | "fill";
   heightMode?: "fixed" | "hug" | "fill";
   gap?: number;
@@ -384,6 +385,7 @@ interface LayoutAutoProps {
 
 function LayoutAutoSection({
   width = 240, height = 0,
+  flowMode,
   widthMode = "hug", heightMode = "fill",
   gap = 0,
   paddingTop = 16, paddingRight = 0, paddingBottom = 8, paddingLeft = 0,
@@ -394,6 +396,7 @@ function LayoutAutoSection({
 }: LayoutAutoProps) {
   const [lockAspect, setLockAspect] = useState(false);
   const [flow, setFlow] = useState("v");
+  const renderedFlow = flowMode === "horizontal" ? "h" : flowMode === "vertical" ? "v" : flowMode ?? flow;
   const [align, setAlign] = useState(alignValue);
   const renderedAlign = onAlignChange ? alignValue : align;
   const [indivPadding, setIndivPadding] = useState(false);
@@ -423,7 +426,7 @@ function LayoutAutoSection({
       {/* Flow */}
       <PanelFieldRow
         label="Flow"
-        left={<SegmentedControl segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon }))} value={flow} onChange={handleFlowChange} className="w-full" />}
+        left={<SegmentedControl segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon }))} value={renderedFlow} onChange={handleFlowChange} className="w-full" />}
       />
 
       {/* W / H — same ComboInput as the regular (non-auto) Layout section, so the
@@ -1816,8 +1819,11 @@ export function PropertyPanel({
   // button, or moving Flow off its first ("Freeform") option — both just flip this.
   const isFrameLike = elementType === "frame" || elementType === "frame-auto";
   const [autoLayoutOn, setAutoLayoutOn] = useState(elementType === "frame-auto");
-  const isFrame = isFrameLike && !autoLayoutOn;
-  const isAutoLayout = isFrameLike && autoLayoutOn;
+  const controlledAutoLayout = layout ? layout.mode !== "none" : undefined;
+  useEffect(() => setAutoLayoutOn(elementType === "frame-auto"), [elementType]);
+  const resolvedAutoLayout = controlledAutoLayout ?? autoLayoutOn;
+  const isFrame = isFrameLike && !resolvedAutoLayout;
+  const isAutoLayout = isFrameLike && resolvedAutoLayout;
 
   const elementLabel: Record<ElementType, string> = {
     text: "Text",
@@ -1977,6 +1983,7 @@ export function PropertyPanel({
           {/* Layout — polymorphic */}
           {(isFrame)       && <LayoutFrameSection width={width} height={height} clipContent={layout?.clipsContent} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onClipContentChange={onLayoutChange ? value => onLayoutChange({ clipsContent: value }) : undefined} onEnableAutoLayout={() => { setAutoLayoutOn(true); onLayoutChange?.({ mode: "vertical" }); }} />}
           {(isAutoLayout)  && <LayoutAutoSection width={width} height={height}
+            flowMode={layout?.mode}
             gap={layout?.gap} paddingTop={layout?.padding.top} paddingRight={layout?.padding.right} paddingBottom={layout?.padding.bottom} paddingLeft={layout?.padding.left}
             alignValue={layout?.align} clipContent={layout?.clipsContent}
             widthMode={layout?.widthMode} heightMode={layout?.heightMode}
