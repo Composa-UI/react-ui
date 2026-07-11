@@ -48,11 +48,12 @@ export interface Track {
 
 // master-view slide block — a slide's [start,end] range (ms) on the project timeline
 export interface SlideBlock {
-  id: string;
+  id?: string;                    // legacy demos may omit this; index fallback is presentation-only
   name: string;
   range: [number, number];     // [start,end] ms on the master timeline
   active?: boolean;            // canvas focus — visually distinct
 }
+const slideBlockId = (block: SlideBlock, index: number) => block.id ?? `slide-${index}`;
 export interface BaseClipBlock {
   id: string;
   name: string;
@@ -142,13 +143,14 @@ function Lane({ prop, trackId, propertyId, height, onSelect, onMove, onDelete }:
           onKeyDown={event => {
             if (event.key === "Delete" || event.key === "Backspace") { event.preventDefault(); onDelete?.(target); }
             if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect?.(target, event.shiftKey); }
+            if (event.key === "Escape") drag.current = null;
           }}
           onPointerDown={event => { drag.current = { id, startX: event.clientX, startTime: timeMs }; event.currentTarget.setPointerCapture(event.pointerId); }}
           onPointerMove={event => {
             if (drag.current?.id !== id) return;
             onMove?.(target, Math.max(0, Math.round(drag.current.startTime + (event.clientX - drag.current.startX) / PX_PER_MS)));
           }}
-          onPointerUp={() => { drag.current = null; }}
+          onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} onLostPointerCapture={() => { drag.current = null; }}
           className={clsx("absolute top-1/2 size-[7px] -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] outline-none", selected && "ring-2 ring-c-border-selected-strong")}
           style={{ left: ms(timeMs), backgroundColor: prop.accent ? "#8638e5" : BLUE }}
         />
@@ -296,16 +298,18 @@ function BlockTrack({ blocks, onSelect, onOpen, onMove, onTrim }: {
   const drag = useRef<{ id: string; kind: "move" | "start" | "end"; startX: number; range: [number, number] } | null>(null);
   const begin = (event: React.PointerEvent, block: SlideBlock, kind: "move" | "start" | "end") => {
     event.stopPropagation();
-    drag.current = { id: block.id, kind, startX: event.clientX, range: block.range };
+    const index = blocks.indexOf(block);
+    drag.current = { id: slideBlockId(block, index), kind, startX: event.clientX, range: block.range };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
   const update = (event: React.PointerEvent, block: SlideBlock) => {
     const active = drag.current;
-    if (!active || active.id !== block.id) return;
+    const id = slideBlockId(block, blocks.indexOf(block));
+    if (!active || active.id !== id) return;
     const delta = Math.round((event.clientX - active.startX) / (PX_PER_S / 1000));
-    if (active.kind === "move") onMove?.(block.id, Math.max(0, active.range[0] + delta));
-    if (active.kind === "start") onTrim?.(block.id, "start", Math.min(active.range[1], Math.max(0, active.range[0] + delta)));
-    if (active.kind === "end") onTrim?.(block.id, "end", Math.max(active.range[0], active.range[1] + delta));
+    if (active.kind === "move") onMove?.(id, Math.max(0, active.range[0] + delta));
+    if (active.kind === "start") onTrim?.(id, "start", Math.min(active.range[1], Math.max(0, active.range[0] + delta)));
+    if (active.kind === "end") onTrim?.(id, "end", Math.max(active.range[0], active.range[1] + delta));
   };
   return (
     <div className="flex" style={{ height: ROW_BLOCK }}>
@@ -317,16 +321,22 @@ function BlockTrack({ blocks, onSelect, onOpen, onMove, onTrim }: {
       {/* block lane */}
       <div className="flex-1 relative" style={{ height: ROW_BLOCK }}>
         {blocks.map((b, i) => {
+          const id = slideBlockId(b, i);
           const left = sec(b.range[0]);
           const width = sec(b.range[1] - b.range[0]);
           return (
             <div
-              key={b.id}
-              onClick={() => onSelect?.(b.id)}
-              onDoubleClick={() => onOpen?.(b.id)}
+              key={id}
+              role="button" tabIndex={0} aria-pressed={b.active}
+              onClick={() => onSelect?.(id)}
+              onDoubleClick={() => onOpen?.(id)}
+              onKeyDown={event => {
+                if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect?.(id); }
+                else if (event.key === "Escape") drag.current = null;
+              }}
               onPointerDown={event => begin(event, b, "move")}
               onPointerMove={event => update(event, b)}
-              onPointerUp={() => { drag.current = null; }}
+              onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} onLostPointerCapture={() => { drag.current = null; }}
               className={clsx(
                 "absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] flex items-center px-[10px] overflow-hidden border",
                 b.active
@@ -336,8 +346,8 @@ function BlockTrack({ blocks, onSelect, onOpen, onMove, onTrim }: {
               style={{ left, width }}
             >
               {/* trim handles (edge-drag to trim start/end) */}
-              <span aria-label={`Trim start of ${b.name}`} role="slider" aria-valuemin={0} aria-valuemax={b.range[1]} aria-valuenow={b.range[0]} tabIndex={0} onPointerDown={event => begin(event, b, "start")} onPointerMove={event => update(event, b)} onPointerUp={() => { drag.current = null; }} className="absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
-              <span aria-label={`Trim end of ${b.name}`} role="slider" aria-valuemin={b.range[0]} aria-valuemax={Number.MAX_SAFE_INTEGER} aria-valuenow={b.range[1]} tabIndex={0} onPointerDown={event => begin(event, b, "end")} onPointerMove={event => update(event, b)} onPointerUp={() => { drag.current = null; }} className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
+              <span aria-label={`Trim start of ${b.name}`} role="slider" aria-valuemin={0} aria-valuemax={b.range[1]} aria-valuenow={b.range[0]} tabIndex={0} onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(id, "start", Math.min(b.range[1], Math.max(0, b.range[0] + (event.key === "ArrowLeft" ? -100 : 100)))); } }} onPointerDown={event => begin(event, b, "start")} onPointerMove={event => update(event, b)} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} className="absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
+              <span aria-label={`Trim end of ${b.name}`} role="slider" aria-valuemin={b.range[0]} aria-valuemax={Number.MAX_SAFE_INTEGER} aria-valuenow={b.range[1]} tabIndex={0} onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(id, "end", Math.max(b.range[0], b.range[1] + (event.key === "ArrowLeft" ? -100 : 100))); } }} onPointerDown={event => begin(event, b, "end")} onPointerMove={event => update(event, b)} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
               <span className={clsx(FONT, "text-[11px] font-[450] truncate", b.active ? "text-c-text" : "text-c-text-secondary")}>{b.name}</span>
             </div>
           );
@@ -381,15 +391,18 @@ function BaseVideoTrack({ clips, onSelect, onOpen, onMove, onTrim }: {
           const tintIsImage = clip.tint?.includes("gradient(");
           return <div key={clip.id} role="button" tabIndex={0} aria-pressed={clip.selected}
             onClick={() => onSelect?.(clip.id)} onDoubleClick={() => onOpen?.(clip.id)}
-            onPointerDown={event => begin(event, clip, "move")} onPointerMove={event => update(event, clip)} onPointerUp={() => { drag.current = null; }}
+            onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect?.(clip.id); } else if (event.key === "Escape") drag.current = null; }}
+            onPointerDown={event => begin(event, clip, "move")} onPointerMove={event => update(event, clip)} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} onLostPointerCapture={() => { drag.current = null; }}
             className={clsx("absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-c-bg-secondary",
               clip.selected ? "border-c-border-selected-strong" : "border-c-border")}
             style={{ left, width, backgroundColor: !clip.thumbnail && !tintIsImage ? clip.tint : undefined, backgroundImage: clip.thumbnail ? `linear-gradient(rgba(0,0,0,.25),rgba(0,0,0,.25)),url(${clip.thumbnail})` : tintIsImage ? clip.tint : undefined, backgroundSize: "cover", backgroundPosition: "center" }}>
             <span aria-label={`Trim start of ${clip.name}`} role="slider" aria-valuemin={0} aria-valuemax={clip.range[1]} aria-valuenow={clip.range[0]} tabIndex={0}
-              onPointerDown={event => begin(event, clip, "start")} onPointerMove={event => update(event, clip)} onPointerUp={() => { drag.current = null; }}
+              onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "start", Math.min(clip.range[1], Math.max(0, clip.range[0] + (event.key === "ArrowLeft" ? -100 : 100)))); } }}
+              onPointerDown={event => begin(event, clip, "start")} onPointerMove={event => update(event, clip)} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}
               className="absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
             <span aria-label={`Trim end of ${clip.name}`} role="slider" aria-valuemin={clip.range[0]} aria-valuemax={Number.MAX_SAFE_INTEGER} aria-valuenow={clip.range[1]} tabIndex={0}
-              onPointerDown={event => begin(event, clip, "end")} onPointerMove={event => update(event, clip)} onPointerUp={() => { drag.current = null; }}
+              onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "end", Math.max(clip.range[0], clip.range[1] + (event.key === "ArrowLeft" ? -100 : 100))); } }}
+              onPointerDown={event => begin(event, clip, "end")} onPointerMove={event => update(event, clip)} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}
               className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
             <span className={clsx(FONT, "relative text-[11px] font-[450] truncate", clip.thumbnail || clip.tint ? "text-white" : "text-c-text-secondary")}>{clip.name}</span>
           </div>;
@@ -503,6 +516,16 @@ export function Timeline({
           onPointerDown={e => { setDrag(true); scrub(e); try { e.currentTarget.setPointerCapture(e.pointerId); } catch {} }}
           onPointerMove={e => drag && scrub(e)}
           onPointerUp={() => setDrag(false)}
+          onPointerCancel={() => setDrag(false)}
+          onLostPointerCapture={() => setDrag(false)}
+          onKeyDown={event => {
+            const step = event.shiftKey ? 1000 : 100;
+            if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+              event.preventDefault();
+              setPlayhead(Math.min(duration, Math.max(0, playhead + (event.key === "ArrowLeft" ? -step : step))));
+            } else if (event.key === "Home") { event.preventDefault(); setPlayhead(0); }
+            else if (event.key === "End") { event.preventDefault(); setPlayhead(duration); }
+          }}
         >
           {master ? <SecondRuler maxMs={maxMs} /> : <Ruler maxMs={maxMs} />}
           {/* playhead handle */}

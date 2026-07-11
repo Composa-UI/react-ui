@@ -74,7 +74,7 @@ const ROW_H = 30;
 const INSET = 8;
 
 // ── One row ───────────────────────────────────────────────────────────────────────
-function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect, onVisibilityChange, onLockChange, onRenameRequest, onContextMenu, draggable, onDragStart, onDragOver, onDrop }: {
+function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect, onVisibilityChange, onLockChange, onRenameRequest, onContextMenu, draggable, onDragStart, onDragEnd, onDragOver, onDrop }: {
   row: FlatRow;
   hasChildren: boolean;
   open: boolean;
@@ -87,6 +87,7 @@ function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect, 
   onContextMenu?: (event: MouseEvent<HTMLDivElement>) => void;
   draggable?: boolean;
   onDragStart?: (event: DragEvent<HTMLDivElement>) => void;
+  onDragEnd?: (event: DragEvent<HTMLDivElement>) => void;
   onDragOver?: (event: DragEvent<HTMLDivElement>) => void;
   onDrop?: (event: DragEvent<HTMLDivElement>) => void;
 }) {
@@ -106,6 +107,7 @@ function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect, 
       onContextMenu={onContextMenu}
       draggable={draggable}
       onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       onDragOver={onDragOver}
       onDrop={onDrop}
       onKeyDown={e => {
@@ -138,10 +140,10 @@ function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect, 
         {node.name}
       </span>
       {/* trailing: lock first (open padlock on hover; closed duotone padlock persistent when locked), then visibility */}
-      <button type="button" aria-label={node.locked ? `Unlock ${node.name}` : `Lock ${node.name}`} onClick={event => { event.stopPropagation(); onLockChange?.(); }} className={clsx("relative shrink-0 size-[14px] flex items-center justify-center text-c-icon-secondary", !node.locked && "opacity-0 group-hover/layer:opacity-100")}>
+      <button type="button" aria-label={node.locked ? `Unlock ${node.name}` : `Lock ${node.name}`} onClick={event => { event.stopPropagation(); onLockChange?.(); }} className={clsx("relative shrink-0 size-[14px] flex items-center justify-center text-c-icon-secondary focus-visible:opacity-100", !node.locked && "opacity-0 group-hover/layer:opacity-100")}>
         {node.locked ? <LockDuotone size={14} weight="duotone" /> : <LockOpen size={14} strokeWidth={1.5} />}
       </button>
-      <button type="button" aria-label={node.hidden ? `Show ${node.name}` : `Hide ${node.name}`} onClick={event => { event.stopPropagation(); onVisibilityChange?.(); }} className={clsx("relative shrink-0 size-[14px] flex items-center justify-center text-c-icon-secondary", !node.hidden && "opacity-0 group-hover/layer:opacity-100")}>
+      <button type="button" aria-label={node.hidden ? `Show ${node.name}` : `Hide ${node.name}`} onClick={event => { event.stopPropagation(); onVisibilityChange?.(); }} className={clsx("relative shrink-0 size-[14px] flex items-center justify-center text-c-icon-secondary focus-visible:opacity-100", !node.hidden && "opacity-0 group-hover/layer:opacity-100")}>
         {node.hidden ? <EyeOff size={14} strokeWidth={1.5} /> : <Eye size={14} strokeWidth={1.5} />}
       </button>
     </div>
@@ -245,6 +247,7 @@ export function LayerList({
                 onContextMenu={event => { if (onContextMenu) { event.preventDefault(); onContextMenu(row.node.id, event); } }}
                 draggable={!!(onReorder || onReparent)}
                 onDragStart={event => { setDraggedId(row.node.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", row.node.id); }}
+                onDragEnd={() => setDraggedId(null)}
                 onDragOver={event => { if (draggedId && draggedId !== row.node.id) event.preventDefault(); }}
                 onDrop={event => {
                   event.preventDefault();

@@ -75,7 +75,12 @@ export function SlideListItem({ item }: { item: SlideData }) {
   const spacerLeft = item.sub ? 68 : 44;
   const spacerBottom = item.stacked ? 20 : 8; // 8, plus 12 for the stacked cards
   return (
-    <div className="relative w-full shrink-0 cursor-pointer" onClick={item.onClick}>
+    <div className="relative w-full shrink-0 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-c-border-selected"
+      role="option" tabIndex={0} aria-selected={item.selected} aria-label={`Slide ${item.n}`}
+      onClick={item.onClick}
+      onKeyDown={event => {
+        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); item.onClick?.(event as unknown as MouseEvent<HTMLDivElement>); }
+      }}>
       {/* height spacer — invisible box matching the thumbnail width + aspect ratio */}
       <div aria-hidden className="invisible" style={{ aspectRatio: THUMB_RATIO, marginLeft: spacerLeft, marginRight: 12, marginTop: 8, marginBottom: spacerBottom }} />
 
@@ -152,7 +157,7 @@ export function SlidesPanel({ slides, title = "Product review", subtitle = "", o
 
       {/* Slide list — overlay scrollbar (theme-aware thumb) */}
       <ScrollArea>
-        <div className="flex flex-col">
+        <div className="flex flex-col" role="listbox" aria-label="Slides">
           {slides.map((s, i) => <SlideListItem key={i} item={s} />)}
         </div>
       </ScrollArea>

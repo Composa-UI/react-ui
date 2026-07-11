@@ -83,19 +83,17 @@ function AssetCard({
   return (
     <div className="flex flex-col gap-[4px] select-none">
       {/* thumbnail */}
-      <button
-        type="button"
-        aria-pressed={selected}
-        onClick={onSelect}
-        onDoubleClick={onDoubleClick}
-        onContextMenu={onContextMenu}
+      <div
         className={clsx(
           "group/card relative w-full aspect-[4/3] rounded-c-md overflow-hidden outline-none",
           "bg-c-bg-secondary ring-1 ring-inset transition-shadow duration-100",
-          "focus-visible:ring-c-focus-ring",
+          "focus-within:ring-c-focus-ring",
           selected ? "ring-c-border-selected-strong" : "ring-c-border-translucent hover:ring-c-border",
         )}
       >
+        <button type="button" aria-label={item.name} aria-pressed={selected}
+          onClick={onSelect} onDoubleClick={onDoubleClick} onContextMenu={onContextMenu}
+          className="absolute inset-0 z-[1] size-full outline-none" />
         {/* preview */}
         {item.thumb ? (
           <img alt="" src={item.thumb} className="absolute inset-0 size-full object-cover" />
@@ -139,46 +137,40 @@ function AssetCard({
             <span className={clsx(CAPTION, "!text-c-text-danger text-center")} title={item.errorMessage}>
               {item.errorMessage ?? "Upload failed"}
             </span>
-            <span
-              role="button"
-              tabIndex={0}
+            <button
+              type="button"
               onClick={(e) => { e.stopPropagation(); onRetry(); }}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onRetry(); } }}
-              className={clsx(FONT, "text-[11px] font-[550] text-c-text-danger underline underline-offset-2 cursor-pointer")}
+              className={clsx(FONT, "relative z-[2] text-[11px] font-[550] text-c-text-danger underline underline-offset-2 cursor-pointer")}
             >
               Retry
-            </span>
+            </button>
           </div>
         )}
 
         {/* hover quick-actions — Insert + Delete */}
         {!uploading && !error && (
-          <div className="absolute inset-0 flex items-start justify-end p-[4px] gap-[4px] opacity-0 group-hover/card:opacity-100 focus-within:opacity-100 transition-opacity bg-gradient-to-b from-black/25 to-transparent">
-            <span
-              role="button"
-              tabIndex={0}
+          <div className="absolute inset-0 z-[2] pointer-events-none flex items-start justify-end p-[4px] gap-[4px] opacity-0 group-hover/card:opacity-100 focus-within:opacity-100 transition-opacity bg-gradient-to-b from-black/25 to-transparent">
+            <button
+              type="button"
               aria-label={insertLabel}
               title={insertLabel}
               onClick={(e) => { e.stopPropagation(); onInsert(); }}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onInsert(); } }}
-              className="flex items-center justify-center size-[22px] rounded-c-sm bg-c-bg/90 text-c-icon hover:bg-c-bg cursor-pointer shadow-sm"
+              className="pointer-events-auto flex items-center justify-center size-[22px] rounded-c-sm bg-c-bg/90 text-c-icon hover:bg-c-bg cursor-pointer shadow-sm"
             >
               <Plus size={14} strokeWidth={2} />
-            </span>
-            <span
-              role="button"
-              tabIndex={0}
+            </button>
+            <button
+              type="button"
               aria-label="Delete"
               title="Delete"
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onDelete(); } }}
-              className="flex items-center justify-center size-[22px] rounded-c-sm bg-c-bg/90 text-c-icon hover:text-c-text-danger hover:bg-c-bg cursor-pointer shadow-sm"
+              className="pointer-events-auto flex items-center justify-center size-[22px] rounded-c-sm bg-c-bg/90 text-c-icon hover:text-c-text-danger hover:bg-c-bg cursor-pointer shadow-sm"
             >
               <Trash2 size={13} strokeWidth={2} />
-            </span>
+            </button>
           </div>
         )}
-      </button>
+      </div>
 
       {/* name */}
       <span className={clsx(CAPTION, "px-[2px] truncate")} title={item.name}>
