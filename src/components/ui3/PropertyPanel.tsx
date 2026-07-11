@@ -1606,6 +1606,9 @@ export interface PropertyPanelProps {
   onSelectAllUsingColor?: (id: string) => void;
   /** Controlled object-animation rows. Pass an empty list for the canonical null state. */
   objectAnimations?: import("./AnimatePanel").ObjectAnimationItem[];
+  objectAnimationCallbacks?: import("./AnimatePanel").ObjectAnimationCallbacks;
+  objectAnimationSettings?: import("./AnimatePanel").ObjectAnimationSequenceSettings;
+  addableAnimationPhases?: import("./AnimatePanel").ObjectAnimationPhase[];
   /** Project mode keeps the name a static label in V1. */
   projectName?: string;
   projectWidth?: number;
@@ -1716,7 +1719,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   strokes, onAddStroke, onUpdateStroke, onToggleStroke, onReorderStroke, onRemoveStroke,
   effects, onAddEffect, onUpdateEffect, onToggleEffect, onReorderEffect, onRemoveEffect,
   layoutGuides, onAddLayoutGuide, onUpdateLayoutGuide, onRemoveLayoutGuide,
-  selectionColors, onUpdateSelectionColor, onSelectAllUsingColor, objectAnimations,
+  selectionColors, onUpdateSelectionColor, onSelectAllUsingColor, objectAnimations, objectAnimationCallbacks, objectAnimationSettings, addableAnimationPhases,
   projectName = "Project",
   projectWidth = 1920,
   projectHeight = 1080,
@@ -1920,6 +1923,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
 
           {tab === "animate" && <div role="tabpanel" id="slide-animate-panel" aria-labelledby="slide-animate-panel-tab" className="contents"><AnimatePanel anims={objectAnimations}
             contextKey={slideId}
+            objectAnimationCallbacks={objectAnimationCallbacks} objectAnimationSettings={objectAnimationSettings} addablePhases={addableAnimationPhases}
             compTransition={{ style: renderedTransitionType, direction: renderedTransitionDirection, durationMs: renderedTransitionDuration, easing: renderedTransitionEasing }}
             compTransitionCallbacks={{
               onStyleChange: value => { if (slideTransitionType === undefined) setDemoTransitionType(value); onSlideTransitionTypeChange?.(value); },
@@ -2053,7 +2057,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
       )}
 
       {/* Animate tab — the animation panel */}
-      {tab === "animate" && <div role="tabpanel" id="element-animate-panel" aria-labelledby="element-animate-panel-tab" className="contents"><AnimatePanel anims={objectAnimations} /></div>}
+      {tab === "animate" && <div role="tabpanel" id="element-animate-panel" aria-labelledby="element-animate-panel-tab" className="contents"><AnimatePanel anims={objectAnimations} contextKey={slideId} objectAnimationCallbacks={objectAnimationCallbacks} objectAnimationSettings={objectAnimationSettings} addablePhases={addableAnimationPhases} /></div>}
 
       {/* Prototype placeholder */}
       {tab === "prototype" && (

@@ -19,6 +19,7 @@ const FONT = "font-[family-name:var(--composa-font-family)]";
 type AnimKind = "In" | "Out" | "Action";
 
 export interface ObjectAnimationItem {
+  id?: string;
   n: number;
   name: string;
   kind: AnimKind;
@@ -26,6 +27,15 @@ export interface ObjectAnimationItem {
   style?: string;
   buildDuration?: string;
   delivery?: string;
+}
+export type ObjectAnimationPhase = "build-in" | "action" | "build-out";
+export interface ObjectAnimationSequenceSettings { start: "on-click" | "automatically"; delayMs: number; }
+export interface ObjectAnimationCallbacks {
+  onAdd?: (phase: ObjectAnimationPhase) => void;
+  onRemove?: (id: string) => void;
+  onDurationChange?: (id: string, durationMs: number) => void;
+  onStartChange?: (start: ObjectAnimationSequenceSettings["start"]) => void;
+  onDelayChange?: (delayMs: number) => void;
 }
 
 export type CompTransitionStyle = "none" | "fade" | "push" | "slide" | "wipe";
@@ -172,11 +182,16 @@ function DurationPill({ duration, kind }: { duration: string; kind: AnimKind }) 
   );
 }
 
-function ObjectAnimationsSection({ anims }: { anims: ObjectAnimationItem[] }) {
-  const [expanded, setExpanded] = useState<number | null>(anims.length ? 0 : null);
+function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-click", delayMs: 0 }, addablePhases = ["build-in", "action", "build-out"] }: {
+  anims: ObjectAnimationItem[]; callbacks?: ObjectAnimationCallbacks; settings?: ObjectAnimationSequenceSettings; addablePhases?: ObjectAnimationPhase[];
+}) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const phaseOptions: Array<{ value: ObjectAnimationPhase; label: string }> = [
+    { value: "build-in", label: "Build in" }, { value: "action", label: "Action" }, { value: "build-out", label: "Build out" },
+  ];
   const addMenu = (close: () => void) => (
     <Menu minWidth={140}>
-      {["Build in", "Action", "Build out"].map(l => <MenuRow key={l} type="simple" label={l} onClick={close} />)}
+      {phaseOptions.map(option => <MenuRow key={option.value} type="simple" label={option.label} disabled={!addablePhases.includes(option.value)} onClick={() => { callbacks?.onAdd?.(option.value); close(); }} />)}
     </Menu>
   );
   return (
@@ -198,35 +213,43 @@ function ObjectAnimationsSection({ anims }: { anims: ObjectAnimationItem[] }) {
         </p>
       ) : (
         <div className="px-[16px] pt-[3px] pb-[8px] flex flex-col gap-[8px]">
-          {anims.map((a, i) => (
-            <div key={i}>
+          {anims.map((a, i) => {
+            const id = a.id ?? String(i);
+            return <div key={id}>
               <div className={clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.045px] text-c-text-secondary mb-[2px]")}>{a.n}</div>
               <AnimationCard
                 icon={<Type size={14} strokeWidth={1.5} />}
                 title={a.name}
                 badge={<><KindGlyph kind={a.kind} /><DurationPill duration={a.duration} kind={a.kind} /></>}
-                expanded={expanded === i}
-                onToggle={() => setExpanded(e => e === i ? null : i)}
-                onRemove={() => {}}
+                expanded={expanded === id}
+                onToggle={() => setExpanded(current => current === id ? null : id)}
+                onRemove={() => callbacks?.onRemove?.(id)}
               >
                 <div className={clsx(FONT, "text-[11px] font-[550] leading-[16px] text-c-text")}>Build in</div>
                 <LabeledRow label="Style"><Dropdown value={a.style ?? "—"} fullWidth /></LabeledRow>
-                <LabeledRow label="Duration"><ComboInput value={a.buildDuration ?? "—"} className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} /></LabeledRow>
+                <LabeledRow label="Duration"><NumericInput value={Number.parseFloat(a.buildDuration ?? a.duration) * (a.buildDuration?.includes("ms") ? 1 : 1000)} min={0} suffix="ms" commitOnBlur className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} onChange={durationMs => callbacks?.onDurationChange?.(id, durationMs)} /></LabeledRow>
                 <LabeledRow label="Delivery"><Dropdown value={a.delivery ?? "—"} fullWidth /></LabeledRow>
               </AnimationCard>
-            </div>
-          ))}
+            </div>;
+          })}
+          <div className="flex flex-col gap-[8px] pt-[4px] border-t border-c-border">
+            <LabeledRow label="Start"><ChoiceDropdown value={settings.start} options={["on-click", "automatically"]} labels={{ "on-click": "On click", automatically: "Automatically" }} onChange={callbacks?.onStartChange} /></LabeledRow>
+            <LabeledRow label="Delay"><NumericInput value={settings.delayMs} min={0} suffix="ms" commitOnBlur className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} onChange={callbacks?.onDelayChange} /></LabeledRow>
+          </div>
         </div>
       )}
     </PanelSection>
   );
 }
 
-export function AnimatePanel({ anims = DEMO_ANIMS, compTransition, compTransitionCallbacks, contextKey }: { anims?: ObjectAnimationItem[]; compTransition?: CompTransitionSettings; compTransitionCallbacks?: CompTransitionCallbacks; contextKey?: string }) {
+export function AnimatePanel({ anims = DEMO_ANIMS, compTransition, compTransitionCallbacks, contextKey, objectAnimationCallbacks, objectAnimationSettings, addablePhases }: {
+  anims?: ObjectAnimationItem[]; compTransition?: CompTransitionSettings; compTransitionCallbacks?: CompTransitionCallbacks; contextKey?: string;
+  objectAnimationCallbacks?: ObjectAnimationCallbacks; objectAnimationSettings?: ObjectAnimationSequenceSettings; addablePhases?: ObjectAnimationPhase[];
+}) {
   return (
     <ScrollArea>
       <CompTransitionSection value={compTransition} callbacks={compTransitionCallbacks} contextKey={contextKey} />
-      <ObjectAnimationsSection anims={anims} />
+      <ObjectAnimationsSection anims={anims} callbacks={objectAnimationCallbacks} settings={objectAnimationSettings} addablePhases={addablePhases} />
     </ScrollArea>
   );
 }
