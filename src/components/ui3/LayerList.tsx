@@ -97,6 +97,7 @@ function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect, 
   return (
     <div
       role="treeitem"
+      aria-label={node.name}
       tabIndex={0}
       aria-selected={isSelfSelected}
       aria-expanded={hasChildren ? open : undefined}
