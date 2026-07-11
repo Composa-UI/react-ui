@@ -1,8 +1,11 @@
 import { useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { clsx } from "clsx";
-import { Upload, Search, Image as ImageIcon, Film, Trash2, Plus } from "lucide-react";
+import { Upload, Search, Image as ImageIcon, Film, Trash2, Plus, Pencil } from "lucide-react";
 import { SegmentedControl } from "./SegmentedControl";
-import { FieldShell } from "./Input";
+import { FieldShell, InputField } from "./Input";
+import { Menu, MenuRow } from "./Menu";
+import { Modal, ModalBody, ModalFooter, ModalHeader, MODAL_WIDTHS } from "./Dialog";
+import { Button } from "./Button";
 
 // ─── Assets pane ──────────────────────────────────────────────────────────────
 // Left-panel content shown when the Assets nav-rail icon is active — replaces the
@@ -31,6 +34,8 @@ export interface AssetItem {
   duration?: string;      // video only, e.g. "0:24"
   status?: AssetStatus;   // default "ready"
   progress?: number;      // 0–100 when status="uploading"
+  errorMessage?: string;  // optional upload error detail
+  inUseCount?: number;    // project references; deletion requires confirmation when > 0
 }
 
 // ─── Type badge (IMG / VID) ───────────────────────────────────────────────────
@@ -56,6 +61,7 @@ function AssetCard({
   onSelect,
   onDoubleClick,
   onInsert,
+  insertLabel,
   onDelete,
   onContextMenu,
   onRetry,
@@ -65,6 +71,7 @@ function AssetCard({
   onSelect: (event: MouseEvent<HTMLButtonElement>) => void;
   onDoubleClick: () => void;
   onInsert: () => void;
+  insertLabel: string;
   onDelete: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
   onRetry: () => void;
@@ -129,7 +136,9 @@ function AssetCard({
         {/* error overlay — retry */}
         {error && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-[4px] bg-c-bg-danger/15 px-[12px]">
-            <span className={clsx(CAPTION, "!text-c-text-danger text-center")}>Upload failed</span>
+            <span className={clsx(CAPTION, "!text-c-text-danger text-center")} title={item.errorMessage}>
+              {item.errorMessage ?? "Upload failed"}
+            </span>
             <span
               role="button"
               tabIndex={0}
@@ -148,8 +157,8 @@ function AssetCard({
             <span
               role="button"
               tabIndex={0}
-              aria-label="Insert"
-              title="Insert"
+              aria-label={insertLabel}
+              title={insertLabel}
               onClick={(e) => { e.stopPropagation(); onInsert(); }}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onInsert(); } }}
               className="flex items-center justify-center size-[22px] rounded-c-sm bg-c-bg/90 text-c-icon hover:bg-c-bg cursor-pointer shadow-sm"
@@ -235,14 +244,14 @@ function IconButton({ icon, label, onClick }: { icon: React.ReactNode; label: st
 
 // ─── Demo data ────────────────────────────────────────────────────────────────
 const DEMO_ASSETS: AssetItem[] = [
-  { id: "a1", name: "hero-cover.png", kind: "image", tint: "linear-gradient(135deg,#7c5cff,#ff6ac1)" },
+  { id: "a1", name: "hero-cover.png", kind: "image", tint: "linear-gradient(135deg,#7c5cff,#ff6ac1)", inUseCount: 2 },
   { id: "a2", name: "product-shot.jpg", kind: "image", tint: "linear-gradient(135deg,#22d3ee,#3b82f6)" },
   { id: "a3", name: "intro-clip.mp4", kind: "video", tint: "linear-gradient(135deg,#111827,#374151)", duration: "0:24" },
   { id: "a4", name: "texture-grain.webp", kind: "image", tint: "linear-gradient(135deg,#f59e0b,#ef4444)" },
   { id: "a5", name: "walkthrough.mov", kind: "video", tint: "linear-gradient(135deg,#059669,#065f46)", duration: "1:08" },
   { id: "a6", name: "logo-loop.gif", kind: "image", tint: "linear-gradient(135deg,#8b5cf6,#6366f1)" },
   { id: "a7", name: "b-roll-drone.mp4", kind: "video", status: "uploading", progress: 62 },
-  { id: "a8", name: "broken-render.png", kind: "image", status: "error" },
+  { id: "a8", name: "broken-render.png", kind: "image", status: "error", errorMessage: "Upload failed" },
 ];
 
 // ─── Panel ────────────────────────────────────────────────────────────────────
@@ -263,6 +272,7 @@ export interface AssetsPanelProps {
   onUpload?: () => void;
   onInsert?: (id: string) => void;
   onAddToTimeline?: (id: string) => void;
+  onRename?: (id: string, name: string) => void;
   onDelete?: (id: string) => void;
   onContextMenu?: (id: string, e: React.MouseEvent) => void;
   onRetry?: (id: string) => void;
@@ -284,6 +294,7 @@ export function AssetsPanel({
   onUpload,
   onInsert,
   onAddToTimeline,
+  onRename,
   onDelete,
   onContextMenu,
   onRetry,
@@ -295,6 +306,10 @@ export function AssetsPanel({
   const [dropInner, setDropInner] = useState(defaultDropActive);
   const dragDepth = useRef(0);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [contextAsset, setContextAsset] = useState<{ item: AssetItem; x: number; y: number } | null>(null);
+  const [renameAsset, setRenameAsset] = useState<AssetItem | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [deleteAsset, setDeleteAsset] = useState<AssetItem | null>(null);
 
   const activeFilter = filter ?? filterInner;
   const activeQuery = query ?? queryInner;
@@ -339,6 +354,25 @@ export function AssetsPanel({
   }, [assets, activeFilter, activeQuery]);
 
   const hasAny = assets.length > 0;
+  const insertAsset = (item: AssetItem) => {
+    if (item.kind === "video") onAddToTimeline?.(item.id);
+    else onInsert?.(item.id);
+  };
+  const requestRename = (item: AssetItem) => {
+    setContextAsset(null);
+    setRenameValue(item.name);
+    setRenameAsset(item);
+  };
+  const requestDelete = (item: AssetItem) => {
+    setContextAsset(null);
+    if ((item.inUseCount ?? 0) > 0) setDeleteAsset(item);
+    else onDelete?.(item.id);
+  };
+  const commitRename = () => {
+    if (!renameAsset || !renameValue.trim()) return;
+    onRename?.(renameAsset.id, renameValue.trim());
+    setRenameAsset(null);
+  };
 
   return (
     <div className="relative w-[240px] shrink-0 h-full flex flex-col bg-c-bg border-r border-c-border overflow-hidden"
@@ -400,12 +434,15 @@ export function AssetsPanel({
                 selected={activeSel === item.id}
                 onSelect={event => select(item.id, event)}
                 onDoubleClick={() =>
-                  item.kind === "video" ? onAddToTimeline?.(item.id) : onInsert?.(item.id)
+                  insertAsset(item)
                 }
-                onInsert={() => onInsert?.(item.id)}
-                onDelete={() => onDelete?.(item.id)}
+                onInsert={() => insertAsset(item)}
+                insertLabel={item.kind === "video" ? "Add to timeline" : "Insert on slide"}
+                onDelete={() => requestDelete(item)}
                 onContextMenu={(e) => {
-                  if (onContextMenu) { e.preventDefault(); onContextMenu(item.id, e); }
+                  e.preventDefault();
+                  setContextAsset({ item, x: e.clientX, y: e.clientY });
+                  onContextMenu?.(item.id, e);
                 }}
                 onRetry={() => onRetry?.(item.id)}
               />
@@ -416,6 +453,49 @@ export function AssetsPanel({
 
       {/* OS drag-drop overlay */}
       {activeDrop && <DropOverlay />}
+
+      {contextAsset && (
+        <>
+          <button type="button" aria-label="Close asset menu" className="fixed inset-0 z-20 cursor-default" onClick={() => setContextAsset(null)} />
+          <div className="fixed z-30" style={{ left: contextAsset.x, top: contextAsset.y }}>
+            <Menu minWidth={176}>
+              <MenuRow label={contextAsset.item.kind === "video" ? "Add to timeline" : "Insert on slide"}
+                leading={contextAsset.item.kind === "video" ? <Film size={14} /> : <Plus size={14} />}
+                onClick={() => { insertAsset(contextAsset.item); setContextAsset(null); }} />
+              <MenuRow label="Rename" leading={<Pencil size={14} />} onClick={() => requestRename(contextAsset.item)} />
+              <MenuRow type="divider" />
+              <MenuRow label="Delete" leading={<Trash2 size={14} />} destructive onClick={() => requestDelete(contextAsset.item)} />
+            </Menu>
+          </div>
+        </>
+      )}
+
+      <Modal open={renameAsset !== null} onClose={() => setRenameAsset(null)} width={MODAL_WIDTHS.dialog}>
+        <ModalHeader title="Rename asset" onClose={() => setRenameAsset(null)} />
+        <ModalBody padding scrollable={false}>
+          <InputField label="Name" value={renameValue} onChange={setRenameValue} />
+        </ModalBody>
+        <ModalFooter>
+          <Button label="Cancel" variant="Secondary" onClick={() => setRenameAsset(null)} />
+          <Button label="Rename" disabled={!renameValue.trim()} onClick={commitRename} />
+        </ModalFooter>
+      </Modal>
+
+      <Modal open={deleteAsset !== null} onClose={() => setDeleteAsset(null)} width={MODAL_WIDTHS.dialog}>
+        <ModalHeader title="Delete asset?" onClose={() => setDeleteAsset(null)} />
+        <ModalBody padding scrollable={false}>
+          <p className={CAPTION}>
+            {deleteAsset?.name} is used {deleteAsset?.inUseCount} {deleteAsset?.inUseCount === 1 ? "time" : "times"} in this project. Deleting it may leave missing media.
+          </p>
+        </ModalBody>
+        <ModalFooter>
+          <Button label="Cancel" variant="Secondary" onClick={() => setDeleteAsset(null)} />
+          <Button label="Delete" variant="Destructive" onClick={() => {
+            if (deleteAsset) onDelete?.(deleteAsset.id);
+            setDeleteAsset(null);
+          }} />
+        </ModalFooter>
+      </Modal>
     </div>
   );
 }

@@ -68,10 +68,12 @@ export default function Playground() {
     effects: [{ id: "effect-1", type: "Drop shadow", visible: true }],
     guides: [{ id: "guide-1", type: "Grid", visible: true, size: 8 }],
   });
-  const contractAssets: AssetItem[] = [
-    { id: "asset-image", name: "cover.png", kind: "image", tint: "linear-gradient(135deg,#7c5cff,#ff6ac1)" },
+  const [contractAssets, setContractAssets] = useState<AssetItem[]>([
+    { id: "asset-image", name: "cover.png", kind: "image", tint: "linear-gradient(135deg,#7c5cff,#ff6ac1)", inUseCount: 3 },
     { id: "asset-video", name: "intro.mp4", kind: "video", tint: "linear-gradient(135deg,#111827,#374151)", duration: "0:24" },
-  ];
+    { id: "asset-upload", name: "b-roll.mp4", kind: "video", status: "uploading", progress: 62 },
+    { id: "asset-error", name: "damaged.png", kind: "image", status: "error", errorMessage: "Upload failed" },
+  ]);
   const [slideContract, setSlideContract] = useState<{
     name: string; start: number; duration: number; skipped: boolean;
     backgroundType: SlideBackgroundType; backgroundColor: string; backgroundOpacity: number;
@@ -138,7 +140,12 @@ export default function Playground() {
     return <div style={{ height: "100vh", width: "100vw", display: "flex", background: "#e6e6e6" }}>
       <AssetsPanel assets={contractAssets} query={assetQuery} onQueryChange={setAssetQuery} filter={assetFilter} onFilterChange={setAssetFilter}
         selectedId={assetSelection} onSelect={setAssetSelection} onUpload={() => console.info("Upload")}
-        onDropFiles={files => console.info("Dropped", files.map(file => file.name))} />
+        onDropFiles={files => console.info("Dropped", files.map(file => file.name))}
+        onInsert={id => console.info("Insert on slide", id)} onAddToTimeline={id => console.info("Add to timeline", id)}
+        onRename={(id, name) => setContractAssets(value => value.map(asset => asset.id === id ? { ...asset, name } : asset))}
+        onDelete={id => setContractAssets(value => value.filter(asset => asset.id !== id))}
+        onRetry={id => setContractAssets(value => value.map(asset => asset.id === id ? { ...asset, status: "uploading", progress: 0, errorMessage: undefined } : asset))}
+        onContextMenu={id => console.info("Open asset context menu", id)} />
       <div style={{ flex: 1 }} />
     </div>;
   }
