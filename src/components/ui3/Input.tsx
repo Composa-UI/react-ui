@@ -1,4 +1,4 @@
-import { useState, useId, useRef, useCallback, type ReactNode } from "react";
+import { useState, useId, useRef, useCallback, useEffect, type ReactNode } from "react";
 import { clsx } from "clsx";
 import { ChevronDown } from "lucide-react";
 import { Chit, type ChitType } from "./Chit";
@@ -230,6 +230,8 @@ interface NumericInputProps {
   variableValue?: string;     // if set, shows ChipVariable instead of raw number
   onVariableDetach?: () => void;
   onChange?: (value: number) => void;
+  /** Buffer typed edits and emit once on blur/Enter. Scrub and arrow changes remain immediate. */
+  commitOnBlur?: boolean;
   className?: string;
 }
 
@@ -248,6 +250,7 @@ export function NumericInput({
   variableValue,
   onVariableDetach,
   onChange,
+  commitOnBlur = false,
   className,
 }: NumericInputProps) {
   const [focused, setFocused] = useState(false);
@@ -257,6 +260,8 @@ export function NumericInput({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const current = value !== undefined ? value : internal;
+  const [draft, setDraft] = useState(String(current));
+  useEffect(() => { if (!focused) setDraft(String(current)); }, [current, focused]);
   // Mixed (v5 §7): multi-select with differing values shows "Mixed" until focused; typing commits to all.
   const displayMixed = mixed && !focused && !scrubbing;
 
@@ -297,8 +302,19 @@ export function NumericInput({
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const mult = e.shiftKey ? 10 : 1;
-    if (e.key === "ArrowUp")   { e.preventDefault(); set(current + step * mult); }
-    if (e.key === "ArrowDown") { e.preventDefault(); set(current - step * mult); }
+    if (e.key === "Enter" && commitOnBlur) { e.preventDefault(); e.currentTarget.blur(); return; }
+    if (e.key === "Escape" && commitOnBlur) { e.preventDefault(); setDraft(String(current)); e.currentTarget.blur(); return; }
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      e.preventDefault();
+      const base = commitOnBlur && Number.isFinite(Number(draft)) ? Number(draft) : current;
+      const next = clampVal(base + (e.key === "ArrowUp" ? step : -step) * mult);
+      if (commitOnBlur) setDraft(String(next)); else set(next);
+    }
+  };
+  const commitDraft = () => {
+    const parsed = Number(draft);
+    if (draft.trim() !== "" && Number.isFinite(parsed)) set(parsed);
+    else setDraft(String(current));
   };
 
   return (
@@ -333,16 +349,16 @@ export function NumericInput({
         <input
           ref={inputRef}
           type="number"
-          value={displayMixed ? "" : current}
+          value={displayMixed ? "" : commitOnBlur ? draft : current}
           placeholder={mixed ? "Mixed" : undefined}
           min={min}
           max={max}
           step={step}
           disabled={disabled}
-          onChange={e => set(parseFloat(e.target.value) || 0)}
+          onChange={e => commitOnBlur ? setDraft(e.target.value) : set(parseFloat(e.target.value) || 0)}
           onKeyDown={onKeyDown}
           onFocus={e => { setFocused(true); e.target.select(); }}
-          onBlur={() => setFocused(false)}
+          onBlur={() => { if (commitOnBlur) commitDraft(); setFocused(false); }}
           className={clsx(
             "flex-1 min-w-0 h-full bg-transparent outline-none text-left",
             FONT, T[size], "text-c-text",

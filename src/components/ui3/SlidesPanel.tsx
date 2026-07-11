@@ -78,7 +78,7 @@ export function SlideListItem({ item, tabIndex = 0, onNavigate, onFocus, itemRef
   const spacerBottom = item.stacked ? 20 : 8; // 8, plus 12 for the stacked cards
   return (
     <div className="relative w-full shrink-0 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-c-border-selected"
-      ref={itemRef} role="option" tabIndex={tabIndex} aria-selected={item.selected} data-in-view={item.inView || undefined} aria-label={`Slide ${item.n}`}
+      ref={itemRef} role="option" tabIndex={tabIndex} aria-selected={item.selected} data-in-view={item.inView || undefined} aria-label={`Composition ${item.n}`}
       onFocus={onFocus}
       onClick={item.onClick}
       onKeyDown={event => {

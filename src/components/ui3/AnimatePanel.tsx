@@ -3,7 +3,7 @@ import { clsx } from "clsx";
 import { SlidersHorizontal, Plus, Trash2, MonitorPlay, Clock, ArrowRight, ArrowDown, Type, SquareDashedMousePointer } from "lucide-react";
 import { PanelSection, PanelActionBtn, ScrollArea } from "./Panel";
 import { Dropdown } from "./Dropdown";
-import { ComboInput } from "./Input";
+import { ComboInput, NumericInput } from "./Input";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { Button } from "./Button";
 
@@ -114,14 +114,15 @@ function ChoiceDropdown<T extends string>({ value, options, labels, onChange }: 
 }
 
 // ── Composition transition ───────────────────────────────────────────────────────
-function CompTransitionSection({ value, callbacks }: { value?: CompTransitionSettings; callbacks?: CompTransitionCallbacks }) {
+function CompTransitionSection({ value, callbacks, contextKey }: { value?: CompTransitionSettings; callbacks?: CompTransitionCallbacks; contextKey?: string }) {
   const [demo, setDemo] = useState<CompTransitionSettings>({ style: "fade", direction: "right", durationMs: 300, easing: "ease-out" });
   const controlled = value !== undefined;
   const rendered = value ?? demo;
   const [open, setOpen] = useState(rendered.style !== "none");
   useEffect(() => {
-    if (value?.style === "none") setOpen(false);
-  }, [value?.style]);
+    setOpen(rendered.style !== "none");
+  }, [contextKey]);
+  useEffect(() => { if (value?.style === "none") setOpen(false); }, [value?.style]);
   const update = (patch: Partial<CompTransitionSettings>) => {
     if (!controlled) setDemo(current => ({ ...current, ...patch }));
   };
@@ -152,7 +153,7 @@ function CompTransitionSection({ value, callbacks }: { value?: CompTransitionSet
           {rendered.style !== "none" && <>
             {directional && <LabeledRow label="Direction"><ChoiceDropdown value={rendered.direction} options={["left", "right", "up", "down"]} labels={DIRECTION_LABELS} onChange={direction => { update({ direction }); callbacks?.onDirectionChange?.(direction); }} /></LabeledRow>}
             <LabeledRow label="Easing"><ChoiceDropdown value={rendered.easing} options={["linear", "ease-in", "ease-out", "ease-in-out"]} labels={EASING_LABELS} onChange={easing => { update({ easing }); callbacks?.onEasingChange?.(easing); }} /></LabeledRow>
-            <LabeledRow label="Duration"><ComboInput value={`${rendered.durationMs}ms`} className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} onInputChange={raw => { const durationMs = Number(raw.replace(/[^0-9.]/g, "")); if (Number.isFinite(durationMs)) { update({ durationMs }); callbacks?.onDurationChange?.(durationMs); } }} /></LabeledRow>
+            <LabeledRow label="Duration"><NumericInput value={rendered.durationMs} min={0} suffix="ms" className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} commitOnBlur onChange={durationMs => { update({ durationMs }); callbacks?.onDurationChange?.(durationMs); }} /></LabeledRow>
             <Button label="Apply to all compositions" variant="Secondary" size="wide" onClick={callbacks?.onApplyToAll} />
           </>}
         </AnimationCard>
@@ -221,10 +222,10 @@ function ObjectAnimationsSection({ anims }: { anims: ObjectAnimationItem[] }) {
   );
 }
 
-export function AnimatePanel({ anims = DEMO_ANIMS, compTransition, compTransitionCallbacks }: { anims?: ObjectAnimationItem[]; compTransition?: CompTransitionSettings; compTransitionCallbacks?: CompTransitionCallbacks }) {
+export function AnimatePanel({ anims = DEMO_ANIMS, compTransition, compTransitionCallbacks, contextKey }: { anims?: ObjectAnimationItem[]; compTransition?: CompTransitionSettings; compTransitionCallbacks?: CompTransitionCallbacks; contextKey?: string }) {
   return (
     <ScrollArea>
-      <CompTransitionSection value={compTransition} callbacks={compTransitionCallbacks} />
+      <CompTransitionSection value={compTransition} callbacks={compTransitionCallbacks} contextKey={contextKey} />
       <ObjectAnimationsSection anims={anims} />
     </ScrollArea>
   );

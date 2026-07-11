@@ -1626,6 +1626,7 @@ export interface PropertyPanelProps {
   onUpdateExportSetting?: (id: string, patch: Partial<Omit<InspectorExportSetting, "id">>) => void;
   onExport?: () => void;
   /** Slide mode — controlled when provided; demo fallback remains editable. */
+  slideId?: string;
   slideName?: string;
   onSlideNameChange?: (value: string) => void;
   slideStart?: number;
@@ -1733,7 +1734,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onRemoveExportSetting,
   onUpdateExportSetting,
   onExport,
-  slideName = "Slide 1",
+  slideId,
+  slideName = "Composition 1",
   onSlideNameChange,
   slideStart = 0,
   slideDuration = 5,
@@ -1875,17 +1877,17 @@ export function PropertyPanel(props: PropertyPanelProps) {
           {/* Panel header — inline-editable slide name + options IconButton */}
           <div className="h-[40px] flex items-center gap-[8px] px-[16px] border-b border-c-border">
             <div className="flex-1 min-w-0">
-              <InputField value={renderedSlideName} onChange={value => { if (!slideNameControlled) setDemoSlideName(value); onSlideNameChange?.(value); }} placeholder="Slide name" />
+              <InputField value={renderedSlideName} onChange={value => { if (!slideNameControlled) setDemoSlideName(value); onSlideNameChange?.(value); }} placeholder="Composition name" />
             </div>
             <PopoverMenu
               align="right"
-              trigger={<PanelActionBtn icon={<MoreHorizontal size={16} strokeWidth={1.5} />} label="Slide options" />}
+              trigger={<PanelActionBtn icon={<MoreHorizontal size={16} strokeWidth={1.5} />} label="Composition options" />}
             >
               {(close) => (
                 <Menu minWidth={180}>
-                  <MenuRow type="simple" label="Duplicate slide" onClick={() => { onDuplicateSlide?.(); close(); }} />
-                  <MenuRow type="toggle" label="Skip slide" checked={renderedSkipped} onClick={() => { const next = !renderedSkipped; if (!slideSkippedControlled) setDemoSkipped(next); onSlideSkippedChange?.(next); close(); }} />
-                  <MenuRow type="simple" label="Delete slide" destructive onClick={() => { onDeleteSlide?.(); close(); }} />
+                  <MenuRow type="simple" label="Duplicate composition" onClick={() => { onDuplicateSlide?.(); close(); }} />
+                  <MenuRow type="toggle" label="Skip composition" checked={renderedSkipped} onClick={() => { const next = !renderedSkipped; if (!slideSkippedControlled) setDemoSkipped(next); onSlideSkippedChange?.(next); close(); }} />
+                  <MenuRow type="simple" label="Delete composition" destructive onClick={() => { onDeleteSlide?.(); close(); }} />
                 </Menu>
               )}
             </PopoverMenu>
@@ -1917,6 +1919,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           </ScrollArea></div>}
 
           {tab === "animate" && <div role="tabpanel" id="slide-animate-panel" aria-labelledby="slide-animate-panel-tab" className="contents"><AnimatePanel anims={objectAnimations}
+            contextKey={slideId}
             compTransition={{ style: renderedTransitionType, direction: renderedTransitionDirection, durationMs: renderedTransitionDuration, easing: renderedTransitionEasing }}
             compTransitionCallbacks={{
               onStyleChange: value => { if (slideTransitionType === undefined) setDemoTransitionType(value); onSlideTransitionTypeChange?.(value); },
