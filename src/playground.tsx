@@ -68,14 +68,13 @@ export default function Playground() {
     { id: "image", name: "Cover", type: "image", locked: true },
   ]);
   const [elementContract, setElementContract] = useState<{
-    typography: ElementTypographySettings; layout: ElementLayoutSettings; fills: ElementFillSetting[]; strokes: ElementStrokeSetting[]; effects: ElementEffectSetting[]; guides: ElementLayoutGuideSetting[];
+    typography: ElementTypographySettings; layout: ElementLayoutSettings; fills: ElementFillSetting[]; strokes: ElementStrokeSetting[]; effects: ElementEffectSetting[];
   }>({
     typography: { fontFamily: "Inter", fontWeight: "Medium", fontSize: 48, lineHeight: 58, letterSpacing: 0, align: "left", verticalAlign: "middle" },
     layout: { mode: "vertical", gap: 8, padding: { top: 16, right: 16, bottom: 16, left: 16 }, align: "mc", widthMode: "fixed", heightMode: "hug", clipsContent: true },
     fills: [{ id: "fill-1", color: "#1e1e1e", opacity: 100, visible: true }],
     strokes: [{ id: "stroke-1", color: "#0d99ff", opacity: 100, visible: true, weight: 1, align: "inside" }],
     effects: [{ id: "effect-1", type: "Drop shadow", visible: true }],
-    guides: [{ id: "guide-1", type: "Grid", visible: true, size: 8 }],
   });
   const [contractAssets, setContractAssets] = useState<AssetItem[]>([
     { id: "asset-image", name: "cover.png", kind: "image", tint: "linear-gradient(135deg,#7c5cff,#ff6ac1)", inUseCount: 3 },
@@ -87,11 +86,13 @@ export default function Playground() {
     name: string; start: number; duration: number; skipped: boolean;
     backgroundType: SlideBackgroundType; backgroundColor: string; backgroundOpacity: number;
     transitionType: SlideTransitionType; transitionDirection: SlideTransitionDirection; transitionDuration: number; transitionEasing: SlideTransitionEasing;
+    guides: ElementLayoutGuideSetting[];
   }>({
     name: "Opening title", start: 0, duration: 5, skipped: false,
     backgroundType: "solid", backgroundColor: "#1e1e1e", backgroundOpacity: 100,
     transitionType: "push", transitionDirection: "right", transitionDuration: 500,
     transitionEasing: "ease-in-out",
+    guides: [{ id: "guide-1", type: "Grid", visible: true, size: 8 }],
   });
 
   if (view === "slide-contract") {
@@ -121,6 +122,10 @@ export default function Playground() {
           onSlideTransitionDirectionChange={transitionDirection => setSlideContract(value => ({ ...value, transitionDirection }))}
           onSlideTransitionDurationChange={transitionDuration => setSlideContract(value => ({ ...value, transitionDuration }))}
           onSlideTransitionEasingChange={transitionEasing => setSlideContract(value => ({ ...value, transitionEasing }))}
+          layoutGuides={slideContract.guides}
+          onAddLayoutGuide={() => setSlideContract(value => ({ ...value, guides: [...value.guides, { id: `guide-${Date.now()}`, type: "Columns", visible: true, size: 8 }] }))}
+          onUpdateLayoutGuide={(id, patch) => setSlideContract(value => ({ ...value, guides: value.guides.map(guide => guide.id === id ? { ...guide, ...patch } : guide) }))}
+          onRemoveLayoutGuide={id => setSlideContract(value => ({ ...value, guides: value.guides.filter(guide => guide.id !== id) }))}
           selectionColors={selectionColors}
           onUpdateSelectionColor={(id, patch) => setSelectionColors(value => value.map(color => color.id === id ? { ...color, ...patch } : color))}
           onSelectAllUsingColor={id => console.info("Select all using color", id)}
@@ -256,7 +261,7 @@ export default function Playground() {
         strokes={elementContract.strokes} onUpdateStroke={(id, patch) => setElementContract(value => ({ ...value, strokes: value.strokes.map(item => item.id === id ? { ...item, ...patch } : item) }))}
         effects={elementContract.effects} onUpdateEffect={(id, patch) => setElementContract(value => ({ ...value, effects: value.effects.map(item => item.id === id ? { ...item, ...patch } : item) }))} />
       <PropertyPanel elementType="frame-auto" layout={elementContract.layout} onLayoutChange={patch => setElementContract(value => ({ ...value, layout: { ...value.layout, ...patch } }))}
-        layoutGuides={elementContract.guides} onUpdateLayoutGuide={(id, patch) => setElementContract(value => ({ ...value, guides: value.guides.map(item => item.id === id ? { ...item, ...patch } : item) }))} />
+      />
     </div>;
   }
 

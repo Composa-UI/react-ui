@@ -993,8 +993,8 @@ function ComponentPropertiesSection() {
   );
 }
 
-// ─── Section: Layout Guide (§5.6) ─────────────────────────────────────────────
-// Frames only. Stackable: Grid / Columns / Rows guides.
+// ─── Section: Layout Guide ────────────────────────────────────────────────────
+// Composition-owned editor chrome. Stackable: Grid / Columns / Rows guides.
 function LayoutGuideSection({ entries, onAdd, onUpdate, onRemove }: {
   entries?: ElementLayoutGuideSetting[]; onAdd?: () => void;
   onUpdate?: (id: string, patch: Partial<Omit<ElementLayoutGuideSetting, "id">>) => void; onRemove?: (id: string) => void;
@@ -1915,6 +1915,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onColorChange={onSlideBackgroundColorChange}
             onOpacityChange={onSlideBackgroundOpacityChange}
           />
+          <LayoutGuideSection entries={layoutGuides} onAdd={onAddLayoutGuide} onUpdate={onUpdateLayoutGuide} onRemove={onRemoveLayoutGuide} />
           {/* Selection colors — reuse the existing element-mode section */}
           <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} capabilities={capabilities} />
           <ExportSection settings={exportSettings} targetName={exportTargetName ?? renderedSlideName}
@@ -2047,9 +2048,6 @@ export function PropertyPanel(props: PropertyPanelProps) {
 
           {/* Selection Colors — multi-select only (§5.8), positioned right after Effects */}
           {multiSelect && <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} capabilities={capabilities} />}
-
-          {/* Layout Guide — frames only (§5.6) */}
-          {(isFrame || isAutoLayout) && <LayoutGuideSection entries={layoutGuides} onAdd={onAddLayoutGuide} onUpdate={onUpdateLayoutGuide} onRemove={onRemoveLayoutGuide} />}
 
           <ExportSection settings={exportSettings} targetName={exportTargetName ?? elementLabel[elementType]}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
