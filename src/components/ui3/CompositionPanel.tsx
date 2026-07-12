@@ -20,7 +20,8 @@ export interface CompositionPanelProps {
   slides?: SlideData[];
   layers?: LayerNode[];
   selectedLayerId?: string | null;
-  onLayerSelectionChange?: (id: string) => void;
+  selectedLayerIds?: string[];
+  onLayerSelectionChange?: LayerListProps["onSelectionChange"];
   onLayerVisibilityChange?: LayerListProps["onVisibilityChange"];
   onLayerLockChange?: LayerListProps["onLockChange"];
   onLayerRenameRequest?: LayerListProps["onRenameRequest"];
@@ -49,6 +50,7 @@ export function CompositionPanel({
   slides = DEMO_SLIDES,
   layers,
   selectedLayerId,
+  selectedLayerIds,
   onLayerSelectionChange,
   onLayerVisibilityChange,
   onLayerLockChange,
@@ -196,7 +198,7 @@ export function CompositionPanel({
           onKeyDown={onKeyDown}
           className="absolute top-0 inset-x-0 h-[4px] z-10 cursor-ns-resize select-none outline-none -translate-y-1/2 focus-visible:bg-c-border-selected/40"
         />
-          <LayerList layers={layers} title={layersTitle} selectedId={selectedLayerId} onSelectionChange={onLayerSelectionChange}
+          <LayerList layers={layers} title={layersTitle} selectedId={selectedLayerId} selectedIds={selectedLayerIds} onSelectionChange={onLayerSelectionChange}
             onVisibilityChange={onLayerVisibilityChange} onLockChange={onLayerLockChange}
             onRenameRequest={onLayerRenameRequest} onContextMenu={onLayerContextMenu}
             onReorder={onLayerReorder} onReparent={onLayerReparent} />

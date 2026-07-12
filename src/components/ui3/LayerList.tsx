@@ -74,13 +74,15 @@ const ROW_H = 30;
 const INSET = 8;
 
 // ── One row ───────────────────────────────────────────────────────────────────────
+export interface LayerSelectionModifiers { toggle: boolean; range: boolean; }
+
 function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect, onVisibilityChange, onLockChange, onRenameRequest, onContextMenu, draggable, onDragStart, onDragEnd, onDragOver, onDrop }: {
   row: FlatRow;
   hasChildren: boolean;
   open: boolean;
   onToggle: () => void;
   isSelfSelected: boolean;
-  onSelect: (event: MouseEvent<HTMLDivElement>) => void;
+  onSelect: (modifiers: LayerSelectionModifiers) => void;
   onVisibilityChange?: () => void;
   onLockChange?: () => void;
   onRenameRequest?: () => void;
@@ -102,7 +104,7 @@ function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect, 
       tabIndex={0}
       aria-selected={isSelfSelected}
       aria-expanded={hasChildren ? open : undefined}
-      onClick={onSelect}
+      onClick={event => onSelect({ toggle: event.metaKey || event.ctrlKey, range: event.shiftKey })}
       onDoubleClick={onRenameRequest}
       onContextMenu={onContextMenu}
       draggable={draggable}
@@ -111,7 +113,7 @@ function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect, 
       onDragOver={onDragOver}
       onDrop={onDrop}
       onKeyDown={e => {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(e as unknown as MouseEvent<HTMLDivElement>); }
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect({ toggle: e.metaKey || e.ctrlKey, range: e.shiftKey }); }
         else if (e.key === "ArrowRight" && hasChildren && !open) onToggle();
         else if (e.key === "ArrowLeft" && hasChildren && open) onToggle();
       }}
@@ -154,8 +156,9 @@ export interface LayerListProps {
   layers?: LayerNode[];
   title?: string;
   selectedId?: string | null;
+  selectedIds?: string[];
   defaultSelectedId?: string | null;
-  onSelectionChange?: (id: string) => void;
+  onSelectionChange?: (id: string, modifiers: LayerSelectionModifiers) => void;
   onVisibilityChange?: (id: string, visible: boolean) => void;
   onLockChange?: (id: string, locked: boolean) => void;
   onRenameRequest?: (id: string) => void;
@@ -168,6 +171,7 @@ export function LayerList({
   layers = DEMO_LAYERS,
   title = "Layers",
   selectedId,
+  selectedIds,
   defaultSelectedId = "2b",
   onSelectionChange,
   onVisibilityChange,
@@ -178,7 +182,9 @@ export function LayerList({
   onReparent,
 }: LayerListProps) {
   const [internalSelected, setInternalSelected] = useState<string | null>(defaultSelectedId);
-  const selected = selectedId === undefined ? internalSelected : selectedId;
+  const controlledSelection = selectedIds ?? (selectedId === undefined ? undefined : selectedId == null ? [] : [selectedId]);
+  const selected = controlledSelection ?? (internalSelected == null ? [] : [internalSelected]);
+  const selectedSet = useMemo(() => new Set(selected), [selected]);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(collectGroupIds(layers)));
 
   const flat = useMemo(() => {
@@ -191,16 +197,17 @@ export function LayerList({
   // the selected node + its visible descendants (not one pill per row) — this is
   // what makes it read as one seamless block rather than N adjacent translucent
   // rows (which produced faint seams at the row boundaries).
-  const highlightRange = useMemo(() => {
-    if (selected == null) return null;
-    let first = -1, last = -1;
-    flat.forEach((row, i) => {
-      if (row.node.id === selected || row.ancestors.includes(selected)) {
-        if (first === -1) first = i;
-        last = i;
-      }
-    });
-    return first === -1 ? null : { top: first * ROW_H, height: (last - first + 1) * ROW_H };
+  const highlightRanges = useMemo(() => {
+    const ranges = selected.flatMap(id => {
+      let first = -1, last = -1;
+      flat.forEach((row, index) => { if (row.node.id === id || row.ancestors.includes(id)) { if (first === -1) first = index; last = index; } });
+      return first === -1 ? [] : [{ first, last }];
+    }).sort((left, right) => left.first - right.first);
+    return ranges.reduce<Array<{ first: number; last: number }>>((merged, range) => {
+      const previous = merged[merged.length - 1];
+      if (previous && range.first <= previous.last + 1) previous.last = Math.max(previous.last, range.last); else merged.push({ ...range });
+      return merged;
+    }, []).map(range => ({ top: range.first * ROW_H, height: (range.last - range.first + 1) * ROW_H }));
   }, [flat, selected]);
 
   const [scrolled, setScrolled] = useState(false);
@@ -215,14 +222,15 @@ export function LayerList({
       </div>
       {/* tree — overlay scrollbar (theme-aware thumb), matching inspector/slides panels */}
       <ScrollArea className="py-[4px]" onScroll={st => setScrolled(st > 0)}>
-        <div role="tree" aria-label={title} className="relative">
-          {highlightRange && (
+        <div role="tree" aria-label={title} aria-multiselectable={selectedIds !== undefined || undefined} className="relative">
+          {highlightRanges.map(range => (
             <span
+              key={`${range.top}:${range.height}`}
               aria-hidden
               className="pointer-events-none absolute rounded-t-c-md rounded-b-c-md bg-c-bg-selected"
-              style={{ left: INSET, right: INSET, top: highlightRange.top + 2, height: highlightRange.height - 4 }}
+              style={{ left: INSET, right: INSET, top: range.top + 2, height: range.height - 4 }}
             />
-          )}
+          ))}
           {flat.map(row => {
             const hasChildren = !!row.node.children?.length;
             return (
@@ -236,10 +244,10 @@ export function LayerList({
                   next.has(row.node.id) ? next.delete(row.node.id) : next.add(row.node.id);
                   return next;
                 })}
-                isSelfSelected={selected === row.node.id}
-                onSelect={() => {
-                  if (selectedId === undefined) setInternalSelected(row.node.id);
-                  onSelectionChange?.(row.node.id);
+                isSelfSelected={selectedSet.has(row.node.id)}
+                onSelect={modifiers => {
+                  if (controlledSelection === undefined) setInternalSelected(row.node.id);
+                  onSelectionChange?.(row.node.id, modifiers);
                 }}
                 // Callback value is the requested next visibility: hidden → visible,
                 // visible → hidden. `hidden` therefore equals `nextVisible` here.

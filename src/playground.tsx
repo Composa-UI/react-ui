@@ -67,6 +67,8 @@ export default function Playground() {
     { id: "frame", name: "Hero", type: "frame", children: [{ id: "title", name: "Title", type: "text" }] },
     { id: "image", name: "Cover", type: "image", locked: true },
   ]);
+  const [selectedLayerContracts, setSelectedLayerContracts] = useState<string[]>(["title"]);
+  const [layerSelectionAnchor, setLayerSelectionAnchor] = useState("title");
   const [elementContract, setElementContract] = useState<{
     typography: ElementTypographySettings; layout: ElementLayoutSettings; fills: ElementFillSetting[]; strokes: ElementStrokeSetting[]; effects: ElementEffectSetting[];
   }>({
@@ -244,7 +246,14 @@ export default function Playground() {
   if (view === "layers-contract") {
     const updateLayer = (id: string, patch: Partial<LayerNode>, nodes: LayerNode[]): LayerNode[] => nodes.map(node => node.id === id ? { ...node, ...patch } : { ...node, children: node.children ? updateLayer(id, patch, node.children) : undefined });
     return <div style={{ height: "100vh", width: "100vw", display: "flex", background: "#e6e6e6" }}>
-      <LayerList layers={layerContracts}
+      <LayerList layers={layerContracts} selectedIds={selectedLayerContracts}
+        onSelectionChange={(id, modifiers) => {
+          const order = ["frame", "title", "image"];
+          setSelectedLayerContracts(value => modifiers.range
+            ? order.slice(Math.min(order.indexOf(layerSelectionAnchor), order.indexOf(id)), Math.max(order.indexOf(layerSelectionAnchor), order.indexOf(id)) + 1)
+            : modifiers.toggle ? value.includes(id) ? value.filter(item => item !== id) : [...value, id] : [id]);
+          if (!modifiers.range) setLayerSelectionAnchor(id);
+        }}
         onVisibilityChange={(id, visible) => setLayerContracts(value => updateLayer(id, { hidden: !visible }, value))}
         onLockChange={(id, locked) => setLayerContracts(value => updateLayer(id, { locked }, value))}
         onRenameRequest={id => console.info("Rename layer", id)} onContextMenu={id => console.info("Layer menu", id)}
