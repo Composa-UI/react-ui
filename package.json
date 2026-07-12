@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
-  "description": "Composa editor UI \u2014 merged component set (UI3 primitives + Composa panels). Consumed by composa-editor.",
+  "description": "Composa editor UI — merged component set (UI3 primitives + Composa panels). Consumed by composa-editor.",
   "exports": {
     ".": "./src/index.ts",
     "./styles": "./src/styles/index.css",
@@ -13,8 +13,9 @@
   "scripts": {
     "dev": "vite",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
     "build": "vite build",
-    "check": "npm run typecheck && npm run build"
+    "check": "npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -76,6 +77,7 @@
     "@vitejs/plugin-react": "4.7.0",
     "tailwindcss": "4.1.12",
     "typescript": "5.6.3",
-    "vite": "6.3.5"
+    "vite": "6.3.5",
+    "vitest": "3.2.7"
   }
 }

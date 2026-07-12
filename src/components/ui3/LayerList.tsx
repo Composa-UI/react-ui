@@ -62,6 +62,20 @@ function flatten(nodes: LayerNode[], depth: number, ancestors: string[], expande
   }
 }
 
+function flattenAll(nodes: LayerNode[], depth: number, ancestors: string[], out: FlatRow[]) {
+  for (const node of nodes) {
+    out.push({ node, depth, ancestors });
+    if (node.children?.length) flattenAll(node.children, depth + 1, [...ancestors, node.id], out);
+  }
+}
+
+export function normalizeLayerDragRoots(nodes: LayerNode[], ids: readonly string[]): string[] {
+  const rows: FlatRow[] = []; flattenAll(nodes, 0, [], rows);
+  const selected = new Set(ids.filter(id => rows.some(row => row.node.id === id)));
+  const roots = rows.filter(row => selected.has(row.node.id) && !row.ancestors.some(ancestor => selected.has(ancestor)));
+  return roots.some(row => row.node.locked) ? [] : roots.map(row => row.node.id);
+}
+
 function collectGroupIds(nodes: LayerNode[], out: string[] = []): string[] {
   for (const n of nodes) {
     if (n.children?.length) { out.push(n.id); collectGroupIds(n.children, out); }
@@ -72,11 +86,20 @@ function collectGroupIds(nodes: LayerNode[], out: string[] = []): string[] {
 const ROW_H = 30;
 // Outer inset for the hover/selection shapes — matches the slides panel's 8px gutter.
 const INSET = 8;
+type LayerDropZone = "before" | "inside" | "after";
+
+function dropZoneFor(row: FlatRow, clientY: number, rect: DOMRect, canReorder: boolean, canReparent: boolean): LayerDropZone | null {
+  const ratio = (clientY - rect.top) / rect.height;
+  if (ratio < 1 / 3) return canReorder ? "before" : null;
+  if (ratio > 2 / 3) return canReorder ? "after" : null;
+  const container = !row.node.locked && (row.node.type === "frame" || row.node.type === "group");
+  return canReparent && container ? "inside" : null;
+}
 
 // ── One row ───────────────────────────────────────────────────────────────────────
 export interface LayerSelectionModifiers { toggle: boolean; range: boolean; visibleOrder?: readonly string[]; }
 
-function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect, onVisibilityChange, onLockChange, onRenameRequest, onContextMenu, draggable, onDragStart, onDragEnd, onDragOver, onDrop }: {
+function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect, onVisibilityChange, onLockChange, onRenameRequest, onContextMenu, draggable, dropZone, onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop }: {
   row: FlatRow;
   hasChildren: boolean;
   open: boolean;
@@ -88,9 +111,11 @@ function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect, 
   onRenameRequest?: () => void;
   onContextMenu?: (event: MouseEvent<HTMLDivElement>) => void;
   draggable?: boolean;
+  dropZone?: LayerDropZone | null;
   onDragStart?: (event: DragEvent<HTMLDivElement>) => void;
   onDragEnd?: (event: DragEvent<HTMLDivElement>) => void;
   onDragOver?: (event: DragEvent<HTMLDivElement>) => void;
+  onDragLeave?: (event: DragEvent<HTMLDivElement>) => void;
   onDrop?: (event: DragEvent<HTMLDivElement>) => void;
 }) {
   const { node, depth } = row;
@@ -111,6 +136,7 @@ function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect, 
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
       onDrop={onDrop}
       onKeyDown={e => {
         if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect({ toggle: e.metaKey || e.ctrlKey, range: e.shiftKey }); }
@@ -123,6 +149,8 @@ function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect, 
       {/* hover — single row only (the cascade selection highlight renders once, as
           a single shape, in the parent — see LayerList) */}
       <span aria-hidden className={clsx("pointer-events-none absolute inset-y-[2px] rounded-c-md bg-c-bg-hover opacity-0 group-hover/layer:opacity-100")} style={{ left: INSET, right: INSET }} />
+      {dropZone === "inside" && <span aria-hidden className="pointer-events-none absolute inset-y-[2px] rounded-c-md bg-c-bg-selected" style={{ left: INSET, right: INSET }} />}
+      {(dropZone === "before" || dropZone === "after") && <span aria-hidden className={clsx("pointer-events-none absolute h-[2px] bg-c-border-selected z-10", dropZone === "before" ? "top-0" : "bottom-0")} style={{ left: INSET + depth * 16, right: INSET }} />}
       {/* disclosure */}
       {hasChildren ? (
         <button
@@ -163,8 +191,8 @@ export interface LayerListProps {
   onLockChange?: (id: string, locked: boolean) => void;
   onRenameRequest?: (id: string) => void;
   onContextMenu?: (id: string, event: MouseEvent<HTMLDivElement>) => void;
-  onReorder?: (sourceId: string, targetId: string, position: "before" | "after") => void;
-  onReparent?: (sourceId: string, parentId: string) => void;
+  onReorder?: (sourceIds: string[], targetId: string, position: "before" | "after") => void;
+  onReparent?: (sourceIds: string[], parentId: string) => void;
 }
 
 export function LayerList({
@@ -211,7 +239,8 @@ export function LayerList({
   }, [flat, selected]);
 
   const [scrolled, setScrolled] = useState(false);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [draggedIds, setDraggedIds] = useState<string[]>([]);
+  const [dropTarget, setDropTarget] = useState<{ id: string; zone: LayerDropZone } | null>(null);
 
   return (
     <div className="w-[240px] shrink-0 h-full flex flex-col bg-c-bg border-r border-c-border overflow-hidden">
@@ -258,19 +287,38 @@ export function LayerList({
                 onLockChange={() => onLockChange?.(row.node.id, !row.node.locked)}
                 onRenameRequest={() => onRenameRequest?.(row.node.id)}
                 onContextMenu={event => { if (onContextMenu) { event.preventDefault(); onContextMenu(row.node.id, event); } }}
-                draggable={!!(onReorder || onReparent)}
-                onDragStart={event => { setDraggedId(row.node.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", row.node.id); }}
-                onDragEnd={() => setDraggedId(null)}
-                onDragOver={event => { if (draggedId && draggedId !== row.node.id) event.preventDefault(); }}
+                draggable={!!(onReorder || onReparent) && !row.node.locked}
+                dropZone={dropTarget?.id === row.node.id ? dropTarget.zone : null}
+                onDragStart={event => {
+                  const candidates = selectedSet.has(row.node.id) ? selected : [row.node.id];
+                  const roots = normalizeLayerDragRoots(layers, candidates);
+                  if (!roots.length) { event.preventDefault(); setDraggedIds([]); setDropTarget(null); return; }
+                  setDraggedIds(roots); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("application/x-composa-layers", JSON.stringify(roots));
+                  event.dataTransfer.setData("text/plain", roots[0] ?? row.node.id);
+                }}
+                onDragEnd={() => { setDraggedIds([]); setDropTarget(null); }}
+                onDragOver={event => {
+                  if (!draggedIds.length || draggedIds.includes(row.node.id) || draggedIds.some(id => row.ancestors.includes(id))) return;
+                  const zone = dropZoneFor(row, event.clientY, event.currentTarget.getBoundingClientRect(), !!onReorder, !!onReparent);
+                  if (!zone) { setDropTarget(current => current?.id === row.node.id ? null : current); return; }
+                  event.preventDefault(); setDropTarget({ id: row.node.id, zone });
+                }}
+                onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropTarget(current => current?.id === row.node.id ? null : current); }}
                 onDrop={event => {
+                  let sourceIds = draggedIds;
+                  if (!sourceIds.length) {
+                    try {
+                      const parsed: unknown = JSON.parse(event.dataTransfer.getData("application/x-composa-layers"));
+                      sourceIds = Array.isArray(parsed) && parsed.every(id => typeof id === "string" && id.length > 0) ? normalizeLayerDragRoots(layers, parsed) : [];
+                    } catch { sourceIds = []; }
+                    if (!sourceIds.length) sourceIds = normalizeLayerDragRoots(layers, [event.dataTransfer.getData("text/plain")].filter(Boolean));
+                  }
+                  const zone = dropZoneFor(row, event.clientY, event.currentTarget.getBoundingClientRect(), !!onReorder, !!onReparent);
+                  setDraggedIds([]); setDropTarget(null);
+                  if (!sourceIds.length || sourceIds.includes(row.node.id) || sourceIds.some(id => row.ancestors.includes(id)) || !zone) return;
                   event.preventDefault();
-                  const sourceId = draggedId ?? event.dataTransfer.getData("text/plain");
-                  setDraggedId(null);
-                  if (!sourceId || sourceId === row.node.id) return;
-                  const rect = event.currentTarget.getBoundingClientRect();
-                  const ratio = (event.clientY - rect.top) / rect.height;
-                  if (hasChildren && ratio >= 0.33 && ratio <= 0.67 && onReparent) onReparent(sourceId, row.node.id);
-                  else onReorder?.(sourceId, row.node.id, ratio < 0.5 ? "before" : "after");
+                  if (zone === "inside") onReparent?.(sourceIds, row.node.id);
+                  else onReorder?.(sourceIds, row.node.id, zone);
                 }}
               />
             );
