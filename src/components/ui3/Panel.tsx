@@ -296,6 +296,7 @@ export function PanelActionBtn({ icon, label, active, selected, disabled = false
   return (
     <button
       aria-label={label}
+      aria-pressed={selected === undefined ? undefined : selected}
       disabled={disabled}
       onClick={onClick}
       className={clsx(

@@ -61,6 +61,8 @@ export interface ElementLayoutSettings {
   mode: "none" | "horizontal" | "vertical" | "wrap"; gap: number;
   padding: { top: number; right: number; bottom: number; left: number };
   align: string; widthMode: "fixed" | "hug" | "fill"; heightMode: "fixed" | "hug" | "fill"; clipsContent: boolean;
+  positioning?: "auto" | "absolute";
+  positioningApplicable?: boolean;
 }
 
 type BlendMode = string;
@@ -210,12 +212,16 @@ interface PositionSectionProps {
   onXChange?: (v: number) => void;
   onYChange?: (v: number) => void;
   onRotationChange?: (v: number) => void;
+  positioning?: "auto" | "absolute";
+  positioningApplicable?: boolean;
+  onPositioningChange?: (value: "auto" | "absolute") => void;
   multiSelect?: boolean;
 }
 
 function PositionSection({
   x = 0, y = 0, rotation = 0,
   onXChange, onYChange, onRotationChange,
+  positioning, positioningApplicable, onPositioningChange,
   multiSelect = false,
 }: PositionSectionProps) {
   const hAlignBtns: IconBtn[] = [
@@ -237,8 +243,12 @@ function PositionSection({
   return (
     <PanelSection
       title="Position"
-      rightActions={
-        <PanelActionBtn icon={<Maximize2 size={16} strokeWidth={1.5} />} label="Absolute position" />
+      rightActions={positioningApplicable === false ? undefined :
+        <PanelActionBtn icon={<Maximize2 size={16} strokeWidth={1.5} />}
+          label={positioning === "absolute" ? "Return to auto-layout flow" : "Absolute position"}
+          selected={positioning === undefined ? undefined : positioning === "absolute"}
+          disabled={positioningApplicable === true && (positioning === undefined || !onPositioningChange)}
+          onClick={onPositioningChange && positioning ? () => onPositioningChange(positioning === "absolute" ? "auto" : "absolute") : undefined} />
       }
     >
       {/* Alignment */}
@@ -2005,6 +2015,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <PositionSection
             x={x} y={y} rotation={rotation}
             onXChange={onXChange} onYChange={onYChange} onRotationChange={onRotationChange}
+            positioning={layout?.positioning}
+            positioningApplicable={layout?.positioningApplicable}
+            onPositioningChange={onLayoutChange ? positioning => onLayoutChange({ positioning }) : undefined}
             multiSelect={multiSelect}
           />
 

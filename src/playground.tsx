@@ -73,7 +73,7 @@ export default function Playground() {
     typography: ElementTypographySettings; layout: ElementLayoutSettings; fills: ElementFillSetting[]; strokes: ElementStrokeSetting[]; effects: ElementEffectSetting[];
   }>({
     typography: { fontFamily: "Inter", fontWeight: "Medium", fontSize: 48, lineHeight: 58, letterSpacing: 0, align: "left", verticalAlign: "middle" },
-    layout: { mode: "vertical", gap: 8, padding: { top: 16, right: 16, bottom: 16, left: 16 }, align: "mc", widthMode: "fixed", heightMode: "hug", clipsContent: true },
+    layout: { mode: "vertical", gap: 8, padding: { top: 16, right: 16, bottom: 16, left: 16 }, align: "mc", widthMode: "fixed", heightMode: "hug", clipsContent: true, positioning: "auto", positioningApplicable: true },
     fills: [{ id: "fill-1", color: "#1e1e1e", opacity: 100, visible: true }],
     strokes: [{ id: "stroke-1", color: "#0d99ff", opacity: 100, visible: true, weight: 1, align: "inside" }],
     effects: [{ id: "effect-1", type: "Drop shadow", visible: true }],
