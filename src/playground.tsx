@@ -248,9 +248,10 @@ export default function Playground() {
     return <div style={{ height: "100vh", width: "100vw", display: "flex", background: "#e6e6e6" }}>
       <LayerList layers={layerContracts} selectedIds={selectedLayerContracts}
         onSelectionChange={(id, modifiers) => {
-          const order = ["frame", "title", "image"];
+          const order = [...(modifiers.visibleOrder ?? ["frame", "title", "image"])];
+          const anchor = order.includes(layerSelectionAnchor) ? layerSelectionAnchor : id;
           setSelectedLayerContracts(value => modifiers.range
-            ? order.slice(Math.min(order.indexOf(layerSelectionAnchor), order.indexOf(id)), Math.max(order.indexOf(layerSelectionAnchor), order.indexOf(id)) + 1)
+            ? order.slice(Math.min(order.indexOf(anchor), order.indexOf(id)), Math.max(order.indexOf(anchor), order.indexOf(id)) + 1)
             : modifiers.toggle ? value.includes(id) ? value.filter(item => item !== id) : [...value, id] : [id]);
           if (!modifiers.range) setLayerSelectionAnchor(id);
         }}

@@ -74,7 +74,7 @@ const ROW_H = 30;
 const INSET = 8;
 
 // ── One row ───────────────────────────────────────────────────────────────────────
-export interface LayerSelectionModifiers { toggle: boolean; range: boolean; }
+export interface LayerSelectionModifiers { toggle: boolean; range: boolean; visibleOrder?: readonly string[]; }
 
 function LayerRow({ row, hasChildren, open, onToggle, isSelfSelected, onSelect, onVisibilityChange, onLockChange, onRenameRequest, onContextMenu, draggable, onDragStart, onDragEnd, onDragOver, onDrop }: {
   row: FlatRow;
@@ -247,7 +247,7 @@ export function LayerList({
                 isSelfSelected={selectedSet.has(row.node.id)}
                 onSelect={modifiers => {
                   if (controlledSelection === undefined) setInternalSelected(row.node.id);
-                  onSelectionChange?.(row.node.id, modifiers);
+                  onSelectionChange?.(row.node.id, { ...modifiers, visibleOrder: flat.map(item => item.node.id) });
                 }}
                 // Callback value is the requested next visibility: hidden → visible,
                 // visible → hidden. `hidden` therefore equals `nextVisible` here.

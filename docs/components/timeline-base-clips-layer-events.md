@@ -15,7 +15,7 @@ The existing layer row remains the visual and interaction owner.
 
 - Existing lock and visibility glyphs are semantic buttons that emit the next `locked` or `visible` state.
 - The treeitem keeps `aria-label={node.name}` so child action labels do not change the stable row name used by selection and consumer tests.
-- Controlled hosts may pass `selectedIds` for true multi-row selection. `onSelectionChange` receives normalized `{ toggle, range }` modifiers from either pointer or keyboard activation so the host can implement Cmd/Ctrl toggle and Shift-range semantics safely; the legacy `selectedId` contract remains compatible.
+- Controlled hosts may pass `selectedIds` for true multi-row selection. `onSelectionChange` receives normalized `{ toggle, range, visibleOrder }` data from either pointer or keyboard activation so the host can implement Cmd/Ctrl toggle and Shift-range semantics safely against the currently expanded tree; the legacy `selectedId` contract remains compatible.
 - Multiple selected rows render distinct or merged selection ranges without converting selected descendants into a single parent selection.
 - Double-click requests rename; right-click emits the row context-menu event.
 - When reorder or reparent callbacks are supplied, existing rows become draggable. Dropping in a group row’s middle third requests reparenting; dropping above or below requests reorder before or after.
