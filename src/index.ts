@@ -12,6 +12,7 @@ export * from "./components/ui3/CompositionPanel";
 export * from "./components/ui3/CreationToolbar";
 export * from "./components/ui3/Dialog";
 export * from "./components/ui3/Dropdown";
+export * from "./components/ui3/EffectDetailsDialog";
 export * from "./components/ui3/Input";
 export * from "./components/ui3/LayerList";
 export * from "./components/ui3/ListCell";

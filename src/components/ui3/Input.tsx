@@ -216,6 +216,7 @@ export function InputField({
 // ─── NumericInput ─────────────────────────────────────────────────────────────
 
 interface NumericInputProps {
+  ariaLabel?: string;
   iconLead?: ReactNode;       // scrubber label (e.g. "W", "X", or an icon)
   value?: number;
   defaultValue?: number;
@@ -236,6 +237,7 @@ interface NumericInputProps {
 }
 
 export function NumericInput({
+  ariaLabel,
   iconLead,
   value,
   defaultValue = 0,
@@ -348,6 +350,7 @@ export function NumericInput({
         </div>
       ) : (
         <input
+          aria-label={ariaLabel}
           ref={inputRef}
           type="number"
           value={displayMixed ? "" : commitOnBlur ? draft : current}
@@ -515,6 +518,7 @@ export function NumericInputMulti({ iconLead, values, step = 1, size = "medium",
 export type ColorFillType = "Fill" | "Opacity" | "Gradient" | "Image" | "Variable";
 
 interface ColorInputProps {
+  ariaLabel?: string;
   label?: string;
   color?: string;
   opacity?: number;
@@ -532,6 +536,7 @@ interface ColorInputProps {
 }
 
 export function ColorInput({
+  ariaLabel,
   label,
   color = "#ff24bd",
   opacity = 100,
@@ -586,7 +591,7 @@ export function ColorInput({
             {onSwatchClick ? (
               <button
                 type="button"
-                aria-label="Edit color"
+                aria-label={`Edit ${ariaLabel ?? label ?? "color"}`}
                 disabled={disabled}
                 onClick={onSwatchClick}
                 className="absolute inset-0 w-full h-full cursor-pointer"
@@ -618,6 +623,7 @@ export function ColorInput({
             </span>
           ) : (
             <input
+              aria-label={`${ariaLabel ?? label ?? "Color"} hex`}
               type="text"
               value={hex}
               disabled={disabled}
@@ -638,6 +644,7 @@ export function ColorInput({
         {!isVariable && (
           <div className="flex items-center shrink-0 self-stretch border-l border-c-bg w-[53px]">
             <input
+              aria-label={`${ariaLabel ?? label ?? "Color"} opacity`}
               type="number"
               value={opacity}
               min={0}

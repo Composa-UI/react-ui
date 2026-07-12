@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { clsx } from "clsx";
 import { Image, Pipette, Blend, Contrast, Plus, Minus, RotateCcw, Disc, Diamond, Search, LayoutGrid, ChevronDown } from "lucide-react";
 import { Modal, ModalHeader, ModalBody, ModalDivider, MODAL_WIDTHS } from "./Dialog";
-import { hsbToHex } from "../../lib/color";
+import { hexToHsb, hsbToHex } from "../../lib/color";
 import { Tabs } from "./Tabs";
 import { Slider, PickerHandle, GradientStopHandle } from "./Slider";
 import { InputField, ColorInput, NumericInputMulti } from "./Input";
@@ -46,6 +46,10 @@ interface ColorDialogProps {
    * dialog applies the hex like any picker change. */
   onSelectLibraryColor?: (color: LibraryColor, group: LibraryGroup) => void;
   capabilities?: ColorDialogCapabilities;
+  /** Restrict the dialog to a representable solid color (effects, text decoration, etc.). */
+  solidOnly?: boolean;
+  /** Selects which controlled representation seeds the picker model on each open session. */
+  pickerSource?: "hex" | "hsb";
   /** "On this page" swatch hexes (with #). Defaults to demo swatches. */
   swatches?: string[];
   imageExposure?: number;
@@ -347,6 +351,8 @@ export function ColorDialog({
   libraries = MOCK_LIBRARY,
   onSelectLibraryColor,
   capabilities,
+  solidOnly = false,
+  pickerSource = "hsb",
   swatches = ["#383838", "#f5f5f5", "#1e1e1e", "#ffffff", "#0d99ff", "#ff24bd"],
   imageExposure = 0,
   imageContrast = 0,
@@ -366,6 +372,16 @@ export function ColorDialog({
   const [opacity, setOpacity] = useState(opacityProp);
   const [hex,     setHex]     = useState(hexProp);
   const [stops,   setStops]   = useState<GradientStop[]>(stopsProp ?? DEFAULT_STOPS);
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (open && !wasOpen.current) {
+      const picker = pickerSource === "hex" ? hexToHsb(hexProp) : { hue: hueProp, saturation: satProp ?? 100, brightness: briProp ?? 100 };
+      setFillType(solidOnly ? "solid" : fillTypeProp ?? "solid");
+      setHue(picker.hue); setOpacity(opacityProp); setHex(hexProp);
+      setSat(picker.saturation); setBri(picker.brightness); setStops(stopsProp ?? DEFAULT_STOPS);
+    }
+    wasOpen.current = open;
+  }, [open, solidOnly, pickerSource, fillTypeProp, hueProp, opacityProp, hexProp, satProp, briProp, stopsProp]);
 
   // Interactive 2D picker — saturation (x) × brightness (y)
   const [sat, setSat] = useState(satProp ?? 100);
@@ -454,7 +470,7 @@ export function ColorDialog({
       {activeTab === "custom" && (
         <>
           {/* Toolbar: fill-type tabs (left) + utility icons (right) */}
-          <div className="flex items-center justify-between px-[8px] h-[40px] border-b border-c-border shrink-0">
+          {!solidOnly && <div className="flex items-center justify-between px-[8px] h-[40px] border-b border-c-border shrink-0">
             {/* Three fill-type tabs — gradient TYPE (linear/radial/…) lives in the dropdown, not here */}
             <div className="flex items-center gap-[2px]">
               <Btn label="Solid" active={fillType === "solid"} onClick={() => handleFillType("solid")}>
@@ -472,7 +488,7 @@ export function ColorDialog({
               <Btn label="Blend mode"><Blend size={14} strokeWidth={1.5} /></Btn>
               <Btn label="Check color contrast"><Contrast size={14} strokeWidth={1.5} /></Btn>
             </div>
-          </div>
+          </div>}
 
           {/* Gradient type selector */}
           {isGradient && (

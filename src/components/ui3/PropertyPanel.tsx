@@ -31,6 +31,7 @@ import { AnimatePanel } from "./AnimatePanel";
 import { Avatar } from "./Avatar";
 import { SplitButton } from "./SplitButton";
 import { Button } from "./Button";
+import { EffectDetailsDialog, type EffectDetailsValue } from "./EffectDetailsDialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,7 +49,7 @@ export interface InspectorExportSetting { id: string; scale: number; suffix: str
 export type ProjectFrameRate = 24 | 25 | 30 | 60;
 export interface ElementFillSetting { id: string; color: string; opacity: number; visible: boolean; label?: string; }
 export interface ElementStrokeSetting extends ElementFillSetting { weight: number; align: "inside" | "center" | "outside"; }
-export interface ElementEffectSetting { id: string; type: "Drop shadow" | "Inner shadow" | "Layer blur" | "Background blur"; visible: boolean; }
+export interface ElementEffectSetting extends EffectDetailsValue { id: string; }
 export interface ElementLayoutGuideSetting { id: string; type: "Grid" | "Columns" | "Rows"; visible: boolean; size: number; }
 export interface ElementSelectionColorSetting { id: string; color: string; opacity: number; usageCount?: number; }
 export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; }
@@ -856,13 +857,14 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
 
 // ─── Section: Effects ─────────────────────────────────────────────────────────
 
-function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, stylesAvailable }: {
+function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities }: {
   entries?: ElementEffectSetting[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<ElementEffectSetting, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
-  stylesAvailable: boolean;
+  capabilities: Required<InspectorCapabilities>;
 }) {
   const [internal, setInternal] = useState<ElementEffectSetting[]>([]);
   const effects = entries ?? internal;
+  const [activeEffect, setActiveEffect] = useState<string | null>(null);
   const update = (id: string, patch: Partial<Omit<ElementEffectSetting, "id">>) => { if (!entries) setInternal(e => e.map(x => x.id === id ? { ...x, ...patch } : x)); onUpdate?.(id, patch); };
   const add = () => { if (!entries) setInternal(e => [...e, { id: String(Date.now()), type: "Drop shadow", visible: true }]); onAdd?.(); };
   const remove = (id: string) => { if (!entries) setInternal(e => e.filter(x => x.id !== id)); onRemove?.(id); };
@@ -874,7 +876,7 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
       muted={effects.length === 0}
       rightActions={
         <>
-          {stylesAvailable && <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+          {capabilities.styles && <span className="opacity-0 group-hover:opacity-100 transition-opacity">
             <PanelActionBtn icon={<StylesIcon />} label="Styles" />
           </span>}
           <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add effect" onClick={add} />
@@ -884,11 +886,14 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
       {effects.map(effect => (
         <div key={effect.id} draggable={!!onReorder} onDragStart={event => event.dataTransfer.setData("text/plain", effect.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), effect.id); }} className="group/row flex items-center pr-[16px] h-[32px]">
           <DragGutter />
+          <PanelActionBtn icon={effect.visible ? <Eye size={16} strokeWidth={1.5} /> : <EyeOff size={16} strokeWidth={1.5} />} label={effect.visible ? "Hide" : "Show"} onClick={() => toggle(effect.id)} />
           <div className="flex-1 min-w-0">
-            <ChoiceDropdown value={effect.type} options={["Drop shadow", "Inner shadow", "Layer blur", "Background blur"]} labels={{ "Drop shadow": "Drop shadow", "Inner shadow": "Inner shadow", "Layer blur": "Layer blur", "Background blur": "Background blur" }} onChange={type => update(effect.id, { type })} />
+            <EffectDetailsDialog open={activeEffect === effect.id} value={effect}
+              trigger={<Dropdown value={effect.type} fullWidth onClick={() => setActiveEffect(effect.id)} />}
+              capabilities={capabilities}
+              onChange={patch => update(effect.id, patch)} onClose={() => setActiveEffect(null)} />
           </div>
           <div className="shrink-0 flex items-center gap-[4px] pl-[8px]">
-            <PanelActionBtn icon={effect.visible ? <Eye size={16} strokeWidth={1.5} /> : <EyeOff size={16} strokeWidth={1.5} />} label={effect.visible ? "Hide" : "Show"} onClick={() => toggle(effect.id)} />
             <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove effect" onClick={() => remove(effect.id)} />
           </div>
         </div>
@@ -2044,7 +2049,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           {/* Stackable sections */}
           <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill} capabilities={capabilities} />
           <StrokeSection entries={strokes} onAdd={onAddStroke} onUpdate={onUpdateStroke} onToggle={onToggleStroke} onReorder={onReorderStroke} onRemove={onRemoveStroke} capabilities={capabilities} />
-          <EffectsSection entries={effects} onAdd={onAddEffect} onUpdate={onUpdateEffect} onToggle={onToggleEffect} onReorder={onReorderEffect} onRemove={onRemoveEffect} stylesAvailable={capabilities.styles} />
+          <EffectsSection entries={effects} onAdd={onAddEffect} onUpdate={onUpdateEffect} onToggle={onToggleEffect} onReorder={onReorderEffect} onRemove={onRemoveEffect} capabilities={capabilities} />
 
           {/* Selection Colors — multi-select only (§5.8), positioned right after Effects */}
           {multiSelect && <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} capabilities={capabilities} />}
