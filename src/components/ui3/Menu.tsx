@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import { type ReactNode, useState, useRef } from "react";
+import { type ReactElement, type ReactNode, useState, useRef } from "react";
 import { Check, ChevronRight, Minus } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { useComposaMode } from "./useComposaMode";
@@ -315,11 +315,14 @@ export function PopoverMenu({
   children,
   align = "left",
   className,
+  directTrigger = false,
 }: {
   trigger: ReactNode;
   children: (close: () => void) => ReactNode;
   align?: "left" | "right";
   className?: string;
+  /** Put Radix trigger semantics directly on a ref/prop-forwarding trigger element. */
+  directTrigger?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -328,9 +331,13 @@ export function PopoverMenu({
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
       <div className={clsx("relative", className)}>
-        <PopoverPrimitive.Trigger asChild>
-          <div ref={triggerRef} tabIndex={-1}>{trigger}</div>
-        </PopoverPrimitive.Trigger>
+        {directTrigger ? (
+          <PopoverPrimitive.Trigger asChild>{trigger as ReactElement}</PopoverPrimitive.Trigger>
+        ) : (
+          <PopoverPrimitive.Trigger asChild>
+            <div ref={triggerRef} tabIndex={-1}>{trigger}</div>
+          </PopoverPrimitive.Trigger>
+        )}
         <PopoverPrimitive.Portal>
           <PopoverPrimitive.Content
             data-composa-mode={mode}
@@ -341,6 +348,7 @@ export function PopoverMenu({
             avoidCollisions
             sticky="partial"
             onCloseAutoFocus={event => {
+              if (directTrigger) return;
               event.preventDefault();
               triggerRef.current?.querySelector<HTMLElement>("button,[href],[tabindex]:not([tabindex='-1'])")?.focus();
             }}

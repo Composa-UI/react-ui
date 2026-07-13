@@ -1,11 +1,13 @@
-import { useState, type ReactNode } from "react";
+import { useState, type ButtonHTMLAttributes, type MouseEventHandler, type ReactNode, type Ref } from "react";
 import { clsx } from "clsx";
 import { ChevronDown } from "lucide-react";
 
 // Dropdown is the trigger control only — the panel/menu is handled separately.
 // Matches UI3 inspector dropdown: bg-c-bg, border, value text + chevron.
 
-interface DropdownProps {
+interface DropdownProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "value" | "onClick" | "disabled" | "className"> {
+  ref?: Ref<HTMLButtonElement>;
+  ariaLabel?: string;
   value?: string;
   placeholder?: string;
   size?: "default" | "large";
@@ -16,11 +18,14 @@ interface DropdownProps {
   editable?: boolean;         // combo-style (type-to-edit) — only these highlight the value text when active
   fullWidth?: boolean;        // fill the container instead of the fixed 117px
   leadingIcon?: ReactNode;    // optional icon slot (large size only)
-  onClick?: () => void;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
   className?: string;
 }
 
 export function Dropdown({
+  ref,
+  ariaLabel,
+  "aria-label": nativeAriaLabel,
   value,
   placeholder = "Value",
   size = "default",
@@ -32,7 +37,9 @@ export function Dropdown({
   fullWidth = false,
   leadingIcon,
   onClick,
+  onBlur,
   className,
+  ...buttonProps
 }: DropdownProps) {
   const [internalActive, setInternalActive] = useState(false);
   const h = size === "large" ? "h-[32px]" : "h-[24px]";
@@ -60,8 +67,12 @@ export function Dropdown({
 
   return (
     <button
-      onClick={disabled ? undefined : (e) => { setInternalActive(true); onClick?.(); }}
-      onBlur={() => setInternalActive(false)}
+      {...buttonProps}
+      ref={ref}
+      type={buttonProps.type ?? "button"}
+      aria-label={ariaLabel ?? nativeAriaLabel}
+      onClick={disabled ? undefined : (e) => { setInternalActive(true); onClick?.(e); }}
+      onBlur={e => { setInternalActive(false); onBlur?.(e); }}
       disabled={disabled}
       className={clsx(
         "relative inline-flex items-center rounded-c-md bg-c-bg overflow-hidden",

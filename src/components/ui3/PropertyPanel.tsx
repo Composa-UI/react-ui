@@ -1245,6 +1245,7 @@ function ProjectExportSection() {
 // "Timeline" for Video Clip mode).
 function SlideTimingSection({
   title = "Timing",
+  landmark = false,
   start = 0,
   end = 5,
   onStartChange,
@@ -1253,6 +1254,7 @@ function SlideTimingSection({
   controlled = false,
 }: {
   title?: string;
+  landmark?: boolean;
   start?: number;
   end?: number;
   onStartChange?: (value: number) => void;
@@ -1265,12 +1267,13 @@ function SlideTimingSection({
   const renderedStart = controlled ? start : internalStart;
   const renderedEnd = controlled ? end : internalEnd;
   return (
-    <PanelSection title={title}>
+    <PanelSection title={title} landmark={landmark}>
       <PanelFieldRow
         label="Range"
         reserveRightSlot={false}
         left={
           <NumericInput
+            ariaLabel="Start"
             iconLead={<span className={clsx(FONT, "text-[10px]")}>Start</span>}
             value={renderedStart}
             onChange={value => { if (!controlled) setInternalStart(value); onStartChange?.(value); }}
@@ -1280,6 +1283,7 @@ function SlideTimingSection({
         }
         right={
           <NumericInput
+            ariaLabel="End"
             iconLead={<span className={clsx(FONT, "text-[10px]")}>End</span>}
             value={renderedEnd}
             onChange={value => { if (!controlled) setInternalEnd(value); onEndChange?.(value); }}
@@ -1293,6 +1297,7 @@ function SlideTimingSection({
         reserveRightSlot={false}
         left={
           <NumericInput
+            ariaLabel="Duration"
             iconLead={<span className={FONT}>↔</span>}
             value={Math.max(0, renderedEnd - renderedStart)}
             onChange={value => { if (!controlled) setInternalEnd(renderedStart + value); onDurationChange?.(value); }}
@@ -1479,14 +1484,15 @@ function SlideBackgroundSection({
   );
 }
 
-function ChoiceDropdown<T extends string>({ value, options, labels, onChange }: {
+function ChoiceDropdown<T extends string>({ ariaLabel, value, options, labels, onChange }: {
+  ariaLabel?: string;
   value: T;
   options: readonly T[];
   labels: Record<T, string>;
   onChange?: (value: T) => void;
 }) {
   return (
-    <PopoverMenu align="right" className="w-full" trigger={<Dropdown value={labels[value]} fullWidth />}>
+    <PopoverMenu directTrigger align="right" className="w-full" trigger={<Dropdown aria-haspopup="menu" ariaLabel={ariaLabel ? `${ariaLabel}: ${labels[value]}` : undefined} value={labels[value]} fullWidth />}>
       {close => <Menu minWidth={160}>{options.map(option => (
         <MenuRow key={option} type="checkmark" checked={option === value} label={labels[option]} onClick={() => { onChange?.(option); close(); }} />
       ))}</Menu>}
@@ -1516,7 +1522,7 @@ function ClipSourceSection({
     </PanelFullRow>
   );
   return (
-    <PanelSection title="Source">
+    <PanelSection title="Source" landmark>
       {row("File", file)}
       {row("Resolution", resolution)}
       {row("Source duration", sourceDuration)}
@@ -1544,12 +1550,12 @@ function ClipTrimSection({
   const renderedTrimIn = controlled ? trimIn : internalTrimIn;
   const renderedTrimOut = controlled ? trimOut : internalTrimOut;
   return (
-    <PanelSection title="Trim">
+    <PanelSection title="Trim" landmark>
       <DualField
         leftLabel="Trim in"
-        left={<NumericInput iconLead={<Crosshair size={16} strokeWidth={1.5} />} value={renderedTrimIn} onChange={value => { if (!controlled) setInternalTrimIn(value); onTrimInChange?.(value); }} min={0} suffix="s" />}
+        left={<NumericInput ariaLabel="Trim in" iconLead={<Crosshair size={16} strokeWidth={1.5} />} value={renderedTrimIn} onChange={value => { if (!controlled) setInternalTrimIn(value); onTrimInChange?.(value); }} min={0} suffix="s" />}
         rightLabel="Trim out"
-        right={<NumericInput iconLead={<Crosshair size={16} strokeWidth={1.5} />} value={renderedTrimOut} onChange={value => { if (!controlled) setInternalTrimOut(value); onTrimOutChange?.(value); }} min={0} suffix="s" />}
+        right={<NumericInput ariaLabel="Trim out" iconLead={<Crosshair size={16} strokeWidth={1.5} />} value={renderedTrimOut} onChange={value => { if (!controlled) setInternalTrimOut(value); onTrimOutChange?.(value); }} min={0} suffix="s" />}
       />
       <PanelFullRow label="Clipped duration" height={24}>
         <span className={clsx(FONT, "text-[11px] text-c-text-secondary")}>{Math.max(0, renderedTrimOut - renderedTrimIn)}s</span>
@@ -1567,14 +1573,14 @@ function ClipPlaybackSection({ speed = 1, onSpeedChange, controlled = false }: {
   const [internalSpeed, setInternalSpeed] = useState<ClipSpeed>(speed);
   const renderedSpeed = controlled ? speed : internalSpeed;
   return (
-    <PanelSection title="Playback">
+    <PanelSection title="Playback" landmark>
       <DualField
         leftLabel="Speed"
-        left={<ChoiceDropdown value={String(renderedSpeed)} options={CLIP_SPEEDS.map(String)} labels={CLIP_SPEED_LABELS} onChange={value => { const next = Number(value) as ClipSpeed; if (!controlled) setInternalSpeed(next); onSpeedChange?.(next); }} />}
+        left={<ChoiceDropdown ariaLabel="Speed" value={String(renderedSpeed)} options={CLIP_SPEEDS.map(String)} labels={CLIP_SPEED_LABELS} onChange={value => { const next = Number(value) as ClipSpeed; if (!controlled) setInternalSpeed(next); onSpeedChange?.(next); }} />}
         rightLabel="Volume"
         right={
           <div className="w-full" title="Audio coming soon">
-            <Dropdown value="—" disabled fullWidth />
+            <Dropdown ariaLabel="Volume" value="—" disabled fullWidth />
           </div>
         }
       />
@@ -1973,7 +1979,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <ClipSourceSection file={clipSourceFile} resolution={clipSourceResolution} sourceDuration={clipSourceDuration} />
           {/* Demo data kept consistent per spec: Clipped duration (trimOut −
               trimIn = 8s) equals the Timeline duration (end − start = 8s). */}
-          <SlideTimingSection title="Timeline" start={clipStart} end={clipStart + clipDuration}
+          <SlideTimingSection title="Timeline" landmark start={clipStart} end={clipStart + clipDuration}
             controlled={props.clipStart !== undefined || props.clipDuration !== undefined}
             onStartChange={onClipStartChange}
             onEndChange={value => onClipDurationChange?.(Math.max(0, value - clipStart))}

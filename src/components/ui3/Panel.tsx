@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type ReactNode } from "react";
+import { useState, useRef, useEffect, useId, type ReactNode } from "react";
 import { clsx } from "clsx";
 import { ChevronDown } from "lucide-react";
 
@@ -92,6 +92,8 @@ interface PanelSectionProps {
   title: string;
   children?: ReactNode;
   rightActions?: ReactNode;
+  /** Opt into a named region landmark without changing the section's visual anatomy. */
+  landmark?: boolean;
   defaultOpen?: boolean;
   collapsible?: boolean;
   muted?: boolean;   // empty stackable section — grey the header text/icons
@@ -102,19 +104,22 @@ export function PanelSection({
   title,
   children,
   rightActions,
+  landmark = false,
   muted = false,
   onHeaderClick,
 }: PanelSectionProps) {
+  const titleId = useId();
   // Figma UI3 sections do not collapse via a chevron. The header names the section;
   // presence-dependent sections appear/disappear by content, not by expand/collapse.
   return (
-    <div className={clsx("border-b border-c-border group", muted && "text-c-text-secondary")}>
+    <div role={landmark ? "region" : undefined} aria-labelledby={landmark ? titleId : undefined}
+      className={clsx("border-b border-c-border group", muted && "text-c-text-secondary")}>
       {/* 40px header */}
       <div className="flex items-center h-[40px] px-[16px]">
         {onHeaderClick ? (
-          <button onClick={onHeaderClick} className={clsx(TITLE, "flex-1 text-left cursor-pointer", muted && "!text-c-text-secondary")}>{title}</button>
+          <button id={landmark ? titleId : undefined} onClick={onHeaderClick} className={clsx(TITLE, "flex-1 text-left cursor-pointer", muted && "!text-c-text-secondary")}>{title}</button>
         ) : (
-          <span className={clsx(TITLE, "flex-1", muted && "!text-c-text-secondary")}>{title}</span>
+          <span id={landmark ? titleId : undefined} className={clsx(TITLE, "flex-1", muted && "!text-c-text-secondary")}>{title}</span>
         )}
         {rightActions && (
           <div className="flex items-center gap-[4px] shrink-0">
