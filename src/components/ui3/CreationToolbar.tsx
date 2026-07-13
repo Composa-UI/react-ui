@@ -81,17 +81,6 @@ function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps)
   const { icon, label } = TOOLS[tool];
   const hasMenu = !!menu && menu.length > 0;
 
-  // Close on outside-click / Escape while open (mirrors PopoverMenu behaviour).
-  // We keep a self-contained popover here because the shared PopoverMenu only
-  // opens downward, and this toolbar floats above the canvas so its sub-menus
-  // must open upward.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open]);
-
   // ── Plain button (single tool, no menu — e.g. Type) ──────────────────────
   if (!hasMenu) {
     return (
@@ -116,7 +105,17 @@ function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps)
 
   // ── Split button (primary tool segment + separate chevron segment) ───────
   return (
-    <div className="relative flex items-stretch">
+    <div className="relative flex items-stretch"
+      onBlur={event => {
+        if (open && !event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
+      }}
+      onKeyDownCapture={event => {
+        if (open && event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          setOpen(false);
+        }
+      }}>
       {/* gap-px reveals a thin separator (the container bg) between segments,
           matching SplitButton.tsx. */}
       <div className="flex items-stretch gap-px h-[32px] rounded-c-md overflow-hidden bg-c-bg-secondary">
