@@ -26,6 +26,17 @@ export type TimelineMode = "master" | "slide";
 export type TimelineFrameRate = 24 | 25 | 30 | 60;
 export type { TimelineViewport } from "./timelineModel";
 export type TimelineViewportChangeSource = "wheel-zoom" | "wheel-pan" | "zoom-control" | "keyframe-reveal";
+export type TimelinePlayheadChangeSource = "pointer" | "keyboard";
+export interface TimelinePlayheadChangeDetail {
+  source: TimelinePlayheadChangeSource;
+  millisecondsPerPixel: number;
+}
+export interface TimelineBlockContextMenuDetail {
+  clientX: number;
+  clientY: number;
+  currentTarget: HTMLDivElement;
+  source: "pointer" | "keyboard";
+}
 export interface TimelineKeyframeReveal {
   keyframeId: string;
   timeMs: number;
@@ -116,6 +127,8 @@ export function shouldClaimTimelineGestureEscape(key: string, gestureActive: boo
 export function stepTimelinePlayhead(timeMs: number, frameDelta: number, frameRate: TimelineFrameRate, durationMs: number): number {
   return Math.min(durationMs, Math.max(0, timeMs + frameDelta * 1000 / frameRate));
 }
+
+export const shouldBeginTimelinePointer = (button: number, isPrimary: boolean): boolean => button === 0 && isPrimary;
 
 export function shouldHandleTimelineReveal(master: boolean, requestKey: string | number | undefined, handledKey: string | number | null, timelineWidth: number): boolean {
   return !master && requestKey !== undefined && requestKey !== handledKey && timelineWidth > LEFT_W + 1;
@@ -380,11 +393,12 @@ function SecondRuler({ viewport, width }: { viewport: TimelineViewport; width: n
 }
 
 // ── master track rows: "Slides" block track + "Base video" placeholder ──────────────
-function BlockTrack({ blocks, viewport, plotWidth, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
+function BlockTrack({ blocks, viewport, plotWidth, onSelect, onOpen, onContextMenu, onMove, onTrim, onGestureStart, onGestureEnd }: {
   blocks: SlideBlock[];
   viewport: TimelineViewport; plotWidth: number;
   onSelect?: (id: string) => void;
   onOpen?: (id: string) => void;
+  onContextMenu?: (id: string, detail: TimelineBlockContextMenuDetail) => void;
   onMove?: (id: string, startMs: number) => void;
   onTrim?: (id: string, edge: "start" | "end", timeMs: number) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
@@ -392,6 +406,7 @@ function BlockTrack({ blocks, viewport, plotWidth, onSelect, onOpen, onMove, onT
 }) {
   const drag = useRef<{ id: string; kind: "move" | "start" | "end"; startX: number; range: [number, number] } | null>(null);
   const begin = (event: React.PointerEvent, block: SlideBlock, kind: "move" | "start" | "end") => {
+    if (!shouldBeginTimelinePointer(event.button, event.isPrimary)) return;
     event.stopPropagation();
     const index = blocks.indexOf(block);
     drag.current = { id: slideBlockId(block, index), kind, startX: event.clientX, range: block.range };
@@ -427,17 +442,30 @@ function BlockTrack({ blocks, viewport, plotWidth, onSelect, onOpen, onMove, onT
       <div className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }}>
         {blocks.map((b, i) => {
           const id = slideBlockId(b, i);
+          const stableId = b.id;
+          const hasContextMenu = !!stableId && !!onContextMenu;
           const left = percent(b.range[0], viewport);
           const width = percentWidth(b.range[0], b.range[1], viewport);
           return (
             <div
               key={id}
-              role="button" tabIndex={0} aria-pressed={b.active}
+              role="button" tabIndex={0} aria-label={b.name} aria-pressed={b.active}
+              aria-haspopup={hasContextMenu ? "menu" : undefined} data-timeline-block-id={stableId}
               onClick={() => onSelect?.(id)}
               onDoubleClick={() => onOpen?.(id)}
+              onContextMenu={event => {
+                if (!hasContextMenu) return;
+                event.preventDefault();
+                onContextMenu(stableId, { clientX: event.clientX, clientY: event.clientY, currentTarget: event.currentTarget, source: "pointer" });
+              }}
               onKeyDown={event => {
                 if (event.key === "Enter") { event.preventDefault(); onOpen?.(id); }
                 else if (event.key === " ") { event.preventDefault(); onSelect?.(id); }
+                else if (hasContextMenu && (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10"))) {
+                  event.preventDefault(); event.stopPropagation();
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  onContextMenu(stableId, { clientX: rect.left + Math.min(24, rect.width / 2), clientY: rect.top + rect.height / 2, currentTarget: event.currentTarget, source: "keyboard" });
+                }
                 else if (shouldClaimTimelineGestureEscape(event.key, drag.current?.id === id)) {
                   event.preventDefault(); event.stopPropagation(); finish(true);
                 }
@@ -477,6 +505,7 @@ function BaseVideoTrack({ clips, viewport, plotWidth, onSelect, onOpen, onMove, 
 }) {
   const drag = useRef<{ id: string; kind: "move" | "start" | "end"; startX: number; range: [number, number] } | null>(null);
   const begin = (event: React.PointerEvent, clip: BaseClipBlock, kind: "move" | "start" | "end") => {
+    if (!shouldBeginTimelinePointer(event.button, event.isPrimary)) return;
     event.stopPropagation();
     drag.current = { id: clip.id, kind, startX: event.clientX, range: clip.range };
     escapeOwnership.claim();
@@ -570,6 +599,7 @@ export function Timeline({
   onDeleteSelectedKeyframes,
   onBlockSelect,
   onBlockOpen,
+  onBlockContextMenu,
   onBlockMove,
   onBlockTrim,
   onClipSelect,
@@ -594,7 +624,7 @@ export function Timeline({
   onViewportChange?: (viewport: TimelineViewport, detail: { source: TimelineViewportChangeSource }) => void;
   playhead?: number;
   defaultPlayhead?: number;
-  onPlayheadChange?: (timeMs: number) => void;
+  onPlayheadChange?: (timeMs: number, detail: TimelinePlayheadChangeDetail) => void;
   playing?: boolean;
   defaultPlaying?: boolean;
   onPlayingChange?: (playing: boolean) => void;
@@ -612,6 +642,7 @@ export function Timeline({
   onDeleteSelectedKeyframes?: () => void;
   onBlockSelect?: (id: string) => void;
   onBlockOpen?: (id: string) => void;
+  onBlockContextMenu?: (id: string, detail: TimelineBlockContextMenuDetail) => void;
   onBlockMove?: (id: string, startMs: number) => void;
   onBlockTrim?: (id: string, edge: "start" | "end", timeMs: number) => void;
   onClipSelect?: (id: string) => void;
@@ -642,9 +673,9 @@ export function Timeline({
   const loop = controlledLoop ?? internalLoop;
   const viewport = normalizeViewport(controlledViewport ?? internalViewport, duration);
   const plotWidth = Math.max(1, timelineWidth - LEFT_W);
-  const setPlayhead = (timeMs: number) => {
+  const setPlayhead = (timeMs: number, source: TimelinePlayheadChangeSource) => {
     if (controlledPlayhead === undefined) setInternalPlayhead(timeMs);
-    onPlayheadChange?.(timeMs);
+    onPlayheadChange?.(timeMs, { source, millisecondsPerPixel: (viewport.endMs - viewport.startMs) / Math.max(1, plotWidth) });
   };
   const setPlaying = (next: boolean) => { if (controlledPlaying === undefined) setInternalPlaying(next); onPlayingChange?.(next); };
   const setLoop = (next: boolean) => { if (controlledLoop === undefined) setInternalLoop(next); onLoopChange?.(next); };
@@ -712,7 +743,7 @@ export function Timeline({
   // scrub origin can't desync from a separate ref.
   const scrub = (e: React.PointerEvent) => {
     const r = e.currentTarget.getBoundingClientRect();
-    setPlayhead(Math.min(duration, Math.max(0, Math.round(xToTime(e.clientX - r.left, viewport, r.width)))));
+    setPlayhead(Math.min(duration, Math.max(0, Math.round(xToTime(e.clientX - r.left, viewport, r.width)))), "pointer");
   };
   const [drag, setDrag] = useState(false);
   return (
@@ -741,9 +772,9 @@ export function Timeline({
             if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
               claim();
               const frames = (event.shiftKey ? 10 : 1) * (event.key === "ArrowLeft" ? -1 : 1);
-              setPlayhead(stepTimelinePlayhead(playhead, frames, frameRate, duration));
-            } else if (!event.shiftKey && event.key === "Home") { claim(); setPlayhead(0); }
-            else if (!event.shiftKey && event.key === "End") { claim(); setPlayhead(duration); }
+              setPlayhead(stepTimelinePlayhead(playhead, frames, frameRate, duration), "keyboard");
+            } else if (!event.shiftKey && event.key === "Home") { claim(); setPlayhead(0, "keyboard"); }
+            else if (!event.shiftKey && event.key === "End") { claim(); setPlayhead(duration, "keyboard"); }
             else if (!event.shiftKey && event.key === " ") { claim(); if (!event.repeat) setPlaying(!playing); }
             else if (!event.shiftKey && !master && event.key.toLowerCase() === "k" && onAddKeyframe) { claim(); if (!event.repeat) onAddKeyframe(playhead); }
             else if (!event.shiftKey && !master && (event.key === "Delete" || event.key === "Backspace") && onDeleteSelectedKeyframes) { claim(); if (!event.repeat) onDeleteSelectedKeyframes(); }
@@ -770,7 +801,7 @@ export function Timeline({
       <div className="flex-1 overflow-y-auto relative">
         {master ? (
           <>
-            <BlockTrack blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <BlockTrack blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
             <BaseVideoTrack clips={baseClips} viewport={viewport} plotWidth={plotWidth} onSelect={onClipSelect} onOpen={onClipOpen} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
           </>
         ) : (

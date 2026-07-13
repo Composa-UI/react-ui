@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, Timeline, type Track } from "./Timeline";
+import { shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, Timeline, type Track } from "./Timeline";
 
 const numericTrack: Track = { id: "hero", name: "Hero", type: "frame", props: [
   { id: "opacity", name: "Opacity", keyframes: [500, 900] },
@@ -8,6 +8,21 @@ const numericTrack: Track = { id: "hero", name: "Hero", type: "frame", props: [
 ] };
 
 describe("Timeline DOM contracts", () => {
+  it("exposes stable composition block identity for controlled context-menu adapters", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={2_000}
+      blocks={[{ id: "intro", name: "Intro", range: [0, 1_000] }]} onBlockContextMenu={() => undefined} />);
+    expect(html).toContain('aria-label="Intro"');
+    expect(html).toContain('data-timeline-block-id="intro"');
+    expect(html).toContain('aria-haspopup="menu"');
+  });
+
+  it("does not advertise unstable context identity for legacy ID-less blocks", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={2_000}
+      blocks={[{ name: "Legacy", range: [0, 1_000] }]} onBlockContextMenu={() => undefined} />);
+    expect(html).not.toContain("data-timeline-block-id");
+    expect(html).not.toContain('aria-haspopup="menu"');
+  });
+
   it("preserves legacy individual numeric keyframe IDs", () => {
     const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]} />);
     expect(html).toContain('data-keyframe-id="keyframe-0-500"');
@@ -65,6 +80,13 @@ describe("Timeline Playhead frame stepping", () => {
 });
 
 describe("Timeline gesture keyboard ownership", () => {
+  it("starts move and trim gestures only from the primary left pointer", () => {
+    expect(shouldBeginTimelinePointer(0, true)).toBe(true);
+    expect(shouldBeginTimelinePointer(1, true)).toBe(false);
+    expect(shouldBeginTimelinePointer(2, true)).toBe(false);
+    expect(shouldBeginTimelinePointer(0, false)).toBe(false);
+  });
+
   it("claims Escape only while a local drag or trim gesture is active", () => {
     expect(shouldClaimTimelineGestureEscape("Escape", true)).toBe(true);
     expect(shouldClaimTimelineGestureEscape("Escape", false)).toBe(false);
