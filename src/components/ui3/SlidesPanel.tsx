@@ -33,6 +33,12 @@ export interface SlideData {
   onClick?: (event: MouseEvent<HTMLDivElement>) => void;
 }
 
+export function slideItemKeyboardAction(key: string): "rename" | "activate" | "navigate" {
+  if (key === "Enter") return "rename";
+  if (key === " ") return "activate";
+  return "navigate";
+}
+
 // ── Slide thumbnail (+ motion badge) ──────────────────────────────────────────
 // RESPONSIVE: the thumbnail fills the available width between a left number-gutter
 // offset and a 12px right inset — matching the 12px left inset before the number
@@ -68,7 +74,7 @@ function SlideThumb({ item }: { item: SlideData }) {
 }
 
 // ── One slide row ─────────────────────────────────────────────────────────────
-export function SlideListItem({ item, tabIndex = 0, onNavigate, onFocus, itemRef }: { item: SlideData; tabIndex?: number; onNavigate?: (event: KeyboardEvent<HTMLDivElement>) => void; onFocus?: () => void; itemRef?: (node: HTMLDivElement | null) => void }) {
+export function SlideListItem({ item, tabIndex = 0, onNavigate, onRenameRequest, onFocus, itemRef }: { item: SlideData; tabIndex?: number; onNavigate?: (event: KeyboardEvent<HTMLDivElement>) => void; onRenameRequest?: () => void; onFocus?: () => void; itemRef?: (node: HTMLDivElement | null) => void }) {
   const numLeft = item.sub ? "left-[36px]" : "left-[12px]";
   // Row height tracks the responsive thumbnail. An in-flow spacer uses the same
   // left-gutter + 12px-right margins, so it fills the remaining width; aspect-ratio
@@ -82,7 +88,9 @@ export function SlideListItem({ item, tabIndex = 0, onNavigate, onFocus, itemRef
       onFocus={onFocus}
       onClick={item.onClick}
       onKeyDown={event => {
-        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); item.onClick?.(event as unknown as MouseEvent<HTMLDivElement>); }
+        const action = slideItemKeyboardAction(event.key);
+        if (action === "rename") { event.preventDefault(); onRenameRequest?.(); }
+        else if (action === "activate") { event.preventDefault(); item.onClick?.(event as unknown as MouseEvent<HTMLDivElement>); }
         else onNavigate?.(event);
       }}>
       {/* height spacer — invisible box matching the thumbnail width + aspect ratio */}
@@ -128,12 +136,13 @@ export function SlideListItem({ item, tabIndex = 0, onNavigate, onFocus, itemRef
 }
 
 // ── Panel ─────────────────────────────────────────────────────────────────────
-export function SlidesPanel({ slides, title = "Product review", subtitle = "", onNewSlide, onNewSlideMenu }: {
+export function SlidesPanel({ slides, title = "Product review", subtitle = "", onNewSlide, onNewSlideMenu, onRenameRequest }: {
   slides: SlideData[];
   title?: string;
   subtitle?: string;
   onNewSlide?: () => void;
   onNewSlideMenu?: () => void;
+  onRenameRequest?: (index: number) => void;
 }) {
   const initialFocus = Math.max(0, slides.findIndex(slide => slide.selected));
   const [focusIndex, setFocusIndex] = useState(initialFocus);
@@ -180,7 +189,8 @@ export function SlidesPanel({ slides, title = "Product review", subtitle = "", o
       <ScrollArea>
         <div className="flex flex-col" role="listbox" aria-label="Compositions">
           {slides.map((s, i) => <SlideListItem key={i} item={s} tabIndex={i === focusIndex ? 0 : -1}
-            itemRef={node => { itemRefs.current[i] = node; }} onFocus={() => setFocusIndex(i)} onNavigate={event => navigate(i, event)} />)}
+            itemRef={node => { itemRefs.current[i] = node; }} onFocus={() => setFocusIndex(i)} onNavigate={event => navigate(i, event)}
+            onRenameRequest={() => onRenameRequest?.(i)} />)}
         </div>
       </ScrollArea>
     </div>
