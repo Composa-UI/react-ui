@@ -16,6 +16,7 @@ interface ButtonProps {
   iconLead?: ButtonIconLead;
   icon?: ReactNode;
   disabled?: boolean;
+  type?: "button" | "submit" | "reset";
   onClick?: () => void;
   className?: string;
 }
@@ -97,6 +98,7 @@ export function Button({
   iconLead = "none",
   icon,
   disabled = false,
+  type = "button",
   onClick,
   className,
 }: ButtonProps) {
@@ -118,6 +120,7 @@ export function Button({
 
   return (
     <button
+      type={type}
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
       className={clsx(
