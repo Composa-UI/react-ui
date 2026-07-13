@@ -105,6 +105,26 @@ export function shouldClaimTimelineGestureEscape(key: string, gestureActive: boo
   return key === "Escape" && gestureActive;
 }
 
+function useGestureEscapeOwnership(cancel: () => void) {
+  const cancelRef = useRef(cancel);
+  const releaseRef = useRef<(() => void) | null>(null);
+  cancelRef.current = cancel;
+  const release = () => { releaseRef.current?.(); releaseRef.current = null; };
+  const claim = () => {
+    release();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!shouldClaimTimelineGestureEscape(event.key, true)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      cancelRef.current();
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    releaseRef.current = () => document.removeEventListener("keydown", onKeyDown, true);
+  };
+  useEffect(() => release, []);
+  return { claim, release };
+}
+
 const keyframeTime = (keyframe: TimelineKeyframeValue) => typeof keyframe === "number" ? keyframe : keyframe.timeMs;
 // Keep the legacy numeric ID byte-for-byte compatible for individual keyframe callbacks.
 const keyframeId = (keyframe: TimelineKeyframeValue, index: number) => typeof keyframe === "number" ? `keyframe-${index}-${keyframe}` : keyframe.id;
@@ -126,12 +146,15 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, onSelect
   const times = kfs.map(keyframeTime);
   const first = times.length ? Math.min(...times) : 0;
   const last = times.length ? Math.max(...times) : 0;
-  const drag = useRef<{ id: string; startX: number; startTime: number } | null>(null);
-  const finish = (target: KeyframeTarget, cancelled: boolean) => {
-    if (!drag.current) return;
+  const drag = useRef<{ id: string; startX: number; startTime: number; target: KeyframeTarget } | null>(null);
+  const finish = (cancelled: boolean) => {
+    const active = drag.current;
+    if (!active) return;
     drag.current = null;
-    onGestureEnd?.({ kind: "keyframe", id: target.keyframeId, action: "move", keyframe: target }, { cancelled });
+    escapeOwnership.release();
+    onGestureEnd?.({ kind: "keyframe", id: active.target.keyframeId, action: "move", keyframe: active.target }, { cancelled });
   };
+  const escapeOwnership = useGestureEscapeOwnership(() => finish(true));
   return (
     <div className="flex-1 relative overflow-hidden" style={{ height }}>
       {prop.bar && (
@@ -168,16 +191,16 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, onSelect
             if (event.key === "Delete" || event.key === "Backspace") { event.preventDefault(); onDelete?.(target); }
             if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect?.(target, event.shiftKey); }
             if (shouldClaimTimelineGestureEscape(event.key, drag.current?.id === id)) {
-              event.preventDefault(); event.stopPropagation(); finish(target, true);
+              event.preventDefault(); event.stopPropagation(); finish(true);
             }
           }}
-          onPointerDown={event => { drag.current = { id, startX: event.clientX, startTime: timeMs }; onGestureStart?.({ kind: "keyframe", id, action: "move", keyframe: target }); event.currentTarget.setPointerCapture(event.pointerId); }}
+          onPointerDown={event => { drag.current = { id, startX: event.clientX, startTime: timeMs, target }; escapeOwnership.claim(); onGestureStart?.({ kind: "keyframe", id, action: "move", keyframe: target }); event.currentTarget.setPointerCapture(event.pointerId); }}
           onPointerMove={event => {
             if (drag.current?.id !== id) return;
             const deltaMs = (event.clientX - drag.current.startX) / Math.max(1, plotWidth) * (viewport.endMs - viewport.startMs);
             onMove?.(target, Math.max(0, Math.round(drag.current.startTime + deltaMs)));
           }}
-          onPointerUp={() => finish(target, false)} onPointerCancel={() => finish(target, true)} onLostPointerCapture={() => finish(target, true)}
+          onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
           className={clsx("absolute top-1/2 size-[7px] -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] outline-none", selected && "ring-2 ring-c-border-selected-strong")}
           style={{ left: percent(timeMs, viewport), backgroundColor: prop.accent ? "#8638e5" : BLUE }}
         />
@@ -356,6 +379,7 @@ function BlockTrack({ blocks, viewport, plotWidth, onSelect, onOpen, onMove, onT
     event.stopPropagation();
     const index = blocks.indexOf(block);
     drag.current = { id: slideBlockId(block, index), kind, startX: event.clientX, range: block.range };
+    escapeOwnership.claim();
     onGestureStart?.({ kind: "slide-block", id: slideBlockId(block, index), action: kind === "start" ? "trim-start" : kind === "end" ? "trim-end" : "move" });
     event.currentTarget.setPointerCapture(event.pointerId);
   };
@@ -363,8 +387,10 @@ function BlockTrack({ blocks, viewport, plotWidth, onSelect, onOpen, onMove, onT
     const active = drag.current;
     if (!active) return;
     drag.current = null;
+    escapeOwnership.release();
     onGestureEnd?.({ kind: "slide-block", id: active.id, action: active.kind === "start" ? "trim-start" : active.kind === "end" ? "trim-end" : "move" }, { cancelled });
   };
+  const escapeOwnership = useGestureEscapeOwnership(() => finish(true));
   const update = (event: React.PointerEvent, block: SlideBlock) => {
     const active = drag.current;
     const id = slideBlockId(block, blocks.indexOf(block));
@@ -437,6 +463,7 @@ function BaseVideoTrack({ clips, viewport, plotWidth, onSelect, onOpen, onMove, 
   const begin = (event: React.PointerEvent, clip: BaseClipBlock, kind: "move" | "start" | "end") => {
     event.stopPropagation();
     drag.current = { id: clip.id, kind, startX: event.clientX, range: clip.range };
+    escapeOwnership.claim();
     onGestureStart?.({ kind: "base-clip", id: clip.id, action: kind === "start" ? "trim-start" : kind === "end" ? "trim-end" : "move" });
     event.currentTarget.setPointerCapture(event.pointerId);
   };
@@ -444,8 +471,10 @@ function BaseVideoTrack({ clips, viewport, plotWidth, onSelect, onOpen, onMove, 
     const active = drag.current;
     if (!active) return;
     drag.current = null;
+    escapeOwnership.release();
     onGestureEnd?.({ kind: "base-clip", id: active.id, action: active.kind === "start" ? "trim-start" : active.kind === "end" ? "trim-end" : "move" }, { cancelled });
   };
+  const escapeOwnership = useGestureEscapeOwnership(() => finish(true));
   const update = (event: React.PointerEvent, clip: BaseClipBlock) => {
     const active = drag.current;
     if (!active || active.id !== clip.id) return;
