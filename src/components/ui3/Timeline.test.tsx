@@ -15,12 +15,12 @@ describe("Timeline DOM contracts", () => {
     expect(html).not.toContain('data-keyframe-id="opacity:aggregate-keyframe');
   });
 
-  it("renders disclosures and aggregates as noninteractive affordances without callbacks", () => {
+  it("renders disclosures without enabling aggregate product behavior when callbacks are absent", () => {
     const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]} />);
     expect(html).not.toContain('aria-label="Collapse Hero"');
     expect(html).not.toContain('aria-label="Hero aggregate keyframe');
-    expect(html).toContain('data-aggregate-status="complete"');
-    expect(html).toContain('data-aggregate-status="partial"');
+    expect(html).not.toContain('data-aggregate-status="complete"');
+    expect(html).not.toContain('data-aggregate-status="partial"');
   });
 
   it("exposes controlled disclosures and accessible aggregate status when callbacks exist", () => {

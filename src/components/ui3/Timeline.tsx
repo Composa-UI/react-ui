@@ -197,7 +197,7 @@ function TrackRows({ track, trackIndex, viewport, plotWidth, onExpandedChange, o
   const trackId = track.id ?? `track-${trackIndex}`;
   const depth = Math.max(0, track.depth ?? 0);
   const expanded = track.expanded !== false;
-  const aggregateKeys = collectAggregateKeyframes(track.props.flatMap((prop, propertyIndex) => {
+  const aggregateKeys = onAggregateKeyframeSelect ? collectAggregateKeyframes(track.props.flatMap((prop, propertyIndex) => {
     const propertyId = prop.id ?? `property-${propertyIndex}`;
     return prop.keyframes.map((keyframe, keyframeIndex) => ({
       propertyId,
@@ -205,7 +205,7 @@ function TrackRows({ track, trackIndex, viewport, plotWidth, onExpandedChange, o
       timeMs: keyframeTime(keyframe),
       selected: typeof keyframe !== "number" && keyframe.selected,
     }));
-  }), track.props.length);
+  }), track.props.length) : [];
   return (
     <>
       {/* layer row */}
