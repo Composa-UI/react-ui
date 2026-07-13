@@ -200,12 +200,44 @@ export interface CreationToolbarProps {
   /** Controlled active tool. Defaults to "move" when uncontrolled. */
   activeTool?: ToolId;
   onToolChange?: (tool: ToolId) => void;
+  /** `host` leaves global keyboard ownership to the consuming application. */
+  shortcutPolicy?: "global" | "host";
   className?: string;
+}
+
+type ShortcutTarget = EventTarget & {
+  tagName?: string;
+  isContentEditable?: boolean;
+  parentElement?: ShortcutTarget | null;
+  getAttribute?: (name: string) => string | null;
+};
+
+const EDITABLE_SHORTCUT_TAGS = new Set(["input", "textarea", "select", "option"]);
+const EDITABLE_SHORTCUT_ROLES = new Set(["textbox", "searchbox", "combobox", "spinbutton"]);
+
+function shortcutTargetIsEditable(target: EventTarget | null): boolean {
+  let current = target as ShortcutTarget | null;
+  while (current) {
+    const tagName = current.tagName?.toLowerCase();
+    const role = current.getAttribute?.("role")?.toLowerCase();
+    const contentEditable = current.getAttribute?.("contenteditable")?.toLowerCase();
+    if ((tagName && EDITABLE_SHORTCUT_TAGS.has(tagName)) || (role && EDITABLE_SHORTCUT_ROLES.has(role)) ||
+        current.isContentEditable || (contentEditable !== undefined && contentEditable !== null && contentEditable !== "false")) return true;
+    current = current.parentElement ?? null;
+  }
+  return false;
+}
+
+export function shouldHandleCreationToolbarShortcut(event: KeyboardEvent, policy: "global" | "host"): boolean {
+  if (policy === "host" || event.defaultPrevented || event.isComposing || event.keyCode === 229 || event.metaKey || event.ctrlKey || event.altKey) return false;
+  const path = typeof event.composedPath === "function" ? event.composedPath() : [];
+  return !path.some(shortcutTargetIsEditable) && !shortcutTargetIsEditable(event.target);
 }
 
 export function CreationToolbar({
   activeTool: activeToolProp,
   onToolChange,
+  shortcutPolicy = "global",
   className,
 }: CreationToolbarProps) {
   const [activeTool, setActiveTool] = useState<ToolId>(activeToolProp ?? "move");
@@ -224,9 +256,9 @@ export function CreationToolbar({
 
   // Keyboard shortcuts (spec: V/H/F/R/O/L/T, Escape → Move).
   useEffect(() => {
+    if (shortcutPolicy === "host") return;
     const handler = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (!shouldHandleCreationToolbarShortcut(e, shortcutPolicy)) return;
       if (e.key === "Escape") {
         if (activeTool !== "move") selectTool("move");
         return;
@@ -237,7 +269,7 @@ export function CreationToolbar({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  });
+  }, [activeTool, onToolChange, shortcutPolicy]);
 
   // Group active state — true when any of the group's tools is active.
   const moveActive  = isActive("move") || isActive("hand");
