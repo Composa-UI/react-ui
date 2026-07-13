@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, Timeline, type Track } from "./Timeline";
+import { shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, Timeline, type Track } from "./Timeline";
 
 const numericTrack: Track = { id: "hero", name: "Hero", type: "frame", props: [
   { id: "opacity", name: "Opacity", keyframes: [500, 900] },
@@ -80,6 +80,10 @@ describe("Timeline Playhead frame stepping", () => {
 });
 
 describe("Timeline gesture keyboard ownership", () => {
+  it("reports the measured clock-domain tolerance for clip trim callbacks", () => {
+    expect(timelineClipTrimDetail("pointer", { startMs: 2_000, endMs: 12_000 }, 1_000)).toEqual({ source: "pointer", millisecondsPerPixel: 10 });
+    expect(timelineClipTrimDetail("keyboard", { startMs: 2_000, endMs: 12_000 }, 0)).toEqual({ source: "keyboard", millisecondsPerPixel: 10_000 });
+  });
   it("starts move and trim gestures only from the primary left pointer", () => {
     expect(shouldBeginTimelinePointer(0, true)).toBe(true);
     expect(shouldBeginTimelinePointer(1, true)).toBe(false);

@@ -31,6 +31,14 @@ export interface TimelinePlayheadChangeDetail {
   source: TimelinePlayheadChangeSource;
   millisecondsPerPixel: number;
 }
+export interface TimelineClipTrimDetail {
+  source: "pointer" | "keyboard";
+  millisecondsPerPixel: number;
+}
+export const timelineClipTrimDetail = (source: TimelineClipTrimDetail["source"], viewport: TimelineViewport, plotWidth: number): TimelineClipTrimDetail => ({
+  source,
+  millisecondsPerPixel: (viewport.endMs - viewport.startMs) / Math.max(1, plotWidth),
+});
 export interface TimelineBlockContextMenuDetail {
   clientX: number;
   clientY: number;
@@ -499,7 +507,7 @@ function BaseVideoTrack({ clips, viewport, plotWidth, onSelect, onOpen, onMove, 
   onSelect?: (id: string) => void;
   onOpen?: (id: string) => void;
   onMove?: (id: string, startMs: number) => void;
-  onTrim?: (id: string, edge: "start" | "end", timeMs: number) => void;
+  onTrim?: (id: string, edge: "start" | "end", timeMs: number, detail?: TimelineClipTrimDetail) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
 }) {
@@ -525,8 +533,8 @@ function BaseVideoTrack({ clips, viewport, plotWidth, onSelect, onOpen, onMove, 
     if (!active || active.id !== clip.id) return;
     const delta = Math.round((event.clientX - active.startX) / Math.max(1, plotWidth) * (viewport.endMs - viewport.startMs));
     if (active.kind === "move") onMove?.(clip.id, Math.max(0, active.range[0] + delta));
-    if (active.kind === "start") onTrim?.(clip.id, "start", Math.min(active.range[1], Math.max(0, active.range[0] + delta)));
-    if (active.kind === "end") onTrim?.(clip.id, "end", Math.max(active.range[0], active.range[1] + delta));
+    if (active.kind === "start") onTrim?.(clip.id, "start", Math.min(active.range[1], Math.max(0, active.range[0] + delta)), timelineClipTrimDetail("pointer", viewport, plotWidth));
+    if (active.kind === "end") onTrim?.(clip.id, "end", Math.max(active.range[0], active.range[1] + delta), timelineClipTrimDetail("pointer", viewport, plotWidth));
   };
   return (
     <div className="flex" style={{ height: ROW_BLOCK }}>
@@ -553,11 +561,11 @@ function BaseVideoTrack({ clips, viewport, plotWidth, onSelect, onOpen, onMove, 
               clip.selected ? "border-c-border-selected-strong" : "border-c-border")}
             style={{ left, width, backgroundColor: !clip.thumbnail && !tintIsImage ? clip.tint : undefined, backgroundImage: clip.thumbnail ? `linear-gradient(rgba(0,0,0,.25),rgba(0,0,0,.25)),url(${clip.thumbnail})` : tintIsImage ? clip.tint : undefined, backgroundSize: "cover", backgroundPosition: "center" }}>
             <span aria-label={`Trim start of ${clip.name}`} role="slider" aria-valuemin={0} aria-valuemax={clip.range[1]} aria-valuenow={clip.range[0]} tabIndex={0}
-              onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "start", Math.min(clip.range[1], Math.max(0, clip.range[0] + (event.key === "ArrowLeft" ? -100 : 100)))); } }}
+              onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "start", Math.min(clip.range[1], Math.max(0, clip.range[0] + (event.key === "ArrowLeft" ? -100 : 100))), timelineClipTrimDetail("keyboard", viewport, plotWidth)); } }}
               onPointerDown={event => begin(event, clip, "start")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
               className="absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
             <span aria-label={`Trim end of ${clip.name}`} role="slider" aria-valuemin={clip.range[0]} aria-valuemax={Number.MAX_SAFE_INTEGER} aria-valuenow={clip.range[1]} tabIndex={0}
-              onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "end", Math.max(clip.range[0], clip.range[1] + (event.key === "ArrowLeft" ? -100 : 100))); } }}
+              onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "end", Math.max(clip.range[0], clip.range[1] + (event.key === "ArrowLeft" ? -100 : 100)), timelineClipTrimDetail("keyboard", viewport, plotWidth)); } }}
               onPointerDown={event => begin(event, clip, "end")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
               className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
             <span className={clsx(FONT, "relative text-[11px] font-[450] truncate", clip.thumbnail || clip.tint ? "text-white" : "text-c-text-secondary")}>{clip.name}</span>
@@ -648,7 +656,7 @@ export function Timeline({
   onClipSelect?: (id: string) => void;
   onClipOpen?: (id: string) => void;
   onClipMove?: (id: string, startMs: number) => void;
-  onClipTrim?: (id: string, edge: "start" | "end", timeMs: number) => void;
+  onClipTrim?: (id: string, edge: "start" | "end", timeMs: number, detail?: TimelineClipTrimDetail) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
   /** One-shot request to minimally pan a selected or newly created keyframe into the time viewport. */
