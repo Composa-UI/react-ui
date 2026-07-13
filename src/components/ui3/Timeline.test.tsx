@@ -1,0 +1,34 @@
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import { Timeline, type Track } from "./Timeline";
+
+const numericTrack: Track = { id: "hero", name: "Hero", type: "frame", props: [
+  { id: "opacity", name: "Opacity", keyframes: [500, 900] },
+  { id: "x", name: "Position X", keyframes: [500] },
+] };
+
+describe("Timeline DOM contracts", () => {
+  it("preserves legacy individual numeric keyframe IDs", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]} />);
+    expect(html).toContain('data-keyframe-id="keyframe-0-500"');
+    expect(html).toContain('data-keyframe-id="keyframe-1-900"');
+    expect(html).not.toContain('data-keyframe-id="opacity:aggregate-keyframe');
+  });
+
+  it("renders disclosures and aggregates as noninteractive affordances without callbacks", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]} />);
+    expect(html).not.toContain('aria-label="Collapse Hero"');
+    expect(html).not.toContain('aria-label="Hero aggregate keyframe');
+    expect(html).toContain('data-aggregate-status="complete"');
+    expect(html).toContain('data-aggregate-status="partial"');
+  });
+
+  it("exposes controlled disclosures and accessible aggregate status when callbacks exist", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]}
+      onTrackExpandedChange={() => undefined} onAggregateKeyframeSelect={() => undefined} />);
+    expect(html).toContain('aria-label="Collapse Hero"');
+    expect(html).toContain('aria-label="Hero aggregate keyframe at 500ms (complete)"');
+    expect(html).toContain('aria-label="Hero aggregate keyframe at 900ms (partial)"');
+    expect(html).toContain("focus-visible:ring-c-border-selected-strong");
+  });
+});

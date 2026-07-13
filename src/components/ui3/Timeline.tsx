@@ -1,6 +1,7 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
-import { Play, Pause, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Hash, Square, Type, Minus, Eye, EyeOff, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film } from "lucide-react";
+import { Play, Pause, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Hash, Square, Type, Minus, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film } from "lucide-react";
+import { collectAggregateKeyframes, normalizeViewport, panViewport, reconcileUncontrolledViewport, tickTimes, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineViewport } from "./timelineModel";
 
 // ─── Timeline ───────────────────────────────────────────────────────────────────
 // Polymorphic timeline region (Composa editor spec: docs/composa/specs/timeline.md).
@@ -15,17 +16,14 @@ import { Play, Pause, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Hash, S
 
 const FONT = "font-[family-name:var(--composa-font-family)]";
 const LEFT_W = 297;       // track-list width
-const PX_PER_MS = 0.106;  // ~106px / 1000ms  (slide-local view: ms scale)
-const PX_PER_S = 106;     // 106px / 1s      (master view: seconds scale)
 const ROW_LAYER = 28;
 const ROW_PROP = 28;      // raised from 24 → contains the 20px bar with 4px above/below
 const ROW_BLOCK = 32;     // master-view slide/video block-track row height (compact — contains 20px bar)
 const BLUE = "#0d99ff";
 
-const ms = (t: number) => t * PX_PER_MS;
-const sec = (t: number) => (t / 1000) * PX_PER_S; // ms input → px on the seconds scale
-
 export type TimelineMode = "master" | "slide";
+export type { TimelineViewport } from "./timelineModel";
+export type TimelineViewportChangeSource = "wheel-zoom" | "wheel-pan" | "zoom-control";
 
 export type TrackType = "group" | "frame" | "text" | "line";
 export interface TimelineKeyframe { id: string; timeMs: number; selected?: boolean; }
@@ -44,6 +42,10 @@ export interface Track {
   type: TrackType;
   bar?: [number, number];
   props: PropTrack[];
+  /** Visual nesting only. Product hierarchy remains host-owned. */
+  depth?: number;
+  /** Controlled property-row visibility. Undefined preserves the legacy expanded state. */
+  expanded?: boolean;
 }
 
 // master-view slide block — a slide's [start,end] range (ms) on the project timeline
@@ -94,15 +96,22 @@ const DEMO_BLOCKS: SlideBlock[] = [
 
 // ── keyframe lane (bar + diamonds + connecting line) ──────────────────────────────
 export interface KeyframeTarget { trackId: string; propertyId: string; keyframeId: string; timeMs: number; }
+export interface AggregateKeyframeTarget { trackId: string; timeMs: number; keyframeIds: string[]; complete: boolean; }
 export type TimelineGestureTarget =
   | { kind: "keyframe"; id: string; action: "move"; keyframe: KeyframeTarget }
   | { kind: "slide-block" | "base-clip"; id: string; action: "move" | "trim-start" | "trim-end" };
 
 const keyframeTime = (keyframe: TimelineKeyframeValue) => typeof keyframe === "number" ? keyframe : keyframe.timeMs;
+// Keep the legacy numeric ID byte-for-byte compatible for individual keyframe callbacks.
 const keyframeId = (keyframe: TimelineKeyframeValue, index: number) => typeof keyframe === "number" ? `keyframe-${index}-${keyframe}` : keyframe.id;
+// Aggregate identities must be unique across properties without changing the legacy callback contract above.
+const aggregateKeyframeId = (keyframe: TimelineKeyframeValue, index: number, propertyId: string) => typeof keyframe === "number" ? `${propertyId}:aggregate-keyframe-${index}-${keyframe}` : keyframe.id;
+const percent = (timeMs: number, viewport: TimelineViewport) => `${timeToX(timeMs, viewport, 100)}%`;
+const percentWidth = (startMs: number, endMs: number, viewport: TimelineViewport) => `${timeToX(endMs, viewport, 100) - timeToX(startMs, viewport, 100)}%`;
 
-function Lane({ prop, trackId, propertyId, height, onSelect, onMove, onDelete, onGestureStart, onGestureEnd }: {
+function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, onSelect, onMove, onDelete, onGestureStart, onGestureEnd }: {
   prop: PropTrack; trackId: string; propertyId: string; height: number;
+  viewport: TimelineViewport; plotWidth: number;
   onSelect?: (target: KeyframeTarget, additive: boolean) => void;
   onMove?: (target: KeyframeTarget, timeMs: number) => void;
   onDelete?: (target: KeyframeTarget) => void;
@@ -120,11 +129,11 @@ function Lane({ prop, trackId, propertyId, height, onSelect, onMove, onDelete, o
     onGestureEnd?.({ kind: "keyframe", id: target.keyframeId, action: "move", keyframe: target }, { cancelled });
   };
   return (
-    <div className="flex-1 relative" style={{ height }}>
+    <div className="flex-1 relative overflow-hidden" style={{ height }}>
       {prop.bar && (
         <div
           className="absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] bg-c-bg-secondary"
-          style={{ left: ms(prop.bar[0]), width: ms(prop.bar[1] - prop.bar[0]) }}
+          style={{ left: percent(prop.bar[0], viewport), width: percentWidth(prop.bar[0], prop.bar[1], viewport) }}
         >
           {/* trim handles (edge-drag to trim start/end) — inset + wider to read as grips */}
           <span className="absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
@@ -134,7 +143,7 @@ function Lane({ prop, trackId, propertyId, height, onSelect, onMove, onDelete, o
       {kfs.length > 1 && (
         <div
           className="absolute top-1/2 -translate-y-1/2 h-px"
-          style={{ left: ms(first), width: ms(last - first), backgroundColor: prop.accent ? "#8638e5" : "rgba(0,0,0,0.25)" }}
+          style={{ left: percent(first, viewport), width: percentWidth(first, last, viewport), backgroundColor: prop.accent ? "#8638e5" : "rgba(0,0,0,0.25)" }}
         />
       )}
       {kfs.map((keyframe, i) => {
@@ -147,6 +156,7 @@ function Lane({ prop, trackId, propertyId, height, onSelect, onMove, onDelete, o
           key={id}
           role="button"
           tabIndex={0}
+          data-keyframe-id={id}
           aria-label={`${prop.name} keyframe at ${timeMs}ms`}
           aria-pressed={selected}
           onClick={event => onSelect?.(target, event.shiftKey)}
@@ -158,11 +168,12 @@ function Lane({ prop, trackId, propertyId, height, onSelect, onMove, onDelete, o
           onPointerDown={event => { drag.current = { id, startX: event.clientX, startTime: timeMs }; onGestureStart?.({ kind: "keyframe", id, action: "move", keyframe: target }); event.currentTarget.setPointerCapture(event.pointerId); }}
           onPointerMove={event => {
             if (drag.current?.id !== id) return;
-            onMove?.(target, Math.max(0, Math.round(drag.current.startTime + (event.clientX - drag.current.startX) / PX_PER_MS)));
+            const deltaMs = (event.clientX - drag.current.startX) / Math.max(1, plotWidth) * (viewport.endMs - viewport.startMs);
+            onMove?.(target, Math.max(0, Math.round(drag.current.startTime + deltaMs)));
           }}
           onPointerUp={() => finish(target, false)} onPointerCancel={() => finish(target, true)} onLostPointerCapture={() => finish(target, true)}
           className={clsx("absolute top-1/2 size-[7px] -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] outline-none", selected && "ring-2 ring-c-border-selected-strong")}
-          style={{ left: ms(timeMs), backgroundColor: prop.accent ? "#8638e5" : BLUE }}
+          style={{ left: percent(timeMs, viewport), backgroundColor: prop.accent ? "#8638e5" : BLUE }}
         />
       );})}
     </div>
@@ -170,8 +181,11 @@ function Lane({ prop, trackId, propertyId, height, onSelect, onMove, onDelete, o
 }
 
 // ── one track (layer row + its property rows) ─────────────────────────────────────
-function TrackRows({ track, trackIndex, onKeyframeSelect, onKeyframeMove, onKeyframeDelete, onPropertyAddKeyframe, onGestureStart, onGestureEnd }: {
+function TrackRows({ track, trackIndex, viewport, plotWidth, onExpandedChange, onAggregateKeyframeSelect, onKeyframeSelect, onKeyframeMove, onKeyframeDelete, onPropertyAddKeyframe, onGestureStart, onGestureEnd }: {
   track: Track; trackIndex: number;
+  viewport: TimelineViewport; plotWidth: number;
+  onExpandedChange?: (trackId: string, expanded: boolean) => void;
+  onAggregateKeyframeSelect?: (target: AggregateKeyframeTarget, additive: boolean) => void;
   onKeyframeSelect?: (target: KeyframeTarget, additive: boolean) => void;
   onKeyframeMove?: (target: KeyframeTarget, timeMs: number) => void;
   onKeyframeDelete?: (target: KeyframeTarget) => void;
@@ -181,30 +195,56 @@ function TrackRows({ track, trackIndex, onKeyframeSelect, onKeyframeMove, onKeyf
 }) {
   const Icon = TYPE_ICON[track.type];
   const trackId = track.id ?? `track-${trackIndex}`;
+  const depth = Math.max(0, track.depth ?? 0);
+  const expanded = track.expanded !== false;
+  const aggregateKeys = collectAggregateKeyframes(track.props.flatMap((prop, propertyIndex) => {
+    const propertyId = prop.id ?? `property-${propertyIndex}`;
+    return prop.keyframes.map((keyframe, keyframeIndex) => ({
+      propertyId,
+      keyframeId: aggregateKeyframeId(keyframe, keyframeIndex, propertyId),
+      timeMs: keyframeTime(keyframe),
+      selected: typeof keyframe !== "number" && keyframe.selected,
+    }));
+  }), track.props.length);
   return (
     <>
       {/* layer row */}
       <div className="flex" style={{ height: ROW_LAYER }}>
-        <div className="shrink-0 flex items-center gap-[8px] pl-[8px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W }}>
+        <div className="shrink-0 flex items-center gap-[8px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 8 + depth * 16 }}>
+          {track.props.length ? onExpandedChange ? <button type="button" aria-label={`${expanded ? "Collapse" : "Expand"} ${track.name}`} aria-expanded={expanded} onClick={() => onExpandedChange(trackId, !expanded)} className="size-[16px] shrink-0 rounded-c-sm flex items-center justify-center text-c-icon-secondary hover:bg-c-bg-hover focus-visible:ring-2 focus-visible:ring-c-border-selected-strong outline-none">
+            {expanded ? <ChevronDown size={12} strokeWidth={1.5} /> : <DisclosureRight size={12} strokeWidth={1.5} />}
+          </button> : <span aria-hidden className="size-[16px] shrink-0 flex items-center justify-center text-c-icon-secondary">
+            {expanded ? <ChevronDown size={12} strokeWidth={1.5} /> : <DisclosureRight size={12} strokeWidth={1.5} />}
+          </span> : <span className="size-[16px] shrink-0" />}
           <Icon size={16} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" />
           <span className={clsx(FONT, "text-[11px] font-[450] text-c-text truncate")}>{track.name}</span>
         </div>
-        <div className="flex-1 relative" style={{ height: ROW_LAYER }}>
+        <div className="flex-1 relative overflow-hidden" style={{ height: ROW_LAYER }}>
           {track.bar && (
             <div
               className="absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] bg-c-bg-secondary"
-              style={{ left: ms(track.bar[0]), width: ms(track.bar[1] - track.bar[0]) }}
+              style={{ left: percent(track.bar[0], viewport), width: percentWidth(track.bar[0], track.bar[1], viewport) }}
             >
               <span className="absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
               <span className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
             </div>
           )}
+          {aggregateKeys.map(aggregate => {
+            const status = aggregate.complete ? "complete" : "partial";
+            const className = clsx("absolute top-1/2 size-[9px] -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] border outline-none", aggregate.complete ? "bg-c-icon border-c-icon" : "bg-c-bg border-c-icon-secondary", aggregate.selected && "ring-2 ring-c-border-selected-strong");
+            const style = { left: percent(aggregate.timeMs, viewport) };
+            return onAggregateKeyframeSelect ? <button type="button" key={aggregate.timeMs} data-aggregate-status={status}
+              aria-label={`${track.name} aggregate keyframe at ${aggregate.timeMs}ms (${status})`} aria-pressed={aggregate.selected}
+              onClick={event => onAggregateKeyframeSelect({ trackId, timeMs: aggregate.timeMs, keyframeIds: aggregate.keyframeIds, complete: aggregate.complete }, event.shiftKey)}
+              className={clsx(className, "focus-visible:ring-2 focus-visible:ring-c-border-selected-strong")} style={style} />
+              : <span aria-hidden key={aggregate.timeMs} data-aggregate-status={status} className={className} style={style} />;
+          })}
         </div>
       </div>
       {/* property rows */}
-      {track.props.map((p, i) => (
+      {expanded && track.props.map((p, i) => (
         <div key={i} className={clsx("flex", p.hidden && "opacity-40")} style={{ height: ROW_PROP }}>
-          <div className="group/prop shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 }}>
+          <div className="group/prop shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate", p.accent ? "text-[#8638e5]" : "text-c-text-secondary")}>{p.name}</span>
             {/* keyframe stepper */}
             <ChevronLeft size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />
@@ -214,7 +254,7 @@ function TrackRows({ track, trackIndex, onKeyframeSelect, onKeyframeMove, onKeyf
             <ChevronRight size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />
             {p.hidden ? <EyeOff size={14} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" /> : <Eye size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />}
           </div>
-          <Lane prop={p} trackId={trackId} propertyId={p.id ?? `property-${i}`} height={ROW_PROP} onSelect={onKeyframeSelect} onMove={onKeyframeMove} onDelete={onKeyframeDelete} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+          <Lane prop={p} trackId={trackId} propertyId={p.id ?? `property-${i}`} height={ROW_PROP} viewport={viewport} plotWidth={plotWidth} onSelect={onKeyframeSelect} onMove={onKeyframeMove} onDelete={onKeyframeDelete} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
         </div>
       ))}
     </>
@@ -271,37 +311,33 @@ function Transport({ current, duration, mode, playing, loop, onPlayingChange, on
 }
 
 // ── ruler (slide-local view — milliseconds) ────────────────────────────────────────
-function Ruler({ maxMs }: { maxMs: number }) {
-  const ticks: number[] = [];
-  for (let t = 1000; t <= maxMs; t += 1000) ticks.push(t);
+function Ruler({ viewport, width }: { viewport: TimelineViewport; width: number }) {
+  const ticks = tickTimes(viewport, width);
   return (
     <div className="absolute inset-0 overflow-hidden">
       {ticks.map(t => (
-        <span key={t} className={clsx(FONT, "absolute top-1/2 -translate-y-1/2 text-[11px] text-c-text-secondary tabular-nums")} style={{ left: ms(t) }}>{t}</span>
+        <span key={t} className={clsx(FONT, "absolute top-1/2 -translate-y-1/2 text-[11px] text-c-text-secondary tabular-nums")} style={{ left: percent(t, viewport) }}>{Math.round(t)}</span>
       ))}
     </div>
   );
 }
 
 // ── ruler (master view — seconds) ──────────────────────────────────────────────────
-function SecondRuler({ maxMs }: { maxMs: number }) {
-  // interval scales loosely with total duration so labels don't crowd
-  const totalS = maxMs / 1000;
-  const step = totalS > 60 ? 10 : totalS > 20 ? 5 : 1;
-  const ticks: number[] = [];
-  for (let s = 0; s <= totalS; s += step) ticks.push(s);
+function SecondRuler({ viewport, width }: { viewport: TimelineViewport; width: number }) {
+  const ticks = tickTimes(viewport, width);
   return (
     <div className="absolute inset-0 overflow-hidden">
-      {ticks.map(s => (
-        <span key={s} className={clsx(FONT, "absolute top-1/2 -translate-y-1/2 text-[11px] text-c-text-secondary tabular-nums")} style={{ left: s * PX_PER_S }}>{s}s</span>
+      {ticks.map(timeMs => (
+        <span key={timeMs} className={clsx(FONT, "absolute top-1/2 -translate-y-1/2 text-[11px] text-c-text-secondary tabular-nums")} style={{ left: percent(timeMs, viewport) }}>{Number((timeMs / 1000).toFixed(2))}s</span>
       ))}
     </div>
   );
 }
 
 // ── master track rows: "Slides" block track + "Base video" placeholder ──────────────
-function BlockTrack({ blocks, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
+function BlockTrack({ blocks, viewport, plotWidth, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
   blocks: SlideBlock[];
+  viewport: TimelineViewport; plotWidth: number;
   onSelect?: (id: string) => void;
   onOpen?: (id: string) => void;
   onMove?: (id: string, startMs: number) => void;
@@ -327,7 +363,7 @@ function BlockTrack({ blocks, onSelect, onOpen, onMove, onTrim, onGestureStart, 
     const active = drag.current;
     const id = slideBlockId(block, blocks.indexOf(block));
     if (!active || active.id !== id) return;
-    const delta = Math.round((event.clientX - active.startX) / (PX_PER_S / 1000));
+    const delta = Math.round((event.clientX - active.startX) / Math.max(1, plotWidth) * (viewport.endMs - viewport.startMs));
     if (active.kind === "move") onMove?.(id, Math.max(0, active.range[0] + delta));
     if (active.kind === "start") onTrim?.(id, "start", Math.min(active.range[1], Math.max(0, active.range[0] + delta)));
     if (active.kind === "end") onTrim?.(id, "end", Math.max(active.range[0], active.range[1] + delta));
@@ -340,11 +376,11 @@ function BlockTrack({ blocks, onSelect, onOpen, onMove, onTrim, onGestureStart, 
         <span className={clsx(FONT, "text-[11px] font-[450] text-c-text truncate")}>Compositions</span>
       </div>
       {/* block lane */}
-      <div className="flex-1 relative" style={{ height: ROW_BLOCK }}>
+      <div className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }}>
         {blocks.map((b, i) => {
           const id = slideBlockId(b, i);
-          const left = sec(b.range[0]);
-          const width = sec(b.range[1] - b.range[0]);
+          const left = percent(b.range[0], viewport);
+          const width = percentWidth(b.range[0], b.range[1], viewport);
           return (
             <div
               key={id}
@@ -379,8 +415,9 @@ function BlockTrack({ blocks, onSelect, onOpen, onMove, onTrim, onGestureStart, 
   );
 }
 
-function BaseVideoTrack({ clips, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
+function BaseVideoTrack({ clips, viewport, plotWidth, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
   clips: BaseClipBlock[];
+  viewport: TimelineViewport; plotWidth: number;
   onSelect?: (id: string) => void;
   onOpen?: (id: string) => void;
   onMove?: (id: string, startMs: number) => void;
@@ -404,7 +441,7 @@ function BaseVideoTrack({ clips, onSelect, onOpen, onMove, onTrim, onGestureStar
   const update = (event: React.PointerEvent, clip: BaseClipBlock) => {
     const active = drag.current;
     if (!active || active.id !== clip.id) return;
-    const delta = Math.round((event.clientX - active.startX) / (PX_PER_S / 1000));
+    const delta = Math.round((event.clientX - active.startX) / Math.max(1, plotWidth) * (viewport.endMs - viewport.startMs));
     if (active.kind === "move") onMove?.(clip.id, Math.max(0, active.range[0] + delta));
     if (active.kind === "start") onTrim?.(clip.id, "start", Math.min(active.range[1], Math.max(0, active.range[0] + delta)));
     if (active.kind === "end") onTrim?.(clip.id, "end", Math.max(active.range[0], active.range[1] + delta));
@@ -415,10 +452,10 @@ function BaseVideoTrack({ clips, onSelect, onOpen, onMove, onTrim, onGestureStar
         <Film size={16} strokeWidth={1.5} className="text-c-icon-secondary shrink-0 opacity-60" />
         <span className={clsx(FONT, "text-[11px] font-[450] text-c-text-secondary truncate")}>Base video</span>
       </div>
-      <div className="flex-1 relative" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Base video track" : "Base video track (empty)"}>
+      <div className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Base video track" : "Base video track (empty)"}>
         {clips.map(clip => {
-          const left = sec(clip.range[0]);
-          const width = sec(clip.range[1] - clip.range[0]);
+          const left = percent(clip.range[0], viewport);
+          const width = percentWidth(clip.range[0], clip.range[1], viewport);
           const tintIsImage = clip.tint?.includes("gradient(");
           return <div key={clip.id} role="button" tabIndex={0} aria-pressed={clip.selected}
             onClick={() => onSelect?.(clip.id)} onDoubleClick={() => onOpen?.(clip.id)}
@@ -450,6 +487,9 @@ export function Timeline({
   baseClips = [],
   height = 320,
   duration = mode === "master" ? 20000 : 10000,
+  viewport: controlledViewport,
+  defaultViewport,
+  onViewportChange,
   playhead: controlledPlayhead,
   defaultPlayhead = 300,
   onPlayheadChange,
@@ -462,6 +502,8 @@ export function Timeline({
   onStop,
   onAddKeyframe,
   onPropertyAddKeyframe,
+  onTrackExpandedChange,
+  onAggregateKeyframeSelect,
   onKeyframeSelect,
   onKeyframeMove,
   onKeyframeDelete,
@@ -483,6 +525,9 @@ export function Timeline({
   baseClips?: BaseClipBlock[];
   height?: number;
   duration?: number;
+  viewport?: TimelineViewport;
+  defaultViewport?: TimelineViewport;
+  onViewportChange?: (viewport: TimelineViewport, detail: { source: TimelineViewportChangeSource }) => void;
   playhead?: number;
   defaultPlayhead?: number;
   onPlayheadChange?: (timeMs: number) => void;
@@ -495,6 +540,8 @@ export function Timeline({
   onStop?: () => void;
   onAddKeyframe?: (timeMs: number) => void;
   onPropertyAddKeyframe?: (trackId: string, propertyId: string, timeMs: number) => void;
+  onTrackExpandedChange?: (trackId: string, expanded: boolean) => void;
+  onAggregateKeyframeSelect?: (target: AggregateKeyframeTarget, additive: boolean) => void;
   onKeyframeSelect?: (target: KeyframeTarget, additive: boolean) => void;
   onKeyframeMove?: (target: KeyframeTarget, timeMs: number) => void;
   onKeyframeDelete?: (target: KeyframeTarget) => void;
@@ -514,35 +561,86 @@ export function Timeline({
   const [internalPlayhead, setInternalPlayhead] = useState(defaultPlayhead);
   const [internalPlaying, setInternalPlaying] = useState(defaultPlaying);
   const [internalLoop, setInternalLoop] = useState(defaultLoop);
+  const [internalViewport, setInternalViewport] = useState(() => normalizeViewport(defaultViewport ?? { startMs: 0, endMs: duration }, duration));
+  const [timelineWidth, setTimelineWidth] = useState(LEFT_W + 1);
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const viewportTouched = useRef(false);
+  const previousDuration = useRef(duration);
+  const previousMode = useRef(mode);
   const playhead = controlledPlayhead ?? internalPlayhead;
   const playing = controlledPlaying ?? internalPlaying;
   const loop = controlledLoop ?? internalLoop;
+  const viewport = normalizeViewport(controlledViewport ?? internalViewport, duration);
+  const plotWidth = Math.max(1, timelineWidth - LEFT_W);
   const setPlayhead = (timeMs: number) => {
     if (controlledPlayhead === undefined) setInternalPlayhead(timeMs);
     onPlayheadChange?.(timeMs);
   };
   const setPlaying = (next: boolean) => { if (controlledPlaying === undefined) setInternalPlaying(next); onPlayingChange?.(next); };
   const setLoop = (next: boolean) => { if (controlledLoop === undefined) setInternalLoop(next); onLoopChange?.(next); };
-  const maxMs = duration;
-  const toPx = master ? sec : ms;                 // shared time→px scale per view
-  const pxPer = master ? PX_PER_S / 1000 : PX_PER_MS;
+  const setViewport = (next: TimelineViewport, source: TimelineViewportChangeSource) => {
+    const normalized = normalizeViewport(next, duration);
+    viewportTouched.current = true;
+    if (controlledViewport === undefined) setInternalViewport(normalized);
+    onViewportChange?.(normalized, { source });
+  };
+
+  useEffect(() => {
+    const element = timelineRef.current;
+    if (!element) return;
+    const measure = () => setTimelineWidth(element.clientWidth);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const contextChanged = previousDuration.current !== duration || previousMode.current !== mode;
+    previousDuration.current = duration;
+    previousMode.current = mode;
+    if (!contextChanged || controlledViewport !== undefined) return;
+    setInternalViewport(current => reconcileUncontrolledViewport(current, duration, !viewportTouched.current && defaultViewport === undefined));
+  }, [duration, mode, controlledViewport]);
+
+  useEffect(() => {
+    const element = timelineRef.current;
+    if (!element) return;
+    const handleWheel = (event: WheelEvent) => {
+      const pageSize = Math.max(1, plotWidth);
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+        const rect = element.getBoundingClientRect();
+        const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left - LEFT_W) / plotWidth));
+        const deltaY = wheelDeltaPixels(event.deltaY, event.deltaMode, pageSize);
+        setViewport(zoomViewport(viewport, ratio, Math.exp(deltaY * .002), duration), "wheel-zoom");
+        return;
+      }
+      const rawPan = wheelPanDelta(event.deltaX, event.deltaY, event.shiftKey);
+      if (rawPan === 0) return;
+      event.preventDefault();
+      setViewport(panViewport(viewport, wheelDeltaPixels(rawPan, event.deltaMode, pageSize), plotWidth, duration), "wheel-pan");
+    };
+    element.addEventListener("wheel", handleWheel, { passive: false });
+    return () => element.removeEventListener("wheel", handleWheel);
+  }, [viewport.startMs, viewport.endMs, plotWidth, duration, controlledViewport, onViewportChange]);
 
   // Measure the element the pointer events live on (the ruler container), so the
   // scrub origin can't desync from a separate ref.
   const scrub = (e: React.PointerEvent) => {
     const r = e.currentTarget.getBoundingClientRect();
-    setPlayhead(Math.min(duration, Math.max(0, Math.round((e.clientX - r.left) / pxPer))));
+    setPlayhead(Math.min(duration, Math.max(0, Math.round(xToTime(e.clientX - r.left, viewport, r.width)))));
   };
   const [drag, setDrag] = useState(false);
-
   return (
-    <div className="flex flex-col bg-c-bg border-t border-c-border overflow-hidden" style={{ height }}>
+    <div ref={timelineRef} className="flex flex-col bg-c-bg border-t border-c-border overflow-hidden" style={{ height }}>
       {/* header: transport | ruler | zoom */}
-      <div className="flex h-[40px] shrink-0 border-b border-c-border">
+      <div className="relative flex h-[40px] shrink-0 border-b border-c-border">
         <Transport current={playhead} duration={duration} mode={mode} playing={playing} loop={loop} onPlayingChange={setPlaying} onLoopChange={setLoop}
           onStop={() => { setPlaying(false); onStop?.(); }} onAddKeyframe={() => onAddKeyframe?.(playhead)} />
         <div
-          className="flex-1 relative cursor-ew-resize"
+          className="flex-1 relative cursor-ew-resize overflow-hidden"
           role="slider"
           aria-label="Playhead"
           aria-valuemin={0}
@@ -562,18 +660,17 @@ export function Timeline({
             else if (event.key === "End") { event.preventDefault(); setPlayhead(duration); }
           }}
         >
-          {master ? <SecondRuler maxMs={maxMs} /> : <Ruler maxMs={maxMs} />}
+          {master ? <SecondRuler viewport={viewport} width={plotWidth} /> : <Ruler viewport={viewport} width={plotWidth} />}
           {/* playhead handle */}
-          <div className="absolute top-[4px] -translate-x-1/2 pointer-events-none" style={{ left: toPx(playhead) }}>
+          <div className="absolute top-[4px] -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport) }}>
             <svg width="12" height="10" viewBox="0 0 12 10"><path d="M0 0h12v4l-6 6-6-6V0Z" fill={BLUE} /></svg>
           </div>
         </div>
-        <div className="shrink-0 flex items-center gap-[8px] px-[12px] border-l border-c-border">
-          {/* zoom slider */}
-          <div className="relative w-[91px] h-[6px] rounded-full bg-c-bg-secondary">
-            <div className="absolute left-0 top-0 h-[6px] w-[12px] rounded-full" style={{ backgroundColor: BLUE }} />
-            <div className="absolute size-[12px] rounded-full bg-white shadow-[0px_1px_3px_rgba(0,0,0,0.2)] top-1/2 -translate-y-1/2" style={{ left: 6 }} />
-          </div>
+        <div className="absolute z-10 right-0 top-0 bottom-0 flex items-center gap-[8px] px-[12px] border-l border-c-border bg-c-bg">
+          <input type="range" aria-label="Timeline zoom" aria-valuetext={`${Math.round(viewportZoomValue(viewport, duration) * 100)}%`}
+            min={0} max={100} step={1} value={Math.round(viewportZoomValue(viewport, duration) * 100)}
+            onChange={event => setViewport(viewportAtZoomValue(viewport, Number(event.currentTarget.value) / 100, duration), "zoom-control")}
+            className="appearance-none w-[91px] h-[20px] cursor-ew-resize bg-transparent rounded-c-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-c-border-selected-strong [&::-webkit-slider-runnable-track]:h-[6px] [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-c-bg-secondary [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-[12px] [&::-webkit-slider-thumb]:-mt-[3px] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-c-bg-brand [&::-webkit-slider-thumb]:shadow-sm [&::-moz-range-track]:h-[6px] [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-c-bg-secondary [&::-moz-range-thumb]:size-[12px] [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-c-bg-brand" />
           <button aria-label="Collapse timeline" className="size-[24px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover">
             <PanelBottomClose size={16} strokeWidth={1.5} />
           </button>
@@ -584,8 +681,8 @@ export function Timeline({
       <div className="flex-1 overflow-y-auto relative">
         {master ? (
           <>
-            <BlockTrack blocks={blocks} onSelect={onBlockSelect} onOpen={onBlockOpen} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
-            <BaseVideoTrack clips={baseClips} onSelect={onClipSelect} onOpen={onClipOpen} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <BlockTrack blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <BaseVideoTrack clips={baseClips} viewport={viewport} plotWidth={plotWidth} onSelect={onClipSelect} onOpen={onClipOpen} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
           </>
         ) : (
           <>
@@ -602,14 +699,17 @@ export function Timeline({
                 <span>Project</span>
               </button>
             </div>
-            {tracks.map((t, i) => <TrackRows key={t.id ?? i} track={t} trackIndex={i}
+            {tracks.map((t, i) => <TrackRows key={t.id ?? i} track={t} trackIndex={i} viewport={viewport} plotWidth={plotWidth}
+              onExpandedChange={onTrackExpandedChange} onAggregateKeyframeSelect={onAggregateKeyframeSelect}
               onKeyframeSelect={onKeyframeSelect} onKeyframeMove={onKeyframeMove} onKeyframeDelete={onKeyframeDelete}
               onGestureStart={onGestureStart} onGestureEnd={onGestureEnd}
               onPropertyAddKeyframe={(trackId, propertyId) => onPropertyAddKeyframe?.(trackId, propertyId, playhead)} />)}
           </>
         )}
         {/* shared playhead line spanning the body */}
-        <div className="absolute top-0 bottom-0 w-px pointer-events-none" style={{ left: LEFT_W + toPx(playhead), backgroundColor: BLUE }} />
+        <div className="absolute top-0 bottom-0 right-0 overflow-hidden pointer-events-none" style={{ left: LEFT_W }}>
+          <div className="absolute top-0 bottom-0 w-px" style={{ left: percent(playhead, viewport), backgroundColor: BLUE }} />
+        </div>
       </div>
     </div>
   );

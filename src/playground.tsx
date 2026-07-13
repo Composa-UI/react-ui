@@ -3,7 +3,7 @@ import { PropertyPanel, type ClipSpeed, type ElementEffectSetting, type ElementF
 import SlidesTemplate from "./imports/SlidesTemplate";
 import { SlidesPanel, type SlideData } from "./components/ui3/SlidesPanel";
 import { SlideInspector } from "./components/ui3/SlideInspector";
-import { Timeline, type BaseClipBlock } from "./components/ui3/Timeline";
+import { Timeline, type BaseClipBlock, type TimelineViewport, type Track } from "./components/ui3/Timeline";
 import { LayerList, type LayerNode } from "./components/ui3/LayerList";
 import { NavRail } from "./components/ui3/NavRail";
 import { CompositionPanel } from "./components/ui3/CompositionPanel";
@@ -41,6 +41,9 @@ export default function Playground() {
   const [contractPlayhead, setContractPlayhead] = useState(300);
   const [contractPlaying, setContractPlaying] = useState(false);
   const [contractLoop, setContractLoop] = useState(false);
+  const [contractTimelineViewport, setContractTimelineViewport] = useState<TimelineViewport>({ startMs: 0, endMs: 4_000 });
+  const [contractTimelineExpanded, setContractTimelineExpanded] = useState(true);
+  const [contractTimelineKeyIds, setContractTimelineKeyIds] = useState<string[]>(["hero-opacity-0", "hero-x-0"]);
   const [contractX, setContractX] = useState(270);
   const [assetQuery, setAssetQuery] = useState("");
   const [assetFilter, setAssetFilter] = useState<AssetFilter>("all");
@@ -84,6 +87,22 @@ export default function Playground() {
     { id: "asset-upload", name: "b-roll.mp4", kind: "video", status: "uploading", progress: 62 },
     { id: "asset-error", name: "damaged.png", kind: "image", status: "error", errorMessage: "Upload failed" },
   ]);
+  const contractTimelineTracks: Track[] = [
+    { id: "hero", name: "Hero frame", type: "frame", depth: 0, expanded: contractTimelineExpanded, props: [
+      { id: "opacity", name: "Opacity", keyframes: [
+        { id: "hero-opacity-0", timeMs: 500, selected: contractTimelineKeyIds.includes("hero-opacity-0") },
+        { id: "hero-opacity-1", timeMs: 2_200, selected: contractTimelineKeyIds.includes("hero-opacity-1") },
+      ] },
+      { id: "x", name: "Position X", keyframes: [
+        { id: "hero-x-0", timeMs: 500, selected: contractTimelineKeyIds.includes("hero-x-0") },
+        { id: "hero-x-1", timeMs: 3_200, selected: contractTimelineKeyIds.includes("hero-x-1") },
+      ] },
+    ] },
+    { id: "caption", name: "Caption", type: "text", depth: 1, expanded: true, props: [
+      { id: "caption-opacity", name: "Opacity", keyframes: [{ id: "caption-opacity-0", timeMs: 1_100, selected: contractTimelineKeyIds.includes("caption-opacity-0") }] },
+    ] },
+  ];
+
   const [slideContract, setSlideContract] = useState<{
     name: string; start: number; duration: number; skipped: boolean;
     backgroundType: SlideBackgroundType; backgroundColor: string; backgroundOpacity: number;
@@ -96,6 +115,17 @@ export default function Playground() {
     transitionEasing: "ease-in-out",
     guides: [{ id: "guide-1", type: "Grid", visible: true, size: 8 }],
   });
+
+  if (view === "timeline-viewport") {
+    const dark = new URLSearchParams(window.location.search).get("theme") === "dark";
+    return <div data-composa-mode={dark ? "dark" : undefined} className="h-screen w-screen flex flex-col justify-end bg-c-bg text-c-text">
+      <Timeline height={220} duration={6_000} tracks={contractTimelineTracks} playhead={contractPlayhead} onPlayheadChange={setContractPlayhead}
+        viewport={contractTimelineViewport} onViewportChange={setContractTimelineViewport}
+        onTrackExpandedChange={(id, expanded) => id === "hero" && setContractTimelineExpanded(expanded)}
+        onAggregateKeyframeSelect={(target, additive) => setContractTimelineKeyIds(value => additive ? [...new Set([...value, ...target.keyframeIds])] : target.keyframeIds)}
+        onKeyframeSelect={(target, additive) => setContractTimelineKeyIds(value => additive ? [...new Set([...value, target.keyframeId])] : [target.keyframeId])} />
+    </div>;
+  }
 
   if (view === "slide-contract") {
     return (
