@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useId, type ReactNode } from "react";
+import { useState, useRef, useEffect, useId, type MutableRefObject, type ReactNode } from "react";
 import { clsx } from "clsx";
 import { ChevronDown } from "lucide-react";
 
@@ -6,7 +6,7 @@ import { ChevronDown } from "lucide-react";
 // Native scrollbar is fully hidden (takes NO width — content is full-bleed); a thin
 // overlay thumb sits ON the panel, driven by JS and revealed on hover/scroll.
 // (Mirrors the study panel's `.composa-editing-inspector-scroll(bar)`.)
-export function ScrollArea({ children, className, thumbClassName = "bg-c-icon-secondary", onScroll }: { children?: ReactNode; className?: string; thumbClassName?: string; onScroll?: (scrollTop: number) => void }) {
+export function ScrollArea({ children, className, thumbClassName = "bg-c-icon-secondary", onScroll, viewportRef }: { children?: ReactNode; className?: string; thumbClassName?: string; onScroll?: (scrollTop: number) => void; viewportRef?: MutableRefObject<HTMLDivElement | null> }) {
   const ref = useRef<HTMLDivElement>(null);
   const [thumb, setThumb] = useState<{ top: number; height: number } | null>(null);
   const [active, setActive] = useState(false);
@@ -38,7 +38,7 @@ export function ScrollArea({ children, className, thumbClassName = "bg-c-icon-se
       onMouseLeave={() => setActive(false)}
     >
       <div
-        ref={ref}
+        ref={node => { ref.current = node; if (viewportRef) viewportRef.current = node; }}
         onScroll={e => { measure(); setActive(true); onScroll?.(e.currentTarget.scrollTop); }}
         className={clsx("h-full overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", className)}
       >

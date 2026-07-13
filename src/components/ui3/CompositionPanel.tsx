@@ -21,10 +21,20 @@ export interface CompositionPanelProps {
   layers?: LayerNode[];
   selectedLayerId?: string | null;
   selectedLayerIds?: string[];
+  layerScopeId?: LayerListProps["scopeId"];
+  expandedLayerIds?: LayerListProps["expandedIds"];
+  defaultExpandedLayerIds?: LayerListProps["defaultExpandedIds"];
+  onExpandedLayerIdsChange?: LayerListProps["onExpandedIdsChange"];
+  focusedLayerId?: LayerListProps["focusedId"];
+  defaultFocusedLayerId?: LayerListProps["defaultFocusedId"];
+  onFocusedLayerIdChange?: LayerListProps["onFocusedIdChange"];
+  renamingLayerId?: LayerListProps["renamingId"];
   onLayerSelectionChange?: LayerListProps["onSelectionChange"];
   onLayerVisibilityChange?: LayerListProps["onVisibilityChange"];
   onLayerLockChange?: LayerListProps["onLockChange"];
   onLayerRenameRequest?: LayerListProps["onRenameRequest"];
+  onLayerRenameCommit?: LayerListProps["onRenameCommit"];
+  onLayerRenameCancel?: LayerListProps["onRenameCancel"];
   onLayerContextMenu?: LayerListProps["onContextMenu"];
   onLayerReorder?: LayerListProps["onReorder"];
   onLayerReparent?: LayerListProps["onReparent"];
@@ -52,10 +62,20 @@ export function CompositionPanel({
   layers,
   selectedLayerId,
   selectedLayerIds,
+  layerScopeId,
+  expandedLayerIds,
+  defaultExpandedLayerIds,
+  onExpandedLayerIdsChange,
+  focusedLayerId,
+  defaultFocusedLayerId,
+  onFocusedLayerIdChange,
+  renamingLayerId,
   onLayerSelectionChange,
   onLayerVisibilityChange,
   onLayerLockChange,
   onLayerRenameRequest,
+  onLayerRenameCommit,
+  onLayerRenameCancel,
   onLayerContextMenu,
   onLayerReorder,
   onLayerReparent,
@@ -200,9 +220,11 @@ export function CompositionPanel({
           onKeyDown={onKeyDown}
           className="absolute top-0 inset-x-0 h-[4px] z-10 cursor-ns-resize select-none outline-none -translate-y-1/2 focus-visible:bg-c-border-selected/40"
         />
-          <LayerList layers={layers} title={layersTitle} selectedId={selectedLayerId} selectedIds={selectedLayerIds} onSelectionChange={onLayerSelectionChange}
+          <LayerList layers={layers} title={layersTitle} scopeId={layerScopeId} selectedId={selectedLayerId} selectedIds={selectedLayerIds} onSelectionChange={onLayerSelectionChange}
+            expandedIds={expandedLayerIds} defaultExpandedIds={defaultExpandedLayerIds} onExpandedIdsChange={onExpandedLayerIdsChange}
+            focusedId={focusedLayerId} defaultFocusedId={defaultFocusedLayerId} onFocusedIdChange={onFocusedLayerIdChange} renamingId={renamingLayerId}
             onVisibilityChange={onLayerVisibilityChange} onLockChange={onLayerLockChange}
-            onRenameRequest={onLayerRenameRequest} onContextMenu={onLayerContextMenu}
+            onRenameRequest={onLayerRenameRequest} onRenameCommit={onLayerRenameCommit} onRenameCancel={onLayerRenameCancel} onContextMenu={onLayerContextMenu}
             onReorder={onLayerReorder} onReparent={onLayerReparent} />
       </div>
 
