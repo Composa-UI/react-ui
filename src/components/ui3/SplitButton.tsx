@@ -5,16 +5,20 @@ interface SplitButtonProps {
   icon: ReactNode;
   accentColor?: string;
   size?: "default" | "large";
+  actionLabel?: string;
+  menuLabel?: string;
   onIconClick?: () => void;
   onChevronClick?: () => void;
   className?: string;
 }
 
-export function SplitButton({ icon, accentColor, size = "default", onIconClick, onChevronClick, className }: SplitButtonProps) {
+export function SplitButton({ icon, accentColor, size = "default", actionLabel, menuLabel, onIconClick, onChevronClick, className }: SplitButtonProps) {
   const large = size === "large";
   return (
     <div className={clsx("bg-c-bg-secondary flex gap-px items-center rounded-c-md shrink-0 overflow-hidden", large && "h-[32px]", className)}>
       <button
+        type="button"
+        aria-label={actionLabel}
         onClick={onIconClick}
         style={accentColor ? { backgroundColor: accentColor } : undefined}
         className={clsx(
@@ -26,6 +30,8 @@ export function SplitButton({ icon, accentColor, size = "default", onIconClick, 
         {icon}
       </button>
       <button
+        type="button"
+        aria-label={menuLabel}
         onClick={onChevronClick}
         className={clsx(
           "flex items-center justify-center self-stretch rounded-r-c-md transition-colors duration-100 outline-none text-c-icon bg-c-bg hover:bg-c-bg-hover active:bg-c-bg-secondary",

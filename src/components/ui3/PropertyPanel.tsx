@@ -11,7 +11,7 @@ import {
   Settings2, BookOpen, Diamond,
   Crosshair, Grid3x3, ExternalLink, Unlink,
   Minus, EyeOff, SlidersHorizontal, AlignJustify, Maximize, ChevronDown,
-  MoveHorizontal, MoveVertical, Play,
+  MoveHorizontal, MoveVertical, Play, Pause,
   Image as ImageIcon, Video, Clock,
 } from "lucide-react";
 import { CirclesFour } from "@phosphor-icons/react";
@@ -31,6 +31,7 @@ import { AnimatePanel } from "./AnimatePanel";
 import { Avatar } from "./Avatar";
 import { SplitButton } from "./SplitButton";
 import { Button } from "./Button";
+import { Tooltip } from "./Tooltip";
 import { EffectDetailsDialog, type EffectDetailsValue } from "./EffectDetailsDialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1226,10 +1227,10 @@ function ProjectExportSection() {
       <PanelFieldRow
         label="Format"
         reserveRightSlot={false}
-        left={<div className="w-full" title="Video export coming soon"><Dropdown value="MP4" fullWidth disabled /></div>}
+        left={<Tooltip label="Video export coming soon" direction="Left" delayDuration={500}><span className="block w-full" tabIndex={0} aria-label="Project video format unavailable: Video export coming soon"><Dropdown ariaLabel="Project video format" value="MP4" fullWidth disabled /></span></Tooltip>}
       />
       <PanelFullRow height={40}>
-        <div className="w-full" title="Video export coming soon"><Button label="Export project" variant="Secondary" size="wide" disabled /></div>
+        <Tooltip label="Video export coming soon" direction="Left" delayDuration={500}><span className="block w-full" tabIndex={0} aria-label="Export project unavailable: Video export coming soon"><Button label="Export project" variant="Secondary" size="wide" disabled /></span></Tooltip>
       </PanelFullRow>
     </PanelSection>
   );
@@ -1642,6 +1643,10 @@ export interface PropertyPanelProps {
   onProjectFrameRateChange?: (value: ProjectFrameRate) => void;
   onProjectDurationChange?: (value: number) => void;
   onProjectPlayheadChange?: (value: number) => void;
+  /** Controlled transport seam for the existing reskin-clean preview control. */
+  previewPlaying?: boolean;
+  onPreviewToggle?: () => void;
+  onPreviewMenu?: () => void;
   /** Shared element/selection/slide still-image export contract. */
   exportSettings?: InspectorExportSetting[];
   exportTargetName?: string;
@@ -1700,21 +1705,25 @@ export interface PropertyPanelProps {
 // ─── Multiplayer bar ──────────────────────────────────────────────────────────
 // Sits above the tab strip: avatar split-button (leading), then a play/present
 // split-button + Share button trailing.
-function MultiplayerBar() {
+function MultiplayerBar({ previewPlaying = false, onPreviewToggle, onPreviewMenu }: { previewPlaying?: boolean; onPreviewToggle?: () => void; onPreviewMenu?: () => void }) {
   return (
     <div className="flex items-center gap-[8px] px-[8px] py-[6px]">
       <SplitButton
         size="large"
         icon={<Avatar initial="S" size="default" color="purple" />}
+        actionLabel="Account"
+        menuLabel="Account menu"
         onIconClick={() => {}}
         onChevronClick={() => {}}
       />
       <div className="flex-1" />
       <SplitButton
         size="large"
-        icon={<Play size={18} strokeWidth={1.5} />}
-        onIconClick={() => {}}
-        onChevronClick={() => {}}
+        icon={previewPlaying ? <Pause size={18} strokeWidth={1.5} /> : <Play size={18} strokeWidth={1.5} />}
+        actionLabel={previewPlaying ? "Pause preview" : "Play preview"}
+        menuLabel="Preview options"
+        onIconClick={onPreviewToggle}
+        onChevronClick={onPreviewMenu}
       />
       <Button label="Share" variant="Primary" size="large" />
     </div>
@@ -1752,6 +1761,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onProjectFrameRateChange,
   onProjectDurationChange,
   onProjectPlayheadChange,
+  previewPlaying = false,
+  onPreviewToggle,
+  onPreviewMenu,
   exportSettings,
   exportTargetName,
   onAddExportSetting,
@@ -1860,7 +1872,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   return (
     <Panel className={clsx("h-full overflow-hidden flex flex-col", className)}>
       {/* Multiplayer tools — above the tabs; shared across all modes */}
-      <MultiplayerBar />
+      <MultiplayerBar previewPlaying={previewPlaying} onPreviewToggle={onPreviewToggle} onPreviewMenu={onPreviewMenu} />
 
       {/* ── PROJECT mode (inspector-project-mode.md) ─────────────────────────
           Active when nothing is selected. Static "Project" header, no tabs. */}
