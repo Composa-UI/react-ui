@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { shouldClaimTimelineGestureEscape, stepTimelinePlayhead, Timeline, type Track } from "./Timeline";
+import { shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, Timeline, type Track } from "./Timeline";
 
 const numericTrack: Track = { id: "hero", name: "Hero", type: "frame", props: [
   { id: "opacity", name: "Opacity", keyframes: [500, 900] },
@@ -69,5 +69,14 @@ describe("Timeline gesture keyboard ownership", () => {
     expect(shouldClaimTimelineGestureEscape("Escape", true)).toBe(true);
     expect(shouldClaimTimelineGestureEscape("Escape", false)).toBe(false);
     expect(shouldClaimTimelineGestureEscape("Enter", true)).toBe(false);
+  });
+});
+
+describe("Timeline controlled reveal ownership", () => {
+  it("waits for a measured plot and consumes each request key once in slide mode", () => {
+    expect(shouldHandleTimelineReveal(false, 1, null, 298)).toBe(false);
+    expect(shouldHandleTimelineReveal(false, 1, null, 900)).toBe(true);
+    expect(shouldHandleTimelineReveal(false, 1, 1, 900)).toBe(false);
+    expect(shouldHandleTimelineReveal(true, 1, null, 900)).toBe(false);
   });
 });

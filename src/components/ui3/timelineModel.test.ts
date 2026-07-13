@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collectAggregateKeyframes, normalizeViewport, panViewport, reconcileUncontrolledViewport, tickTimes, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport } from "./timelineModel";
+import { collectAggregateKeyframes, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport } from "./timelineModel";
 
 describe("timeline viewport model", () => {
   it("round-trips time and pixels inside a controlled viewport", () => {
@@ -16,6 +16,14 @@ describe("timeline viewport model", () => {
   it("pans horizontally without changing span or leaving the duration", () => {
     expect(panViewport({ startMs: 1_000, endMs: 5_000 }, 200, 800, 10_000)).toEqual({ startMs: 2_000, endMs: 6_000 });
     expect(panViewport({ startMs: 7_000, endMs: 10_000 }, 200, 800, 10_000)).toEqual({ startMs: 7_000, endMs: 10_000 });
+  });
+
+  it("minimally reveals authored times with padding while preserving zoom", () => {
+    expect(revealTimeInViewport({ startMs: 2_000, endMs: 6_000 }, 3_000, 10_000)).toEqual({ startMs: 2_000, endMs: 6_000 });
+    expect(revealTimeInViewport({ startMs: 2_000, endMs: 6_000 }, 8_000, 10_000)).toEqual({ startMs: 4_400, endMs: 8_400 });
+    expect(revealTimeInViewport({ startMs: 2_000, endMs: 6_000 }, 5_800, 10_000, 0.05, 0.25)).toEqual({ startMs: 2_800, endMs: 6_800 });
+    expect(revealTimeInViewport({ startMs: 2_000, endMs: 6_000 }, 0, 10_000)).toEqual({ startMs: 0, endMs: 4_000 });
+    expect(revealTimeInViewport({ startMs: 2_000, endMs: 6_000 }, Number.NaN, 10_000)).toEqual({ startMs: 2_000, endMs: 6_000 });
   });
 
   it("normalizes invalid ranges and produces adaptive visible ticks", () => {

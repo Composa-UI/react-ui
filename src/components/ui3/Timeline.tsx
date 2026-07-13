@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
 import { Play, Pause, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Hash, Square, Type, Minus, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film } from "lucide-react";
-import { collectAggregateKeyframes, normalizeViewport, panViewport, reconcileUncontrolledViewport, tickTimes, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineViewport } from "./timelineModel";
+import { collectAggregateKeyframes, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineViewport } from "./timelineModel";
 
 // ─── Timeline ───────────────────────────────────────────────────────────────────
 // Polymorphic timeline region (Composa editor spec: docs/composa/specs/timeline.md).
@@ -19,12 +19,19 @@ const LEFT_W = 297;       // track-list width
 const ROW_LAYER = 28;
 const ROW_PROP = 28;      // raised from 24 → contains the 20px bar with 4px above/below
 const ROW_BLOCK = 32;     // master-view slide/video block-track row height (compact — contains 20px bar)
+const RIGHT_OVERLAY_W = 148; // zoom slider + collapse control + padding/border
 const BLUE = "#0d99ff";
 
 export type TimelineMode = "master" | "slide";
 export type TimelineFrameRate = 24 | 25 | 30 | 60;
 export type { TimelineViewport } from "./timelineModel";
-export type TimelineViewportChangeSource = "wheel-zoom" | "wheel-pan" | "zoom-control";
+export type TimelineViewportChangeSource = "wheel-zoom" | "wheel-pan" | "zoom-control" | "keyframe-reveal";
+export interface TimelineKeyframeReveal {
+  keyframeId: string;
+  timeMs: number;
+  /** Caller-owned interaction sequence. A new value represents a new one-shot request. */
+  requestKey: string | number;
+}
 
 export type TrackType = "group" | "frame" | "text" | "line";
 export interface TimelineKeyframe { id: string; timeMs: number; selected?: boolean; }
@@ -108,6 +115,10 @@ export function shouldClaimTimelineGestureEscape(key: string, gestureActive: boo
 
 export function stepTimelinePlayhead(timeMs: number, frameDelta: number, frameRate: TimelineFrameRate, durationMs: number): number {
   return Math.min(durationMs, Math.max(0, timeMs + frameDelta * 1000 / frameRate));
+}
+
+export function shouldHandleTimelineReveal(master: boolean, requestKey: string | number | undefined, handledKey: string | number | null, timelineWidth: number): boolean {
+  return !master && requestKey !== undefined && requestKey !== handledKey && timelineWidth > LEFT_W + 1;
 }
 
 function useGestureEscapeOwnership(cancel: () => void) {
@@ -567,6 +578,8 @@ export function Timeline({
   onClipTrim,
   onGestureStart,
   onGestureEnd,
+  revealKeyframe,
+  onKeyframeRevealHandled,
   onBack,
 }: {
   mode?: TimelineMode;
@@ -607,6 +620,10 @@ export function Timeline({
   onClipTrim?: (id: string, edge: "start" | "end", timeMs: number) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
+  /** One-shot request to minimally pan a selected or newly created keyframe into the time viewport. */
+  revealKeyframe?: TimelineKeyframeReveal;
+  /** Acknowledges consumption so controlled hosts can clear the one-shot request. */
+  onKeyframeRevealHandled?: (requestKey: string | number) => void;
   onBack?: () => void;
 }) {
   const master = mode === "master";
@@ -619,6 +636,7 @@ export function Timeline({
   const viewportTouched = useRef(false);
   const previousDuration = useRef(duration);
   const previousMode = useRef(mode);
+  const handledRevealKey = useRef<string | number | null>(null);
   const playhead = controlledPlayhead ?? internalPlayhead;
   const playing = controlledPlaying ?? internalPlaying;
   const loop = controlledLoop ?? internalLoop;
@@ -635,6 +653,11 @@ export function Timeline({
     viewportTouched.current = true;
     if (controlledViewport === undefined) setInternalViewport(normalized);
     onViewportChange?.(normalized, { source });
+  };
+  const revealTime = (timeMs: number) => {
+    if (timelineWidth <= LEFT_W + 1) return;
+    const next = revealTimeInViewport(viewport, timeMs, duration, 0.05, Math.max(0.1, RIGHT_OVERLAY_W / plotWidth));
+    if (next.startMs !== viewport.startMs || next.endMs !== viewport.endMs) setViewport(next, "keyframe-reveal");
   };
 
   useEffect(() => {
@@ -677,6 +700,13 @@ export function Timeline({
     element.addEventListener("wheel", handleWheel, { passive: false });
     return () => element.removeEventListener("wheel", handleWheel);
   }, [viewport.startMs, viewport.endMs, plotWidth, duration, controlledViewport, onViewportChange]);
+
+  useEffect(() => {
+    if (!revealKeyframe || !shouldHandleTimelineReveal(master, revealKeyframe.requestKey, handledRevealKey.current, timelineWidth)) return;
+    handledRevealKey.current = revealKeyframe.requestKey;
+    revealTime(revealKeyframe.timeMs);
+    onKeyframeRevealHandled?.(revealKeyframe.requestKey);
+  }, [master, revealKeyframe?.requestKey, revealKeyframe?.timeMs, duration, plotWidth, timelineWidth, viewport.startMs, viewport.endMs]);
 
   // Measure the element the pointer events live on (the ruler container), so the
   // scrub origin can't desync from a separate ref.
@@ -760,7 +790,7 @@ export function Timeline({
             </div>
             {tracks.map((t, i) => <TrackRows key={t.id ?? i} track={t} trackIndex={i} viewport={viewport} plotWidth={plotWidth}
               onExpandedChange={onTrackExpandedChange} onAggregateKeyframeSelect={onAggregateKeyframeSelect}
-              onKeyframeSelect={onKeyframeSelect} onKeyframeMove={onKeyframeMove} onKeyframeDelete={onKeyframeDelete}
+              onKeyframeSelect={(target, additive) => { revealTime(target.timeMs); onKeyframeSelect?.(target, additive); }} onKeyframeMove={onKeyframeMove} onKeyframeDelete={onKeyframeDelete}
               onGestureStart={onGestureStart} onGestureEnd={onGestureEnd}
               onPropertyAddKeyframe={(trackId, propertyId) => onPropertyAddKeyframe?.(trackId, propertyId, playhead)} />)}
           </>

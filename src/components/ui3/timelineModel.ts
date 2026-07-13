@@ -57,6 +57,25 @@ export function panViewport(viewport: TimelineViewport, deltaPx: number, widthPx
   return normalizeViewport({ startMs: current.startMs + deltaMs, endMs: current.endMs + deltaMs }, durationMs);
 }
 
+/**
+ * Minimally pans a timeline window so an authored time is visible with a small
+ * working margin. The time scale is preserved; this never zooms or changes the
+ * document clock.
+ */
+export function revealTimeInViewport(viewport: TimelineViewport, timeMs: number, durationMs: number, startPaddingRatio = 0.1, endPaddingRatio = startPaddingRatio): TimelineViewport {
+  const current = normalizeViewport(viewport, durationMs);
+  if (!Number.isFinite(timeMs)) return current;
+  const target = Math.max(0, Math.min(Math.max(0, durationMs), timeMs));
+  const span = current.endMs - current.startMs;
+  const startPadding = Math.min(span / 2, Math.max(0, startPaddingRatio) * span);
+  const endPadding = Math.min(span / 2, Math.max(0, endPaddingRatio) * span);
+  const safeStart = current.startMs + startPadding;
+  const safeEnd = current.endMs - endPadding;
+  if (target >= safeStart && target <= safeEnd) return current;
+  const delta = target < safeStart ? target - safeStart : target - safeEnd;
+  return normalizeViewport({ startMs: current.startMs + delta, endMs: current.endMs + delta }, durationMs);
+}
+
 /** Convert DOM WheelEvent deltas to CSS pixels. */
 export function wheelDeltaPixels(delta: number, deltaMode: number, pageSizePx: number): number {
   if (deltaMode === 1) return delta * 16;
