@@ -1,0 +1,11 @@
+# Timeline viewport and aggregate-key contract
+
+`Timeline` owns time-axis rendering and gestures while the host owns editor state. The optional `viewport` / `defaultViewport` pair uses composition-local milliseconds and follows the package's controlled/uncontrolled conventions. `onViewportChange` identifies `wheel-zoom`, `wheel-pan`, and `zoom-control`; viewport changes are presentation state and do not emit document gesture boundaries.
+
+Ctrl/Cmd + wheel zooms around the pointer's position in the track area. Horizontal wheel input pans without changing the visible duration; Shift + vertical wheel is the documented mouse-wheel pan fallback. DOM delta modes are normalized to pixels and the native listener is explicitly non-passive. The accessible Timeline zoom slider changes the same viewport around its center. Rulers, blocks, property lanes, drag deltas, aggregate keys, and both playhead surfaces use the same viewport transform and clip at the plot boundary.
+
+Without a controlled viewport or explicit `defaultViewport`, the untouched timeline follows the full duration when duration or mode changes. Once the user zooms or pans, later context changes clamp the current window instead of destroying that zoom. An explicit `defaultViewport` is always treated as an intentional initial window.
+
+Tracks may provide visual `depth` and controlled `expanded` state. Expansion only controls that track's property rows and emits `onTrackExpandedChange`; product hierarchy remains host-owned. If the callback is absent, the disclosure is a non-focusable visual affordance rather than a no-op button.
+
+The layer row derives aggregate keys by exact millisecond equality across its property tracks. An aggregate is complete when every property has a key at that time. Selecting one emits `onAggregateKeyframeSelect` with the stable underlying keyframe IDs and exposes complete/partial status in its accessible name. Without that callback it is non-focusable. Legacy numeric keyframes retain their exact individual callback IDs; property-qualified identities are used only for aggregation.
