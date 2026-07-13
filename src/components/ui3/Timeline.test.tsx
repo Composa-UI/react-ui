@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { shouldClaimTimelineGestureEscape, Timeline, type Track } from "./Timeline";
+import { shouldClaimTimelineGestureEscape, stepTimelinePlayhead, Timeline, type Track } from "./Timeline";
 
 const numericTrack: Track = { id: "hero", name: "Hero", type: "frame", props: [
   { id: "opacity", name: "Opacity", keyframes: [500, 900] },
@@ -30,6 +30,37 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain('aria-label="Hero aggregate keyframe at 500ms (complete)"');
     expect(html).toContain('aria-label="Hero aggregate keyframe at 900ms (partial)"');
     expect(html).toContain("focus-visible:ring-c-border-selected-strong");
+  });
+
+  it("exposes a focusable Playhead with the active keyboard map", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]} onAddKeyframe={() => undefined} onDeleteSelectedKeyframes={() => undefined} />);
+    expect(html).toContain('role="slider" tabindex="0" aria-label="Playhead"');
+    expect(html).toContain('aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Space K Delete Backspace"');
+  });
+
+  it("keeps keyframe add and delete shortcuts out of the master Playhead map", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={2_000} tracks={[numericTrack]} onDeleteSelectedKeyframes={() => undefined} />);
+    expect(html).toContain('aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Space"');
+    expect(html).not.toContain('aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Space K');
+  });
+
+  it("only advertises keyframe shortcuts backed by callbacks", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]} />);
+    expect(html).toContain('aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Space"');
+  });
+});
+
+describe("Timeline Playhead frame stepping", () => {
+  it.each([24, 25, 30, 60] as const)("steps by one and ten frames at %ifps", frameRate => {
+    expect(stepTimelinePlayhead(300, 1, frameRate, 4_000)).toBeCloseTo(300 + 1_000 / frameRate);
+    expect(stepTimelinePlayhead(300, -1, frameRate, 4_000)).toBeCloseTo(300 - 1_000 / frameRate);
+    expect(stepTimelinePlayhead(300, 10, frameRate, 4_000)).toBeCloseTo(300 + 10_000 / frameRate);
+    expect(stepTimelinePlayhead(300, -10, frameRate, 4_000)).toBeCloseTo(Math.max(0, 300 - 10_000 / frameRate));
+  });
+
+  it("clamps at both timeline bounds", () => {
+    expect(stepTimelinePlayhead(10, -10, 30, 4_000)).toBe(0);
+    expect(stepTimelinePlayhead(3_990, 10, 30, 4_000)).toBe(4_000);
   });
 });
 

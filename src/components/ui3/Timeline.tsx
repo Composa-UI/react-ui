@@ -22,6 +22,7 @@ const ROW_BLOCK = 32;     // master-view slide/video block-track row height (com
 const BLUE = "#0d99ff";
 
 export type TimelineMode = "master" | "slide";
+export type TimelineFrameRate = 24 | 25 | 30 | 60;
 export type { TimelineViewport } from "./timelineModel";
 export type TimelineViewportChangeSource = "wheel-zoom" | "wheel-pan" | "zoom-control";
 
@@ -103,6 +104,10 @@ export type TimelineGestureTarget =
 
 export function shouldClaimTimelineGestureEscape(key: string, gestureActive: boolean): boolean {
   return key === "Escape" && gestureActive;
+}
+
+export function stepTimelinePlayhead(timeMs: number, frameDelta: number, frameRate: TimelineFrameRate, durationMs: number): number {
+  return Math.min(durationMs, Math.max(0, timeMs + frameDelta * 1000 / frameRate));
 }
 
 function useGestureEscapeOwnership(cancel: () => void) {
@@ -530,6 +535,7 @@ export function Timeline({
   baseClips = [],
   height = 320,
   duration = mode === "master" ? 20000 : 10000,
+  frameRate = 30,
   viewport: controlledViewport,
   defaultViewport,
   onViewportChange,
@@ -550,6 +556,7 @@ export function Timeline({
   onKeyframeSelect,
   onKeyframeMove,
   onKeyframeDelete,
+  onDeleteSelectedKeyframes,
   onBlockSelect,
   onBlockOpen,
   onBlockMove,
@@ -568,6 +575,7 @@ export function Timeline({
   baseClips?: BaseClipBlock[];
   height?: number;
   duration?: number;
+  frameRate?: TimelineFrameRate;
   viewport?: TimelineViewport;
   defaultViewport?: TimelineViewport;
   onViewportChange?: (viewport: TimelineViewport, detail: { source: TimelineViewportChangeSource }) => void;
@@ -588,6 +596,7 @@ export function Timeline({
   onKeyframeSelect?: (target: KeyframeTarget, additive: boolean) => void;
   onKeyframeMove?: (target: KeyframeTarget, timeMs: number) => void;
   onKeyframeDelete?: (target: KeyframeTarget) => void;
+  onDeleteSelectedKeyframes?: () => void;
   onBlockSelect?: (id: string) => void;
   onBlockOpen?: (id: string) => void;
   onBlockMove?: (id: string, startMs: number) => void;
@@ -683,9 +692,11 @@ export function Timeline({
         <Transport current={playhead} duration={duration} mode={mode} playing={playing} loop={loop} onPlayingChange={setPlaying} onLoopChange={setLoop}
           onStop={() => { setPlaying(false); onStop?.(); }} onAddKeyframe={() => onAddKeyframe?.(playhead)} />
         <div
-          className="flex-1 relative cursor-ew-resize overflow-hidden"
+          className="flex-1 relative cursor-ew-resize overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-border-selected-strong"
           role="slider"
+          tabIndex={0}
           aria-label="Playhead"
+          aria-keyshortcuts={`ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Space${master ? "" : `${onAddKeyframe ? " K" : ""}${onDeleteSelectedKeyframes ? " Delete Backspace" : ""}`}`}
           aria-valuemin={0}
           aria-valuemax={duration}
           aria-valuenow={playhead}
@@ -695,12 +706,17 @@ export function Timeline({
           onPointerCancel={() => setDrag(false)}
           onLostPointerCapture={() => setDrag(false)}
           onKeyDown={event => {
-            const step = event.shiftKey ? 1000 : 100;
+            if (event.metaKey || event.ctrlKey || event.altKey) return;
+            const claim = () => { event.preventDefault(); event.stopPropagation(); };
             if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-              event.preventDefault();
-              setPlayhead(Math.min(duration, Math.max(0, playhead + (event.key === "ArrowLeft" ? -step : step))));
-            } else if (event.key === "Home") { event.preventDefault(); setPlayhead(0); }
-            else if (event.key === "End") { event.preventDefault(); setPlayhead(duration); }
+              claim();
+              const frames = (event.shiftKey ? 10 : 1) * (event.key === "ArrowLeft" ? -1 : 1);
+              setPlayhead(stepTimelinePlayhead(playhead, frames, frameRate, duration));
+            } else if (!event.shiftKey && event.key === "Home") { claim(); setPlayhead(0); }
+            else if (!event.shiftKey && event.key === "End") { claim(); setPlayhead(duration); }
+            else if (!event.shiftKey && event.key === " ") { claim(); if (!event.repeat) setPlaying(!playing); }
+            else if (!event.shiftKey && !master && event.key.toLowerCase() === "k" && onAddKeyframe) { claim(); if (!event.repeat) onAddKeyframe(playhead); }
+            else if (!event.shiftKey && !master && (event.key === "Delete" || event.key === "Backspace") && onDeleteSelectedKeyframes) { claim(); if (!event.repeat) onDeleteSelectedKeyframes(); }
           }}
         >
           {master ? <SecondRuler viewport={viewport} width={plotWidth} /> : <Ruler viewport={viewport} width={plotWidth} />}
