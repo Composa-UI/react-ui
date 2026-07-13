@@ -101,6 +101,10 @@ export type TimelineGestureTarget =
   | { kind: "keyframe"; id: string; action: "move"; keyframe: KeyframeTarget }
   | { kind: "slide-block" | "base-clip"; id: string; action: "move" | "trim-start" | "trim-end" };
 
+export function shouldClaimTimelineGestureEscape(key: string, gestureActive: boolean): boolean {
+  return key === "Escape" && gestureActive;
+}
+
 const keyframeTime = (keyframe: TimelineKeyframeValue) => typeof keyframe === "number" ? keyframe : keyframe.timeMs;
 // Keep the legacy numeric ID byte-for-byte compatible for individual keyframe callbacks.
 const keyframeId = (keyframe: TimelineKeyframeValue, index: number) => typeof keyframe === "number" ? `keyframe-${index}-${keyframe}` : keyframe.id;
@@ -163,7 +167,9 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, onSelect
           onKeyDown={event => {
             if (event.key === "Delete" || event.key === "Backspace") { event.preventDefault(); onDelete?.(target); }
             if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect?.(target, event.shiftKey); }
-            if (event.key === "Escape") finish(target, true);
+            if (shouldClaimTimelineGestureEscape(event.key, drag.current?.id === id)) {
+              event.preventDefault(); event.stopPropagation(); finish(target, true);
+            }
           }}
           onPointerDown={event => { drag.current = { id, startX: event.clientX, startTime: timeMs }; onGestureStart?.({ kind: "keyframe", id, action: "move", keyframe: target }); event.currentTarget.setPointerCapture(event.pointerId); }}
           onPointerMove={event => {
@@ -390,7 +396,9 @@ function BlockTrack({ blocks, viewport, plotWidth, onSelect, onOpen, onMove, onT
               onKeyDown={event => {
                 if (event.key === "Enter") { event.preventDefault(); onOpen?.(id); }
                 else if (event.key === " ") { event.preventDefault(); onSelect?.(id); }
-                else if (event.key === "Escape") finish(true);
+                else if (shouldClaimTimelineGestureEscape(event.key, drag.current?.id === id)) {
+                  event.preventDefault(); event.stopPropagation(); finish(true);
+                }
               }}
               onPointerDown={event => begin(event, b, "move")}
               onPointerMove={event => update(event, b)}
@@ -459,7 +467,13 @@ function BaseVideoTrack({ clips, viewport, plotWidth, onSelect, onOpen, onMove, 
           const tintIsImage = clip.tint?.includes("gradient(");
           return <div key={clip.id} role="button" tabIndex={0} aria-pressed={clip.selected}
             onClick={() => onSelect?.(clip.id)} onDoubleClick={() => onOpen?.(clip.id)}
-            onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); onOpen?.(clip.id); } else if (event.key === " ") { event.preventDefault(); onSelect?.(clip.id); } else if (event.key === "Escape") finish(true); }}
+            onKeyDown={event => {
+              if (event.key === "Enter") { event.preventDefault(); onOpen?.(clip.id); }
+              else if (event.key === " ") { event.preventDefault(); onSelect?.(clip.id); }
+              else if (shouldClaimTimelineGestureEscape(event.key, drag.current?.id === clip.id)) {
+                event.preventDefault(); event.stopPropagation(); finish(true);
+              }
+            }}
             onPointerDown={event => begin(event, clip, "move")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
             className={clsx("absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-c-bg-secondary",
               clip.selected ? "border-c-border-selected-strong" : "border-c-border")}

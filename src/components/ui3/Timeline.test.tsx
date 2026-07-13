@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { Timeline, type Track } from "./Timeline";
+import { shouldClaimTimelineGestureEscape, Timeline, type Track } from "./Timeline";
 
 const numericTrack: Track = { id: "hero", name: "Hero", type: "frame", props: [
   { id: "opacity", name: "Opacity", keyframes: [500, 900] },
@@ -30,5 +30,13 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain('aria-label="Hero aggregate keyframe at 500ms (complete)"');
     expect(html).toContain('aria-label="Hero aggregate keyframe at 900ms (partial)"');
     expect(html).toContain("focus-visible:ring-c-border-selected-strong");
+  });
+});
+
+describe("Timeline gesture keyboard ownership", () => {
+  it("claims Escape only while a local drag or trim gesture is active", () => {
+    expect(shouldClaimTimelineGestureEscape("Escape", true)).toBe(true);
+    expect(shouldClaimTimelineGestureEscape("Escape", false)).toBe(false);
+    expect(shouldClaimTimelineGestureEscape("Enter", true)).toBe(false);
   });
 });
