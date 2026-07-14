@@ -4,6 +4,10 @@
 
 Ctrl/Cmd + wheel zooms around the pointer's position in the track area. Horizontal wheel input pans without changing the visible duration; Shift + vertical wheel is the documented mouse-wheel pan fallback. DOM delta modes are normalized to pixels and the native listener is explicitly non-passive. The accessible Timeline zoom slider changes the same viewport around its center. Rulers, blocks, property lanes, drag deltas, aggregate keys, and both playhead surfaces use the same viewport transform and clip at the plot boundary.
 
+Master mode presents Compositions, Base video, and a non-interactive Audio seam.
+The Audio row advertises future track ownership without exposing fake clips or
+editing controls before the app has an audio document model.
+
 Without a controlled viewport or explicit `defaultViewport`, the untouched timeline follows the full duration when duration or mode changes. Once the user zooms or pans, later context changes clamp the current window instead of destroying that zoom. An explicit `defaultViewport` is always treated as an intentional initial window.
 
 Tracks may provide visual `depth` and controlled `expanded` state. Expansion only controls that track's property rows and emits `onTrackExpandedChange`; product hierarchy remains host-owned. If the callback is absent, the disclosure is a non-focusable visual affordance rather than a no-op button.

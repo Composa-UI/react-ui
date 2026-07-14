@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
-import { Play, Pause, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Hash, Square, Type, Minus, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film } from "lucide-react";
+import { Play, Pause, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Hash, Square, Type, Minus, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film, Volume2 } from "lucide-react";
 import { collectAggregateKeyframes, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineViewport } from "./timelineModel";
 
 // ─── Timeline ───────────────────────────────────────────────────────────────────
@@ -9,8 +9,8 @@ import { collectAggregateKeyframes, normalizeViewport, panViewport, reconcileUnc
 //   • mode="slide"  (default) — slide-local element-animation timeline
 //     (After-Effects / Figma-Slides style): transport + ms-ruler + track list +
 //     keyframe lanes. Componentized from the Figma export (node 2212-1693).
-//   • mode="master" — full-project strip: seconds-ruler + a single "Slides" track of
-//     horizontal slide BLOCKS in order + a "Base video" placeholder row + transport.
+//   • mode="master" — full-project strip: seconds-ruler + Compositions, Base video,
+//     and a deferred Audio track seam + transport.
 // Data-driven: tracks/blocks/keyframes/bars are positioned along a shared time→px
 // scale. The active accent (playhead, keyframes, zoom fill) is Figma blue #0d99ff.
 
@@ -576,6 +576,18 @@ function BaseVideoTrack({ clips, viewport, plotWidth, onSelect, onOpen, onMove, 
   );
 }
 
+function DeferredAudioTrack() {
+  return (
+    <div className="flex" style={{ height: ROW_BLOCK }}>
+      <div className="shrink-0 flex items-center gap-[8px] pl-[8px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W }}>
+        <Volume2 size={16} strokeWidth={1.5} className="text-c-icon-secondary shrink-0 opacity-60" />
+        <span className={clsx(FONT, "text-[11px] font-[450] text-c-text-secondary truncate")}>Audio</span>
+      </div>
+      <div className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label="Audio track (coming soon)" />
+    </div>
+  );
+}
+
 export function Timeline({
   mode = "slide",
   tracks = DEMO_TRACKS,
@@ -798,7 +810,11 @@ export function Timeline({
           <input type="range" aria-label="Timeline zoom" aria-valuetext={`${Math.round(viewportZoomValue(viewport, duration) * 100)}%`}
             min={0} max={100} step={1} value={Math.round(viewportZoomValue(viewport, duration) * 100)}
             onChange={event => setViewport(viewportAtZoomValue(viewport, Number(event.currentTarget.value) / 100, duration), "zoom-control")}
-            className="appearance-none w-[91px] h-[20px] cursor-ew-resize bg-transparent rounded-c-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-c-border-selected-strong [&::-webkit-slider-runnable-track]:h-[6px] [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-c-bg-secondary [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-[12px] [&::-webkit-slider-thumb]:-mt-[3px] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-c-bg-brand [&::-webkit-slider-thumb]:shadow-sm [&::-moz-range-track]:h-[6px] [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-c-bg-secondary [&::-moz-range-thumb]:size-[12px] [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-c-bg-brand" />
+            style={{
+              background: `linear-gradient(to right, ${BLUE} 0%, ${BLUE} ${Math.round(viewportZoomValue(viewport, duration) * 100)}%, var(--color-bg-secondary) ${Math.round(viewportZoomValue(viewport, duration) * 100)}%, var(--color-bg-secondary) 100%)`,
+              backgroundPosition: "center", backgroundRepeat: "no-repeat", backgroundSize: "100% 6px",
+            }}
+            className="appearance-none w-[91px] h-[20px] cursor-ew-resize rounded-c-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-c-border-selected-strong [&::-webkit-slider-runnable-track]:h-[6px] [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-[12px] [&::-webkit-slider-thumb]:-mt-[3px] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-sm [&::-moz-range-track]:h-[6px] [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-transparent [&::-moz-range-progress]:h-[6px] [&::-moz-range-progress]:rounded-full [&::-moz-range-progress]:bg-c-bg-brand [&::-moz-range-thumb]:size-[12px] [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white" />
           <button aria-label="Collapse timeline" className="size-[24px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover">
             <PanelBottomClose size={16} strokeWidth={1.5} />
           </button>
@@ -811,6 +827,7 @@ export function Timeline({
           <>
             <BlockTrack blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
             <BaseVideoTrack clips={baseClips} viewport={viewport} plotWidth={plotWidth} onSelect={onClipSelect} onOpen={onClipOpen} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <DeferredAudioTrack />
           </>
         ) : (
           <>

@@ -96,11 +96,10 @@ export function SlideListItem({ item, tabIndex = 0, onNavigate, onRenameRequest,
       {/* height spacer — invisible box matching the thumbnail width + aspect ratio */}
       <div aria-hidden className="invisible" style={{ aspectRatio: THUMB_RATIO, marginLeft: spacerLeft, marginRight: 12, marginTop: 8, marginBottom: spacerBottom }} />
 
-      {/* selection tint — deliberately does NOT match the thumbnail's right inset;
-          it sits a few px further out so the tint is visible as a margin/frame
-          around the thumbnail rather than the two edges coinciding (touching) */}
+      {/* The thumbnail sits 8px inside the selection tint on both its top and
+          right edges. The list adds a small outer inset above and below rows. */}
       {(item.selected || item.inView) && <div data-slide-highlight={item.selected ? "selected" : "in-view"} className={clsx(
-        "absolute inset-y-0 left-[8px] right-[8px] rounded-[5px]",
+        "absolute inset-y-0 left-[8px] right-[4px] rounded-[5px]",
         item.selected ? "bg-c-bg-selected" : "bg-c-bg-selected/50",
       )} />}
 
@@ -187,7 +186,7 @@ export function SlidesPanel({ slides, title = "Product review", subtitle = "", o
 
       {/* Slide list — overlay scrollbar (theme-aware thumb) */}
       <ScrollArea>
-        <div className="flex flex-col" role="listbox" aria-label="Compositions">
+        <div className="flex flex-col py-[4px]" role="listbox" aria-label="Compositions">
           {slides.map((s, i) => <SlideListItem key={i} item={s} tabIndex={i === focusIndex ? 0 : -1}
             itemRef={node => { itemRefs.current[i] = node; }} onFocus={() => setFocusIndex(i)} onNavigate={event => navigate(i, event)}
             onRenameRequest={() => onRenameRequest?.(i)} />)}

@@ -106,3 +106,14 @@ describe("Timeline controlled reveal ownership", () => {
     expect(shouldHandleTimelineReveal(true, 1, null, 900)).toBe(false);
   });
 });
+
+describe("Timeline master seams", () => {
+  it("renders the master audio seam and the white-thumb blue-fill zoom contract", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={20_000}
+      viewport={{ startMs: 2_000, endMs: 12_000 }} />);
+    expect(html).toContain(">Audio</span>");
+    expect(html).toContain('aria-label="Audio track (coming soon)"');
+    expect(html).toContain("linear-gradient(to right, #0d99ff");
+    expect(html).toContain("bg-white");
+  });
+});
