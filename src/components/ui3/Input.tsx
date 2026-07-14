@@ -61,11 +61,12 @@ interface ShellProps {
   size?: InputSize;
   children: ReactNode;
   className?: string;
+  numeric?: boolean;
 }
 
-export function FieldShell({ focused, disabled = false, variant = "default", size = "medium", children, className }: ShellProps) {
+export function FieldShell({ focused, disabled = false, variant = "default", size = "medium", children, className, numeric = false }: ShellProps) {
   return (
-    <div className={clsx(
+    <div data-composa-numeric-input={numeric ? "" : undefined} className={clsx(
       "relative flex items-center w-full rounded-c-md overflow-hidden",
       "bg-c-bg-secondary transition-shadow duration-100",
       H[size],
@@ -290,10 +291,16 @@ export function NumericInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const cancelBlurCommit = useRef(false);
   const sessionStart = useRef<number | null>(null);
+  const lastEmitted = useRef<number | null>(null);
 
   const current = value !== undefined ? value : internal;
   const [draft, setDraft] = useState(String(current));
   useEffect(() => { if (!focused && !scrubbing) setDraft(formatNumericDisplay(current)); }, [current, focused, scrubbing]);
+  useEffect(() => {
+    if (!focused || lastEmitted.current === null) return;
+    if (current !== lastEmitted.current) setDraft(String(current));
+    lastEmitted.current = null;
+  }, [current, focused]);
   // Mixed (v5 §7): multi-select with differing values shows "Mixed" until focused; typing commits to all.
   const displayMixed = mixed && !focused && !scrubbing;
 
@@ -307,6 +314,7 @@ export function NumericInput({
   const set = useCallback((n: number) => {
     const final = clampVal(n);
     if (value === undefined) setInternal(final);
+    else lastEmitted.current = final;
     onChange?.(final);
   }, [clampVal, value, onChange]);
 
@@ -393,7 +401,7 @@ export function NumericInput({
   };
 
   return (
-    <FieldShell focused={focused || scrubbing} disabled={disabled} size={size} className={className}>
+    <FieldShell focused={focused || scrubbing} disabled={disabled} size={size} className={className} numeric>
       {/* scrubber label */}
       {iconLead && (
         <span
