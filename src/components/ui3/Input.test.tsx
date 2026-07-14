@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { formatNumericDisplay, NumericInput } from "./Input";
+import { formatNumericDisplay, NumericEditSessionProvider, NumericInput, NumericInputMulti } from "./Input";
 
 describe("NumericInput presentation contract", () => {
   it("rounds only the unfocused presentation to at most two decimals", () => {
@@ -18,5 +18,16 @@ describe("NumericInput presentation contract", () => {
     expect(html).toContain('inputMode="decimal"');
     expect(html).toContain('value="127.7"');
     expect(html).toContain("truncate");
+  });
+
+  it("keeps multi-value controls outside the single-value session contract", () => {
+    const value = { value: 4, onChange: () => undefined };
+    const html = renderToStaticMarkup(
+      <NumericEditSessionProvider onEditStart={() => undefined}>
+        <NumericInputMulti values={[value, value, value, value]} />
+      </NumericEditSessionProvider>,
+    );
+    expect(html).not.toContain("data-composa-numeric-input");
+    expect(html.match(/type="number"/g)).toHaveLength(4);
   });
 });

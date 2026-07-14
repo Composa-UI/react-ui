@@ -29,6 +29,16 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain('data-keyframe-id="keyframe-0-500"');
     expect(html).toContain('data-keyframe-id="keyframe-1-900"');
     expect(html).not.toContain('data-keyframe-id="opacity:aggregate-keyframe');
+    expect(html).toContain("focus-visible:ring-c-focus-ring");
+  });
+
+  it("keeps decorative lane geometry click-through for empty-lane insertion", () => {
+    const track: Track = { id: "hero", name: "Hero", type: "frame", props: [
+      { id: "opacity", name: "Opacity", bar: [200, 1_200], keyframes: [500, 900] },
+    ] };
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[track]} onPropertyAddKeyframe={() => undefined} />);
+    expect(html.match(/pointer-events-none/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(html).toContain('data-keyframe-id="keyframe-0-500"');
   });
 
   it("renders disclosures without enabling aggregate product behavior when callbacks are absent", () => {

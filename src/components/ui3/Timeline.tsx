@@ -215,14 +215,14 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, onSelect
       style={{ height }}
       data-timeline-property-lane={`${trackId}:${propertyId}`}
       onClick={event => {
-        if (!onAdd || event.target !== event.currentTarget) return;
+        if (!onAdd || (event.target as Element).closest?.("[data-keyframe-id]")) return;
         const rect = event.currentTarget.getBoundingClientRect();
         onAdd(timelineTimeAtClientX(event.clientX, rect.left, rect.width, viewport));
       }}
     >
       {prop.bar && (
         <div
-          className="absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] bg-c-bg-secondary"
+          className="absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] bg-c-bg-secondary pointer-events-none"
           style={{ left: percent(prop.bar[0], viewport), width: percentWidth(prop.bar[0], prop.bar[1], viewport) }}
         >
           {/* trim handles (edge-drag to trim start/end) — inset + wider to read as grips */}
@@ -232,7 +232,7 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, onSelect
       )}
       {kfs.length > 1 && (
         <div
-          className="absolute top-1/2 -translate-y-1/2 h-px"
+          className="absolute top-1/2 -translate-y-1/2 h-px pointer-events-none"
           style={{ left: percent(first, viewport), width: percentWidth(first, last, viewport), backgroundColor: prop.accent ? "#8638e5" : "rgba(0,0,0,0.25)" }}
         />
       )}
@@ -270,7 +270,7 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, onSelect
             onMove?.(target, Math.max(0, Math.round(drag.current.startTime + deltaMs)));
           }}
           onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
-          className={clsx("absolute top-1/2 size-[7px] p-0 border-0 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] outline-none", selected && "ring-2 ring-c-border-selected-strong")}
+          className={clsx("absolute top-1/2 size-[7px] p-0 border-0 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-c-bg", selected && "ring-2 ring-c-border-selected-strong")}
           style={{ left: percent(timeMs, viewport), backgroundColor: prop.accent ? "#8638e5" : BLUE }}
         />
       );})}

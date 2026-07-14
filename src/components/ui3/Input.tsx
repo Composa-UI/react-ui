@@ -368,7 +368,7 @@ export function NumericInput({
     const onEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
-      event.stopPropagation();
+      event.stopImmediatePropagation();
       cancelScrub();
     };
     document.addEventListener("keydown", onEscape, true);
@@ -448,7 +448,12 @@ export function NumericInput({
             setDraft(nextDraft);
             if (commitOnBlur && !sessionControlled) return;
             const parsed = Number(nextDraft);
-            if (nextDraft.trim() !== "" && Number.isFinite(parsed)) { beginSession(); set(parsed); }
+            if (nextDraft.trim() !== "" && Number.isFinite(parsed)) {
+              beginSession();
+              const clamped = clampVal(parsed);
+              if (clamped !== parsed) setDraft(String(clamped));
+              set(clamped);
+            }
           }}
           onKeyDown={onKeyDown}
           onFocus={e => { setDraft(String(current)); beginSession(); setFocused(true); e.target.select(); }}
