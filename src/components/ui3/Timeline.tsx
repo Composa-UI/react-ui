@@ -56,6 +56,13 @@ export interface TimelineKeyframeReveal {
 export type TrackType = LayerIconType;
 export interface TimelineTrackSelectionModifiers { toggle: boolean; range: boolean; }
 export const shouldActivateTimelineTrackKey = (key: string, ownsEventTarget: boolean) => ownsEventTarget && (key === "Enter" || key === " ");
+export function timelineTrackNavigationIndex(current: number, count: number, key: string): number | null {
+  if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(key)) return null;
+  if (count <= 0) return current;
+  if (key === "Home") return 0;
+  if (key === "End") return count - 1;
+  return Math.max(0, Math.min(count - 1, current + (key === "ArrowUp" ? -1 : 1)));
+}
 export interface TimelineKeyframe { id: string; timeMs: number; selected?: boolean; }
 export type TimelineKeyframeValue = number | TimelineKeyframe;
 export interface PropTrack {
@@ -283,12 +290,15 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, onTrackS
         <div role={onTrackSelect ? "option" : undefined} aria-selected={onTrackSelect ? !!track.selected : undefined} tabIndex={onTrackSelect ? focusable ? 0 : -1 : undefined}
           onClick={onTrackSelect ? event => onTrackSelect(trackId, { toggle: event.metaKey || event.ctrlKey, range: event.shiftKey }) : undefined}
           onKeyDown={onTrackSelect ? event => {
-            if (event.currentTarget === event.target && ["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) {
+            if (event.currentTarget === event.target) {
               const options = [...(event.currentTarget.closest('[role="listbox"]')?.querySelectorAll<HTMLElement>('[role="option"]') ?? [])];
               const current = options.indexOf(event.currentTarget);
-              const target = event.key === "Home" ? 0 : event.key === "End" ? options.length - 1 : current + (event.key === "ArrowUp" ? -1 : 1);
-              if (options[target]) { event.preventDefault(); event.stopPropagation(); options[target].focus(); }
-              return;
+              const target = timelineTrackNavigationIndex(current, options.length, event.key);
+              if (target !== null) {
+                event.preventDefault(); event.stopPropagation();
+                options[target]?.focus();
+                return;
+              }
             }
             if (!shouldActivateTimelineTrackKey(event.key, event.currentTarget === event.target)) return;
             event.preventDefault(); event.stopPropagation();

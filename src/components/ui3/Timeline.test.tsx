@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { shouldActivateTimelineTrackKey, shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, Timeline, type Track } from "./Timeline";
+import { shouldActivateTimelineTrackKey, shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, timelineTrackNavigationIndex, Timeline, type Track } from "./Timeline";
 
 const numericTrack: Track = { id: "hero", name: "Hero", type: "frame", props: [
   { id: "opacity", name: "Opacity", keyframes: [500, 900] },
@@ -67,6 +67,14 @@ describe("Timeline DOM contracts", () => {
     expect(shouldActivateTimelineTrackKey(" ", false)).toBe(false);
     expect(shouldActivateTimelineTrackKey("Enter", true)).toBe(true);
     expect(shouldActivateTimelineTrackKey("ArrowDown", true)).toBe(false);
+  });
+
+  it("claims listbox navigation at both boundaries", () => {
+    expect(timelineTrackNavigationIndex(0, 2, "ArrowUp")).toBe(0);
+    expect(timelineTrackNavigationIndex(1, 2, "ArrowDown")).toBe(1);
+    expect(timelineTrackNavigationIndex(0, 1, "Home")).toBe(0);
+    expect(timelineTrackNavigationIndex(0, 1, "End")).toBe(0);
+    expect(timelineTrackNavigationIndex(0, 1, "Enter")).toBeNull();
   });
 
   it("exposes a focusable Playhead with the active keyboard map", () => {
