@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { PropertyPanel } from "./PropertyPanel";
+import { PropertyPanel, reconcileAutoLayoutGap } from "./PropertyPanel";
 import { TooltipProvider } from "./Tooltip";
 
 describe("Video Clip inspector semantics", () => {
@@ -52,7 +52,9 @@ describe("Auto-layout gap control", () => {
 
     expect(html.match(/data-composa-numeric-combo=/g)).toHaveLength(1);
     expect(html).toContain('data-composa-numeric-combo="fixed"');
-    expect(html).toContain('aria-label="Gap sizing mode"');
+    expect(html).toContain('aria-label="Gap"');
+    expect(html).toContain('aria-label="Gap sizing mode: Fixed"');
+    expect(html).toContain('aria-haspopup="menu"');
     expect(html).toContain('class="lucide lucide-move-horizontal"');
     expect(html).not.toContain('aria-label="Gap settings"');
   });
@@ -61,7 +63,14 @@ describe("Auto-layout gap control", () => {
     const html = renderToStaticMarkup(<PropertyPanel elementType="frame-auto" layout={{ ...layout, mode: "vertical", gap: "auto" }} />);
 
     expect(html).toContain('data-composa-numeric-combo="auto"');
+    expect(html).toContain('aria-label="Gap sizing mode: Auto"');
     expect(html).toContain('class="lucide lucide-move-vertical"');
     expect(html).toMatch(/data-composa-numeric-combo="auto"[\s\S]*?>Auto<\/span>/);
+  });
+
+  it("atomically restores the last numeric gap when entering Wrap from Auto", () => {
+    expect(reconcileAutoLayoutGap("wrap", "auto", 18)).toBe(18);
+    expect(reconcileAutoLayoutGap("horizontal", "auto", 18)).toBe("auto");
+    expect(reconcileAutoLayoutGap("wrap", 12, 18)).toBe(12);
   });
 });

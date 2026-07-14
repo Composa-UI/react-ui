@@ -293,6 +293,17 @@ export function NumericInput({
   const cancelBlurCommit = useRef(false);
   const sessionStart = useRef<number | null>(null);
   const lastEmitted = useRef<number | null>(null);
+  const cancelSessionRef = useRef(cancelSession);
+  cancelSessionRef.current = cancelSession;
+
+  // A controlled host can replace this field with another mode while it owns
+  // a live edit transaction. Close that lease exactly once on unmount so a
+  // selection/context/collaboration update cannot strand document history.
+  useEffect(() => () => {
+    if (sessionStart.current === null) return;
+    sessionStart.current = null;
+    cancelSessionRef.current?.();
+  }, []);
 
   const current = value !== undefined ? value : internal;
   const [draft, setDraft] = useState(String(current));
@@ -544,6 +555,7 @@ export function NumericComboInput({
           <button
             type="button"
             aria-label={dropdownAriaLabel}
+            aria-haspopup="menu"
             disabled={disabled}
             className={clsx(
               "flex items-center justify-center w-[24px] rounded-r-c-md bg-c-bg-secondary",

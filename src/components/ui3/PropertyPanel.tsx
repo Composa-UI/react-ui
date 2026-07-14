@@ -388,8 +388,7 @@ interface LayoutAutoProps {
   paddingBottom?: number; paddingLeft?: number;
   alignValue?: string;
   clipContent?: boolean;
-  onFlowChange?: (value: ElementLayoutSettings["mode"]) => void;
-  onGapChange?: (value: number | "auto") => void;
+  onLayoutChange?: (patch: Partial<Pick<ElementLayoutSettings, "mode" | "gap">>) => void;
   onPaddingChange?: (value: ElementLayoutSettings["padding"]) => void;
   onAlignChange?: (value: string) => void;
   onClipContentChange?: (value: boolean) => void;
@@ -400,15 +399,23 @@ interface LayoutAutoProps {
   onDisableAutoLayout?: () => void;
 }
 
+export function reconcileAutoLayoutGap(
+  mode: ElementLayoutSettings["mode"],
+  gap: number | "auto",
+  lastFixedGap: number,
+): number | "auto" {
+  return mode === "wrap" && gap === "auto" ? lastFixedGap : gap;
+}
+
 function LayoutAutoSection({
   width = 240, height = 0,
   flowMode,
   widthMode = "hug", heightMode = "fill",
-  gap = 0,
+  gap: gapProp,
   paddingTop = 16, paddingRight = 0, paddingBottom = 8, paddingLeft = 0,
   alignValue = "mc",
   clipContent = false,
-  onFlowChange, onGapChange, onPaddingChange, onAlignChange, onClipContentChange, onSizingModeChange,
+  onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onSizingModeChange,
   onDisableAutoLayout,
 }: LayoutAutoProps) {
   const [lockAspect, setLockAspect] = useState(false);
@@ -417,7 +424,10 @@ function LayoutAutoSection({
   const renderedFlow = flowMode === "horizontal" ? "h" : flowMode === "vertical" ? "v" : flowMode ?? flow;
   const [align, setAlign] = useState(alignValue);
   const renderedAlign = controlled ? alignValue : align;
-  const [lastFixedGap, setLastFixedGap] = useState(typeof gap === "number" ? gap : 0);
+  const gapControlled = gapProp !== undefined;
+  const [internalGap, setInternalGap] = useState<number | "auto">(gapProp ?? 0);
+  const renderedGap = gapControlled ? gapProp : internalGap;
+  const [lastFixedGap, setLastFixedGap] = useState(typeof renderedGap === "number" ? renderedGap : 0);
   const [indivPadding, setIndivPadding] = useState(false);
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
 
@@ -431,15 +441,25 @@ function LayoutAutoSection({
 
   const handleFlowChange = (v: string) => {
     setFlow(v);
-    onFlowChange?.(v === "h" ? "horizontal" : v === "v" ? "vertical" : v as "none" | "wrap");
+    const mode = v === "h" ? "horizontal" : v === "v" ? "vertical" : v as "none" | "wrap";
+    const reconciledGap = reconcileAutoLayoutGap(mode, renderedGap, lastFixedGap);
+    const nextGap = reconciledGap === renderedGap ? undefined : reconciledGap;
+    if (nextGap !== undefined && !gapControlled) setInternalGap(nextGap);
+    onLayoutChange?.({ mode, ...(nextGap === undefined ? {} : { gap: nextGap }) });
     if (v === "none") onDisableAutoLayout?.();
   };
 
-  useEffect(() => {
-    if (typeof gap === "number") setLastFixedGap(gap);
-  }, [gap]);
+  const emitGap = (value: number | "auto") => {
+    if (!gapControlled) setInternalGap(value);
+    if (typeof value === "number") setLastFixedGap(value);
+    onLayoutChange?.({ gap: value });
+  };
 
-  const gapMode = gap === "auto" ? "auto" : "fixed";
+  useEffect(() => {
+    if (typeof gapProp === "number") setLastFixedGap(gapProp);
+  }, [gapProp]);
+
+  const gapMode = renderedGap === "auto" ? "auto" : "fixed";
   const gapAxis = renderedFlow === "v" ? "vertical" : "horizontal";
   const gapIcon = gapAxis === "vertical"
     ? <MoveVertical size={14} strokeWidth={1.5} />
@@ -451,14 +471,14 @@ function LayoutAutoSection({
         type="checkmark"
         label="Fixed"
         checked={gapMode === "fixed"}
-        onClick={() => { onGapChange?.(lastFixedGap); close(); }}
+        onClick={() => { emitGap(lastFixedGap); close(); }}
       />
       {renderedFlow !== "wrap" && (
         <MenuRow
           type="checkmark"
           label="Auto"
           checked={gapMode === "auto"}
-          onClick={() => { onGapChange?.("auto"); close(); }}
+          onClick={() => { emitGap("auto"); close(); }}
         />
       )}
     </Menu>
@@ -506,12 +526,13 @@ function LayoutAutoSection({
             <div className={subLabel}>Gap</div>
             <NumericComboInput
               dataMode={gapMode}
-              dropdownAriaLabel="Gap sizing mode"
+              ariaLabel="Gap"
+              dropdownAriaLabel={`Gap sizing mode: ${gapMode === "auto" ? "Auto" : "Fixed"}`}
               iconLead={gapIcon}
               readOnlyLabel={gapMode === "auto" ? "Auto" : undefined}
-              value={controlled && typeof gap === "number" ? gap : undefined}
+              value={gapControlled && typeof renderedGap === "number" ? renderedGap : undefined}
               defaultValue={lastFixedGap}
-              onChange={value => { setLastFixedGap(value); onGapChange?.(value); }}
+              onChange={emitGap}
               min={0}
               suffix="px"
               menu={gapMenu}
@@ -2085,10 +2106,10 @@ export function PropertyPanel(props: PropertyPanelProps) {
             gap={layout?.gap} paddingTop={layout?.padding.top} paddingRight={layout?.padding.right} paddingBottom={layout?.padding.bottom} paddingLeft={layout?.padding.left}
             alignValue={layout?.align} clipContent={layout?.clipsContent}
             widthMode={layout?.widthMode} heightMode={layout?.heightMode}
-            onFlowChange={onLayoutChange ? mode => onLayoutChange({ mode }) : undefined} onGapChange={onLayoutChange ? gap => onLayoutChange({ gap }) : undefined} onPaddingChange={onLayoutChange ? padding => onLayoutChange({ padding }) : undefined}
+            onLayoutChange={onLayoutChange} onPaddingChange={onLayoutChange ? padding => onLayoutChange({ padding }) : undefined}
             onAlignChange={onLayoutChange ? align => onLayoutChange({ align }) : undefined} onClipContentChange={onLayoutChange ? clipsContent => onLayoutChange({ clipsContent }) : undefined}
             onSizingModeChange={onLayoutChange ? (axis, value) => onLayoutChange(axis === "width" ? { widthMode: value } : { heightMode: value }) : undefined}
-            onDisableAutoLayout={() => { setAutoLayoutOn(false); onLayoutChange?.({ mode: "none" }); }} />}
+            onDisableAutoLayout={() => setAutoLayoutOn(false)} />}
           {(isShape || isText) && (
             <PanelSection title="Layout">
               {/* Resizing — segmented (auto width / auto height / fixed); text only */}
