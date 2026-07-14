@@ -108,6 +108,88 @@ export function timelineDragDeltaMs(
   return pointerDeltaMs + (viewport.startMs - startViewportStartMs);
 }
 
+export interface TimelineEdgeDragController {
+  start(cancelGesture: () => void): void;
+  update(clientX: number, bounds: { left: number; width: number }, applyAtViewport: (viewport: TimelineViewport) => void): void;
+  stop(): void;
+  cancel(): void;
+}
+
+/**
+ * Owns one edge-scroll animation loop and its corresponding host gesture.
+ * Keeping cancellation in this controller lets a Timeline context change or
+ * unmount terminate the document transaction even if the pointer never emits a
+ * terminal event.
+ */
+export function createTimelineEdgeDragController({
+  getViewport,
+  getDurationMs,
+  setViewport,
+  requestFrame,
+  cancelFrame,
+}: {
+  getViewport: () => TimelineViewport;
+  getDurationMs: () => number;
+  setViewport: (viewport: TimelineViewport) => void;
+  requestFrame: (callback: FrameRequestCallback) => number;
+  cancelFrame: (handle: number) => void;
+}): TimelineEdgeDragController {
+  let active: { clientX: number; bounds: { left: number; width: number }; apply: (viewport: TimelineViewport) => void } | null = null;
+  let cancelGesture: (() => void) | null = null;
+  let frame: number | null = null;
+  let previousTime = 0;
+
+  const stopFrame = () => {
+    if (frame !== null) cancelFrame(frame);
+    frame = null;
+    previousTime = 0;
+  };
+  const stop = () => {
+    active = null;
+    cancelGesture = null;
+    stopFrame();
+  };
+  const cancel = () => {
+    const finish = cancelGesture;
+    active = null;
+    cancelGesture = null;
+    stopFrame();
+    finish?.();
+  };
+  const tick = (time: number) => {
+    if (!active) { stopFrame(); return; }
+    const velocity = edgeAutoScrollVelocity(active.clientX, active.bounds.left, active.bounds.width);
+    if (velocity === 0) { stopFrame(); return; }
+    const elapsed = previousTime === 0 ? 16 : time - previousTime;
+    previousTime = time;
+    const viewport = getViewport();
+    const next = advanceEdgeAutoScrollViewport(viewport, velocity, elapsed, active.bounds.width, getDurationMs());
+    if (next.startMs === viewport.startMs && next.endMs === viewport.endMs) { stopFrame(); return; }
+    setViewport(next);
+    active.apply(next);
+    frame = requestFrame(tick);
+  };
+
+  return {
+    start(nextCancelGesture) {
+      stop();
+      cancelGesture = nextCancelGesture;
+    },
+    update(clientX, bounds, applyAtViewport) {
+      active = { clientX, bounds, apply: applyAtViewport };
+      applyAtViewport(getViewport());
+      const velocity = edgeAutoScrollVelocity(clientX, bounds.left, bounds.width);
+      if (velocity === 0) { stopFrame(); return; }
+      if (frame === null) {
+        previousTime = 0;
+        frame = requestFrame(tick);
+      }
+    },
+    stop,
+    cancel,
+  };
+}
+
 /**
  * Minimally pans a timeline window so an authored time is visible with a small
  * working margin. The time scale is preserved; this never zooms or changes the

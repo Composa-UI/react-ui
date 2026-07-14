@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import { clsx } from "clsx";
 import { Play, Pause, Square, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film, Volume2 } from "lucide-react";
-import { advanceEdgeAutoScrollViewport, collectAggregateKeyframes, edgeAutoScrollVelocity, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineDragDeltaMs, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineViewport } from "./timelineModel";
+import { collectAggregateKeyframes, createTimelineEdgeDragController, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineDragDeltaMs, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
 
 // ─── Timeline ───────────────────────────────────────────────────────────────────
@@ -173,55 +173,28 @@ function useGestureEscapeOwnership(cancel: () => void) {
   return { claim, release };
 }
 
-interface TimelineEdgeDragController {
-  update(clientX: number, bounds: { left: number; width: number }, applyAtViewport: (viewport: TimelineViewport) => void): void;
-  stop(): void;
-}
-
 function useTimelineEdgeDragAutoScroll(
   viewportRef: MutableRefObject<TimelineViewport>,
   durationMs: number,
   setViewport: (viewport: TimelineViewport, source: TimelineViewportChangeSource) => void,
 ): TimelineEdgeDragController {
-  const active = useRef<{ clientX: number; bounds: { left: number; width: number }; apply: (viewport: TimelineViewport) => void } | null>(null);
-  const frame = useRef<number | null>(null);
-  const previousTime = useRef(0);
+  const durationRef = useRef(durationMs);
+  durationRef.current = durationMs;
   const setViewportRef = useRef(setViewport);
   setViewportRef.current = setViewport;
-
-  const stopFrame = () => {
-    if (frame.current !== null) cancelAnimationFrame(frame.current);
-    frame.current = null;
-    previousTime.current = 0;
-  };
-  const stop = () => { active.current = null; stopFrame(); };
-  const tick = (time: number) => {
-    const current = active.current;
-    if (!current) { stopFrame(); return; }
-    const velocity = edgeAutoScrollVelocity(current.clientX, current.bounds.left, current.bounds.width);
-    if (velocity === 0) { stopFrame(); return; }
-    const elapsed = previousTime.current === 0 ? 16 : time - previousTime.current;
-    previousTime.current = time;
-    const viewport = viewportRef.current;
-    const next = advanceEdgeAutoScrollViewport(viewport, velocity, elapsed, current.bounds.width, durationMs);
-    if (next.startMs === viewport.startMs && next.endMs === viewport.endMs) { stopFrame(); return; }
-    viewportRef.current = next;
-    setViewportRef.current(next, "edge-drag");
-    current.apply(next);
-    frame.current = requestAnimationFrame(tick);
-  };
-  const update = (clientX: number, bounds: { left: number; width: number }, applyAtViewport: (viewport: TimelineViewport) => void) => {
-    active.current = { clientX, bounds, apply: applyAtViewport };
-    applyAtViewport(viewportRef.current);
-    const velocity = edgeAutoScrollVelocity(clientX, bounds.left, bounds.width);
-    if (velocity === 0) { stopFrame(); return; }
-    if (frame.current === null) {
-      previousTime.current = 0;
-      frame.current = requestAnimationFrame(tick);
-    }
-  };
-  useEffect(() => stop, []);
-  return { update, stop };
+  const controller = useRef<TimelineEdgeDragController | null>(null);
+  if (!controller.current) controller.current = createTimelineEdgeDragController({
+    getViewport: () => viewportRef.current,
+    getDurationMs: () => durationRef.current,
+    setViewport: next => {
+      viewportRef.current = next;
+      setViewportRef.current(next, "edge-drag");
+    },
+    requestFrame: callback => requestAnimationFrame(callback),
+    cancelFrame: handle => cancelAnimationFrame(handle),
+  });
+  useEffect(() => () => controller.current?.cancel(), []);
+  return controller.current;
 }
 
 const keyframeTime = (keyframe: TimelineKeyframeValue) => typeof keyframe === "number" ? keyframe : keyframe.timeMs;
@@ -269,6 +242,9 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
     onGestureEnd?.({ kind: "keyframe", id: active.target.keyframeId, action: "move", keyframe: active.target }, { cancelled });
   };
   const escapeOwnership = useGestureEscapeOwnership(() => finish(true));
+  const finishRef = useRef(finish);
+  finishRef.current = finish;
+  useEffect(() => () => finishRef.current(true), []);
   return (
     <div
       ref={laneRef}
@@ -323,7 +299,7 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
           onPointerDown={event => {
             event.stopPropagation();
             if (!shouldBeginTimelinePointer(event.button, event.isPrimary)) return;
-            edgeDrag.stop();
+            edgeDrag.start(() => finish(true));
             drag.current = { id, startX: event.clientX, startTime: timeMs, startViewportStartMs: viewport.startMs, target }; escapeOwnership.claim(); onGestureStart?.({ kind: "keyframe", id, action: "move", keyframe: target }); event.currentTarget.setPointerCapture(event.pointerId);
           }}
           onPointerMove={event => {
@@ -754,6 +730,7 @@ export function Timeline({
   onGestureEnd,
   revealKeyframe,
   onKeyframeRevealHandled,
+  interactionContextKey,
   onBack,
 }: {
   mode?: TimelineMode;
@@ -800,6 +777,8 @@ export function Timeline({
   revealKeyframe?: TimelineKeyframeReveal;
   /** Acknowledges consumption so controlled hosts can clear the one-shot request. */
   onKeyframeRevealHandled?: (requestKey: string | number) => void;
+  /** Stable host identity for the active composition/project interaction context. */
+  interactionContextKey?: string | number;
   onBack?: () => void;
 }) {
   const master = mode === "master";
@@ -844,9 +823,8 @@ export function Timeline({
   }, [viewport.startMs, viewport.endMs]);
 
   useEffect(() => {
-    edgeDrag.stop();
-    return edgeDrag.stop;
-  }, [mode, duration]);
+    edgeDrag.cancel();
+  }, [mode, duration, interactionContextKey]);
 
   useEffect(() => {
     const element = timelineRef.current;

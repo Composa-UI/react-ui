@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advanceEdgeAutoScrollViewport, collectAggregateKeyframes, edgeAutoScrollVelocity, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineDragDeltaMs, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport } from "./timelineModel";
+import { advanceEdgeAutoScrollViewport, collectAggregateKeyframes, createTimelineEdgeDragController, edgeAutoScrollVelocity, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineDragDeltaMs, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport } from "./timelineModel";
 
 describe("timeline viewport model", () => {
   it("round-trips time and pixels inside a controlled viewport", () => {
@@ -74,6 +74,49 @@ describe("timeline viewport model", () => {
   it("combines pointer motion with viewport displacement at any zoom", () => {
     expect(timelineDragDeltaMs(100, 150, 1_000, { startMs: 1_400, endMs: 5_400 }, 800)).toBe(650);
     expect(timelineDragDeltaMs(100, 100, 1_000, { startMs: 1_400, endMs: 3_400 }, 800)).toBe(400);
+  });
+
+  it("cancels a registered host gesture exactly once before pointer motion", () => {
+    let cancellations = 0;
+    const controller = createTimelineEdgeDragController({
+      getViewport: () => ({ startMs: 0, endMs: 1_000 }),
+      getDurationMs: () => 4_000,
+      setViewport: () => undefined,
+      requestFrame: () => 1,
+      cancelFrame: () => undefined,
+    });
+    controller.start(() => { cancellations += 1; });
+    controller.cancel();
+    controller.cancel();
+    expect(cancellations).toBe(1);
+  });
+
+  it("cancels an active frame loop and prevents stale viewport callbacks", () => {
+    let viewport = { startMs: 1_000, endMs: 2_000 };
+    let cancellations = 0;
+    let applied = 0;
+    let nextHandle = 1;
+    const frames = new Map<number, FrameRequestCallback>();
+    const controller = createTimelineEdgeDragController({
+      getViewport: () => viewport,
+      getDurationMs: () => 4_000,
+      setViewport: next => { viewport = next; },
+      requestFrame: callback => { const handle = nextHandle++; frames.set(handle, callback); return handle; },
+      cancelFrame: handle => { frames.delete(handle); },
+    });
+    controller.start(() => { cancellations += 1; });
+    controller.update(496, { left: 100, width: 400 }, () => { applied += 1; });
+    expect(frames.size).toBe(1);
+    const firstFrame = [...frames.values()][0];
+    frames.clear();
+    firstFrame?.(16);
+    expect(viewport.startMs).toBeGreaterThan(1_000);
+    expect(applied).toBe(2);
+    expect(frames.size).toBe(1);
+    controller.cancel();
+    expect(cancellations).toBe(1);
+    expect(frames.size).toBe(0);
+    expect(applied).toBe(2);
   });
 });
 

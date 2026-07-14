@@ -14,5 +14,9 @@
   lost capture, context changes, and unmount stop it before cancelling. A
   cancelled document gesture restores the keyframe but intentionally preserves
   the UI-only viewport.
+- Controlled hosts pass `interactionContextKey` as the stable active composition
+  or project identity. Changing it cancels the registered gesture exactly once;
+  removing its property lane or unmounting `Timeline` uses the same cancellation
+  path, so host transactions cannot remain open behind a stale RAF callback.
 
 `TimelineGestureTarget` identifies the entity and action (`move`, `trim-start`, or `trim-end`); keyframe targets also include their track and property context.

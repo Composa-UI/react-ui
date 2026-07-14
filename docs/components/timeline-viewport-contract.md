@@ -17,6 +17,10 @@ per second at and beyond the edge; animation-frame elapsed time is capped at
 duration, and emits `edge-drag`. Master blocks, media clips, ruler scrub, and
 keyboard edits do not opt into this behavior.
 
+`interactionContextKey` is separate from the viewport. It gives controlled
+hosts an explicit cancellation boundary when the active composition/project
+changes without changing mode or duration.
+
 Tracks may provide visual `depth` and controlled `expanded` state. Expansion only controls that track's property rows and emits `onTrackExpandedChange`; product hierarchy remains host-owned. If the callback is absent, the disclosure is a non-focusable visual affordance rather than a no-op button.
 
 Aggregate keys are an opt-in capability enabled by `onAggregateKeyframeSelect`; without that callback, no aggregate indicators render. When enabled, the layer row derives aggregate keys by exact millisecond equality across its property tracks. An aggregate is complete when every property has a key at that time. Selecting one emits the stable underlying keyframe IDs and exposes complete/partial status in its accessible name. Legacy numeric keyframes retain their exact individual callback IDs; property-qualified identities are used only for aggregation.
