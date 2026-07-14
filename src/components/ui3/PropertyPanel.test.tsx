@@ -99,3 +99,17 @@ describe("Auto-layout gap control", () => {
     expect(reconcileAutoLayoutGap("wrap", 12, 18)).toBe(12);
   });
 });
+
+describe("Plain-frame flow contract", () => {
+  it("orders Freeform, Vertical, Horizontal, then Wrap", () => {
+    const html = renderToStaticMarkup(<PropertyPanel elementType="frame" />);
+    const freeform = html.indexOf('aria-label="Freeform"');
+    const vertical = html.indexOf('aria-label="Vertical"');
+    const horizontal = html.indexOf('aria-label="Horizontal"');
+    const wrap = html.indexOf('aria-label="Wrap"');
+    expect(freeform).toBeGreaterThan(-1);
+    expect(freeform).toBeLessThan(vertical);
+    expect(vertical).toBeLessThan(horizontal);
+    expect(horizontal).toBeLessThan(wrap);
+  });
+});

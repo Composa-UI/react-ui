@@ -464,8 +464,8 @@ function LayoutFrameSection({
 
   const flowBtns: IconBtn[] = [
     { icon: <AlignHorizontalJustifyCenter size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
-    { icon: <Columns size={S} strokeWidth={1.5} />, label: "Horizontal", value: "h" },
     { icon: <Rows2 size={S} strokeWidth={1.5} />, label: "Vertical", value: "v" },
+    { icon: <Columns size={S} strokeWidth={1.5} />, label: "Horizontal", value: "h" },
     { icon: <WrapText size={S} strokeWidth={1.5} />, label: "Wrap", value: "wrap" },
   ];
 

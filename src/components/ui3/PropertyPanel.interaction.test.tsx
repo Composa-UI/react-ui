@@ -21,7 +21,7 @@ describe("DimensionSizingFields interactions", () => {
   it("keeps sizing mode local when only numeric dimensions are controlled", () => {
     const widthChanges: number[] = [];
     let renderer: ReturnType<typeof create>;
-    act(() => { renderer = create(<DimensionSizingFields width={120} height={80} onWidthChange={value => widthChanges.push(value)} />); });
+    act(() => { renderer = create(<PropertyPanel elementType="text" width={120} height={80} onWidthChange={value => widthChanges.push(value)} />); });
 
     expect(widthField(renderer!.root).props.mode).toBe("fixed");
     act(() => chooseMode(widthField(renderer!.root), "hug"));
