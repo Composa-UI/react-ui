@@ -329,11 +329,11 @@ function TrackRows({ track, trackIndex, viewport, plotWidth, onExpandedChange, o
 
 // ── shared transport toolbar (identical across master + slide) ──────────────────────
 // Layout, Play/Stop icons, timecode group, and loop are the SAME in both modes.
-// Mode-specific: the keyframe (diamond) add button is slide-only — keyframes only exist
-// in the slide-animation timeline. Timecode is shown in ms (slide) or seconds (master).
-function Transport({ current, duration, mode, playing, loop, onPlayingChange, onStop, onLoopChange, onAddKeyframe }: {
+// Timecode is shown in ms (slide) or seconds (master). Keyframes are added from
+// row/property diamonds or the focused Playhead's K shortcut, not extra chrome here.
+function Transport({ current, duration, mode, playing, loop, onPlayingChange, onStop, onLoopChange }: {
   current: number; duration: number; mode: TimelineMode; playing: boolean; loop: boolean;
-  onPlayingChange: (playing: boolean) => void; onStop?: () => void; onLoopChange: (loop: boolean) => void; onAddKeyframe?: () => void;
+  onPlayingChange: (playing: boolean) => void; onStop?: () => void; onLoopChange: (loop: boolean) => void;
 }) {
   const slide = mode === "slide";
   const fmt = slide
@@ -348,8 +348,6 @@ function Transport({ current, duration, mode, playing, loop, onPlayingChange, on
       {/* shared transport controls */}
       <IconBtn label={playing ? "Pause" : "Play"} active={playing} onClick={() => onPlayingChange(!playing)}>{playing ? <Pause size={16} strokeWidth={1.5} /> : <Play size={16} strokeWidth={1.5} />}</IconBtn>
       <IconBtn label="Stop" onClick={onStop}><Square size={14} strokeWidth={1.5} /></IconBtn>
-      {/* keyframe add — slide-only (keyframes live in the slide-animation timeline) */}
-      {slide && <IconBtn label="Add keyframe" onClick={onAddKeyframe}><Diamond size={16} strokeWidth={1.5} /></IconBtn>}
       <div className="w-[8px]" />
       {/* time group */}
       <div className="flex items-center h-[24px] rounded-c-md overflow-hidden">
@@ -578,12 +576,12 @@ function BaseVideoTrack({ clips, viewport, plotWidth, onSelect, onOpen, onMove, 
 
 function DeferredAudioTrack() {
   return (
-    <div className="flex" style={{ height: ROW_BLOCK }}>
+    <div className="flex" style={{ height: ROW_BLOCK }} role="group" aria-label="Audio track (coming soon)" aria-disabled="true">
       <div className="shrink-0 flex items-center gap-[8px] pl-[8px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W }}>
         <Volume2 size={16} strokeWidth={1.5} className="text-c-icon-secondary shrink-0 opacity-60" />
         <span className={clsx(FONT, "text-[11px] font-[450] text-c-text-secondary truncate")}>Audio</span>
       </div>
-      <div className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label="Audio track (coming soon)" />
+      <div className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} />
     </div>
   );
 }
@@ -771,7 +769,7 @@ export function Timeline({
       {/* header: transport | ruler | zoom */}
       <div className="relative flex h-[40px] shrink-0 border-b border-c-border">
         <Transport current={playhead} duration={duration} mode={mode} playing={playing} loop={loop} onPlayingChange={setPlaying} onLoopChange={setLoop}
-          onStop={() => { setPlaying(false); onStop?.(); }} onAddKeyframe={() => onAddKeyframe?.(playhead)} />
+          onStop={() => { setPlaying(false); onStop?.(); }} />
         <div
           className="flex-1 relative cursor-ew-resize overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-border-selected-strong"
           role="slider"
@@ -781,6 +779,7 @@ export function Timeline({
           aria-valuemin={0}
           aria-valuemax={duration}
           aria-valuenow={playhead}
+          aria-keyshortcuts={onAddKeyframe ? "K" : undefined}
           onPointerDown={e => { setDrag(true); scrub(e); try { e.currentTarget.setPointerCapture(e.pointerId); } catch {} }}
           onPointerMove={e => drag && scrub(e)}
           onPointerUp={() => setDrag(false)}

@@ -32,10 +32,19 @@ describe("Timeline DOM contracts", () => {
 
   it("renders disclosures without enabling aggregate product behavior when callbacks are absent", () => {
     const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]} />);
+    expect(html).not.toContain('aria-label="Add keyframe"');
     expect(html).not.toContain('aria-label="Collapse Hero"');
     expect(html).not.toContain('aria-label="Hero aggregate keyframe');
     expect(html).not.toContain('data-aggregate-status="complete"');
     expect(html).not.toContain('data-aggregate-status="partial"');
+    expect(html).not.toContain('aria-keyshortcuts="K"');
+  });
+
+  it("advertises focused Playhead keyframe insertion without adding extra transport chrome", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]}
+      onAddKeyframe={() => undefined} />);
+    expect(html).toContain('aria-keyshortcuts="K"');
+    expect(html).not.toContain('aria-label="Add keyframe"');
   });
 
   it("exposes controlled disclosures and accessible aggregate status when callbacks exist", () => {
@@ -113,6 +122,8 @@ describe("Timeline master seams", () => {
       viewport={{ startMs: 2_000, endMs: 12_000 }} />);
     expect(html).toContain(">Audio</span>");
     expect(html).toContain('aria-label="Audio track (coming soon)"');
+    expect(html).toContain('role="group"');
+    expect(html).toContain('aria-disabled="true"');
     expect(html).toContain("linear-gradient(to right, #0d99ff");
     expect(html).toContain("bg-white");
   });
