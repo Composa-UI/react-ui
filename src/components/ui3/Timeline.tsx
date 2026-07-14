@@ -216,7 +216,7 @@ function useTimelineEdgeDragAutoScroll(
     const velocity = edgeAutoScrollVelocity(clientX, bounds.left, bounds.width);
     if (velocity === 0) { stopFrame(); return; }
     if (frame.current === null) {
-      previousTime.current = performance.now();
+      previousTime.current = 0;
       frame.current = requestAnimationFrame(tick);
     }
   };
