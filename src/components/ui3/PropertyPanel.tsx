@@ -266,12 +266,14 @@ function PositionSection({
         label="Position"
         left={
           <NumericInput
+            ariaLabel="Position X"
             iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>X</span>}
             value={x} onChange={onXChange} defaultValue={0}
           />
         }
         right={
           <NumericInput
+            ariaLabel="Position Y"
             iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>}
             value={y} onChange={onYChange} defaultValue={0}
           />
@@ -283,6 +285,7 @@ function PositionSection({
         label="Rotation"
         left={
           <NumericInput
+            ariaLabel="Rotation"
             iconLead={<RotateCw size={16} strokeWidth={1.5} />}
             value={rotation} onChange={onRotationChange} min={-360} max={360} suffix="°"
           />

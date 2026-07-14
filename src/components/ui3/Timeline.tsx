@@ -242,29 +242,35 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, onSelect
         const target = { trackId, propertyId, keyframeId: id, timeMs };
         const selected = typeof keyframe !== "number" && keyframe.selected;
         return (
-        <div
+        <button
+          type="button"
           key={id}
-          role="button"
-          tabIndex={0}
           data-keyframe-id={id}
           aria-label={`${prop.name} keyframe at ${timeMs}ms`}
           aria-pressed={selected}
           onClick={event => { event.stopPropagation(); onSelect?.(target, event.shiftKey); }}
           onKeyDown={event => {
-            if (event.key === "Delete" || event.key === "Backspace") { event.preventDefault(); onDelete?.(target); }
-            if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect?.(target, event.shiftKey); }
+            if (event.key === "Delete" || event.key === "Backspace") { event.preventDefault(); event.stopPropagation(); onDelete?.(target); }
+            if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onSelect?.(target, event.shiftKey); }
+            if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "k", "K"].includes(event.key)) {
+              event.preventDefault(); event.stopPropagation();
+            }
             if (shouldClaimTimelineGestureEscape(event.key, drag.current?.id === id)) {
               event.preventDefault(); event.stopPropagation(); finish(true);
             }
           }}
-          onPointerDown={event => { drag.current = { id, startX: event.clientX, startTime: timeMs, target }; escapeOwnership.claim(); onGestureStart?.({ kind: "keyframe", id, action: "move", keyframe: target }); event.currentTarget.setPointerCapture(event.pointerId); }}
+          onPointerDown={event => {
+            event.stopPropagation();
+            if (!shouldBeginTimelinePointer(event.button, event.isPrimary)) return;
+            drag.current = { id, startX: event.clientX, startTime: timeMs, target }; escapeOwnership.claim(); onGestureStart?.({ kind: "keyframe", id, action: "move", keyframe: target }); event.currentTarget.setPointerCapture(event.pointerId);
+          }}
           onPointerMove={event => {
             if (drag.current?.id !== id) return;
             const deltaMs = (event.clientX - drag.current.startX) / Math.max(1, plotWidth) * (viewport.endMs - viewport.startMs);
             onMove?.(target, Math.max(0, Math.round(drag.current.startTime + deltaMs)));
           }}
           onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
-          className={clsx("absolute top-1/2 size-[7px] -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] outline-none", selected && "ring-2 ring-c-border-selected-strong")}
+          className={clsx("absolute top-1/2 size-[7px] p-0 border-0 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] outline-none", selected && "ring-2 ring-c-border-selected-strong")}
           style={{ left: percent(timeMs, viewport), backgroundColor: prop.accent ? "#8638e5" : BLUE }}
         />
       );})}

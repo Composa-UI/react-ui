@@ -25,6 +25,7 @@ describe("Timeline DOM contracts", () => {
 
   it("preserves legacy individual numeric keyframe IDs", () => {
     const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]} />);
+    expect(html).toContain('<button type="button" data-keyframe-id="keyframe-0-500"');
     expect(html).toContain('data-keyframe-id="keyframe-0-500"');
     expect(html).toContain('data-keyframe-id="keyframe-1-900"');
     expect(html).not.toContain('data-keyframe-id="opacity:aggregate-keyframe');
