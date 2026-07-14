@@ -487,7 +487,7 @@ function LayoutFrameSection({
       {/* Flow */}
       <PanelFieldRow
         label="Flow"
-        left={<SegmentedControl segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon }))} value={flow} onChange={handleFlowChange} className="w-full" />}
+        left={<SegmentedControl segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon, ariaLabel: b.label }))} value={flow} onChange={handleFlowChange} className="w-full" />}
       />
 
       <DimensionSizingFields width={width} height={height} onWidthChange={onWidthChange} onHeightChange={onHeightChange} {...sizing} />
@@ -518,11 +518,8 @@ interface LayoutAutoProps {
   onPaddingChange?: (value: ElementLayoutSettings["padding"]) => void;
   onAlignChange?: (value: string) => void;
   onClipContentChange?: (value: boolean) => void;
+  onAutoLayoutSettingsRequest?: () => void;
   sizing?: Omit<DimensionSizingFieldsProps, "width" | "height" | "widthMode" | "heightMode">;
-  /** Flow's first (Freeform) option means "not auto-layout" — selecting it
-   * reverts to the plain Layout section, symmetric with how Layout's Flow
-   * reaches auto-layout by moving off its own first option. */
-  onDisableAutoLayout?: () => void;
 }
 
 export function reconcileAutoLayoutGap(
@@ -541,8 +538,7 @@ function LayoutAutoSection({
   paddingTop = 16, paddingRight = 0, paddingBottom = 8, paddingLeft = 0,
   alignValue = "mc",
   clipContent = false,
-  onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, sizing,
-  onDisableAutoLayout,
+  onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onAutoLayoutSettingsRequest, sizing,
 }: LayoutAutoProps) {
   const controlled = flowMode !== undefined;
   const [flow, setFlow] = useState("v");
@@ -556,11 +552,10 @@ function LayoutAutoSection({
   const [indivPadding, setIndivPadding] = useState(false);
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
 
-  // Freeform first, matching the regular Layout section's Flow order.
+  // Freeform is the plain-frame state, not an active auto-layout direction.
   const flowBtns: IconBtn[] = [
-    { icon: <AlignHorizontalJustifyCenter size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
-    { icon: <Columns  size={S} strokeWidth={1.5} />, label: "Horizontal",  value: "h" },
     { icon: <Rows2    size={S} strokeWidth={1.5} />, label: "Vertical",    value: "v" },
+    { icon: <Columns  size={S} strokeWidth={1.5} />, label: "Horizontal",  value: "h" },
     { icon: <WrapText size={S} strokeWidth={1.5} />, label: "Wrap",        value: "wrap" },
   ];
 
@@ -571,7 +566,6 @@ function LayoutAutoSection({
     const nextGap = reconciledGap === renderedGap ? undefined : reconciledGap;
     if (nextGap !== undefined && !gapControlled) setInternalGap(nextGap);
     onLayoutChange?.({ mode, ...(nextGap === undefined ? {} : { gap: nextGap }) });
-    if (v === "none") onDisableAutoLayout?.();
   };
 
   const emitGap = (value: number | "auto") => {
@@ -610,19 +604,14 @@ function LayoutAutoSection({
   );
 
   return (
-    <PanelSection
-      title="Auto layout"
-      rightActions={
-        <PanelActionBtn icon={<Settings2 size={16} strokeWidth={1.5} />} label="Auto-layout settings" />
-      }
-    >
+    <PanelSection title="Auto layout" rightActions={<PanelActionBtn icon={<Settings2 size={16} strokeWidth={1.5} />} label="Auto-layout settings" onClick={onAutoLayoutSettingsRequest} />}>
       {/* Flow + Gap are the canonical first row. Wrap intentionally exposes one
           shared numeric gap; Auto remains unavailable while wrapping. */}
       <div role="group" aria-label="Flow and gap" className="pl-[16px] pr-[16px] py-[8px]">
         <div className="flex items-start gap-[8px]">
           <div className="flex-[3] min-w-0">
             <div className={subLabel}>Flow</div>
-            <SegmentedControl segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon }))} value={renderedFlow} onChange={handleFlowChange} className="w-full" />
+            <SegmentedControl segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon, ariaLabel: b.label }))} value={renderedFlow} onChange={handleFlowChange} className="w-full" />
           </div>
           <div className="flex-[2] min-w-0">
             <div className={subLabel}>Gap</div>
@@ -640,6 +629,9 @@ function LayoutAutoSection({
               menu={gapMenu}
               className="w-full"
             />
+          </div>
+          <div className="shrink-0 pt-[17px]">
+            <PanelActionBtn icon={<Settings2 size={16} strokeWidth={1.5} />} label="Auto-layout settings" onClick={onAutoLayoutSettingsRequest} />
           </div>
         </div>
       </div>
@@ -1781,6 +1773,8 @@ export interface PropertyPanelProps {
   onSizingChange?: (axis: ElementSizingAxis, change: ElementSizingChange) => void;
   onSizingConstraintChange?: (axis: ElementSizingAxis, constraint: ElementSizingConstraint, value: number | undefined) => void;
   onApplySizingVariable?: (axis: ElementSizingAxis) => void;
+  /** Opens the one shared Auto Layout Settings surface from the Flow + Gap row. */
+  onAutoLayoutSettingsRequest?: () => void;
   typography?: ElementTypographySettings;
   onTypographyChange?: (patch: Partial<ElementTypographySettings>) => void;
   fills?: ElementFillSetting[];
@@ -1913,7 +1907,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onOpacityChange,
   blendMode = "Pass through",
   cornerRadius = 0, onBlendModeChange, onCornerRadiusChange,
-  layout, onLayoutChange, onSizingChange, onSizingConstraintChange, onApplySizingVariable, typography, onTypographyChange,
+  layout, onLayoutChange, onSizingChange, onSizingConstraintChange, onApplySizingVariable, onAutoLayoutSettingsRequest, typography, onTypographyChange,
   fills, onAddFill, onUpdateFill, onToggleFill, onReorderFill, onRemoveFill,
   strokes, onAddStroke, onUpdateStroke, onToggleStroke, onReorderStroke, onRemoveStroke,
   effects, onAddEffect, onUpdateEffect, onToggleEffect, onReorderEffect, onRemoveEffect,
@@ -2050,7 +2044,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
     variablesEnabled: capabilities.variables,
     onWidthChange,
     onHeightChange,
-    onSizingChange: (onSizingChange || onLayoutChange || onWidthChange || onHeightChange) ? emitSizing : undefined,
+    onSizingChange: (onSizingChange || onLayoutChange) ? emitSizing : undefined,
     onConstraintChange: (onSizingConstraintChange || onLayoutChange) ? emitConstraint : undefined,
     onApplySizingVariable,
   };
@@ -2245,7 +2239,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             sizing={sizingContract}
             onLayoutChange={onLayoutChange} onPaddingChange={onLayoutChange ? padding => onLayoutChange({ padding }) : undefined}
             onAlignChange={onLayoutChange ? align => onLayoutChange({ align }) : undefined} onClipContentChange={onLayoutChange ? clipsContent => onLayoutChange({ clipsContent }) : undefined}
-            onDisableAutoLayout={() => setAutoLayoutOn(false)} />}
+            onAutoLayoutSettingsRequest={onAutoLayoutSettingsRequest} />}
           {(isShape || isText) && (
             <PanelSection title="Layout">
               <DimensionSizingFields {...sizingContract} width={width} height={height} />

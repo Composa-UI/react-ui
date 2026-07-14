@@ -4,6 +4,7 @@ import { type ReactNode } from "react";
 interface Segment {
   value: string;
   label?: string;
+  ariaLabel?: string;
   icon?: ReactNode;
 }
 
@@ -26,6 +27,7 @@ export function SegmentedControl({ segments, value, onChange, disabled = false, 
         return (
           <button
             key={seg.value}
+            aria-label={seg.ariaLabel}
             onClick={() => !disabled && onChange(seg.value)}
             disabled={disabled}
             className={clsx(

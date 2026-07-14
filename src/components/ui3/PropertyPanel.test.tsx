@@ -58,6 +58,14 @@ describe("Auto-layout gap control", () => {
     expect(html).toContain('aria-haspopup="menu"');
     expect(html).toContain('class="lucide lucide-move-horizontal"');
     expect(html).not.toContain('aria-label="Gap settings"');
+    const vertical = html.indexOf('aria-label="Vertical"');
+    const horizontal = html.indexOf('aria-label="Horizontal"');
+    const wrap = html.indexOf('aria-label="Wrap"');
+    expect(vertical).toBeGreaterThan(-1);
+    expect(vertical).toBeLessThan(horizontal);
+    expect(horizontal).toBeLessThan(wrap);
+    expect(html).not.toContain('aria-label="Freeform"');
+    expect(html.match(/aria-label="Auto-layout settings"/g)).toHaveLength(2);
   });
 
   it("renders menu-backed W/H modes and the shared min/max grid", () => {
