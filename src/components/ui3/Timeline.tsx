@@ -331,6 +331,10 @@ function TrackRows({ track, trackIndex, viewport, plotWidth, onExpandedChange, o
 // Layout, Play/Stop icons, timecode group, and loop are the SAME in both modes.
 // Timecode is shown in ms (slide) or seconds (master). Keyframes are added from
 // row/property diamonds or the focused Playhead's K shortcut, not extra chrome here.
+function TransportIconButton({ children, label, onClick, active }: { children: React.ReactNode; label: string; onClick?: () => void; active?: boolean }) {
+  return <button aria-label={label} aria-pressed={active} onClick={onClick} className={clsx("size-[24px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover", active && "bg-c-bg-selected")}>{children}</button>;
+}
+
 function Transport({ current, duration, mode, playing, loop, onPlayingChange, onStop, onLoopChange }: {
   current: number; duration: number; mode: TimelineMode; playing: boolean; loop: boolean;
   onPlayingChange: (playing: boolean) => void; onStop?: () => void; onLoopChange: (loop: boolean) => void;
@@ -340,14 +344,11 @@ function Transport({ current, duration, mode, playing, loop, onPlayingChange, on
     ? (n: number) => String(Math.round(n)).padStart(5, "0")
     : (n: number) => (n / 1000).toFixed(2) + "s";
   const tcW = slide ? 42 : 54; // timecode cell width — ms strings are narrower than "4.20s"
-  const IconBtn = ({ children, label, onClick, active }: { children: React.ReactNode; label: string; onClick?: () => void; active?: boolean }) => (
-    <button aria-label={label} aria-pressed={active} onClick={onClick} className={clsx("size-[24px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover", active && "bg-c-bg-selected")}>{children}</button>
-  );
   return (
     <div className="shrink-0 flex items-center gap-[8px] px-[8px] border-r border-c-border" style={{ width: LEFT_W }}>
       {/* shared transport controls */}
-      <IconBtn label={playing ? "Pause" : "Play"} active={playing} onClick={() => onPlayingChange(!playing)}>{playing ? <Pause size={16} strokeWidth={1.5} /> : <Play size={16} strokeWidth={1.5} />}</IconBtn>
-      <IconBtn label="Stop" onClick={onStop}><Square size={14} strokeWidth={1.5} /></IconBtn>
+      <TransportIconButton label={playing ? "Pause" : "Play"} active={playing} onClick={() => onPlayingChange(!playing)}>{playing ? <Pause size={16} strokeWidth={1.5} /> : <Play size={16} strokeWidth={1.5} />}</TransportIconButton>
+      <TransportIconButton label="Stop" onClick={onStop}><Square size={14} strokeWidth={1.5} /></TransportIconButton>
       <div className="w-[8px]" />
       {/* time group */}
       <div className="flex items-center h-[24px] rounded-c-md overflow-hidden">
