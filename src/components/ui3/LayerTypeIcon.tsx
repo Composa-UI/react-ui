@@ -9,11 +9,12 @@ export interface LayerTypeIconProps {
   autoLayoutMode?: LayerAutoLayoutMode;
   size?: number;
   strokeWidth?: number;
+  tone?: "primary" | "secondary";
   className?: string;
 }
 
 /** Canonical element-type icon shared by Layers and the element timeline. */
-export function LayerTypeIcon({ type, autoLayoutMode = "none", size = 16, strokeWidth = 1.5, className }: LayerTypeIconProps) {
+export function LayerTypeIcon({ type, autoLayoutMode = "none", size = 16, strokeWidth = 1.5, tone = "primary", className }: LayerTypeIconProps) {
   const Icon = type === "frame" && autoLayoutMode === "horizontal" ? Columns3
     : type === "frame" && autoLayoutMode === "vertical" ? Rows3
     : type === "frame" && autoLayoutMode === "wrap" ? Grid2X2
@@ -25,5 +26,5 @@ export function LayerTypeIcon({ type, autoLayoutMode = "none", size = 16, stroke
     : type === "line" ? Minus
     : Square;
   return <Icon data-layer-icon-type={type} data-auto-layout-mode={autoLayoutMode} size={size} strokeWidth={strokeWidth}
-    className={clsx("shrink-0", (type === "component" || type === "instance") && "text-accent-component", className)} />;
+    className={clsx("shrink-0", type === "component" || type === "instance" ? "text-accent-component" : tone === "secondary" ? "text-c-icon-secondary" : "text-c-icon", className)} />;
 }

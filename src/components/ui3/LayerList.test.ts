@@ -19,6 +19,12 @@ describe("LayerList drag root normalization", () => {
     expect(html).toContain('data-layer-icon-type="frame"');
     expect(html).toContain('data-auto-layout-mode="horizontal"');
   });
+
+  it("keeps component accent ownership inside the canonical icon", () => {
+    const html = renderToStaticMarkup(createElement(LayerTypeIcon, { type: "component", tone: "secondary" }));
+    expect(html).toContain("text-accent-component");
+    expect(html).not.toContain("text-c-icon-secondary");
+  });
   it("uses full tree order instead of selection click order", () => {
     expect(normalizeLayerDragRoots(tree, ["tail", "child-b", "child-a"])).toEqual(["child-a", "child-b", "tail"]);
   });

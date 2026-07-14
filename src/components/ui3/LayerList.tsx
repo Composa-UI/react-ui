@@ -239,7 +239,7 @@ function LayerRow({ row, hasChildren, open, focused, renaming, renameDraft, onRe
         <span className="size-[16px] shrink-0" />
       )}
       {/* type icon */}
-      <LayerTypeIcon type={node.type} autoLayoutMode={node.autoLayoutMode} className="relative text-c-icon" />
+      <LayerTypeIcon type={node.type} autoLayoutMode={node.autoLayoutMode} className="relative" />
       {/* name */}
       {renaming ? (
         <input

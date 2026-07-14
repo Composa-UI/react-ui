@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, Timeline, type Track } from "./Timeline";
+import { shouldActivateTimelineTrackKey, shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, Timeline, type Track } from "./Timeline";
 
 const numericTrack: Track = { id: "hero", name: "Hero", type: "frame", props: [
   { id: "opacity", name: "Opacity", keyframes: [500, 900] },
@@ -56,8 +56,17 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain('role="listbox"');
     expect(html).toContain('aria-multiselectable="true"');
     expect(html).toContain('role="option" aria-selected="true"');
+    expect(html).toContain('role="option" aria-selected="true" tabindex="0"');
+    expect(html).toContain('role="option" aria-selected="false" tabindex="-1"');
     expect(html).toContain('data-layer-icon-type="frame"');
     expect(html).toContain('data-auto-layout-mode="vertical"');
+  });
+
+  it("does not let a nested disclosure key activate its selectable row", () => {
+    expect(shouldActivateTimelineTrackKey("Enter", false)).toBe(false);
+    expect(shouldActivateTimelineTrackKey(" ", false)).toBe(false);
+    expect(shouldActivateTimelineTrackKey("Enter", true)).toBe(true);
+    expect(shouldActivateTimelineTrackKey("ArrowDown", true)).toBe(false);
   });
 
   it("exposes a focusable Playhead with the active keyboard map", () => {

@@ -55,6 +55,7 @@ export interface TimelineKeyframeReveal {
 
 export type TrackType = LayerIconType;
 export interface TimelineTrackSelectionModifiers { toggle: boolean; range: boolean; }
+export const shouldActivateTimelineTrackKey = (key: string, ownsEventTarget: boolean) => ownsEventTarget && (key === "Enter" || key === " ");
 export interface TimelineKeyframe { id: string; timeMs: number; selected?: boolean; }
 export type TimelineKeyframeValue = number | TimelineKeyframe;
 export interface PropTrack {
@@ -249,8 +250,9 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, onSelect
 }
 
 // ── one track (layer row + its property rows) ─────────────────────────────────────
-function TrackRows({ track, trackIndex, viewport, plotWidth, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeSelect, onKeyframeMove, onKeyframeDelete, onPropertyAddKeyframe, onGestureStart, onGestureEnd }: {
+function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onGestureStart, onGestureEnd }: {
   track: Track; trackIndex: number;
+  focusable: boolean;
   viewport: TimelineViewport; plotWidth: number;
   onTrackSelect?: (trackId: string, modifiers: TimelineTrackSelectionModifiers) => void;
   onExpandedChange?: (trackId: string, expanded: boolean) => void;
@@ -278,21 +280,30 @@ function TrackRows({ track, trackIndex, viewport, plotWidth, onTrackSelect, onEx
     <>
       {/* layer row */}
       <div className="flex" style={{ height: ROW_LAYER }}>
-        <div role={onTrackSelect ? "option" : undefined} aria-selected={onTrackSelect ? !!track.selected : undefined} tabIndex={onTrackSelect ? 0 : undefined}
+        <div role={onTrackSelect ? "option" : undefined} aria-selected={onTrackSelect ? !!track.selected : undefined} tabIndex={onTrackSelect ? focusable ? 0 : -1 : undefined}
           onClick={onTrackSelect ? event => onTrackSelect(trackId, { toggle: event.metaKey || event.ctrlKey, range: event.shiftKey }) : undefined}
           onKeyDown={onTrackSelect ? event => {
-            if (event.key !== "Enter" && event.key !== " ") return;
-            event.preventDefault();
+            if (event.currentTarget === event.target && ["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) {
+              const options = [...(event.currentTarget.closest('[role="listbox"]')?.querySelectorAll<HTMLElement>('[role="option"]') ?? [])];
+              const current = options.indexOf(event.currentTarget);
+              const target = event.key === "Home" ? 0 : event.key === "End" ? options.length - 1 : current + (event.key === "ArrowUp" ? -1 : 1);
+              if (options[target]) { event.preventDefault(); event.stopPropagation(); options[target].focus(); }
+              return;
+            }
+            if (!shouldActivateTimelineTrackKey(event.key, event.currentTarget === event.target)) return;
+            event.preventDefault(); event.stopPropagation();
             onTrackSelect(trackId, { toggle: event.metaKey || event.ctrlKey, range: event.shiftKey });
           } : undefined}
           className={clsx("shrink-0 flex items-center gap-[8px] pr-[8px] border-r border-c-border outline-none", onTrackSelect && "cursor-pointer hover:bg-c-bg-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-border-selected-strong", track.selected && "bg-c-bg-selected")}
           style={{ width: LEFT_W, paddingLeft: 8 + depth * 16 }}>
-          {track.props.length ? onExpandedChange ? <button type="button" aria-label={`${expanded ? "Collapse" : "Expand"} ${track.name}`} aria-expanded={expanded} onClick={event => { event.stopPropagation(); onExpandedChange(trackId, !expanded); }} className="size-[16px] shrink-0 rounded-c-sm flex items-center justify-center text-c-icon-secondary hover:bg-c-bg-hover focus-visible:ring-2 focus-visible:ring-c-border-selected-strong outline-none">
+          {track.props.length ? onExpandedChange ? <button type="button" aria-label={`${expanded ? "Collapse" : "Expand"} ${track.name}`} aria-expanded={expanded}
+            onKeyDown={event => { if (event.key === "Enter" || event.key === " ") event.stopPropagation(); }}
+            onClick={event => { event.stopPropagation(); onExpandedChange(trackId, !expanded); }} className="size-[16px] shrink-0 rounded-c-sm flex items-center justify-center text-c-icon-secondary hover:bg-c-bg-hover focus-visible:ring-2 focus-visible:ring-c-border-selected-strong outline-none">
             {expanded ? <ChevronDown size={12} strokeWidth={1.5} /> : <DisclosureRight size={12} strokeWidth={1.5} />}
           </button> : <span aria-hidden className="size-[16px] shrink-0 flex items-center justify-center text-c-icon-secondary">
             {expanded ? <ChevronDown size={12} strokeWidth={1.5} /> : <DisclosureRight size={12} strokeWidth={1.5} />}
           </span> : <span className="size-[16px] shrink-0" />}
-          <LayerTypeIcon type={track.type} autoLayoutMode={track.autoLayoutMode} className="text-c-icon-secondary" />
+          <LayerTypeIcon type={track.type} autoLayoutMode={track.autoLayoutMode} tone="secondary" />
           <span className={clsx(FONT, "text-[11px] font-[450] text-c-text truncate")}>{track.name}</span>
         </div>
         <div className="flex-1 relative overflow-hidden" style={{ height: ROW_LAYER }}>
@@ -856,7 +867,7 @@ export function Timeline({
               </button>
             </div>
             <div role={onTrackSelect ? "listbox" : undefined} aria-label={onTrackSelect ? "Timeline layers" : undefined} aria-multiselectable={onTrackSelect ? true : undefined}>
-            {tracks.map((t, i) => <TrackRows key={t.id ?? i} track={t} trackIndex={i} viewport={viewport} plotWidth={plotWidth} onTrackSelect={onTrackSelect}
+            {tracks.map((t, i) => <TrackRows key={t.id ?? i} track={t} trackIndex={i} focusable={i === Math.max(0, tracks.findIndex(track => track.selected))} viewport={viewport} plotWidth={plotWidth} onTrackSelect={onTrackSelect}
               onExpandedChange={onTrackExpandedChange} onAggregateKeyframeSelect={onAggregateKeyframeSelect}
               onKeyframeSelect={(target, additive) => { revealTime(target.timeMs); onKeyframeSelect?.(target, additive); }} onKeyframeMove={onKeyframeMove} onKeyframeDelete={onKeyframeDelete}
               onGestureStart={onGestureStart} onGestureEnd={onGestureEnd}
