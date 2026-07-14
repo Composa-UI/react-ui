@@ -18,6 +18,9 @@ export interface AggregateKeyframe {
 }
 
 const MIN_VIEWPORT_MS = 100;
+export const EDGE_AUTO_SCROLL_ZONE_PX = 32;
+export const EDGE_AUTO_SCROLL_MAX_PX_PER_SECOND = 720;
+export const EDGE_AUTO_SCROLL_MAX_FRAME_MS = 32;
 
 export function minimumViewportSpan(durationMs: number): number {
   return Math.min(MIN_VIEWPORT_MS, Math.max(1, durationMs));
@@ -55,6 +58,54 @@ export function panViewport(viewport: TimelineViewport, deltaPx: number, widthPx
   const current = normalizeViewport(viewport, durationMs);
   const deltaMs = deltaPx / Math.max(1, widthPx) * (current.endMs - current.startMs);
   return normalizeViewport({ startMs: current.startMs + deltaMs, endMs: current.endMs + deltaMs }, durationMs);
+}
+
+/**
+ * Returns signed screen velocity for a captured pointer near a visible time-lane
+ * edge. The quadratic ramp is gentle at entry and capped outside the lane.
+ */
+export function edgeAutoScrollVelocity(
+  clientX: number,
+  leftPx: number,
+  widthPx: number,
+  thresholdPx = EDGE_AUTO_SCROLL_ZONE_PX,
+  maxPxPerSecond = EDGE_AUTO_SCROLL_MAX_PX_PER_SECOND,
+): number {
+  if (![clientX, leftPx, widthPx, thresholdPx, maxPxPerSecond].every(Number.isFinite) || widthPx <= 0 || thresholdPx <= 0 || maxPxPerSecond <= 0) return 0;
+  const rightPx = leftPx + widthPx;
+  const leftPenetration = Math.max(0, Math.min(1, (leftPx + thresholdPx - clientX) / thresholdPx));
+  const rightPenetration = Math.max(0, Math.min(1, (clientX - (rightPx - thresholdPx)) / thresholdPx));
+  if (leftPenetration > 0 && leftPenetration >= rightPenetration) return -maxPxPerSecond * leftPenetration ** 2;
+  if (rightPenetration > 0) return maxPxPerSecond * rightPenetration ** 2;
+  return 0;
+}
+
+/** Advances a viewport by one animation frame while preserving its span. */
+export function advanceEdgeAutoScrollViewport(
+  viewport: TimelineViewport,
+  velocityPxPerSecond: number,
+  elapsedMs: number,
+  widthPx: number,
+  durationMs: number,
+): TimelineViewport {
+  const frameMs = Math.max(0, Math.min(EDGE_AUTO_SCROLL_MAX_FRAME_MS, Number.isFinite(elapsedMs) ? elapsedMs : 0));
+  if (!Number.isFinite(velocityPxPerSecond) || velocityPxPerSecond === 0 || frameMs === 0) return normalizeViewport(viewport, durationMs);
+  return panViewport(viewport, velocityPxPerSecond * frameMs / 1000, widthPx, durationMs);
+}
+
+/**
+ * Converts pointer motion plus UI-only viewport displacement into one authored
+ * drag delta. This keeps a stationary captured pointer moving with auto-pan.
+ */
+export function timelineDragDeltaMs(
+  startClientX: number,
+  clientX: number,
+  startViewportStartMs: number,
+  viewport: TimelineViewport,
+  widthPx: number,
+): number {
+  const pointerDeltaMs = (clientX - startClientX) / Math.max(1, widthPx) * (viewport.endMs - viewport.startMs);
+  return pointerDeltaMs + (viewport.startMs - startViewportStartMs);
 }
 
 /**

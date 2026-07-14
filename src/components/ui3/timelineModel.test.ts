@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collectAggregateKeyframes, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport } from "./timelineModel";
+import { advanceEdgeAutoScrollViewport, collectAggregateKeyframes, edgeAutoScrollVelocity, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineDragDeltaMs, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport } from "./timelineModel";
 
 describe("timeline viewport model", () => {
   it("round-trips time and pixels inside a controlled viewport", () => {
@@ -52,6 +52,28 @@ describe("timeline viewport model", () => {
     expect(reconcileUncontrolledViewport({ startMs: 0, endMs: 4_000 }, 8_000, true)).toEqual({ startMs: 0, endMs: 8_000 });
     expect(reconcileUncontrolledViewport({ startMs: 1_000, endMs: 3_000 }, 8_000, false)).toEqual({ startMs: 1_000, endMs: 3_000 });
     expect(reconcileUncontrolledViewport({ startMs: 7_000, endMs: 9_000 }, 8_000, false)).toEqual({ startMs: 6_000, endMs: 8_000 });
+  });
+
+  it("uses a symmetric quadratic client-pixel edge ramp", () => {
+    expect(edgeAutoScrollVelocity(132, 100, 400)).toBe(0);
+    expect(edgeAutoScrollVelocity(468, 100, 400)).toBe(0);
+    expect(edgeAutoScrollVelocity(116, 100, 400)).toBe(-180);
+    expect(edgeAutoScrollVelocity(484, 100, 400)).toBe(180);
+    expect(edgeAutoScrollVelocity(90, 100, 400)).toBe(-720);
+    expect(edgeAutoScrollVelocity(510, 100, 400)).toBe(720);
+    expect(edgeAutoScrollVelocity(Number.NaN, 100, 400)).toBe(0);
+  });
+
+  it("advances continuously with a capped frame delta and preserves viewport span", () => {
+    expect(advanceEdgeAutoScrollViewport({ startMs: 2_000, endMs: 6_000 }, 500, 16, 1_000, 10_000)).toEqual({ startMs: 2_032, endMs: 6_032 });
+    expect(advanceEdgeAutoScrollViewport({ startMs: 2_000, endMs: 6_000 }, 500, 200, 1_000, 10_000)).toEqual({ startMs: 2_064, endMs: 6_064 });
+    expect(advanceEdgeAutoScrollViewport({ startMs: 0, endMs: 4_000 }, -720, 32, 1_000, 10_000)).toEqual({ startMs: 0, endMs: 4_000 });
+    expect(advanceEdgeAutoScrollViewport({ startMs: 6_000, endMs: 10_000 }, 720, 32, 1_000, 10_000)).toEqual({ startMs: 6_000, endMs: 10_000 });
+  });
+
+  it("combines pointer motion with viewport displacement at any zoom", () => {
+    expect(timelineDragDeltaMs(100, 150, 1_000, { startMs: 1_400, endMs: 5_400 }, 800)).toBe(650);
+    expect(timelineDragDeltaMs(100, 100, 1_000, { startMs: 1_400, endMs: 3_400 }, 800)).toBe(400);
   });
 });
 

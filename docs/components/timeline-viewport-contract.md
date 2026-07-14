@@ -1,6 +1,6 @@
 # Timeline viewport and aggregate-key contract
 
-`Timeline` owns time-axis rendering and gestures while the host owns editor state. The optional `viewport` / `defaultViewport` pair uses composition-local milliseconds and follows the package's controlled/uncontrolled conventions. `onViewportChange` identifies `wheel-zoom`, `wheel-pan`, and `zoom-control`; viewport changes are presentation state and do not emit document gesture boundaries.
+`Timeline` owns time-axis rendering and gestures while the host owns editor state. The optional `viewport` / `defaultViewport` pair uses composition-local milliseconds and follows the package's controlled/uncontrolled conventions. `onViewportChange` identifies `wheel-zoom`, `wheel-pan`, `zoom-control`, `keyframe-reveal`, and `edge-drag`; viewport changes are presentation state and do not emit document gesture boundaries.
 
 Ctrl/Cmd + wheel zooms around the pointer's position in the track area. Horizontal wheel input pans without changing the visible duration; Shift + vertical wheel is the documented mouse-wheel pan fallback. DOM delta modes are normalized to pixels and the native listener is explicitly non-passive. The accessible Timeline zoom slider changes the same viewport around its center. Rulers, blocks, property lanes, drag deltas, aggregate keys, and both playhead surfaces use the same viewport transform and clip at the plot boundary.
 
@@ -9,6 +9,13 @@ The Audio row advertises future track ownership without exposing fake clips or
 editing controls before the app has an audio document model.
 
 Without a controlled viewport or explicit `defaultViewport`, the untouched timeline follows the full duration when duration or mode changes. Once the user zooms or pans, later context changes clamp the current window instead of destroying that zoom. An explicit `defaultViewport` is always treated as an intentional initial window.
+
+Composition-local keyframe drags auto-pan continuously inside a 32 CSS-pixel
+edge zone of the actual property lane. A quadratic ramp reaches 720 CSS pixels
+per second at and beyond the edge; animation-frame elapsed time is capped at
+32ms. Auto-pan preserves zoom and playhead time, clamps at the composition
+duration, and emits `edge-drag`. Master blocks, media clips, ruler scrub, and
+keyboard edits do not opt into this behavior.
 
 Tracks may provide visual `depth` and controlled `expanded` state. Expansion only controls that track's property rows and emits `onTrackExpandedChange`; product hierarchy remains host-owned. If the callback is absent, the disclosure is a non-focusable visual affordance rather than a no-op button.
 
