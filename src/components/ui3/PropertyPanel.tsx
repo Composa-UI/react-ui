@@ -588,11 +588,11 @@ function AppearanceSection({
       <div className="flex items-end gap-[8px] pl-[16px] pr-[16px] pt-[3px]">
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Opacity</div>
-          <NumericInput value={opacity} onChange={onOpacityChange} min={0} max={100} suffix="%" />
+          <NumericInput ariaLabel="Opacity" value={opacity} onChange={onOpacityChange} min={0} max={100} suffix="%" />
         </div>
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Corner radius</div>
-          <NumericInput iconLead={<Maximize size={11} strokeWidth={1.5} />} value={corners.topLeft} onChange={setCornerValue} min={0} disabled={indivCorners} />
+          <NumericInput ariaLabel="Corner radius" iconLead={<Maximize size={11} strokeWidth={1.5} />} value={corners.topLeft} onChange={setCornerValue} min={0} disabled={indivCorners} />
         </div>
         <PanelActionBtn icon={<Maximize size={16} strokeWidth={1.5} />} label="Independent corners" selected={indivCorners} onClick={() => setIndivCorners(v => !v)} />
       </div>
