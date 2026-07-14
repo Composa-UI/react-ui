@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { shouldActivateTimelineTrackKey, shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, timelineTrackExpansionForKey, timelineTrackNavigationIndex, Timeline, type Track } from "./Timeline";
+import { shouldActivateTimelineTrackKey, shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, timelineTimeAtClientX, timelineTrackExpansionForKey, timelineTrackNavigationIndex, Timeline, type Track } from "./Timeline";
 
 const numericTrack: Track = { id: "hero", name: "Hero", type: "frame", props: [
   { id: "opacity", name: "Opacity", keyframes: [500, 900] },
@@ -108,6 +108,23 @@ describe("Timeline DOM contracts", () => {
   it("only advertises keyframe shortcuts backed by callbacks", () => {
     const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]} />);
     expect(html).toContain('aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Space"');
+  });
+
+  it("exposes empty property lanes only when the host can add at a clicked time", () => {
+    const inert = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]} />);
+    const interactive = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]} onPropertyAddKeyframe={() => undefined} />);
+    expect(inert).not.toContain("cursor-crosshair");
+    expect(interactive).toContain('data-timeline-property-lane="hero:opacity"');
+    expect(interactive).toContain("cursor-crosshair");
+  });
+});
+
+describe("Timeline empty-lane time mapping", () => {
+  it("maps and clamps client positions through the shared viewport", () => {
+    const viewport = { startMs: 2_000, endMs: 6_000 };
+    expect(timelineTimeAtClientX(100, 100, 400, viewport)).toBe(2_000);
+    expect(timelineTimeAtClientX(300, 100, 400, viewport)).toBe(4_000);
+    expect(timelineTimeAtClientX(900, 100, 400, viewport)).toBe(6_000);
   });
 });
 

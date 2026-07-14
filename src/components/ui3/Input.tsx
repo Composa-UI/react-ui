@@ -1,4 +1,4 @@
-import { useState, useId, useRef, useCallback, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useId, useRef, useCallback, useEffect, type ReactNode } from "react";
 import { clsx } from "clsx";
 import { ChevronDown } from "lucide-react";
 import { Chit, type ChitType } from "./Chit";
@@ -22,6 +22,26 @@ const T: Record<InputSize, string> = {
 };
 
 const FONT = "font-[family-name:var(--composa-font-family)] font-[450] tracking-[0.005em]";
+
+export interface NumericEditSessionCallbacks {
+  onEditStart?: () => void;
+  onEditCommit?: () => void;
+  onEditCancel?: () => void;
+}
+
+const NumericEditSessionContext = createContext<NumericEditSessionCallbacks>({});
+
+/** Supplies one host-owned history transaction contract to nested numeric controls. */
+export function NumericEditSessionProvider({ children, ...callbacks }: NumericEditSessionCallbacks & { children: ReactNode }) {
+  return <NumericEditSessionContext.Provider value={callbacks}>{children}</NumericEditSessionContext.Provider>;
+}
+
+/** Formats presentation only. Stored and emitted numeric precision is untouched. */
+export function formatNumericDisplay(value: number): string {
+  if (!Number.isFinite(value)) return "0";
+  const rounded = Math.round((value + Math.sign(value) * Number.EPSILON) * 100) / 100;
+  return Object.is(rounded, -0) ? "0" : String(rounded);
+}
 
 function ringColor(focused: boolean, disabled: boolean, variant: InputVariant) {
   if (disabled) return "ring-c-border-disabled";
@@ -215,7 +235,7 @@ export function InputField({
 
 // ─── NumericInput ─────────────────────────────────────────────────────────────
 
-interface NumericInputProps {
+export interface NumericInputProps extends NumericEditSessionCallbacks {
   ariaLabel?: string;
   iconLead?: ReactNode;       // scrubber label (e.g. "W", "X", or an icon)
   value?: number;
@@ -252,19 +272,28 @@ export function NumericInput({
   variableValue,
   onVariableDetach,
   onChange,
+  onEditStart,
+  onEditCommit,
+  onEditCancel,
   commitOnBlur = false,
   className,
 }: NumericInputProps) {
+  const inheritedSession = useContext(NumericEditSessionContext);
+  const startSession = onEditStart ?? inheritedSession.onEditStart;
+  const commitSession = onEditCommit ?? inheritedSession.onEditCommit;
+  const cancelSession = onEditCancel ?? inheritedSession.onEditCancel;
+  const sessionControlled = !!(startSession || commitSession || cancelSession);
   const [focused, setFocused] = useState(false);
   const [scrubbing, setScrubbing] = useState(false);
   const [internal, setInternal] = useState(defaultValue);
   const scrubStart = useRef<{ x: number; value: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const cancelBlurCommit = useRef(false);
+  const sessionStart = useRef<number | null>(null);
 
   const current = value !== undefined ? value : internal;
   const [draft, setDraft] = useState(String(current));
-  useEffect(() => { if (!focused) setDraft(String(current)); }, [current, focused]);
+  useEffect(() => { if (!focused && !scrubbing) setDraft(formatNumericDisplay(current)); }, [current, focused, scrubbing]);
   // Mixed (v5 §7): multi-select with differing values shows "Mixed" until focused; typing commits to all.
   const displayMixed = mixed && !focused && !scrubbing;
 
@@ -281,8 +310,25 @@ export function NumericInput({
     onChange?.(final);
   }, [clampVal, value, onChange]);
 
+  const beginSession = useCallback(() => {
+    if (!sessionControlled || sessionStart.current !== null) return;
+    sessionStart.current = current;
+    startSession?.();
+  }, [current, sessionControlled, startSession]);
+  const finishSession = useCallback((cancelled: boolean) => {
+    if (sessionStart.current === null) return;
+    const start = sessionStart.current;
+    sessionStart.current = null;
+    if (cancelled) {
+      setDraft(String(start));
+      if (value === undefined) setInternal(start);
+      cancelSession?.();
+    } else commitSession?.();
+  }, [cancelSession, commitSession, value]);
+
   const onLabelPointerDown = (e: React.PointerEvent) => {
     if (disabled) return;
+    beginSession();
     e.currentTarget.setPointerCapture(e.pointerId);
     scrubStart.current = { x: e.clientX, value: current };
     setScrubbing(true);
@@ -301,17 +347,43 @@ export function NumericInput({
     scrubStart.current = null;
     setScrubbing(false);
     if (!moved && !variableValue) inputRef.current?.focus();
+    else finishSession(false);
   };
+  const cancelScrub = useCallback(() => {
+    if (!scrubStart.current) return;
+    scrubStart.current = null;
+    setScrubbing(false);
+    finishSession(true);
+  }, [finishSession]);
+  useEffect(() => {
+    if (!scrubbing) return;
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      cancelScrub();
+    };
+    document.addEventListener("keydown", onEscape, true);
+    return () => document.removeEventListener("keydown", onEscape, true);
+  }, [cancelScrub, scrubbing]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const mult = e.shiftKey ? 10 : 1;
-    if (e.key === "Enter" && commitOnBlur) { e.preventDefault(); e.currentTarget.blur(); return; }
-    if (e.key === "Escape" && commitOnBlur) { e.preventDefault(); cancelBlurCommit.current = true; setDraft(String(current)); e.currentTarget.blur(); return; }
+    if (e.key === "Enter" && (commitOnBlur || sessionControlled)) { e.preventDefault(); e.currentTarget.blur(); return; }
+    if (e.key === "Escape" && (commitOnBlur || sessionControlled)) {
+      e.preventDefault();
+      cancelBlurCommit.current = true;
+      if (sessionControlled) finishSession(true);
+      else setDraft(String(current));
+      e.currentTarget.blur();
+      return;
+    }
     if (e.key === "ArrowUp" || e.key === "ArrowDown") {
       e.preventDefault();
-      const base = commitOnBlur && Number.isFinite(Number(draft)) ? Number(draft) : current;
+      const base = (commitOnBlur || sessionControlled) && Number.isFinite(Number(draft)) ? Number(draft) : current;
       const next = clampVal(base + (e.key === "ArrowUp" ? step : -step) * mult);
-      if (commitOnBlur) setDraft(String(next)); else set(next);
+      if (commitOnBlur && !sessionControlled) setDraft(String(next));
+      else { beginSession(); setDraft(String(next)); set(next); }
     }
   };
   const commitDraft = () => {
@@ -328,6 +400,8 @@ export function NumericInput({
           onPointerDown={onLabelPointerDown}
           onPointerMove={onLabelPointerMove}
           onPointerUp={onLabelPointerUp}
+          onPointerCancel={cancelScrub}
+          onLostPointerCapture={cancelScrub}
           className={clsx(
             "absolute left-0 flex items-center justify-center size-[24px] shrink-0 select-none",
             FONT, T[size], "text-c-text-secondary",
@@ -352,25 +426,37 @@ export function NumericInput({
         <input
           aria-label={ariaLabel}
           ref={inputRef}
-          type="number"
-          value={displayMixed ? "" : commitOnBlur ? draft : current}
+          type="text"
+          role="spinbutton"
+          inputMode="decimal"
+          value={displayMixed ? "" : focused || sessionControlled && sessionStart.current !== null || commitOnBlur ? draft : formatNumericDisplay(current)}
           placeholder={mixed ? "Mixed" : undefined}
           min={min}
           max={max}
           step={step}
           disabled={disabled}
-          onChange={e => commitOnBlur ? setDraft(e.target.value) : set(parseFloat(e.target.value) || 0)}
+          onChange={e => {
+            const nextDraft = e.target.value;
+            setDraft(nextDraft);
+            if (commitOnBlur && !sessionControlled) return;
+            const parsed = Number(nextDraft);
+            if (nextDraft.trim() !== "" && Number.isFinite(parsed)) { beginSession(); set(parsed); }
+          }}
           onKeyDown={onKeyDown}
-          onFocus={e => { setFocused(true); e.target.select(); }}
+          onFocus={e => { setDraft(String(current)); beginSession(); setFocused(true); e.target.select(); }}
           onBlur={() => {
             if (cancelBlurCommit.current) cancelBlurCommit.current = false;
-            else if (commitOnBlur) commitDraft();
+            else {
+              if (commitOnBlur && !sessionControlled) commitDraft();
+              finishSession(false);
+            }
             setFocused(false);
           }}
           className={clsx(
             "flex-1 min-w-0 h-full bg-transparent outline-none text-left",
             FONT, T[size], "text-c-text",
             "placeholder:text-c-text-tertiary",
+            !focused && "truncate",
             "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
             iconLead ? "pl-[26px]" : "pl-[8px]",
             (suffix || dropdown) ? "pr-[2px]" : "pr-[8px]",

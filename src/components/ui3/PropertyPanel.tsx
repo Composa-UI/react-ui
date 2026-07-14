@@ -20,7 +20,7 @@ import {
   IconButtonRow, PanelActionBtn, PanelEntry, ScrollArea, type IconBtn,
 } from "./Panel";
 import { Tabs } from "./Tabs";
-import { NumericInput, InputField, ColorInput, ComboInput } from "./Input";
+import { NumericEditSessionProvider, NumericInput, InputField, ColorInput, ComboInput } from "./Input";
 import { Dropdown } from "./Dropdown";
 import { SegmentedControl } from "./SegmentedControl";
 import { Chit } from "./Chit";
@@ -261,7 +261,6 @@ function PositionSection({
           ? <PanelActionBtn icon={<MoreHorizontal size={16} strokeWidth={1.5} />} label="More alignment" />
           : undefined}
       />
-
       {/* X / Y */}
       <PanelFieldRow
         label="Position"
@@ -290,6 +289,7 @@ function PositionSection({
         }
         right={<IconButtonRow buttons={rotateBtns} fill />}
       />
+
     </PanelSection>
   );
 }
@@ -1602,6 +1602,10 @@ export interface PropertyPanelProps {
   onXChange?: (value: number) => void;
   onYChange?: (value: number) => void;
   onRotationChange?: (value: number) => void;
+  /** Host-owned history boundary shared by every nested NumericInput. */
+  onNumericEditStart?: () => void;
+  onNumericEditCommit?: () => void;
+  onNumericEditCancel?: () => void;
   width?: number; height?: number;
   onWidthChange?: (value: number) => void;
   onHeightChange?: (value: number) => void;
@@ -1738,6 +1742,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   multiSelect = false,
   x = 0, y = 0, rotation = 0,
   onXChange, onYChange, onRotationChange,
+  onNumericEditStart, onNumericEditCommit, onNumericEditCancel,
   width = 1200, height = 115,
   onWidthChange, onHeightChange,
   opacity = 100,
@@ -1870,6 +1875,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   };
 
   return (
+    <NumericEditSessionProvider onEditStart={onNumericEditStart} onEditCommit={onNumericEditCommit} onEditCancel={onNumericEditCancel}>
     <Panel className={clsx("h-full overflow-hidden flex flex-col", className)}>
       {/* Multiplayer tools — above the tabs; shared across all modes */}
       <MultiplayerBar previewPlaying={previewPlaying} onPreviewToggle={onPreviewToggle} onPreviewMenu={onPreviewMenu} />
@@ -2102,5 +2108,6 @@ export function PropertyPanel(props: PropertyPanelProps) {
       </>
       )}
     </Panel>
+    </NumericEditSessionProvider>
   );
 }

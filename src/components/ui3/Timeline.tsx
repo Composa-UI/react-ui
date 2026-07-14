@@ -178,15 +178,21 @@ const keyframeTime = (keyframe: TimelineKeyframeValue) => typeof keyframe === "n
 const keyframeId = (keyframe: TimelineKeyframeValue, index: number) => typeof keyframe === "number" ? `keyframe-${index}-${keyframe}` : keyframe.id;
 // Aggregate identities must be unique across properties without changing the legacy callback contract above.
 const aggregateKeyframeId = (keyframe: TimelineKeyframeValue, index: number, propertyId: string) => typeof keyframe === "number" ? `${propertyId}:aggregate-keyframe-${index}-${keyframe}` : keyframe.id;
+
+export function timelineTimeAtClientX(clientX: number, left: number, width: number, viewport: TimelineViewport): number {
+  const ratio = Math.max(0, Math.min(1, (clientX - left) / Math.max(1, width)));
+  return Math.round(viewport.startMs + ratio * (viewport.endMs - viewport.startMs));
+}
 const percent = (timeMs: number, viewport: TimelineViewport) => `${timeToX(timeMs, viewport, 100)}%`;
 const percentWidth = (startMs: number, endMs: number, viewport: TimelineViewport) => `${timeToX(endMs, viewport, 100) - timeToX(startMs, viewport, 100)}%`;
 
-function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, onSelect, onMove, onDelete, onGestureStart, onGestureEnd }: {
+function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, onSelect, onMove, onDelete, onAdd, onGestureStart, onGestureEnd }: {
   prop: PropTrack; trackId: string; propertyId: string; height: number;
   viewport: TimelineViewport; plotWidth: number;
   onSelect?: (target: KeyframeTarget, additive: boolean) => void;
   onMove?: (target: KeyframeTarget, timeMs: number) => void;
   onDelete?: (target: KeyframeTarget) => void;
+  onAdd?: (timeMs: number) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
 }) {
@@ -204,7 +210,16 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, onSelect
   };
   const escapeOwnership = useGestureEscapeOwnership(() => finish(true));
   return (
-    <div className="flex-1 relative overflow-hidden" style={{ height }}>
+    <div
+      className={clsx("flex-1 relative overflow-hidden", onAdd && "cursor-crosshair")}
+      style={{ height }}
+      data-timeline-property-lane={`${trackId}:${propertyId}`}
+      onClick={event => {
+        if (!onAdd || event.target !== event.currentTarget) return;
+        const rect = event.currentTarget.getBoundingClientRect();
+        onAdd(timelineTimeAtClientX(event.clientX, rect.left, rect.width, viewport));
+      }}
+    >
       {prop.bar && (
         <div
           className="absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] bg-c-bg-secondary"
@@ -234,7 +249,7 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, onSelect
           data-keyframe-id={id}
           aria-label={`${prop.name} keyframe at ${timeMs}ms`}
           aria-pressed={selected}
-          onClick={event => onSelect?.(target, event.shiftKey)}
+          onClick={event => { event.stopPropagation(); onSelect?.(target, event.shiftKey); }}
           onKeyDown={event => {
             if (event.key === "Delete" || event.key === "Backspace") { event.preventDefault(); onDelete?.(target); }
             if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect?.(target, event.shiftKey); }
@@ -268,7 +283,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, onTrackS
   onKeyframeSelect?: (target: KeyframeTarget, additive: boolean) => void;
   onKeyframeMove?: (target: KeyframeTarget, timeMs: number) => void;
   onKeyframeDelete?: (target: KeyframeTarget) => void;
-  onPropertyAddKeyframe?: (trackId: string, propertyId: string) => void;
+  onPropertyAddKeyframe?: (trackId: string, propertyId: string, timeMs?: number) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
 }) {
@@ -359,7 +374,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, onTrackS
             <ChevronRight size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />
             {p.hidden ? <EyeOff size={14} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" /> : <Eye size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />}
           </div>
-          <Lane prop={p} trackId={trackId} propertyId={p.id ?? `property-${i}`} height={ROW_PROP} viewport={viewport} plotWidth={plotWidth} onSelect={onKeyframeSelect} onMove={onKeyframeMove} onDelete={onKeyframeDelete} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+          <Lane prop={p} trackId={trackId} propertyId={p.id ?? `property-${i}`} height={ROW_PROP} viewport={viewport} plotWidth={plotWidth} onSelect={onKeyframeSelect} onMove={onKeyframeMove} onDelete={onKeyframeDelete} onAdd={onPropertyAddKeyframe ? timeMs => onPropertyAddKeyframe(trackId, p.id ?? `property-${i}`, timeMs) : undefined} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
         </div>
       ))}
     </>
@@ -889,7 +904,7 @@ export function Timeline({
               onExpandedChange={onTrackExpandedChange} onAggregateKeyframeSelect={onAggregateKeyframeSelect}
               onKeyframeSelect={(target, additive) => { revealTime(target.timeMs); onKeyframeSelect?.(target, additive); }} onKeyframeMove={onKeyframeMove} onKeyframeDelete={onKeyframeDelete}
               onGestureStart={onGestureStart} onGestureEnd={onGestureEnd}
-              onPropertyAddKeyframe={(trackId, propertyId) => onPropertyAddKeyframe?.(trackId, propertyId, playhead)} />)}
+              onPropertyAddKeyframe={onPropertyAddKeyframe ? (trackId, propertyId, timeMs = playhead) => onPropertyAddKeyframe(trackId, propertyId, timeMs) : undefined} />)}
             </div>
           </>
         )}
