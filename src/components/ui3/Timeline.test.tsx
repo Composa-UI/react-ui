@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { shouldActivateTimelineTrackKey, shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, timelineTrackNavigationIndex, Timeline, type Track } from "./Timeline";
+import { shouldActivateTimelineTrackKey, shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, timelineTrackExpansionForKey, timelineTrackNavigationIndex, Timeline, type Track } from "./Timeline";
 
 const numericTrack: Track = { id: "hero", name: "Hero", type: "frame", props: [
   { id: "opacity", name: "Opacity", keyframes: [500, 900] },
@@ -75,6 +75,16 @@ describe("Timeline DOM contracts", () => {
     expect(timelineTrackNavigationIndex(0, 1, "Home")).toBe(0);
     expect(timelineTrackNavigationIndex(0, 1, "End")).toBe(0);
     expect(timelineTrackNavigationIndex(0, 1, "Enter")).toBeNull();
+  });
+
+  it("keeps disclosure outside the option and owns expansion on the row", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]}
+      onTrackSelect={() => undefined} onTrackExpandedChange={() => undefined} />);
+    expect(html.indexOf('aria-label="Collapse Hero"')).toBeLessThan(html.indexOf('role="option"'));
+    expect(html).toContain('role="option" aria-selected="false" aria-expanded="true"');
+    expect(timelineTrackExpansionForKey("ArrowRight", false)).toBe(true);
+    expect(timelineTrackExpansionForKey("ArrowLeft", true)).toBe(false);
+    expect(timelineTrackExpansionForKey("ArrowLeft", false)).toBeNull();
   });
 
   it("exposes a focusable Playhead with the active keyboard map", () => {
