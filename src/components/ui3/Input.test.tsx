@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { formatNumericDisplay, NumericEditSessionProvider, NumericInput, NumericInputMulti } from "./Input";
+import { formatNumericDisplay, NumericComboInput, NumericEditSessionProvider, NumericInput, NumericInputMulti } from "./Input";
 
 describe("NumericInput presentation contract", () => {
   it("rounds only the unfocused presentation to at most two decimals", () => {
@@ -29,5 +29,11 @@ describe("NumericInput presentation contract", () => {
     );
     expect(html).not.toContain("data-composa-numeric-input");
     expect(html.match(/type="number"/g)).toHaveLength(4);
+  });
+
+  it("shows a relative-mode label in the combo trigger", () => {
+    const html = renderToStaticMarkup(<NumericComboInput ariaLabel="Width" dropdownAriaLabel="Width sizing mode: Hug" triggerLabel="Hug" value={240} menu={() => null} />);
+    expect(html).toContain('aria-label="Width sizing mode: Hug"');
+    expect(html).toMatch(/aria-label="Width sizing mode: Hug"[\s\S]*?>Hug<\/span>/);
   });
 });

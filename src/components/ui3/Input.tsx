@@ -514,6 +514,8 @@ export interface NumericComboInputProps extends Omit<NumericInputProps, "dropdow
   dropdownAriaLabel: string;
   /** Replaces the numeric editor for relative/non-numeric modes such as Auto. */
   readOnlyLabel?: string;
+  /** Optional visible state in the menu segment (for example Hug, Fill or Mixed). */
+  triggerLabel?: string;
   menu: (close: () => void) => ReactNode;
   menuAlign?: "left" | "right";
   dataMode?: string;
@@ -522,6 +524,7 @@ export interface NumericComboInputProps extends Omit<NumericInputProps, "dropdow
 export function NumericComboInput({
   dropdownAriaLabel,
   readOnlyLabel,
+  triggerLabel,
   menu,
   menuAlign = "right",
   dataMode,
@@ -558,11 +561,12 @@ export function NumericComboInput({
             aria-haspopup="menu"
             disabled={disabled}
             className={clsx(
-              "flex items-center justify-center w-[24px] rounded-r-c-md bg-c-bg-secondary",
+              "flex items-center justify-center min-w-[24px] px-[6px] gap-[3px] rounded-r-c-md bg-c-bg-secondary",
               H[size], "text-c-icon-secondary hover:bg-c-bg-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-c-focus-ring",
               disabled && "opacity-60 cursor-not-allowed",
             )}
           >
+            {triggerLabel && <span className={clsx(FONT, T[size], "text-c-text truncate max-w-[38px]")}>{triggerLabel}</span>}
             <ChevronDown size={10} strokeWidth={2} />
           </button>
         )}

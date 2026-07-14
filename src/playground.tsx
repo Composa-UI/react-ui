@@ -76,7 +76,7 @@ export default function Playground() {
     typography: ElementTypographySettings; layout: ElementLayoutSettings; fills: ElementFillSetting[]; strokes: ElementStrokeSetting[]; effects: ElementEffectSetting[];
   }>({
     typography: { fontFamily: "Inter", fontWeight: "Medium", fontSize: 48, lineHeight: 58, letterSpacing: 0, align: "left", verticalAlign: "middle" },
-    layout: { mode: "vertical", gap: 8, padding: { top: 16, right: 16, bottom: 16, left: 16 }, align: "mc", widthMode: "fixed", heightMode: "hug", clipsContent: true, positioning: "auto", positioningApplicable: true },
+    layout: { mode: "vertical", gap: 8, padding: { top: 16, right: 16, bottom: 16, left: 16 }, align: "mc", widthMode: "fill", heightMode: "hug", minWidth: 240, maxHeight: 720, availableWidthModes: ["fixed", "fill"], availableHeightModes: ["fixed", "hug"], clipsContent: true, positioning: "auto", positioningApplicable: true },
     fills: [{ id: "fill-1", color: "#1e1e1e", opacity: 100, visible: true }],
     strokes: [{ id: "stroke-1", color: "#0d99ff", opacity: 100, visible: true, weight: 1, align: "inside" }],
     effects: [{ id: "effect-1", type: "Drop shadow", visible: true }],
@@ -295,12 +295,13 @@ export default function Playground() {
   }
 
   if (view === "element-contract") {
-    return <div style={{ height: "100vh", width: "100vw", display: "flex", gap: 20, justifyContent: "flex-end", background: "#e6e6e6" }}>
+    const dark = new URLSearchParams(window.location.search).get("theme") === "dark";
+    return <div data-composa-mode={dark ? "dark" : undefined} style={{ height: "100vh", width: "100vw", display: "flex", gap: 20, justifyContent: "flex-end", background: dark ? "#1e1e1e" : "#e6e6e6" }}>
       <PropertyPanel elementType="text" typography={elementContract.typography} onTypographyChange={patch => setElementContract(value => ({ ...value, typography: { ...value.typography, ...patch } }))}
         fills={elementContract.fills} onUpdateFill={(id, patch) => setElementContract(value => ({ ...value, fills: value.fills.map(item => item.id === id ? { ...item, ...patch } : item) }))}
         strokes={elementContract.strokes} onUpdateStroke={(id, patch) => setElementContract(value => ({ ...value, strokes: value.strokes.map(item => item.id === id ? { ...item, ...patch } : item) }))}
         effects={elementContract.effects} onUpdateEffect={(id, patch) => setElementContract(value => ({ ...value, effects: value.effects.map(item => item.id === id ? { ...item, ...patch } : item) }))} />
-      <PropertyPanel elementType="frame-auto" layout={elementContract.layout} onLayoutChange={patch => setElementContract(value => ({ ...value, layout: { ...value.layout, ...patch } }))}
+      <PropertyPanel elementType="frame-auto" capabilities={{ variables: false }} layout={elementContract.layout} onLayoutChange={patch => setElementContract(value => ({ ...value, layout: { ...value.layout, ...patch } }))}
       />
     </div>;
   }

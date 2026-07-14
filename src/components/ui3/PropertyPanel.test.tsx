@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { PropertyPanel, reconcileAutoLayoutGap } from "./PropertyPanel";
+import { getSizingMenuLabels, PropertyPanel, reconcileAutoLayoutGap } from "./PropertyPanel";
 import { TooltipProvider } from "./Tooltip";
 
 describe("Video Clip inspector semantics", () => {
@@ -50,13 +50,30 @@ describe("Auto-layout gap control", () => {
   it("renders one menu-backed numeric combo instead of a second Auto field", () => {
     const html = renderToStaticMarkup(<PropertyPanel elementType="frame-auto" layout={layout} />);
 
-    expect(html.match(/data-composa-numeric-combo=/g)).toHaveLength(1);
+    expect(html.match(/data-composa-numeric-combo=/g)).toHaveLength(3);
     expect(html).toContain('data-composa-numeric-combo="fixed"');
+    expect(html).toContain('role="group" aria-label="Flow and gap"');
     expect(html).toContain('aria-label="Gap"');
     expect(html).toContain('aria-label="Gap sizing mode: Fixed"');
     expect(html).toContain('aria-haspopup="menu"');
     expect(html).toContain('class="lucide lucide-move-horizontal"');
     expect(html).not.toContain('aria-label="Gap settings"');
+  });
+
+  it("renders menu-backed W/H modes and the shared min/max grid", () => {
+    const html = renderToStaticMarkup(<PropertyPanel elementType="frame-auto" width={320} height={180} layout={{ ...layout, widthMode: "hug", minWidth: 120, maxHeight: 360 }} />);
+    expect(html).toContain('data-composa-numeric-combo="hug"');
+    expect(html).toContain('aria-label="Width sizing mode: Hug"');
+    expect(html).toContain('aria-label="Min width"');
+    expect(html).toContain('aria-label="Max height"');
+    expect(html).not.toContain('aria-label="Min height"');
+  });
+
+  it("projects valid mode intersections, constraints and variable gating into canonical menu labels", () => {
+    expect(getSizingMenuLabels({ axis: "width", value: 320, availableModes: ["fixed", "fill"], minValue: 120, variablesEnabled: false })).toEqual([
+      "Fixed width (320)", "Fill container", "Remove min width", "Add max width",
+    ]);
+    expect(getSizingMenuLabels({ axis: "height", value: 180, availableModes: ["fixed", "hug"], variablesEnabled: true })).toContain("Apply variable");
   });
 
   it("shows Auto as the combo value and changes the gap icon with vertical flow", () => {

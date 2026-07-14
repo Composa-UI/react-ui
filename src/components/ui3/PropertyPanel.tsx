@@ -20,7 +20,7 @@ import {
   IconButtonRow, PanelActionBtn, PanelEntry, ScrollArea, type IconBtn,
 } from "./Panel";
 import { Tabs } from "./Tabs";
-import { NumericEditSessionProvider, NumericInput, NumericComboInput, InputField, ColorInput, ComboInput } from "./Input";
+import { NumericEditSessionProvider, NumericInput, NumericComboInput, InputField, ColorInput, ComboInput, formatNumericDisplay } from "./Input";
 import { Dropdown } from "./Dropdown";
 import { SegmentedControl } from "./SegmentedControl";
 import { Chit } from "./Chit";
@@ -64,7 +64,18 @@ export interface ElementLayoutSettings {
   align: string; widthMode: "fixed" | "hug" | "fill"; heightMode: "fixed" | "hug" | "fill"; clipsContent: boolean;
   positioning?: "auto" | "absolute";
   positioningApplicable?: boolean;
+  minWidth?: number; minHeight?: number; maxWidth?: number; maxHeight?: number;
+  availableWidthModes?: ElementSizingMode[];
+  availableHeightModes?: ElementSizingMode[];
+  widthModeMixed?: boolean;
+  heightModeMixed?: boolean;
+  minWidthMixed?: boolean; minHeightMixed?: boolean; maxWidthMixed?: boolean; maxHeightMixed?: boolean;
 }
+
+export type ElementSizingAxis = "width" | "height";
+export type ElementSizingMode = "fixed" | "hug" | "fill";
+export interface ElementSizingChange { mode: ElementSizingMode; value?: number; }
+export type ElementSizingConstraint = "min" | "max";
 
 type BlendMode = string;
 
@@ -206,6 +217,134 @@ function AlignmentGrid({
   );
 }
 
+// ─── Shared W/H sizing controls ─────────────────────────────────────────────
+
+export interface SizingComboFieldProps {
+  axis: ElementSizingAxis;
+  value: number;
+  mode: ElementSizingMode;
+  mixed?: boolean;
+  availableModes?: ElementSizingMode[];
+  minValue?: number;
+  maxValue?: number;
+  variablesEnabled?: boolean;
+  onApplyVariable?: () => void;
+  onValueChange?: (value: number) => void;
+  onSizingChange?: (change: ElementSizingChange) => void;
+  onConstraintChange?: (constraint: ElementSizingConstraint, value: number | undefined) => void;
+}
+
+export function getSizingMenuLabels({
+  axis, value, availableModes = ["fixed", "hug", "fill"], minValue, maxValue, variablesEnabled = false,
+}: Pick<SizingComboFieldProps, "axis" | "value" | "availableModes" | "minValue" | "maxValue" | "variablesEnabled">): string[] {
+  const noun = axis;
+  return [
+    ...(availableModes.includes("fixed") ? [`Fixed ${noun} (${formatNumericDisplay(value)})`] : []),
+    ...(availableModes.includes("hug") ? ["Hug contents"] : []),
+    ...(availableModes.includes("fill") ? ["Fill container"] : []),
+    minValue === undefined ? `Add min ${noun}` : `Remove min ${noun}`,
+    maxValue === undefined ? `Add max ${noun}` : `Remove max ${noun}`,
+    ...(variablesEnabled ? ["Apply variable"] : []),
+  ];
+}
+
+export function SizingComboField({
+  axis, value, mode, mixed = false, availableModes = ["fixed", "hug", "fill"],
+  minValue, maxValue, variablesEnabled = false, onValueChange, onSizingChange, onConstraintChange, onApplyVariable,
+}: SizingComboFieldProps) {
+  const axisLabel = axis === "width" ? "Width" : "Height";
+  const modeLabel = mixed ? "Mixed" : mode === "hug" ? "Hug" : mode === "fill" ? "Fill" : undefined;
+  const emitMode = (nextMode: ElementSizingMode) => onSizingChange?.({ mode: nextMode, ...(nextMode === "fixed" ? { value } : {}) });
+  const emitValue = (nextValue: number) => {
+    if (onSizingChange) onSizingChange({ mode: "fixed", value: nextValue });
+    else onValueChange?.(nextValue);
+  };
+  const initialMin = maxValue === undefined ? value : Math.min(value, maxValue);
+  const initialMax = minValue === undefined ? value : Math.max(value, minValue);
+  const menu = (close: () => void) => (
+    <Menu minWidth={190}>
+      {availableModes.includes("fixed") && <MenuRow type="checkmark" label={`Fixed ${axis} (${formatNumericDisplay(value)})`} checked={!mixed && mode === "fixed"} onClick={() => { emitMode("fixed"); close(); }} />}
+      {availableModes.includes("hug") && <MenuRow type="checkmark" label="Hug contents" checked={!mixed && mode === "hug"} onClick={() => { emitMode("hug"); close(); }} />}
+      {availableModes.includes("fill") && <MenuRow type="checkmark" label="Fill container" checked={!mixed && mode === "fill"} onClick={() => { emitMode("fill"); close(); }} />}
+      <MenuRow type="divider" />
+      <MenuRow type="simple" label={minValue === undefined ? `Add min ${axis}` : `Remove min ${axis}`} onClick={() => { onConstraintChange?.("min", minValue === undefined ? initialMin : undefined); close(); }} />
+      <MenuRow type="simple" label={maxValue === undefined ? `Add max ${axis}` : `Remove max ${axis}`} onClick={() => { onConstraintChange?.("max", maxValue === undefined ? initialMax : undefined); close(); }} />
+      {variablesEnabled && <><MenuRow type="divider" /><MenuRow type="simple" label="Apply variable" disabled={!onApplyVariable} onClick={onApplyVariable ? () => { onApplyVariable(); close(); } : undefined} /></>}
+    </Menu>
+  );
+  return <NumericComboInput
+    dataMode={mixed ? "mixed" : mode}
+    ariaLabel={axisLabel}
+    dropdownAriaLabel={`${axisLabel} sizing mode: ${mixed ? "Mixed" : modeLabel ?? "Fixed"}`}
+    triggerLabel={modeLabel}
+    iconLead={<span className={FONT}>{axis === "width" ? "W" : "H"}</span>}
+    value={value}
+    onChange={emitValue}
+    min={0}
+    menu={menu}
+    className="w-full"
+  />;
+}
+
+export interface DimensionSizingFieldsProps {
+  width: number; height: number;
+  widthMode?: ElementSizingMode; heightMode?: ElementSizingMode;
+  widthMixed?: boolean; heightMixed?: boolean;
+  availableWidthModes?: ElementSizingMode[]; availableHeightModes?: ElementSizingMode[];
+  minWidth?: number; minHeight?: number; maxWidth?: number; maxHeight?: number;
+  minWidthMixed?: boolean; minHeightMixed?: boolean; maxWidthMixed?: boolean; maxHeightMixed?: boolean;
+  variablesEnabled?: boolean;
+  onWidthChange?: (value: number) => void; onHeightChange?: (value: number) => void;
+  onSizingChange?: (axis: ElementSizingAxis, change: ElementSizingChange) => void;
+  onConstraintChange?: (axis: ElementSizingAxis, constraint: ElementSizingConstraint, value: number | undefined) => void;
+  onApplySizingVariable?: (axis: ElementSizingAxis) => void;
+}
+
+export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
+  const [localWidthMode, setLocalWidthMode] = useState<ElementSizingMode>(props.widthMode ?? "fixed");
+  const [localHeightMode, setLocalHeightMode] = useState<ElementSizingMode>(props.heightMode ?? "fixed");
+  const [lockAspect, setLockAspect] = useState(false);
+  const controlledSizing = !!props.onSizingChange;
+  const [localConstraints, setLocalConstraints] = useState<Pick<DimensionSizingFieldsProps, "minWidth" | "minHeight" | "maxWidth" | "maxHeight">>({
+    minWidth: props.minWidth, minHeight: props.minHeight, maxWidth: props.maxWidth, maxHeight: props.maxHeight,
+  });
+  const controlledConstraints = !!props.onConstraintChange;
+  const values = controlledConstraints ? props : { ...props, ...localConstraints };
+  const changeConstraint = (axis: ElementSizingAxis, constraint: ElementSizingConstraint, value: number | undefined) => {
+    if (!controlledConstraints) {
+      const key = `${constraint}${axis === "width" ? "Width" : "Height"}` as "minWidth" | "minHeight" | "maxWidth" | "maxHeight";
+      setLocalConstraints(current => ({ ...current, [key]: value }));
+    }
+    props.onConstraintChange?.(axis, constraint, value);
+  };
+  const changeSizing = (axis: ElementSizingAxis, change: ElementSizingChange) => {
+    if (!controlledSizing) {
+      if (axis === "width") setLocalWidthMode(change.mode); else setLocalHeightMode(change.mode);
+      if (change.value !== undefined) (axis === "width" ? props.onWidthChange : props.onHeightChange)?.(change.value);
+    }
+    props.onSizingChange?.(axis, change);
+  };
+  const constraintFields = [
+    ["min", "width", "Min width", values.minWidth, props.minWidthMixed], ["min", "height", "Min height", values.minHeight, props.minHeightMixed],
+    ["max", "width", "Max width", values.maxWidth, props.maxWidthMixed], ["max", "height", "Max height", values.maxHeight, props.maxHeightMixed],
+  ] as const;
+  const hasConstraints = constraintFields.some(([, , , value, mixed]) => value !== undefined || mixed);
+  return <>
+    <PanelFieldRow
+      label="Dimensions"
+      left={<SizingComboField axis="width" value={props.width} mode={controlledSizing ? props.widthMode ?? "fixed" : localWidthMode} mixed={props.widthMixed} availableModes={props.availableWidthModes} minValue={values.minWidth} maxValue={values.maxWidth} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("width", change)} onConstraintChange={(constraint, value) => changeConstraint("width", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("width") : undefined} />}
+      right={<SizingComboField axis="height" value={props.height} mode={controlledSizing ? props.heightMode ?? "fixed" : localHeightMode} mixed={props.heightMixed} availableModes={props.availableHeightModes} minValue={values.minHeight} maxValue={values.maxHeight} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("height", change)} onConstraintChange={(constraint, value) => changeConstraint("height", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("height") : undefined} />}
+      rightAction={<PanelActionBtn icon={lockAspect ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />} label="Lock aspect ratio" active={lockAspect} onClick={() => setLockAspect(value => !value)} />}
+    />
+    {hasConstraints && <div className="grid grid-cols-2 gap-x-[8px] gap-y-[6px] px-[16px] pb-[8px]">
+      {constraintFields.map(([constraint, axis, label, value, mixed]) => value === undefined && !mixed ? <div key={`${constraint}-${axis}`} /> : <div key={`${constraint}-${axis}`} className="min-w-0">
+        <div className={clsx(SUBLABEL, "mb-[3px]")}>{label}</div>
+        <NumericInput ariaLabel={label} value={value} defaultValue={0} mixed={mixed} onChange={next => changeConstraint(axis, constraint, next)} min={constraint === "max" ? (axis === "width" ? values.minWidth : values.minHeight) ?? 0 : 0} max={constraint === "min" ? (axis === "width" ? values.maxWidth : values.maxHeight) : undefined} />
+      </div>)}
+    </div>}
+  </>;
+}
+
 // ─── Section: Position ────────────────────────────────────────────────────────
 
 interface PositionSectionProps {
@@ -305,6 +444,7 @@ interface LayoutFrameProps {
   clipContent?: boolean;
   onWidthChange?: (v: number) => void;
   onHeightChange?: (v: number) => void;
+  sizing?: Omit<DimensionSizingFieldsProps, "width" | "height" | "onWidthChange" | "onHeightChange">;
   onClipContentChange?: (value: boolean) => void;
   /** Auto-layout is reached from here two ways: the "+" button, or moving Flow
    * off its first ("Freeform") option. Both call this. */
@@ -315,9 +455,9 @@ function LayoutFrameSection({
   width = 0, height = 0, cornerRadius = 0,
   clipContent = false,
   onWidthChange, onHeightChange, onClipContentChange,
+  sizing,
   onEnableAutoLayout,
 }: LayoutFrameProps) {
-  const [lockAspect, setLockAspect] = useState(false);
   // Plain frame defaults to Freeform (no auto-layout yet) — NOT "v", which would
   // already imply vertical auto-layout while this is the "no auto-layout" section.
   const [flow, setFlow] = useState("none");
@@ -350,21 +490,7 @@ function LayoutFrameSection({
         left={<SegmentedControl segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon }))} value={flow} onChange={handleFlowChange} className="w-full" />}
       />
 
-      {/* W / H — same ComboInput used by auto-layout's Dimensions row, so the
-          control doesn't change shape when auto-layout is enabled */}
-      <PanelFieldRow
-        label="Dimensions"
-        left={<ComboInput iconLead={<span className={FONT}>W</span>} value={String(width)} onInputChange={v => onWidthChange?.(Number(v))} className="w-full" />}
-        right={<ComboInput iconLead={<span className={FONT}>H</span>} value={String(height)} onInputChange={v => onHeightChange?.(Number(v))} className="w-full" />}
-        rightAction={
-          <PanelActionBtn
-            icon={lockAspect ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />}
-            label="Lock aspect ratio"
-            active={lockAspect}
-            onClick={() => setLockAspect(v => !v)}
-          />
-        }
-      />
+      <DimensionSizingFields width={width} height={height} onWidthChange={onWidthChange} onHeightChange={onHeightChange} {...sizing} />
 
       {/* Corner radius moved to Appearance */}
 
@@ -392,7 +518,7 @@ interface LayoutAutoProps {
   onPaddingChange?: (value: ElementLayoutSettings["padding"]) => void;
   onAlignChange?: (value: string) => void;
   onClipContentChange?: (value: boolean) => void;
-  onSizingModeChange?: (axis: "width" | "height", value: "fixed" | "hug" | "fill") => void;
+  sizing?: Omit<DimensionSizingFieldsProps, "width" | "height" | "widthMode" | "heightMode">;
   /** Flow's first (Freeform) option means "not auto-layout" — selecting it
    * reverts to the plain Layout section, symmetric with how Layout's Flow
    * reaches auto-layout by moving off its own first option. */
@@ -415,10 +541,9 @@ function LayoutAutoSection({
   paddingTop = 16, paddingRight = 0, paddingBottom = 8, paddingLeft = 0,
   alignValue = "mc",
   clipContent = false,
-  onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onSizingModeChange,
+  onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, sizing,
   onDisableAutoLayout,
 }: LayoutAutoProps) {
-  const [lockAspect, setLockAspect] = useState(false);
   const controlled = flowMode !== undefined;
   const [flow, setFlow] = useState("v");
   const renderedFlow = flowMode === "horizontal" ? "h" : flowMode === "vertical" ? "v" : flowMode ?? flow;
@@ -491,38 +616,15 @@ function LayoutAutoSection({
         <PanelActionBtn icon={<Settings2 size={16} strokeWidth={1.5} />} label="Auto-layout settings" />
       }
     >
-      {/* Flow */}
-      <PanelFieldRow
-        label="Flow"
-        left={<SegmentedControl segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon }))} value={renderedFlow} onChange={handleFlowChange} className="w-full" />}
-      />
-
-      {/* W / H — same ComboInput as the regular (non-auto) Layout section, so the
-          control doesn't change shape between the two Layout variants */}
-      <PanelFieldRow
-        label="Dimensions"
-        left={<ComboInput iconLead={<span className={FONT}>W</span>} value={String(width)} onDropdownClick={() => onSizingModeChange?.("width", widthMode === "fixed" ? "hug" : widthMode === "hug" ? "fill" : "fixed")} className="w-full" />}
-        right={<ComboInput iconLead={<span className={FONT}>H</span>} value={String(height)} onDropdownClick={() => onSizingModeChange?.("height", heightMode === "fixed" ? "hug" : heightMode === "hug" ? "fill" : "fixed")} className="w-full" />}
-        rightAction={
-          <PanelActionBtn
-            icon={lockAspect ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />}
-            label="Lock aspect ratio"
-            active={lockAspect}
-            onClick={() => setLockAspect(v => !v)}
-          />
-        }
-      />
-
-      {/* Alignment + Gap — Gap is one numeric combo. Auto is a mode inside the
-          anchored menu, not a second field. Wrap intentionally exposes only a
-          shared numeric row/column gap for V1. */}
-      <div className="pl-[16px] pr-[16px] py-[8px]">
+      {/* Flow + Gap are the canonical first row. Wrap intentionally exposes one
+          shared numeric gap; Auto remains unavailable while wrapping. */}
+      <div role="group" aria-label="Flow and gap" className="pl-[16px] pr-[16px] py-[8px]">
         <div className="flex items-start gap-[8px]">
-          <div className="shrink-0">
-            <div className={subLabel}>Alignment</div>
-            <AlignmentGrid value={renderedAlign} onChange={value => { setAlign(value); onAlignChange?.(value); }} />
+          <div className="flex-[3] min-w-0">
+            <div className={subLabel}>Flow</div>
+            <SegmentedControl segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon }))} value={renderedFlow} onChange={handleFlowChange} className="w-full" />
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-[2] min-w-0">
             <div className={subLabel}>Gap</div>
             <NumericComboInput
               dataMode={gapMode}
@@ -541,6 +643,8 @@ function LayoutAutoSection({
           </div>
         </div>
       </div>
+
+      <PanelFieldRow label="Alignment" left={<AlignmentGrid value={renderedAlign} onChange={value => { setAlign(value); onAlignChange?.(value); }} />} />
 
       {/* Padding — cross layout. Combined (default): Vertical + Horizontal, two
           fields. Expanded (toggle): all four sides independently. */}
@@ -583,6 +687,8 @@ function LayoutAutoSection({
           </div>
         )}
       </div>
+
+      <DimensionSizingFields {...sizing} width={width} height={height} widthMode={widthMode} heightMode={heightMode} />
 
       {/* Clip content */}
       <PanelFullRow height={28}>
@@ -1671,6 +1777,10 @@ export interface PropertyPanelProps {
   onCornerRadiusChange?: AppearanceSectionProps["onCornerRadiusChange"];
   layout?: ElementLayoutSettings;
   onLayoutChange?: (patch: Partial<ElementLayoutSettings>) => void;
+  /** Preferred atomic sizing seam. Numeric edits from Hug/Fill emit Fixed + value together. */
+  onSizingChange?: (axis: ElementSizingAxis, change: ElementSizingChange) => void;
+  onSizingConstraintChange?: (axis: ElementSizingAxis, constraint: ElementSizingConstraint, value: number | undefined) => void;
+  onApplySizingVariable?: (axis: ElementSizingAxis) => void;
   typography?: ElementTypographySettings;
   onTypographyChange?: (patch: Partial<ElementTypographySettings>) => void;
   fills?: ElementFillSetting[];
@@ -1803,7 +1913,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onOpacityChange,
   blendMode = "Pass through",
   cornerRadius = 0, onBlendModeChange, onCornerRadiusChange,
-  layout, onLayoutChange, typography, onTypographyChange,
+  layout, onLayoutChange, onSizingChange, onSizingConstraintChange, onApplySizingVariable, typography, onTypographyChange,
   fills, onAddFill, onUpdateFill, onToggleFill, onReorderFill, onRemoveFill,
   strokes, onAddStroke, onUpdateStroke, onToggleStroke, onReorderStroke, onRemoveStroke,
   effects, onAddEffect, onUpdateEffect, onToggleEffect, onReorderEffect, onRemoveEffect,
@@ -1898,13 +2008,6 @@ export function PropertyPanel(props: PropertyPanelProps) {
   const renderedTransitionDuration = slideTransitionDuration ?? demoTransitionDuration;
   const renderedTransitionEasing = slideTransitionEasing ?? demoTransitionEasing;
   const renderedClipName = clipNameControlled ? clipName : demoClipName;
-  const [textResize, setTextResize] = useState("auto-w");
-  const textResizeSegments = [
-    { value: "auto-w", icon: <MoveHorizontal size={S} strokeWidth={1.5} /> },
-    { value: "auto-h", icon: <MoveVertical size={S} strokeWidth={1.5} /> },
-    { value: "fixed",  icon: <Square size={S} strokeWidth={1.5} /> },
-  ];
-
   const isText     = elementType === "text";
   const isShape    = elementType === "shape";
   const isInstance = elementType === "component";
@@ -1918,6 +2021,39 @@ export function PropertyPanel(props: PropertyPanelProps) {
   const resolvedAutoLayout = controlledAutoLayout ?? autoLayoutOn;
   const isFrame = isFrameLike && !resolvedAutoLayout;
   const isAutoLayout = isFrameLike && resolvedAutoLayout;
+
+  const emitSizing = (axis: ElementSizingAxis, change: ElementSizingChange) => {
+    if (onSizingChange) { onSizingChange(axis, change); return; }
+    if (change.value !== undefined) (axis === "width" ? onWidthChange : onHeightChange)?.(change.value);
+    onLayoutChange?.(axis === "width" ? { widthMode: change.mode } : { heightMode: change.mode });
+  };
+  const emitConstraint = (axis: ElementSizingAxis, constraint: ElementSizingConstraint, value: number | undefined) => {
+    if (onSizingConstraintChange) { onSizingConstraintChange(axis, constraint, value); return; }
+    const key = `${constraint}${axis === "width" ? "Width" : "Height"}` as "minWidth" | "minHeight" | "maxWidth" | "maxHeight";
+    onLayoutChange?.({ [key]: value });
+  };
+  const sizingContract: Omit<DimensionSizingFieldsProps, "width" | "height"> = {
+    widthMode: layout?.widthMode,
+    heightMode: layout?.heightMode,
+    widthMixed: layout?.widthModeMixed,
+    heightMixed: layout?.heightModeMixed,
+    availableWidthModes: layout?.availableWidthModes,
+    availableHeightModes: layout?.availableHeightModes,
+    minWidth: layout?.minWidth,
+    minHeight: layout?.minHeight,
+    maxWidth: layout?.maxWidth,
+    maxHeight: layout?.maxHeight,
+    minWidthMixed: layout?.minWidthMixed,
+    minHeightMixed: layout?.minHeightMixed,
+    maxWidthMixed: layout?.maxWidthMixed,
+    maxHeightMixed: layout?.maxHeightMixed,
+    variablesEnabled: capabilities.variables,
+    onWidthChange,
+    onHeightChange,
+    onSizingChange: (onSizingChange || onLayoutChange || onWidthChange || onHeightChange) ? emitSizing : undefined,
+    onConstraintChange: (onSizingConstraintChange || onLayoutChange) ? emitConstraint : undefined,
+    onApplySizingVariable,
+  };
 
   const elementLabel: Record<ElementType, string> = {
     text: "Text",
@@ -2100,33 +2236,19 @@ export function PropertyPanel(props: PropertyPanelProps) {
           />
 
           {/* Layout — polymorphic */}
-          {(isFrame)       && <LayoutFrameSection width={width} height={height} clipContent={layout?.clipsContent} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onClipContentChange={onLayoutChange ? value => onLayoutChange({ clipsContent: value }) : undefined} onEnableAutoLayout={() => { setAutoLayoutOn(true); onLayoutChange?.({ mode: "vertical" }); }} />}
+          {(isFrame)       && <LayoutFrameSection width={width} height={height} sizing={sizingContract} clipContent={layout?.clipsContent} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onClipContentChange={onLayoutChange ? value => onLayoutChange({ clipsContent: value }) : undefined} onEnableAutoLayout={() => { setAutoLayoutOn(true); onLayoutChange?.({ mode: "vertical" }); }} />}
           {(isAutoLayout)  && <LayoutAutoSection width={width} height={height}
             flowMode={layout?.mode}
             gap={layout?.gap} paddingTop={layout?.padding.top} paddingRight={layout?.padding.right} paddingBottom={layout?.padding.bottom} paddingLeft={layout?.padding.left}
             alignValue={layout?.align} clipContent={layout?.clipsContent}
             widthMode={layout?.widthMode} heightMode={layout?.heightMode}
+            sizing={sizingContract}
             onLayoutChange={onLayoutChange} onPaddingChange={onLayoutChange ? padding => onLayoutChange({ padding }) : undefined}
             onAlignChange={onLayoutChange ? align => onLayoutChange({ align }) : undefined} onClipContentChange={onLayoutChange ? clipsContent => onLayoutChange({ clipsContent }) : undefined}
-            onSizingModeChange={onLayoutChange ? (axis, value) => onLayoutChange(axis === "width" ? { widthMode: value } : { heightMode: value }) : undefined}
             onDisableAutoLayout={() => setAutoLayoutOn(false)} />}
           {(isShape || isText) && (
             <PanelSection title="Layout">
-              {/* Resizing — segmented (auto width / auto height / fixed); text only */}
-              {isText && (
-                <PanelFieldRow
-                  label="Resizing"
-                  left={<SegmentedControl segments={textResizeSegments} value={textResize} onChange={setTextResize} className="w-full" />}
-                />
-              )}
-              <PanelFieldRow
-                label="Dimensions"
-                left={<ComboInput iconLead={<span className={FONT}>W</span>} value={String(width)} onInputChange={value => onWidthChange?.(Number(value) || 1)} className="w-full" />}
-                right={<ComboInput iconLead={<span className={FONT}>H</span>} value={String(height)} onInputChange={value => onHeightChange?.(Number(value) || 1)} className="w-full" />}
-                rightAction={
-                  <PanelActionBtn icon={<Link2Off size={16} strokeWidth={1.5} />} label="Lock aspect ratio" />
-                }
-              />
+              <DimensionSizingFields {...sizingContract} width={width} height={height} />
               {/* Corner radius moved to Appearance */}
             </PanelSection>
           )}
