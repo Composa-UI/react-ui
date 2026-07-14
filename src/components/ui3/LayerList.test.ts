@@ -1,5 +1,8 @@
+import { renderToStaticMarkup } from "react-dom/server";
+import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 import { layerDomFocusSource, layerNavigationResult, layerRowTabIndex, layerSelectionRevealSignature, nextLayerSelection, normalizeLayerDragRoots, visibleLayerRows, type LayerNode } from "./LayerList";
+import { LayerTypeIcon } from "./LayerTypeIcon";
 
 const tree: LayerNode[] = [
   { id: "frame", name: "Frame", type: "frame", children: [
@@ -11,6 +14,11 @@ const tree: LayerNode[] = [
 ];
 
 describe("LayerList drag root normalization", () => {
+  it("uses the canonical auto-layout-aware type icon", () => {
+    const html = renderToStaticMarkup(createElement(LayerTypeIcon, { type: "frame", autoLayoutMode: "horizontal" }));
+    expect(html).toContain('data-layer-icon-type="frame"');
+    expect(html).toContain('data-auto-layout-mode="horizontal"');
+  });
   it("uses full tree order instead of selection click order", () => {
     expect(normalizeLayerDragRoots(tree, ["tail", "child-b", "child-a"])).toEqual(["child-a", "child-b", "tail"]);
   });

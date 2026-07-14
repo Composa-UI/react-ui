@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from "react";
 import { clsx } from "clsx";
-import { ChevronRight, Hash, Folder, Type, Component, Image as ImageIcon, Square, Eye, EyeOff, LockOpen } from "lucide-react";
+import { ChevronRight, Eye, EyeOff, LockOpen } from "lucide-react";
 import { Lock as LockDuotone } from "@phosphor-icons/react";
 import { ScrollArea } from "./Panel";
+import { LayerTypeIcon, type LayerAutoLayoutMode } from "./LayerTypeIcon";
 
 // ─── Layer list ─────────────────────────────────────────────────────────────────
 // A layers tree (Figma-style), componentized from the previous DS tree + Dark export.
@@ -25,11 +26,8 @@ export interface LayerNode {
   inheritedHidden?: boolean;
   locked?: boolean;
   inheritedLocked?: boolean;
+  autoLayoutMode?: LayerAutoLayoutMode;
 }
-
-const TYPE_ICON: Record<LayerType, typeof Hash> = {
-  frame: Hash, group: Folder, text: Type, component: Component, instance: Component, image: ImageIcon, shape: Square,
-};
 
 const DEMO_LAYERS: LayerNode[] = [
   { id: "1", name: "Top Buttons", type: "group", children: [
@@ -192,7 +190,6 @@ function LayerRow({ row, hasChildren, open, focused, renaming, renameDraft, onRe
   rowRef: (node: HTMLDivElement | null) => void;
 }) {
   const { node, depth } = row;
-  const Icon = TYPE_ICON[node.type];
   const isComponent = node.type === "component" || node.type === "instance";
   const effectivelyHidden = !!(node.hidden || node.inheritedHidden);
   const effectivelyLocked = !!(node.locked || node.inheritedLocked);
@@ -242,7 +239,7 @@ function LayerRow({ row, hasChildren, open, focused, renaming, renameDraft, onRe
         <span className="size-[16px] shrink-0" />
       )}
       {/* type icon */}
-      <Icon size={16} strokeWidth={1.5} className={clsx("relative shrink-0", isComponent ? "text-accent-component" : "text-c-icon")} />
+      <LayerTypeIcon type={node.type} autoLayoutMode={node.autoLayoutMode} className="relative text-c-icon" />
       {/* name */}
       {renaming ? (
         <input

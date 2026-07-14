@@ -48,6 +48,18 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain("focus-visible:ring-c-border-selected-strong");
   });
 
+  it("shares canonical layer icons and exposes controlled multiselection", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[
+      { id: "stack", name: "Stack", type: "frame", autoLayoutMode: "vertical", selected: true, props: [] },
+      { id: "shape", name: "Shape", type: "shape", props: [] },
+    ]} onTrackSelect={() => undefined} />);
+    expect(html).toContain('role="listbox"');
+    expect(html).toContain('aria-multiselectable="true"');
+    expect(html).toContain('role="option" aria-selected="true"');
+    expect(html).toContain('data-layer-icon-type="frame"');
+    expect(html).toContain('data-auto-layout-mode="vertical"');
+  });
+
   it("exposes a focusable Playhead with the active keyboard map", () => {
     const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]} onAddKeyframe={() => undefined} onDeleteSelectedKeyframes={() => undefined} />);
     expect(html).toContain('role="slider" tabindex="0" aria-label="Playhead"');
