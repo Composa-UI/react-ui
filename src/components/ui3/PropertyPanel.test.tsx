@@ -35,3 +35,33 @@ describe("Project shell seams", () => {
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*><span>Export project<\/span>/);
   });
 });
+
+describe("Auto-layout gap control", () => {
+  const layout = {
+    mode: "horizontal" as const,
+    gap: 12 as number | "auto",
+    padding: { top: 0, right: 0, bottom: 0, left: 0 },
+    align: "mc",
+    widthMode: "fixed" as const,
+    heightMode: "fixed" as const,
+    clipsContent: false,
+  };
+
+  it("renders one menu-backed numeric combo instead of a second Auto field", () => {
+    const html = renderToStaticMarkup(<PropertyPanel elementType="frame-auto" layout={layout} />);
+
+    expect(html.match(/data-composa-numeric-combo=/g)).toHaveLength(1);
+    expect(html).toContain('data-composa-numeric-combo="fixed"');
+    expect(html).toContain('aria-label="Gap sizing mode"');
+    expect(html).toContain('class="lucide lucide-move-horizontal"');
+    expect(html).not.toContain('aria-label="Gap settings"');
+  });
+
+  it("shows Auto as the combo value and changes the gap icon with vertical flow", () => {
+    const html = renderToStaticMarkup(<PropertyPanel elementType="frame-auto" layout={{ ...layout, mode: "vertical", gap: "auto" }} />);
+
+    expect(html).toContain('data-composa-numeric-combo="auto"');
+    expect(html).toContain('class="lucide lucide-move-vertical"');
+    expect(html).toMatch(/data-composa-numeric-combo="auto"[\s\S]*?>Auto<\/span>/);
+  });
+});

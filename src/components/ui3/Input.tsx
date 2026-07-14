@@ -3,6 +3,7 @@ import { clsx } from "clsx";
 import { ChevronDown } from "lucide-react";
 import { Chit, type ChitType } from "./Chit";
 import { ChipVariable } from "./ChipVariable";
+import { PopoverMenu } from "./Menu";
 
 export type InputSize = "small" | "medium" | "large";
 export type InputVariant = "default" | "error" | "success" | "warning";
@@ -490,6 +491,73 @@ export function NumericInput({
         </span>
       )}
     </FieldShell>
+  );
+}
+
+// ─── NumericComboInput ───────────────────────────────────────────────────────
+// NumericInput + an actual anchored menu trigger. The numeric half retains the
+// shared host-owned edit-session contract; choosing a relative mode is a
+// discrete controlled action owned by the host.
+
+export interface NumericComboInputProps extends Omit<NumericInputProps, "dropdown"> {
+  dropdownAriaLabel: string;
+  /** Replaces the numeric editor for relative/non-numeric modes such as Auto. */
+  readOnlyLabel?: string;
+  menu: (close: () => void) => ReactNode;
+  menuAlign?: "left" | "right";
+  dataMode?: string;
+}
+
+export function NumericComboInput({
+  dropdownAriaLabel,
+  readOnlyLabel,
+  menu,
+  menuAlign = "right",
+  dataMode,
+  iconLead,
+  size = "medium",
+  disabled = false,
+  className,
+  ...numericProps
+}: NumericComboInputProps) {
+  return (
+    <div data-composa-numeric-combo={dataMode ?? "fixed"} className={clsx("flex items-start gap-px", className)}>
+      <div className="flex-1 min-w-0">
+        {readOnlyLabel !== undefined ? (
+          <FieldShell focused={false} disabled={disabled} size={size} numeric className="!rounded-r-none">
+            {iconLead && (
+              <span className={clsx("absolute left-0 flex items-center justify-center size-[24px] text-c-text-secondary pointer-events-none", FONT, T[size])}>
+                {iconLead}
+              </span>
+            )}
+            <span className={clsx("min-w-0 truncate text-c-text", FONT, T[size], iconLead ? "pl-[26px]" : "pl-[8px]")}>{readOnlyLabel}</span>
+          </FieldShell>
+        ) : (
+          <NumericInput {...numericProps} iconLead={iconLead} size={size} disabled={disabled} className="!rounded-r-none" />
+        )}
+      </div>
+      <PopoverMenu
+        directTrigger
+        align={menuAlign}
+        className="shrink-0"
+        trigger={(
+          <button
+            type="button"
+            aria-label={dropdownAriaLabel}
+            disabled={disabled}
+            className={clsx(
+              "flex items-center justify-center w-[24px] rounded-r-c-md bg-c-bg-secondary",
+              H[size], "text-c-icon-secondary hover:bg-c-bg-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-c-focus-ring",
+              disabled && "opacity-60 cursor-not-allowed",
+            )}
+          >
+            <ChevronDown size={10} strokeWidth={2} />
+          </button>
+        )}
+      >
+        {menu}
+      </PopoverMenu>
+    </div>
   );
 }
 

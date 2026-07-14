@@ -20,7 +20,7 @@ import {
   IconButtonRow, PanelActionBtn, PanelEntry, ScrollArea, type IconBtn,
 } from "./Panel";
 import { Tabs } from "./Tabs";
-import { NumericEditSessionProvider, NumericInput, InputField, ColorInput, ComboInput } from "./Input";
+import { NumericEditSessionProvider, NumericInput, NumericComboInput, InputField, ColorInput, ComboInput } from "./Input";
 import { Dropdown } from "./Dropdown";
 import { SegmentedControl } from "./SegmentedControl";
 import { Chit } from "./Chit";
@@ -59,7 +59,7 @@ export interface ElementTypographySettings {
   align: "left" | "center" | "right"; verticalAlign: "top" | "middle" | "bottom"; styleName?: string;
 }
 export interface ElementLayoutSettings {
-  mode: "none" | "horizontal" | "vertical" | "wrap"; gap: number;
+  mode: "none" | "horizontal" | "vertical" | "wrap"; gap: number | "auto";
   padding: { top: number; right: number; bottom: number; left: number };
   align: string; widthMode: "fixed" | "hug" | "fill"; heightMode: "fixed" | "hug" | "fill"; clipsContent: boolean;
   positioning?: "auto" | "absolute";
@@ -383,13 +383,13 @@ interface LayoutAutoProps {
   flowMode?: ElementLayoutSettings["mode"];
   widthMode?: "fixed" | "hug" | "fill";
   heightMode?: "fixed" | "hug" | "fill";
-  gap?: number;
+  gap?: number | "auto";
   paddingTop?: number; paddingRight?: number;
   paddingBottom?: number; paddingLeft?: number;
   alignValue?: string;
   clipContent?: boolean;
   onFlowChange?: (value: ElementLayoutSettings["mode"]) => void;
-  onGapChange?: (value: number) => void;
+  onGapChange?: (value: number | "auto") => void;
   onPaddingChange?: (value: ElementLayoutSettings["padding"]) => void;
   onAlignChange?: (value: string) => void;
   onClipContentChange?: (value: boolean) => void;
@@ -417,6 +417,7 @@ function LayoutAutoSection({
   const renderedFlow = flowMode === "horizontal" ? "h" : flowMode === "vertical" ? "v" : flowMode ?? flow;
   const [align, setAlign] = useState(alignValue);
   const renderedAlign = controlled ? alignValue : align;
+  const [lastFixedGap, setLastFixedGap] = useState(typeof gap === "number" ? gap : 0);
   const [indivPadding, setIndivPadding] = useState(false);
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
 
@@ -433,6 +434,35 @@ function LayoutAutoSection({
     onFlowChange?.(v === "h" ? "horizontal" : v === "v" ? "vertical" : v as "none" | "wrap");
     if (v === "none") onDisableAutoLayout?.();
   };
+
+  useEffect(() => {
+    if (typeof gap === "number") setLastFixedGap(gap);
+  }, [gap]);
+
+  const gapMode = gap === "auto" ? "auto" : "fixed";
+  const gapAxis = renderedFlow === "v" ? "vertical" : "horizontal";
+  const gapIcon = gapAxis === "vertical"
+    ? <MoveVertical size={14} strokeWidth={1.5} />
+    : <MoveHorizontal size={14} strokeWidth={1.5} />;
+
+  const gapMenu = (close: () => void) => (
+    <Menu minWidth={156}>
+      <MenuRow
+        type="checkmark"
+        label="Fixed"
+        checked={gapMode === "fixed"}
+        onClick={() => { onGapChange?.(lastFixedGap); close(); }}
+      />
+      {renderedFlow !== "wrap" && (
+        <MenuRow
+          type="checkmark"
+          label="Auto"
+          checked={gapMode === "auto"}
+          onClick={() => { onGapChange?.("auto"); close(); }}
+        />
+      )}
+    </Menu>
+  );
 
   return (
     <PanelSection
@@ -463,10 +493,9 @@ function LayoutAutoSection({
         }
       />
 
-      {/* Alignment + Gap — Alignment is a fixed 88px matrix (not fluid like a
-          typical dual-field row); Gap fills the remainder; the settings icon
-          sits in the standard reserved 24px right-action slot. Gap's "Auto" is
-          the gap MODE (Fixed px vs Auto/space-between distribution). */}
+      {/* Alignment + Gap — Gap is one numeric combo. Auto is a mode inside the
+          anchored menu, not a second field. Wrap intentionally exposes only a
+          shared numeric row/column gap for V1. */}
       <div className="pl-[16px] pr-[16px] py-[8px]">
         <div className="flex items-start gap-[8px]">
           <div className="shrink-0">
@@ -475,18 +504,19 @@ function LayoutAutoSection({
           </div>
           <div className="flex-1 min-w-0">
             <div className={subLabel}>Gap</div>
-            <div className="flex flex-col gap-[4px]">
-              <NumericInput
-                iconLead={<span className={FONT}>{"]·["}</span>}
-                value={controlled ? gap : undefined} defaultValue={gap} onChange={onGapChange} min={0} suffix="px"
-              />
-              <Dropdown value="Auto" fullWidth />
-            </div>
-          </div>
-          {/* mt matches the sub-label's box (14px leading + 3px margin) so this
-              aligns with the Gap input row, not the "Gap" label above it */}
-          <div className="shrink-0 flex items-start min-w-[24px] justify-end mt-[17px]">
-            <PanelActionBtn icon={<Settings2 size={16} strokeWidth={1.5} />} label="Gap settings" />
+            <NumericComboInput
+              dataMode={gapMode}
+              dropdownAriaLabel="Gap sizing mode"
+              iconLead={gapIcon}
+              readOnlyLabel={gapMode === "auto" ? "Auto" : undefined}
+              value={controlled && typeof gap === "number" ? gap : undefined}
+              defaultValue={lastFixedGap}
+              onChange={value => { setLastFixedGap(value); onGapChange?.(value); }}
+              min={0}
+              suffix="px"
+              menu={gapMenu}
+              className="w-full"
+            />
           </div>
         </div>
       </div>
