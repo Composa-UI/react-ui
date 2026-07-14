@@ -56,7 +56,7 @@ export interface TimelineKeyframeReveal {
 export type TrackType = LayerIconType;
 export interface TimelineTrackSelectionModifiers { toggle: boolean; range: boolean; }
 export const shouldActivateTimelineTrackKey = (key: string, ownsEventTarget: boolean) => ownsEventTarget && (key === "Enter" || key === " ");
-export const timelineTrackExpansionForKey = (key: string, expanded: boolean) => key === "ArrowRight" && !expanded ? true : key === "ArrowLeft" && expanded ? false : null;
+export const timelineTrackExpansionForKey = (key: string) => key === "ArrowRight" ? true : key === "ArrowLeft" ? false : null;
 export function timelineTrackNavigationIndex(current: number, count: number, key: string): number | null {
   if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(key)) return null;
   if (count <= 0) return current;
@@ -298,12 +298,14 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, onTrackS
             {expanded ? <ChevronDown size={12} strokeWidth={1.5} /> : <DisclosureRight size={12} strokeWidth={1.5} />}
           </span> : <span className="size-[16px] shrink-0" />}
           <div role={onTrackSelect ? "option" : undefined} aria-selected={onTrackSelect ? !!track.selected : undefined}
-            aria-expanded={onTrackSelect && track.props.length ? expanded : undefined} tabIndex={onTrackSelect ? focusable ? 0 : -1 : undefined}
+            aria-expanded={onTrackSelect && onExpandedChange && track.props.length ? expanded : undefined} tabIndex={onTrackSelect ? focusable ? 0 : -1 : undefined}
             onClick={onTrackSelect ? event => onTrackSelect(trackId, { toggle: event.metaKey || event.ctrlKey, range: event.shiftKey }) : undefined}
             onKeyDown={onTrackSelect ? event => {
-              const expansion = timelineTrackExpansionForKey(event.key, expanded);
+              const expansion = timelineTrackExpansionForKey(event.key);
               if (event.currentTarget === event.target && expansion !== null && onExpandedChange && track.props.length) {
-                event.preventDefault(); event.stopPropagation(); onExpandedChange(trackId, expansion); return;
+                event.preventDefault(); event.stopPropagation();
+                if (expansion !== expanded) onExpandedChange(trackId, expansion);
+                return;
               }
               if (event.currentTarget === event.target) {
                 const options = [...(event.currentTarget.closest('[role="listbox"]')?.querySelectorAll<HTMLElement>('[role="option"]') ?? [])];

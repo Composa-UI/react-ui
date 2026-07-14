@@ -82,9 +82,14 @@ describe("Timeline DOM contracts", () => {
       onTrackSelect={() => undefined} onTrackExpandedChange={() => undefined} />);
     expect(html.indexOf('aria-label="Collapse Hero"')).toBeLessThan(html.indexOf('role="option"'));
     expect(html).toContain('role="option" aria-selected="false" aria-expanded="true"');
-    expect(timelineTrackExpansionForKey("ArrowRight", false)).toBe(true);
-    expect(timelineTrackExpansionForKey("ArrowLeft", true)).toBe(false);
-    expect(timelineTrackExpansionForKey("ArrowLeft", false)).toBeNull();
+    expect(timelineTrackExpansionForKey("ArrowRight")).toBe(true);
+    expect(timelineTrackExpansionForKey("ArrowLeft")).toBe(false);
+    expect(timelineTrackExpansionForKey("Enter")).toBeNull();
+  });
+
+  it("does not advertise expansion without an expansion callback", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]} onTrackSelect={() => undefined} />);
+    expect(html).not.toContain('role="option" aria-selected="false" aria-expanded=');
   });
 
   it("exposes a focusable Playhead with the active keyboard map", () => {
