@@ -779,7 +779,6 @@ export function Timeline({
           aria-valuemin={0}
           aria-valuemax={duration}
           aria-valuenow={playhead}
-          aria-keyshortcuts={onAddKeyframe ? "K" : undefined}
           onPointerDown={e => { setDrag(true); scrub(e); try { e.currentTarget.setPointerCapture(e.pointerId); } catch {} }}
           onPointerMove={e => drag && scrub(e)}
           onPointerUp={() => setDrag(false)}

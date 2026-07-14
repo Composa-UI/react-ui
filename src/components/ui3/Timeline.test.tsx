@@ -37,14 +37,6 @@ describe("Timeline DOM contracts", () => {
     expect(html).not.toContain('aria-label="Hero aggregate keyframe');
     expect(html).not.toContain('data-aggregate-status="complete"');
     expect(html).not.toContain('data-aggregate-status="partial"');
-    expect(html).not.toContain('aria-keyshortcuts="K"');
-  });
-
-  it("advertises focused Playhead keyframe insertion without adding extra transport chrome", () => {
-    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]}
-      onAddKeyframe={() => undefined} />);
-    expect(html).toContain('aria-keyshortcuts="K"');
-    expect(html).not.toContain('aria-label="Add keyframe"');
   });
 
   it("exposes controlled disclosures and accessible aggregate status when callbacks exist", () => {
@@ -60,6 +52,7 @@ describe("Timeline DOM contracts", () => {
     const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]} onAddKeyframe={() => undefined} onDeleteSelectedKeyframes={() => undefined} />);
     expect(html).toContain('role="slider" tabindex="0" aria-label="Playhead"');
     expect(html).toContain('aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Space K Delete Backspace"');
+    expect(html).not.toContain('aria-label="Add keyframe"');
   });
 
   it("keeps keyframe add and delete shortcuts out of the master Playhead map", () => {
