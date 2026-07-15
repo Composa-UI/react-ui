@@ -562,6 +562,7 @@ function BlockTrack({ blocks, viewport, plotWidth, onSelect, onOpen, onContextMe
             <div
               key={id}
               role="button" tabIndex={0} aria-label={b.name} aria-pressed={b.active}
+              aria-keyshortcuts={onMove ? "ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight" : undefined}
               aria-haspopup={hasContextMenu ? "menu" : undefined} data-timeline-block-id={stableId}
               onClick={() => onSelect?.(id)}
               onDoubleClick={() => onOpen?.(id)}
@@ -573,6 +574,11 @@ function BlockTrack({ blocks, viewport, plotWidth, onSelect, onOpen, onContextMe
               onKeyDown={event => {
                 if (event.key === "Enter") { event.preventDefault(); onOpen?.(id); }
                 else if (event.key === " ") { event.preventDefault(); onSelect?.(id); }
+                else if (onMove && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+                  event.preventDefault(); event.stopPropagation();
+                  const step = event.shiftKey ? 1_000 : 100;
+                  onMove(id, Math.max(0, b.range[0] + (event.key === "ArrowLeft" ? -step : step)));
+                }
                 else if (hasContextMenu && (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10"))) {
                   event.preventDefault(); event.stopPropagation();
                   const rect = event.currentTarget.getBoundingClientRect();

@@ -16,6 +16,16 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain('aria-haspopup="menu"');
   });
 
+  it("advertises keyboard composition-block movement when the move callback is controlled", () => {
+    const inert = renderToStaticMarkup(<Timeline mode="master" height={220} duration={2_000}
+      blocks={[{ id: "intro", name: "Intro", range: [0, 1_000] }]} />);
+    expect(inert).not.toContain('aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight"');
+
+    const interactive = renderToStaticMarkup(<Timeline mode="master" height={220} duration={2_000}
+      blocks={[{ id: "intro", name: "Intro", range: [0, 1_000] }]} onBlockMove={() => undefined} />);
+    expect(interactive).toContain('aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight"');
+  });
+
   it("does not advertise unstable context identity for legacy ID-less blocks", () => {
     const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={2_000}
       blocks={[{ name: "Legacy", range: [0, 1_000] }]} onBlockContextMenu={() => undefined} />);
