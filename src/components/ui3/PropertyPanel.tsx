@@ -345,9 +345,13 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
 
 interface PositionSectionProps {
   x?: number; y?: number; rotation?: number;
+  scaleXPercent?: number; scaleYPercent?: number;
   onXChange?: (v: number) => void;
   onYChange?: (v: number) => void;
   onRotationChange?: (v: number) => void;
+  onScaleXPercentChange?: (v: number) => void;
+  onScaleYPercentChange?: (v: number) => void;
+  showScaleControls?: boolean;
   positioning?: "auto" | "absolute";
   positioningApplicable?: boolean;
   onPositioningChange?: (value: "auto" | "absolute") => void;
@@ -355,8 +359,8 @@ interface PositionSectionProps {
 }
 
 function PositionSection({
-  x = 0, y = 0, rotation = 0,
-  onXChange, onYChange, onRotationChange,
+  x = 0, y = 0, rotation = 0, scaleXPercent = 100, scaleYPercent = 100,
+  onXChange, onYChange, onRotationChange, onScaleXPercentChange, onScaleYPercentChange, showScaleControls = false,
   positioning, positioningApplicable, onPositioningChange,
   multiSelect = false,
 }: PositionSectionProps) {
@@ -414,6 +418,26 @@ function PositionSection({
           />
         }
       />
+
+      {showScaleControls && (
+        <PanelFieldRow
+          label="Scale"
+          left={
+            <NumericInput
+              ariaLabel="Scale X"
+              iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>X</span>}
+              value={scaleXPercent} onChange={onScaleXPercentChange} defaultValue={100} min={0.01} suffix="%"
+            />
+          }
+          right={
+            <NumericInput
+              ariaLabel="Scale Y"
+              iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>}
+              value={scaleYPercent} onChange={onScaleYPercentChange} defaultValue={100} min={0.01} suffix="%"
+            />
+          }
+        />
+      )}
 
       {/* Rotation */}
       <PanelFieldRow
@@ -1751,9 +1775,15 @@ export interface PropertyPanelProps {
   elementType?: ElementType;
   multiSelect?: boolean;
   x?: number; y?: number; rotation?: number;
+  /** Contextual transform controls. Hidden unless showScaleControls is true. */
+  scaleXPercent?: number;
+  scaleYPercent?: number;
+  showScaleControls?: boolean;
   onXChange?: (value: number) => void;
   onYChange?: (value: number) => void;
   onRotationChange?: (value: number) => void;
+  onScaleXPercentChange?: (value: number) => void;
+  onScaleYPercentChange?: (value: number) => void;
   /** Host-owned history boundary shared by every nested NumericInput. */
   onNumericEditStart?: () => void;
   onNumericEditCommit?: () => void;
@@ -1898,8 +1928,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
   mode = "element",
   elementType = "text",
   multiSelect = false,
-  x = 0, y = 0, rotation = 0,
-  onXChange, onYChange, onRotationChange,
+  x = 0, y = 0, rotation = 0, scaleXPercent = 100, scaleYPercent = 100, showScaleControls = false,
+  onXChange, onYChange, onRotationChange, onScaleXPercentChange, onScaleYPercentChange,
   onNumericEditStart, onNumericEditCommit, onNumericEditCancel,
   width = 1200, height = 115,
   onWidthChange, onHeightChange,
@@ -2221,8 +2251,10 @@ export function PropertyPanel(props: PropertyPanelProps) {
 
           {/* Position — always present */}
           <PositionSection
-            x={x} y={y} rotation={rotation}
+            x={x} y={y} rotation={rotation} scaleXPercent={scaleXPercent} scaleYPercent={scaleYPercent}
             onXChange={onXChange} onYChange={onYChange} onRotationChange={onRotationChange}
+            onScaleXPercentChange={onScaleXPercentChange} onScaleYPercentChange={onScaleYPercentChange}
+            showScaleControls={showScaleControls}
             positioning={layout?.positioning}
             positioningApplicable={layout?.positioningApplicable}
             onPositioningChange={onLayoutChange ? positioning => onLayoutChange({ positioning }) : undefined}

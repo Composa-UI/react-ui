@@ -117,6 +117,25 @@ describe("Auto-layout gap control", () => {
   });
 });
 
+describe("Contextual transform controls", () => {
+  it("keeps Scale X/Y hidden from the default element inspector", () => {
+    const html = renderToStaticMarkup(<PropertyPanel elementType="shape" scaleXPercent={125} scaleYPercent={80} />);
+
+    expect(html).not.toContain('aria-label="Scale X"');
+    expect(html).not.toContain('aria-label="Scale Y"');
+  });
+
+  it("renders Scale X/Y only when the host enters a scale context", () => {
+    const html = renderToStaticMarkup(<PropertyPanel elementType="shape" showScaleControls scaleXPercent={125} scaleYPercent={80} />);
+
+    expect(html).toContain(">Scale</span>");
+    expect(html).toContain('aria-label="Scale X"');
+    expect(html).toContain('aria-label="Scale Y"');
+    expect(html).toContain('value="125"');
+    expect(html).toContain('value="80"');
+  });
+});
+
 describe("Plain-frame flow contract", () => {
   it("orders Freeform, Vertical, Horizontal, then Wrap", () => {
     const html = renderToStaticMarkup(<PropertyPanel elementType="frame" />);
