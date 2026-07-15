@@ -3,6 +3,7 @@ import { clsx } from "clsx";
 import { Play, Pause, Square, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film, Volume2 } from "lucide-react";
 import { collectAggregateKeyframes, createTimelineEdgeDragController, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineDragDeltaMs, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
+import { ScrollArea } from "./Panel";
 
 // ─── Timeline ───────────────────────────────────────────────────────────────────
 // Polymorphic timeline region (Composa editor spec: docs/composa/specs/timeline.md).
@@ -951,7 +952,7 @@ export function Timeline({
       </div>
 
       {/* body */}
-      <div ref={bodyRef} className="flex-1 overflow-y-auto relative">
+      <ScrollArea viewportRef={bodyRef} className="relative">
         {master ? (
           <>
             <BlockTrack blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
@@ -986,7 +987,7 @@ export function Timeline({
         <div className="absolute top-0 bottom-0 right-0 overflow-hidden pointer-events-none" style={{ left: LEFT_W }}>
           <div className="absolute top-0 bottom-0 w-px" style={{ left: percent(playhead, viewport), backgroundColor: BLUE }} />
         </div>
-      </div>
+      </ScrollArea>
     </div>
   );
 }

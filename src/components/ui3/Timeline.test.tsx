@@ -82,6 +82,13 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain("flex-1 relative overflow-hidden bg-c-bg-selected");
   });
 
+  it("uses the shared overlay scrollbar body instead of a native timeline scrollbar", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]} />);
+    expect(html).toContain("[scrollbar-width:none]");
+    expect(html).toContain("[&amp;::-webkit-scrollbar]:hidden");
+    expect(html).toContain("relative flex-1 min-h-0");
+  });
+
   it("does not let a nested disclosure key activate its selectable row", () => {
     expect(shouldActivateTimelineTrackKey("Enter", false)).toBe(false);
     expect(shouldActivateTimelineTrackKey(" ", false)).toBe(false);
