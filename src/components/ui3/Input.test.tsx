@@ -1,3 +1,4 @@
+import { act, create } from "react-test-renderer";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { formatNumericDisplay, NumericComboInput, NumericEditSessionProvider, NumericInput, NumericInputMulti } from "./Input";
@@ -18,6 +19,18 @@ describe("NumericInput presentation contract", () => {
     expect(html).toContain('inputMode="decimal"');
     expect(html).toContain('value="127.7"');
     expect(html).toContain("truncate");
+  });
+
+  it("keeps controlled values rounded when entering focus", async () => {
+    let root: ReturnType<typeof create>;
+    await act(async () => {
+      root = create(<NumericInput ariaLabel="Position X" value={127.6969} />);
+    });
+    const input = root!.root.findByProps({ role: "spinbutton" });
+    await act(async () => {
+      input.props.onFocus({ target: { select: () => undefined } });
+    });
+    expect(input.props.value).toBe("127.7");
   });
 
   it("keeps multi-value controls outside the single-value session contract", () => {

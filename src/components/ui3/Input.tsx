@@ -310,7 +310,7 @@ export function NumericInput({
   useEffect(() => { if (!focused && !scrubbing) setDraft(formatNumericDisplay(current)); }, [current, focused, scrubbing]);
   useEffect(() => {
     if (!focused || lastEmitted.current === null) return;
-    if (current !== lastEmitted.current) setDraft(String(current));
+    if (current !== lastEmitted.current) setDraft(formatNumericDisplay(current));
     lastEmitted.current = null;
   }, [current, focused]);
   // Mixed (v5 §7): multi-select with differing values shows "Mixed" until focused; typing commits to all.
@@ -468,7 +468,7 @@ export function NumericInput({
             }
           }}
           onKeyDown={onKeyDown}
-          onFocus={e => { setDraft(String(current)); beginSession(); setFocused(true); e.target.select(); }}
+          onFocus={e => { setDraft(formatNumericDisplay(current)); beginSession(); setFocused(true); e.target.select(); }}
           onBlur={() => {
             if (cancelBlurCommit.current) cancelBlurCommit.current = false;
             else {
