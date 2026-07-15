@@ -64,3 +64,15 @@ describe("Auto-layout settings interactions", () => {
     act(() => renderer!.unmount());
   });
 });
+
+describe("Plain-frame layout actions", () => {
+  it("routes Resize to fit to the host callback", () => {
+    let requests = 0;
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel elementType="frame" onResizeToFit={() => { requests += 1; }} />); });
+    const trigger = renderer!.root.find(node => node.type === "button" && node.props["aria-label"] === "Resize to fit");
+    act(() => trigger.props.onClick());
+    expect(requests).toBe(1);
+    act(() => renderer!.unmount());
+  });
+});

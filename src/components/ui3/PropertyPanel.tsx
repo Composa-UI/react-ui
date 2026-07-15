@@ -466,6 +466,7 @@ interface LayoutFrameProps {
   onHeightChange?: (v: number) => void;
   sizing?: Omit<DimensionSizingFieldsProps, "width" | "height" | "onWidthChange" | "onHeightChange">;
   onClipContentChange?: (value: boolean) => void;
+  onResizeToFit?: () => void;
   /** Auto-layout is reached from here two ways: the "+" button, or moving Flow
    * off its first ("Freeform") option. Both call this. */
   onEnableAutoLayout?: () => void;
@@ -476,6 +477,7 @@ function LayoutFrameSection({
   clipContent = false,
   onWidthChange, onHeightChange, onClipContentChange,
   sizing,
+  onResizeToFit,
   onEnableAutoLayout,
 }: LayoutFrameProps) {
   // Plain frame defaults to Freeform (no auto-layout yet) — NOT "v", which would
@@ -499,7 +501,7 @@ function LayoutFrameSection({
       title="Layout"
       rightActions={
         <>
-          <PanelActionBtn icon={<Maximize2 size={16} strokeWidth={1.5} />} label="Resize to fit" />
+          <PanelActionBtn icon={<Maximize2 size={16} strokeWidth={1.5} />} label="Resize to fit" onClick={onResizeToFit} disabled={!onResizeToFit} />
           <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add auto-layout" onClick={onEnableAutoLayout} />
         </>
       }
@@ -1799,6 +1801,8 @@ export interface PropertyPanelProps {
   onCornerRadiusChange?: AppearanceSectionProps["onCornerRadiusChange"];
   layout?: ElementLayoutSettings;
   onLayoutChange?: (patch: Partial<ElementLayoutSettings>) => void;
+  /** Host-owned frame command; UI only exposes the plain-frame affordance. */
+  onResizeToFit?: () => void;
   /** Preferred atomic sizing seam. Numeric edits from Hug/Fill emit Fixed + value together. */
   onSizingChange?: (axis: ElementSizingAxis, change: ElementSizingChange) => void;
   onSizingConstraintChange?: (axis: ElementSizingAxis, constraint: ElementSizingConstraint, value: number | undefined) => void;
@@ -2262,7 +2266,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           />
 
           {/* Layout — polymorphic */}
-          {(isFrame)       && <LayoutFrameSection width={width} height={height} sizing={sizingContract} clipContent={layout?.clipsContent} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onClipContentChange={onLayoutChange ? value => onLayoutChange({ clipsContent: value }) : undefined} onEnableAutoLayout={() => { setAutoLayoutOn(true); onLayoutChange?.({ mode: "vertical" }); }} />}
+          {(isFrame)       && <LayoutFrameSection width={width} height={height} sizing={sizingContract} clipContent={layout?.clipsContent} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onClipContentChange={onLayoutChange ? value => onLayoutChange({ clipsContent: value }) : undefined} onResizeToFit={props.onResizeToFit} onEnableAutoLayout={() => { setAutoLayoutOn(true); onLayoutChange?.({ mode: "vertical" }); }} />}
           {(isAutoLayout)  && <LayoutAutoSection width={width} height={height}
             flowMode={layout?.mode}
             gap={layout?.gap} paddingTop={layout?.padding.top} paddingRight={layout?.padding.right} paddingBottom={layout?.padding.bottom} paddingLeft={layout?.padding.left}
