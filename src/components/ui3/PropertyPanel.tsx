@@ -165,55 +165,51 @@ function blendMenu(current: BlendMode, onPick: (m: BlendMode) => void) {
   );
 }
 
-// ─── 9×9 icon groups ──────────────────────────────────────────────────────────
-// Alignment picker for auto-layout child alignment — a 3×3 DOT matrix (not icon
-// glyphs), ported from the older DS's `AlignmentPicker`/`.composa-alignment-*`:
-// an 88px-ish track with a subtle 2px dot per cell; the selected cell's dot grows
-// into a 10px accent-colored bar. This is the anchor-point convention, distinct
-// from Position's directional-icon alignment (AlignLeft/Center/Right).
-
-function AlignmentGrid({
-  value,
+function AutoLayoutHorizontalAlignmentControl({
+  value = "mc",
   onChange,
 }: {
   value?: string;
   onChange?: (v: string) => void;
 }) {
-  const cells = ["tl", "tc", "tr", "ml", "mc", "mr", "bl", "bc", "br"];
-  const labels: Record<string, string> = {
-    tl: "Top left", tc: "Top center", tr: "Top right",
-    ml: "Middle left", mc: "Middle center", mr: "Middle right",
-    bl: "Bottom left", bc: "Bottom center", br: "Bottom right",
-  };
-
+  const row = value[0] === "t" || value[0] === "m" || value[0] === "b" ? value[0] : "m";
+  const column = value[1] === "l" || value[1] === "c" || value[1] === "r" ? value[1] : "c";
+  const horizontal: IconBtn[] = [
+    { icon: <AlignLeft size={S} strokeWidth={1.5} />, label: "Align left", value: "l" },
+    { icon: <AlignCenter size={S} strokeWidth={1.5} />, label: "Align center", value: "c" },
+    { icon: <AlignRight size={S} strokeWidth={1.5} />, label: "Align right", value: "r" },
+  ];
   return (
-    <div
-      role="radiogroup"
-      aria-label="Alignment"
-      className="shrink-0 grid grid-cols-3 grid-rows-3 place-items-center w-[88px] h-[56px] py-[4px] rounded-c-md bg-c-bg-secondary box-border"
-    >
-      {cells.map(cell => {
-        const selected = value === cell;
-        return (
-          <button
-            key={cell}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            aria-label={labels[cell]}
-            onClick={() => onChange?.(cell)}
-            className="w-[16px] h-[12px] grid place-items-center rounded-c-sm bg-transparent hover:bg-c-bg-hover"
-          >
-            <span
-              className={clsx(
-                "h-[2px] rounded-[2px] transition-[width]",
-                selected ? "w-[10px] bg-c-border-selected" : "w-[2px] bg-c-icon-tertiary",
-              )}
-            />
-          </button>
-        );
-      })}
-    </div>
+    <SegmentedControl
+      segments={horizontal.map(button => ({ value: button.value!, icon: button.icon, ariaLabel: button.label }))}
+      value={column}
+      onChange={column => onChange?.(`${row}${column}`)}
+      className="w-full"
+    />
+  );
+}
+
+function AutoLayoutVerticalAlignmentControl({
+  value = "mc",
+  onChange,
+}: {
+  value?: string;
+  onChange?: (v: string) => void;
+}) {
+  const row = value[0] === "t" || value[0] === "m" || value[0] === "b" ? value[0] : "m";
+  const column = value[1] === "l" || value[1] === "c" || value[1] === "r" ? value[1] : "c";
+  const vertical: IconBtn[] = [
+    { icon: <AlignStartVertical size={S} strokeWidth={1.5} />, label: "Align top", value: "t" },
+    { icon: <AlignCenterVertical size={S} strokeWidth={1.5} />, label: "Align middle", value: "m" },
+    { icon: <AlignEndVertical size={S} strokeWidth={1.5} />, label: "Align bottom", value: "b" },
+  ];
+  return (
+    <SegmentedControl
+      segments={vertical.map(button => ({ value: button.value!, icon: button.icon, ariaLabel: button.label }))}
+      value={row}
+      onChange={row => onChange?.(`${row}${column}`)}
+      className="w-full"
+    />
   );
 }
 
@@ -636,7 +632,11 @@ function LayoutAutoSection({
         </div>
       </div>
 
-      <PanelFieldRow label="Alignment" left={<AlignmentGrid value={renderedAlign} onChange={value => { setAlign(value); onAlignChange?.(value); }} />} />
+      <PanelFieldRow
+        label="Alignment"
+        left={<AutoLayoutHorizontalAlignmentControl value={renderedAlign} onChange={value => { setAlign(value); onAlignChange?.(value); }} />}
+        right={<AutoLayoutVerticalAlignmentControl value={renderedAlign} onChange={value => { setAlign(value); onAlignChange?.(value); }} />}
+      />
 
       {/* Padding — cross layout. Combined (default): Vertical + Horizontal, two
           fields. Expanded (toggle): all four sides independently. */}

@@ -77,6 +77,23 @@ describe("Auto-layout gap control", () => {
     expect(html).not.toContain('aria-label="Min height"');
   });
 
+  it("uses paired horizontal and vertical segmented alignment controls", () => {
+    const html = renderToStaticMarkup(<PropertyPanel elementType="frame-auto" layout={{ ...layout, align: "br" }} />);
+    const alignment = html.indexOf(">Alignment</span>");
+    const alignLeft = html.indexOf('aria-label="Align left"', alignment);
+    const alignRight = html.indexOf('aria-label="Align right"', alignment);
+    const alignTop = html.indexOf('aria-label="Align top"', alignment);
+    const alignBottom = html.indexOf('aria-label="Align bottom"', alignment);
+
+    expect(alignment).toBeGreaterThan(-1);
+    expect(alignLeft).toBeGreaterThan(alignment);
+    expect(alignLeft).toBeLessThan(alignRight);
+    expect(alignRight).toBeLessThan(alignTop);
+    expect(alignTop).toBeLessThan(alignBottom);
+    expect(html).not.toContain('aria-label="Top left"');
+    expect(html).not.toContain('role="radiogroup" aria-label="Alignment"');
+  });
+
   it("projects valid mode intersections, constraints and variable gating into canonical menu labels", () => {
     expect(getSizingMenuLabels({ axis: "width", value: 320, availableModes: ["fixed", "fill"], minValue: 120, variablesEnabled: false })).toEqual([
       "Fixed width (320)", "Fill container", "Remove min width", "Add max width",
