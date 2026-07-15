@@ -385,7 +385,11 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, edgeDrag
             <span className={clsx(FONT, "text-[11px] font-[450] text-c-text truncate")}>{track.name}</span>
           </div>
         </div>
-        <div className="flex-1 relative overflow-hidden" style={{ height: ROW_LAYER }}>
+        <div
+          className={clsx("flex-1 relative overflow-hidden", track.selected && "bg-c-bg-selected")}
+          data-timeline-track-lane-selected={track.selected || undefined}
+          style={{ height: ROW_LAYER }}
+        >
           {track.bar && (
             <div
               className="absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] bg-c-bg-secondary"
