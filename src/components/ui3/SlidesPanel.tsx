@@ -186,7 +186,7 @@ export function SlidesPanel({ slides, title = "Product review", subtitle = "", o
 
       {/* Slide list — overlay scrollbar (theme-aware thumb) */}
       <ScrollArea>
-        <div className="flex flex-col py-[4px]" role="listbox" aria-label="Compositions">
+        <div className="flex flex-col py-[8px]" role="listbox" aria-label="Compositions">
           {slides.map((s, i) => <SlideListItem key={i} item={s} tabIndex={i === focusIndex ? 0 : -1}
             itemRef={node => { itemRefs.current[i] = node; }} onFocus={() => setFocusIndex(i)} onNavigate={event => navigate(i, event)}
             onRenameRequest={() => onRenameRequest?.(i)} />)}
