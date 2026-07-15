@@ -77,6 +77,7 @@ describe("Timeline DOM contracts", () => {
     const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[
       { id: "stack", name: "Stack", type: "frame", selected: true, bar: [0, 1_000], props: [] },
     ]} onTrackSelect={() => undefined} />);
+    expect(html).toContain('data-timeline-track-id="stack"');
     expect(html).toContain('data-timeline-track-lane-selected="true"');
     expect(html).toContain("flex-1 relative overflow-hidden bg-c-bg-selected");
   });

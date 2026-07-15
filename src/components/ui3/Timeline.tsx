@@ -348,7 +348,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, edgeDrag
   return (
     <>
       {/* layer row */}
-      <div className="flex" style={{ height: ROW_LAYER }}>
+      <div className="flex" data-timeline-track-id={trackId} style={{ height: ROW_LAYER }}>
         <div className={clsx("shrink-0 flex items-center gap-[8px] pr-[8px] border-r border-c-border", track.selected && "bg-c-bg-selected")}
           style={{ width: LEFT_W, paddingLeft: 8 + depth * 16 }}>
           {track.props.length ? onExpandedChange ? <button type="button" aria-label={`${expanded ? "Collapse" : "Expand"} ${track.name}`} aria-expanded={expanded}
@@ -792,6 +792,7 @@ export function Timeline({
   const [internalViewport, setInternalViewport] = useState(() => normalizeViewport(defaultViewport ?? { startMs: 0, endMs: duration }, duration));
   const [timelineWidth, setTimelineWidth] = useState(LEFT_W + 1);
   const timelineRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const viewportTouched = useRef(false);
   const previousDuration = useRef(duration);
   const previousMode = useRef(mode);
@@ -802,6 +803,7 @@ export function Timeline({
   const viewport = normalizeViewport(controlledViewport ?? internalViewport, duration);
   const viewportRef = useRef(viewport);
   const plotWidth = Math.max(1, timelineWidth - LEFT_W);
+  const selectedTrackId = master ? null : tracks.reduce<string | null>((found, track, index) => found ?? (track.selected ? track.id ?? `track-${index}` : null), null);
   const setPlayhead = (timeMs: number, source: TimelinePlayheadChangeSource) => {
     if (controlledPlayhead === undefined) setInternalPlayhead(timeMs);
     onPlayheadChange?.(timeMs, { source, millisecondsPerPixel: (viewport.endMs - viewport.startMs) / Math.max(1, plotWidth) });
@@ -878,6 +880,14 @@ export function Timeline({
     onKeyframeRevealHandled?.(revealKeyframe.requestKey);
   }, [master, revealKeyframe?.requestKey, revealKeyframe?.timeMs, duration, plotWidth, timelineWidth, viewport.startMs, viewport.endMs]);
 
+  useEffect(() => {
+    if (master || !selectedTrackId) return;
+    const container = bodyRef.current;
+    const row = [...(container?.querySelectorAll<HTMLElement>("[data-timeline-track-id]") ?? [])]
+      .find(element => element.dataset.timelineTrackId === selectedTrackId);
+    row?.scrollIntoView({ block: "nearest" });
+  }, [interactionContextKey, master, selectedTrackId]);
+
   // Measure the element the pointer events live on (the ruler container), so the
   // scrub origin can't desync from a separate ref.
   const scrub = (e: React.PointerEvent) => {
@@ -941,7 +951,7 @@ export function Timeline({
       </div>
 
       {/* body */}
-      <div className="flex-1 overflow-y-auto relative">
+      <div ref={bodyRef} className="flex-1 overflow-y-auto relative">
         {master ? (
           <>
             <BlockTrack blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
