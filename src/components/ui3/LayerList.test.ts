@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
-import { LayerList, layerDomFocusSource, layerNavigationResult, layerRowTabIndex, layerSelectionRevealSignature, nextLayerSelection, normalizeLayerDragRoots, visibleLayerRows, type LayerNode } from "./LayerList";
+import { LayerList, layerDomFocusSource, layerNavigationResult, layerRowTabIndex, layerSelectionConnections, layerSelectionRevealSignature, nextLayerSelection, normalizeLayerDragRoots, visibleLayerRows, type LayerNode } from "./LayerList";
 import { LayerTypeIcon } from "./LayerTypeIcon";
 import { rowSelectionHighlightClassName } from "./RowSelectionState";
 
@@ -32,6 +32,26 @@ describe("LayerList drag root normalization", () => {
     expect(html).toContain('aria-selected="true" data-composa-row-state="selected"');
     expect(html.match(/data-composa-row-state="descendant"/g)).toHaveLength(2);
     expect(html).toContain("bg-c-bg-selected/50 group-hover/selection-row:bg-c-bg-selected");
+    expect(html).toContain('data-highlight-connected-after="true"');
+    expect(html).toContain('data-highlight-connected-before="true"');
+  });
+
+  it("connects only rows belonging to the same selected-parent highlight run", () => {
+    const rows = visibleLayerRows(tree, ["frame"]);
+    expect(layerSelectionConnections(rows, ["frame"])).toEqual([
+      { before: false, after: true },
+      { before: true, after: true },
+      { before: true, after: false },
+      { before: false, after: false },
+      { before: false, after: false },
+    ]);
+    expect(layerSelectionConnections(rows, ["child-a", "child-b"])).toEqual([
+      { before: false, after: false },
+      { before: false, after: false },
+      { before: false, after: false },
+      { before: false, after: false },
+      { before: false, after: false },
+    ]);
   });
 
   it.each(["horizontal", "vertical", "wrap"] as const)("uses one canonical auto-layout-frame glyph while retaining %s mode semantics", autoLayoutMode => {

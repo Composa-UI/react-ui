@@ -94,6 +94,26 @@ export function layerSelectionRevealSignature(selectedIds: readonly string[], ro
   return selectedIds.map(id => `${id}:${(byId.get(id)?.ancestors ?? []).join("/")}`).join("\u0000");
 }
 
+export function layerSelectionRunOwner(row: FlatLayerRow, selectedIds: ReadonlySet<string>): string | null {
+  if (selectedIds.has(row.node.id)) return row.node.id;
+  for (let index = row.ancestors.length - 1; index >= 0; index -= 1) {
+    if (selectedIds.has(row.ancestors[index])) return row.ancestors[index];
+  }
+  return null;
+}
+
+export function layerSelectionConnections(
+  rows: readonly FlatLayerRow[],
+  selectedIds: readonly string[],
+): readonly { before: boolean; after: boolean }[] {
+  const selected = new Set(selectedIds);
+  const owners = rows.map(row => layerSelectionRunOwner(row, selected));
+  return owners.map((owner, index) => ({
+    before: owner !== null && owners[index - 1] === owner,
+    after: owner !== null && owners[index + 1] === owner,
+  }));
+}
+
 export type LayerNavigationKey = "ArrowUp" | "ArrowDown" | "Home" | "End" | "ArrowLeft" | "ArrowRight";
 export interface LayerNavigationResult { focusedId: string; expandedId?: string; expanded?: boolean; }
 
@@ -160,7 +180,7 @@ export function nextLayerSelection(
   return { ids: [targetId], anchorId: targetId };
 }
 
-function LayerRow({ row, hasChildren, open, focused, renaming, renameDraft, onRenameDraftChange, onRenameCommit, onRenameCancel, onDomFocus, onToggle, selectionState, onSelect, onVisibilityChange, onLockChange, onRenameRequest, onContextMenu, draggable, dropZone, onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop, onKeyDown, rowRef }: {
+function LayerRow({ row, hasChildren, open, focused, renaming, renameDraft, onRenameDraftChange, onRenameCommit, onRenameCancel, onDomFocus, onToggle, selectionState, highlightConnectedBefore, highlightConnectedAfter, onSelect, onVisibilityChange, onLockChange, onRenameRequest, onContextMenu, draggable, dropZone, onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop, onKeyDown, rowRef }: {
   row: FlatLayerRow;
   hasChildren: boolean;
   open: boolean;
@@ -173,6 +193,8 @@ function LayerRow({ row, hasChildren, open, focused, renaming, renameDraft, onRe
   onDomFocus: (targetIsRow: boolean) => void;
   onToggle: () => void;
   selectionState: RowSelectionState;
+  highlightConnectedBefore: boolean;
+  highlightConnectedAfter: boolean;
   onSelect: (modifiers: LayerSelectionModifiers) => void;
   onVisibilityChange?: () => void;
   onLockChange?: () => void;
@@ -223,7 +245,14 @@ function LayerRow({ row, hasChildren, open, focused, renaming, renameDraft, onRe
       <span
         aria-hidden
         data-composa-row-highlight="layer"
-        className={clsx("pointer-events-none absolute inset-y-[2px] rounded-c-md", rowSelectionHighlightClassName(selectionState))}
+        data-highlight-connected-before={highlightConnectedBefore || undefined}
+        data-highlight-connected-after={highlightConnectedAfter || undefined}
+        className={clsx(
+          "pointer-events-none absolute",
+          highlightConnectedBefore ? "top-0" : "top-[2px] rounded-t-c-md",
+          highlightConnectedAfter ? "bottom-0" : "bottom-[2px] rounded-b-c-md",
+          rowSelectionHighlightClassName(selectionState),
+        )}
         style={{ left: INSET, right: INSET }}
       />
       {dropZone === "inside" && <span aria-hidden className="pointer-events-none absolute inset-y-[2px] rounded-c-md bg-c-bg-selected" style={{ left: INSET, right: INSET }} />}
@@ -352,6 +381,10 @@ export function LayerList({
     flatten(layers, 0, [], expanded, out);
     return out;
   }, [layers, expanded]);
+  const selectionConnections = useMemo(
+    () => layerSelectionConnections(flat, selected),
+    [flat, selected],
+  );
   const visibleIds = useMemo(() => flat.map(row => row.node.id), [flat]);
   const fallbackFocusedId = [...selected].reverse().find(id => visibleIds.includes(id)) ?? visibleIds[0] ?? null;
   const effectiveFocusedId = requestedFocusedId && visibleIds.includes(requestedFocusedId) ? requestedFocusedId : fallbackFocusedId;
@@ -509,7 +542,7 @@ export function LayerList({
             <span className="text-[11px] font-[550] leading-[16px] text-c-text">No layers</span>
             <span className="mt-[2px] text-[9px] font-[450] leading-[14px] text-c-text-secondary">Use the toolbar to add elements</span>
           </div>}
-          {flat.map(rowValue => {
+          {flat.map((rowValue, rowIndex) => {
             const row = internalNames[rowValue.node.id] ? { ...rowValue, node: { ...rowValue.node, name: internalNames[rowValue.node.id] } } : rowValue;
             const hasChildren = !!row.node.children?.length;
             const rowId = row.node.id;
@@ -567,6 +600,8 @@ export function LayerList({
                   setNodeExpanded(rowId, nextExpanded, "pointer");
                 }}
                 selectionState={selectionState}
+                highlightConnectedBefore={selectionConnections[rowIndex]?.before ?? false}
+                highlightConnectedAfter={selectionConnections[rowIndex]?.after ?? false}
                 onSelect={modifiers => {
                   updateUncontrolledSelection(rowId, modifiers, visibleIds);
                   onSelectionChange?.(rowId, { ...modifiers, visibleOrder: visibleIds });
