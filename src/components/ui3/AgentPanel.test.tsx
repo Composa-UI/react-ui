@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   AgentMarkdown,
   AgentPanel,
+  agentPanelEscapeIsEditableTarget,
   agentThreadIsNearBottom,
   sizeAgentComposer,
   type AgentConversation,
@@ -138,10 +139,33 @@ describe("AgentPanel controlled contracts", () => {
     });
     const composer = renderer!.root.findByProps({ "aria-label": "Ask for changes" });
     act(() => composer.props.onChange({ target: { value: "Next" } }));
+    act(() => composer.props.onKeyDown({ key: "Enter", shiftKey: false, nativeEvent: { isComposing: true }, preventDefault: () => calls.push("prevent") }));
+    act(() => composer.props.onKeyDown({ key: "Enter", shiftKey: false, nativeEvent: { isComposing: false }, keyCode: 229, preventDefault: () => calls.push("prevent") }));
     act(() => composer.props.onKeyDown({ key: "Enter", shiftKey: true, preventDefault: () => calls.push("prevent") }));
     act(() => composer.props.onKeyDown({ key: "Enter", shiftKey: false, preventDefault: () => calls.push("prevent") }));
     act(() => composer.props.onKeyDown({ key: "Escape", shiftKey: false, preventDefault: () => calls.push("prevent") }));
     expect(calls).toEqual(["change:Next", "prevent", "submit", "prevent", "escape"]);
+    const panel = renderer!.root.findByProps({ "aria-label": "Agent panel" });
+    act(() => panel.props.onKeyDown({
+      key: "Escape",
+      target: { tagName: "INPUT" },
+      nativeEvent: { isComposing: false },
+      preventDefault: () => calls.push("prevent"),
+    }));
+    act(() => panel.props.onKeyDown({
+      key: "Escape",
+      target: { tagName: "DIV" },
+      nativeEvent: { isComposing: true },
+      preventDefault: () => calls.push("prevent"),
+    }));
+    expect(calls).toEqual(["change:Next", "prevent", "submit", "prevent", "escape"]);
+    act(() => panel.props.onKeyDown({
+      key: "Escape",
+      target: { tagName: "BUTTON" },
+      nativeEvent: { isComposing: false },
+      preventDefault: () => calls.push("prevent"),
+    }));
+    expect(calls.slice(-2)).toEqual(["prevent", "escape"]);
     expect(renderer!.root.findByProps({ "aria-label": "Voice input unavailable: Coming soon" })).toBeTruthy();
     act(() => renderer!.unmount());
   });
@@ -163,6 +187,41 @@ describe("AgentPanel controlled contracts", () => {
     act(() => button(renderer!.root, "Remove context Hero").props.onClick());
     expect(calls).toEqual(["select:selection", "dismiss"]);
     expect(context).toEqual({ id: "selection", label: "Hero", kind: "frame" });
+    act(() => renderer!.unmount());
+  });
+
+  it("keeps unavailable historical context visible without exposing a selection action", () => {
+    const calls: string[] = [];
+    const unavailableContext = {
+      id: "deleted-selection",
+      label: "Deleted hero",
+      kind: "frame" as const,
+      selectable: false,
+    };
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = renderAgent(props({
+        activeConversation: {
+          ...activeConversation,
+          messages: [{
+            id: "message-with-context",
+            type: "user",
+            content: "Review this",
+            context: unavailableContext,
+          }],
+        },
+        onSelectContext: value => calls.push(value.id),
+      }));
+    });
+    expect(renderer!.root.findByProps({ role: "note", "aria-label": "Context unavailable Deleted hero" })).toBeTruthy();
+    expect(buttons(renderer!.root, "Select context Deleted hero")).toHaveLength(0);
+    expect(calls).toEqual([]);
+    expect(unavailableContext).toEqual({
+      id: "deleted-selection",
+      label: "Deleted hero",
+      kind: "frame",
+      selectable: false,
+    });
     act(() => renderer!.unmount());
   });
 
@@ -200,6 +259,15 @@ describe("AgentPanel controlled contracts", () => {
 });
 
 describe("Agent panel geometry helpers", () => {
+  it("leaves Escape with native and ARIA edit controls", () => {
+    expect(agentPanelEscapeIsEditableTarget({ tagName: "INPUT" } as unknown as EventTarget)).toBe(true);
+    expect(agentPanelEscapeIsEditableTarget({
+      tagName: "DIV",
+      getAttribute: (name: string) => name === "role" ? "combobox" : null,
+    } as unknown as EventTarget)).toBe(true);
+    expect(agentPanelEscapeIsEditableTarget({ tagName: "BUTTON" } as unknown as EventTarget)).toBe(false);
+  });
+
   it("recognizes the near-bottom threshold", () => {
     expect(agentThreadIsNearBottom({ scrollTop: 152, scrollHeight: 400, clientHeight: 200 })).toBe(true);
     expect(agentThreadIsNearBottom({ scrollTop: 100, scrollHeight: 400, clientHeight: 200 })).toBe(false);
