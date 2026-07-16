@@ -157,7 +157,7 @@ function Issue77AnchoredOverlayFixture({ mode, collisionProbe = false }: { mode:
   const [menuChosen, setMenuChosen] = useState(false);
   const [compatibilityOpen, setCompatibilityOpen] = useState(false);
   return (
-    <section data-composa-mode={mode}
+    <section data-composa-mode={mode} data-composa-overlay-boundary
       className="relative h-[360px] min-w-0 overflow-hidden rounded-c-lg bg-c-bg-secondary text-c-text shadow-c-200">
       <div data-issue-77-clipped-inspector={mode} className="absolute inset-y-0 right-0 w-[240px] overflow-hidden border-l border-c-border bg-c-bg">
         <header className="h-[40px] flex items-center border-b border-c-border px-[16px] text-[11px] font-[550]">
@@ -197,6 +197,7 @@ function Issue77AnchoredOverlayFixture({ mode, collisionProbe = false }: { mode:
                 </DialogPrimitive.Root>
                 <button type="button" onClick={() => setOpen(false)}
                   className="h-[24px] rounded-c-sm bg-c-bg-selected px-[8px] text-[11px]">Done</button>
+                {collisionProbe && <div aria-hidden className="h-[420px]" />}
               </div>
             </AnchoredInspectorOverlay>
           </div>

@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ANCHORED_INSPECTOR_OVERLAY_COLLISION_PADDING,
   ANCHORED_INSPECTOR_OVERLAY_Z_CLASS,
+  COMPOSA_OVERLAY_BOUNDARY_SELECTOR,
   AnchoredInspectorOverlay,
   shouldMountAnchoredInspectorOverlay,
 } from "./AnchoredInspectorOverlay";
@@ -27,9 +28,12 @@ const rect = { x: 920, y: 80, width: 24, height: 24, top: 80, right: 944, bottom
 
 function renderOpen(mode: "light" | "dark", onClose = vi.fn(), blockOutsideDismiss = false) {
   const focus = vi.fn();
+  const collisionBoundary = { dataset: { composaOverlayBoundary: "" } };
   const trigger = {
     getBoundingClientRect: () => rect,
-    closest: () => ({ dataset: { composaMode: mode } }),
+    closest: (selector: string) => selector === COMPOSA_OVERLAY_BOUNDARY_SELECTOR
+      ? collisionBoundary
+      : { dataset: { composaMode: mode } },
     focus,
   };
   let renderer: ReturnType<typeof create>;
@@ -46,7 +50,7 @@ function renderOpen(mode: "light" | "dark", onClose = vi.fn(), blockOutsideDismi
       },
     );
   });
-  return { renderer: renderer!, onClose, focus };
+  return { renderer: renderer!, onClose, focus, collisionBoundary };
 }
 
 function radix(root: ReactTestInstance, name: string) {
@@ -76,7 +80,7 @@ describe("AnchoredInspectorOverlay runtime contract", () => {
   });
 
   it("passes focus trap, collision, clipping, and stacking contracts to Radix", () => {
-    const { renderer } = renderOpen("dark");
+    const { renderer, collisionBoundary } = renderOpen("dark");
     const root = radix(renderer.root, "root");
     const content = radix(renderer.root, "content");
     expect(root.props.modal).toBe(true);
@@ -84,8 +88,10 @@ describe("AnchoredInspectorOverlay runtime contract", () => {
     expect(content.props.align).toBe("start");
     expect(content.props.avoidCollisions).toBe(true);
     expect(content.props.sticky).toBe("always");
+    expect(content.props.collisionBoundary).toBe(collisionBoundary);
     expect(content.props.collisionPadding).toBe(ANCHORED_INSPECTOR_OVERLAY_COLLISION_PADDING);
     expect(content.props.className).toContain(ANCHORED_INSPECTOR_OVERLAY_Z_CLASS);
+    expect(content.props.className).toContain("max-h-[var(--radix-popover-content-available-height)]");
     expect(content.props.className).toContain("max-w-[calc(100vw-16px)]");
     act(() => renderer.unmount());
   });
