@@ -1,6 +1,7 @@
 // @composa/ui public API — re-exports the merged UI3 component set.
 // Consumed by composa-editor. Panels/dialogs from ours land here as they're recomposed.
 export * from "./components/ui3/AnimatePanel";
+export * from "./components/ui3/AnchoredInspectorOverlay";
 export * from "./components/ui3/AssetsPanel";
 export * from "./components/ui3/Avatar";
 export * from "./components/ui3/Button";

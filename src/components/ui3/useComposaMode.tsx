@@ -2,9 +2,13 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 
 const ComposaModeContext = createContext<string | undefined>(undefined);
 
+export function composaModeAt(anchor?: Element | null) {
+  return anchor?.closest<HTMLElement>("[data-composa-mode]")?.dataset.composaMode;
+}
+
 function nearestMode(anchor?: Element | null) {
   if (typeof document === "undefined") return undefined;
-  return anchor?.closest<HTMLElement>("[data-composa-mode]")?.dataset.composaMode
+  return composaModeAt(anchor)
     ?? document.querySelector<HTMLElement>("[data-composa-mode]")?.dataset.composaMode
     ?? undefined;
 }
