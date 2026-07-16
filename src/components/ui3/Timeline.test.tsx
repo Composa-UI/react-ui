@@ -189,7 +189,26 @@ describe("Timeline master seams", () => {
     expect(html).toContain('aria-label="Audio track (coming soon)"');
     expect(html).toContain('role="group"');
     expect(html).toContain('aria-disabled="true"');
-    expect(html).toContain("linear-gradient(to right, #0d99ff");
+    expect(html).toContain("data-timeline-zoom-track");
+    expect(html).toContain("data-timeline-zoom-fill");
+    expect(html).toContain("bg-c-bg-brand");
     expect(html).toContain("bg-white");
+    expect(html).toContain('data-timeline-zoom-track-height="2"');
+    expect(html).toContain('data-timeline-zoom-track-radius="1"');
+    expect(html).toContain("h-[2px] rounded-[1px]");
+    expect(html).toContain("[&amp;::-webkit-slider-runnable-track]:h-[2px]");
+    expect(html).toContain("[&amp;::-webkit-slider-runnable-track]:rounded-[1px]");
+    expect(html).toContain("[&amp;::-webkit-slider-thumb]:-mt-[5px]");
+  });
+});
+
+describe("Timeline shared scrollbar anatomy", () => {
+  it("uses the shared overlay ScrollArea instead of a visible native scrollbar", () => {
+    const html = renderToStaticMarkup(<Timeline height={120} duration={2_000} tracks={[numericTrack, numericTrack]} />);
+
+    expect(html).toContain("relative flex-1 min-h-0");
+    expect(html).toContain("[scrollbar-width:none]");
+    expect(html).toContain("[&amp;::-webkit-scrollbar]:hidden");
+    expect(html).not.toContain("flex-1 overflow-y-auto relative");
   });
 });

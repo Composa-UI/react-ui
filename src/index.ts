@@ -24,6 +24,7 @@ export * from "./components/ui3/Panel";
 export * from "./components/ui3/PropertyPanel";
 export * from "./components/ui3/RadioButton";
 export * from "./components/ui3/SegmentedControl";
+export * from "./components/ui3/AlignmentControl";
 export * from "./components/ui3/ShareModal";
 export * from "./components/ui3/SlideInspector";
 export * from "./components/ui3/SlidesPanel";

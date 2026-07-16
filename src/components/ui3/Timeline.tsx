@@ -3,6 +3,7 @@ import { clsx } from "clsx";
 import { Play, Pause, Square, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film, Volume2 } from "lucide-react";
 import { collectAggregateKeyframes, createTimelineEdgeDragController, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineDragDeltaMs, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
+import { ScrollArea } from "./Panel";
 
 // ─── Timeline ───────────────────────────────────────────────────────────────────
 // Polymorphic timeline region (Composa editor spec: docs/composa/specs/timeline.md).
@@ -880,6 +881,7 @@ export function Timeline({
     const r = e.currentTarget.getBoundingClientRect();
     setPlayhead(Math.min(duration, Math.max(0, Math.round(xToTime(e.clientX - r.left, viewport, r.width)))), "pointer");
   };
+  const zoomPercent = Math.round(viewportZoomValue(viewport, duration) * 100);
   const [drag, setDrag] = useState(false);
   return (
     <div ref={timelineRef} data-timeline-viewport-start-ms={viewport.startMs} data-timeline-viewport-end-ms={viewport.endMs} className="flex flex-col bg-c-bg border-t border-c-border overflow-hidden" style={{ height }}>
@@ -922,14 +924,25 @@ export function Timeline({
           </div>
         </div>
         <div className="absolute z-10 right-0 top-0 bottom-0 flex items-center gap-[8px] px-[12px] border-l border-c-border bg-c-bg">
-          <input type="range" aria-label="Timeline zoom" aria-valuetext={`${Math.round(viewportZoomValue(viewport, duration) * 100)}%`}
-            min={0} max={100} step={1} value={Math.round(viewportZoomValue(viewport, duration) * 100)}
-            onChange={event => setViewport(viewportAtZoomValue(viewport, Number(event.currentTarget.value) / 100, duration), "zoom-control")}
-            style={{
-              background: `linear-gradient(to right, ${BLUE} 0%, ${BLUE} ${Math.round(viewportZoomValue(viewport, duration) * 100)}%, var(--color-bg-secondary) ${Math.round(viewportZoomValue(viewport, duration) * 100)}%, var(--color-bg-secondary) 100%)`,
-              backgroundPosition: "center", backgroundRepeat: "no-repeat", backgroundSize: "100% 6px",
-            }}
-            className="appearance-none w-[91px] h-[20px] cursor-ew-resize rounded-c-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-c-border-selected-strong [&::-webkit-slider-runnable-track]:h-[6px] [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-[12px] [&::-webkit-slider-thumb]:-mt-[3px] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-sm [&::-moz-range-track]:h-[6px] [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-transparent [&::-moz-range-progress]:h-[6px] [&::-moz-range-progress]:rounded-full [&::-moz-range-progress]:bg-c-bg-brand [&::-moz-range-thumb]:size-[12px] [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white" />
+          <div data-timeline-zoom-control className="relative w-[91px] h-[20px]">
+            <span
+              aria-hidden
+              data-timeline-zoom-track
+              data-timeline-zoom-track-height="2"
+              data-timeline-zoom-track-radius="1"
+              className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[2px] rounded-[1px] bg-c-bg-secondary overflow-hidden pointer-events-none"
+            >
+              <span
+                data-timeline-zoom-fill
+                className="block h-full rounded-[1px] bg-c-bg-brand"
+                style={{ width: `${zoomPercent}%` }}
+              />
+            </span>
+            <input type="range" aria-label="Timeline zoom" aria-valuetext={`${zoomPercent}%`}
+              min={0} max={100} step={1} value={zoomPercent}
+              onChange={event => setViewport(viewportAtZoomValue(viewport, Number(event.currentTarget.value) / 100, duration), "zoom-control")}
+              className="relative appearance-none w-full h-[20px] cursor-ew-resize bg-transparent rounded-c-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-c-border-selected-strong [&::-webkit-slider-runnable-track]:h-[2px] [&::-webkit-slider-runnable-track]:rounded-[1px] [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-[12px] [&::-webkit-slider-thumb]:-mt-[5px] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-sm [&::-moz-range-track]:h-[2px] [&::-moz-range-track]:rounded-[1px] [&::-moz-range-track]:bg-transparent [&::-moz-range-progress]:h-[2px] [&::-moz-range-progress]:rounded-[1px] [&::-moz-range-progress]:bg-c-bg-brand [&::-moz-range-thumb]:size-[12px] [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white" />
+          </div>
           <button aria-label="Collapse timeline" className="size-[24px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover">
             <PanelBottomClose size={16} strokeWidth={1.5} />
           </button>
@@ -937,7 +950,7 @@ export function Timeline({
       </div>
 
       {/* body */}
-      <div className="flex-1 overflow-y-auto relative">
+      <ScrollArea className="relative">
         {master ? (
           <>
             <BlockTrack blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
@@ -972,7 +985,7 @@ export function Timeline({
         <div className="absolute top-0 bottom-0 right-0 overflow-hidden pointer-events-none" style={{ left: LEFT_W }}>
           <div className="absolute top-0 bottom-0 w-px" style={{ left: percent(playhead, viewport), backgroundColor: BLUE }} />
         </div>
-      </div>
+      </ScrollArea>
     </div>
   );
 }

@@ -1,6 +1,15 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
-import { PanelSection } from "./Panel";
+import { act, create } from "react-test-renderer";
+import { afterEach, describe, expect, it } from "vitest";
+import { PanelSection, ScrollArea } from "./Panel";
+
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+const originalResizeObserver = globalThis.ResizeObserver;
+
+afterEach(() => {
+  globalThis.ResizeObserver = originalResizeObserver;
+});
 
 describe("PanelSection landmarks", () => {
   it("opts into a region named by the existing visible title", () => {
@@ -17,5 +26,45 @@ describe("PanelSection landmarks", () => {
     const labelledBy = html.match(/role="region" aria-labelledby="([^"]+)"/)?.[1];
     expect(labelledBy).toBeTruthy();
     expect(html).toContain(`<button id="${labelledBy}"`);
+  });
+});
+
+describe("ScrollArea dynamic content measurement", () => {
+  it("observes the shared content wrapper and recalculates the thumb as Timeline rows change", () => {
+    const viewport = { scrollTop: 0, scrollHeight: 100, clientHeight: 100 };
+    const content = {};
+    const observed: unknown[] = [];
+    let resize: ResizeObserverCallback = () => undefined;
+    globalThis.ResizeObserver = class ResizeObserverMock {
+      constructor(callback: ResizeObserverCallback) { resize = callback; }
+      observe(target: Element) { observed.push(target); }
+      unobserve() {}
+      disconnect() {}
+    } as typeof ResizeObserver;
+
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<ScrollArea><div>Timeline rows</div></ScrollArea>, {
+        createNodeMock: element => {
+          if (element.props["data-composa-scroll-viewport"]) return viewport;
+          if (element.props["data-composa-scroll-content"]) return content;
+          return null;
+        },
+      });
+    });
+
+    expect(observed).toEqual([viewport, content]);
+    expect(renderer!.root.findAll(node => node.props["data-composa-scroll-thumb"])).toHaveLength(0);
+
+    viewport.scrollHeight = 400;
+    act(() => resize([], {} as ResizeObserver));
+    let thumb = renderer!.root.find(node => node.props["data-composa-scroll-thumb"]);
+    expect(thumb.props.style.height).toBe(25);
+
+    viewport.scrollHeight = 800;
+    act(() => resize([], {} as ResizeObserver));
+    thumb = renderer!.root.find(node => node.props["data-composa-scroll-thumb"]);
+    expect(thumb.props.style.height).toBe(24);
+    act(() => renderer!.unmount());
   });
 });

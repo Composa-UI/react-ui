@@ -13,6 +13,8 @@ import { Button } from "./components/ui3/Button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "./components/ui3/Dialog";
 import { Tooltip, TooltipProvider } from "./components/ui3/Tooltip";
 import { ComposaModeProvider } from "./components/ui3/useComposaMode";
+import { SegmentedControl } from "./components/ui3/SegmentedControl";
+import { AlignmentControl, type AlignmentValue } from "./components/ui3/AlignmentControl";
 import thumb0 from "./imports/SlidesTemplate/9bf3285fa6c14222923aa8fcd4bf31f6e40807d9.png";
 import thumb1 from "./imports/SlidesTemplate/201951eb24dd285dd0794f4e790b8175c012bf20.png";
 import thumb2 from "./imports/SlidesTemplate/4f36d4cb9f77c2e380641dd47deb24943efa0b8a.png";
@@ -31,6 +33,56 @@ const DEMO_SLIDES: SlideData[] = [
   { n: 12, thumb: thumb2 },
   { n: 13, thumb: thumb3 },
 ];
+
+function Issue66FixtureCard({ mode }: { mode: "light" | "dark" }) {
+  const [flow, setFlow] = useState("horizontal");
+  const [alignment, setAlignment] = useState<AlignmentValue>("mc");
+  const [viewport, setViewport] = useState<TimelineViewport>({ startMs: 0, endMs: 3_000 });
+  const fixtureTracks: Track[] = Array.from({ length: 8 }, (_, index) => ({
+    id: `${mode}-track-${index}`,
+    name: `Layer ${index + 1}`,
+    type: index % 2 ? "text" : "frame",
+    depth: index % 3 === 0 ? 0 : 1,
+    expanded: false,
+    props: [],
+  }));
+
+  return (
+    <section
+      data-composa-mode={mode === "dark" ? "dark" : undefined}
+      className="min-w-0 rounded-c-lg bg-c-bg text-c-text shadow-c-200 overflow-hidden"
+    >
+      <header className="h-[40px] px-[16px] flex items-center border-b border-c-border">
+        <h2 className="text-[11px] font-[550]">{mode === "dark" ? "Dark" : "Light"} shared anatomy</h2>
+      </header>
+      <div className="p-[16px] grid gap-[16px]">
+        <div className="grid gap-[6px]">
+          <span className="text-[9px] text-c-text-secondary">Flow · 160px constrained</span>
+          <SegmentedControl
+            ariaLabel={`${mode} flow`}
+            className="w-[160px]"
+            value={flow}
+            onChange={setFlow}
+            segments={[
+              { value: "vertical", label: "Vertical" },
+              { value: "horizontal", label: "Horizontal" },
+              { value: "wrap", label: "Wrap" },
+            ]}
+          />
+        </div>
+        <div className="grid gap-[6px]">
+          <span className="text-[9px] text-c-text-secondary">Alignment · shared segmented surface</span>
+          <AlignmentControl
+            ariaLabel={`${mode} alignment`}
+            value={alignment}
+            onChange={setAlignment}
+          />
+        </div>
+      </div>
+      <Timeline height={160} duration={6_000} tracks={fixtureTracks} viewport={viewport} onViewportChange={setViewport} />
+    </section>
+  );
+}
 
 export default function Playground() {
   // ?view=slides = componentized SlidesPanel; ?view=slides-raw = the raw Figma export
@@ -115,6 +167,15 @@ export default function Playground() {
     transitionEasing: "ease-in-out",
     guides: [{ id: "guide-1", type: "Grid", visible: true, size: 8 }],
   });
+
+  if (view === "issue-66-fixtures") {
+    return (
+      <main className="min-h-screen bg-[#d9d9d9] p-[24px] grid grid-cols-2 gap-[24px]">
+        <Issue66FixtureCard mode="light" />
+        <Issue66FixtureCard mode="dark" />
+      </main>
+    );
+  }
 
   if (view === "timeline-viewport") {
     const dark = new URLSearchParams(window.location.search).get("theme") === "dark";
