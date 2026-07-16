@@ -7,10 +7,13 @@ test.beforeEach(async ({ page }) => {
 test("modal overlays escape inspector clipping, collide safely, trap focus, and restore their trigger", async ({ page }) => {
   const trigger = page.getByRole("button", { name: "Open dark anchored overlay" });
   const inspector = page.locator('[data-issue-77-clipped-inspector="dark"]');
+  const boundary = page.locator('[data-composa-mode="dark"][data-composa-overlay-boundary]');
   const triggerBox = await trigger.boundingBox();
   const inspectorBox = await inspector.boundingBox();
+  const boundaryBox = await boundary.boundingBox();
   expect(triggerBox).not.toBeNull();
   expect(inspectorBox).not.toBeNull();
+  expect(boundaryBox).not.toBeNull();
 
   await trigger.click();
   const dialog = page.getByRole("dialog", { name: "dark anchored inspector overlay" });
@@ -26,6 +29,9 @@ test("modal overlays escape inspector clipping, collide safely, trap focus, and 
   expect(dialogBox!.x + dialogBox!.width).toBeLessThanOrEqual(1112);
   expect(dialogBox!.x).toBeLessThan(triggerBox!.x);
   expect(dialogBox!.x).toBeLessThan(inspectorBox!.x);
+  expect(dialogBox!.y).toBeGreaterThanOrEqual(boundaryBox!.y + 8);
+  expect(dialogBox!.y + dialogBox!.height).toBeLessThanOrEqual(boundaryBox!.y + boundaryBox!.height - 8);
+  expect(dialogBox!.height).toBeLessThan(boundaryBox!.height);
   expect(await dialog.evaluate(element => {
     const inspector = document.querySelector('[data-issue-77-clipped-inspector="dark"]');
     return document.body.contains(element) && !inspector?.contains(element);

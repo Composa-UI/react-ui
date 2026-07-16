@@ -16,8 +16,13 @@ to the control that launched them.
 
 ## Contract
 
-- Default placement is left/start with an 8px trigger offset and 8px viewport
-  collision padding. Radix may flip or shift the surface to keep it visible.
+- Default placement is left/start with an 8px trigger offset and 8px collision
+  padding. When the trigger is inside `[data-composa-overlay-boundary]`, the
+  nearest marked workspace becomes the collision boundary; otherwise the
+  viewport remains the fallback. Radix may flip or shift the surface to keep it
+  visible.
+- The surface height is capped by Radix's available-height measurement for that
+  captured boundary. Dialog bodies remain responsible for their own scrolling.
 - Portalled content mounts only after a real launch rectangle is captured. This
   prevents a top-left measuring flash and freezes the launch position while the
   inspector scrolls.
@@ -37,11 +42,12 @@ to the control that launched them.
 trapping for existing non-modal Effects behavior.
 
 Use `?view=issue-77-anchored-overlay` in the playground for light/dark,
-clipped-panel, and viewport-edge verification.
+clipped-panel, workspace-boundary, and viewport-edge verification.
 
 The component-level suite verifies controlled props and callbacks through a
 Radix boundary mock. `npm run test:e2e` exercises the real Radix package in the
-playground and proves body-portal escape, viewport collision, modal tab cycling,
-Escape/outside dismissal with trigger focus return, nested-layer ownership, and
-the non-modal `InspectorDialog` compatibility path. App E2E remains responsible
-for each product dialog body's controlled values and engine round trip.
+playground and proves body-portal escape, workspace/viewport collision, available
+height capping, modal tab cycling, Escape/outside dismissal with trigger focus
+return, nested-layer ownership, and the non-modal `InspectorDialog`
+compatibility path. App E2E remains responsible for each product dialog body's
+controlled values and engine round trip.

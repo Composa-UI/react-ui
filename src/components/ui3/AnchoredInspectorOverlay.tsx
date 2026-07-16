@@ -8,6 +8,7 @@ export type AnchoredInspectorOverlayAlign = "start" | "center" | "end";
 
 export const ANCHORED_INSPECTOR_OVERLAY_COLLISION_PADDING = 8;
 export const ANCHORED_INSPECTOR_OVERLAY_Z_CLASS = "z-50";
+export const COMPOSA_OVERLAY_BOUNDARY_SELECTOR = "[data-composa-overlay-boundary]";
 
 export function shouldMountAnchoredInspectorOverlay(open: boolean, anchorReady: boolean): boolean {
   return open && anchorReady;
@@ -60,6 +61,7 @@ export function AnchoredInspectorOverlay({
   const [triggerMode, setTriggerMode] = useState<string>();
   const triggerHost = useRef<HTMLSpanElement>(null);
   const capturedRect = useRef<DOMRect | null>(null);
+  const capturedBoundary = useRef<HTMLElement | null>(null);
   const [anchorVersion, setAnchorVersion] = useState(0);
   const virtualAnchor = useRef({ getBoundingClientRect: () => capturedRect.current! });
 
@@ -67,6 +69,7 @@ export function AnchoredInspectorOverlay({
     const target = triggerControl(triggerHost.current);
     if (target) {
       capturedRect.current = target.getBoundingClientRect();
+      capturedBoundary.current = target.closest<HTMLElement>(COMPOSA_OVERLAY_BOUNDARY_SELECTOR);
       setTriggerMode(composaModeAt(target) ?? mode);
       setAnchorVersion(version => version + 1);
     }
@@ -76,6 +79,7 @@ export function AnchoredInspectorOverlay({
     if (open && !capturedRect.current) capture();
     if (!open && capturedRect.current) {
       capturedRect.current = null;
+      capturedBoundary.current = null;
       setTriggerMode(undefined);
       setAnchorVersion(0);
     }
@@ -104,6 +108,7 @@ export function AnchoredInspectorOverlay({
           side={side}
           align={align}
           sideOffset={sideOffset}
+          collisionBoundary={capturedBoundary.current ?? undefined}
           collisionPadding={collisionPadding}
           avoidCollisions
           sticky="always"
@@ -114,7 +119,7 @@ export function AnchoredInspectorOverlay({
           }}
           className={clsx(
             ANCHORED_INSPECTOR_OVERLAY_Z_CLASS,
-            "max-h-[calc(100vh-16px)] max-w-[calc(100vw-16px)] overflow-hidden rounded-c-lg bg-c-bg shadow-c-500 outline-none",
+            "max-h-[var(--radix-popover-content-available-height)] max-w-[calc(100vw-16px)] overflow-hidden rounded-c-lg bg-c-bg shadow-c-500 outline-none",
             className,
           )}
           style={{ width }}
