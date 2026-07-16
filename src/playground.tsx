@@ -113,6 +113,38 @@ function Issue67IconMatrix({ mode }: { mode: "light" | "dark" }) {
   );
 }
 
+const ISSUE_70_LAYERS: LayerNode[] = [
+  { id: "hero", name: "Hero frame", type: "frame", autoLayoutMode: "vertical", children: [
+    { id: "title", name: "Title", type: "text" },
+    { id: "artwork", name: "Artwork", type: "image" },
+  ] },
+  { id: "footer", name: "Footer", type: "shape" },
+];
+
+const ISSUE_70_TRACKS: Track[] = [
+  { id: "hero", name: "Hero frame", type: "frame", autoLayoutMode: "vertical", selectionState: "selected", props: [] },
+  { id: "title", name: "Title", type: "text", depth: 1, selectionState: "descendant", props: [] },
+  { id: "artwork", name: "Artwork", type: "image", depth: 1, selectionState: "descendant", props: [] },
+  { id: "footer", name: "Footer", type: "shape", props: [] },
+];
+
+function Issue70RowStateFixture({ mode }: { mode: "light" | "dark" }) {
+  return (
+    <section data-composa-mode={mode === "dark" ? "dark" : undefined} className="min-w-0 overflow-hidden rounded-c-lg bg-c-bg text-c-text shadow-c-200">
+      <header className="h-[40px] px-[16px] flex items-center border-b border-c-border">
+        <h2 className="text-[11px] font-[550]">{mode === "dark" ? "Dark" : "Light"} row-state projection</h2>
+      </header>
+      <div className="h-[170px] flex bg-c-bg">
+        <LayerList layers={ISSUE_70_LAYERS} selectedIds={["hero"]} expandedIds={["hero"]} />
+        <div className="flex-1 p-[16px] text-[9px] leading-[14px] text-c-text-secondary">
+          Selected parent/self uses emphasized blue. Descendants stay de-emphasized until hover promotes the hovered row.
+        </div>
+      </div>
+      <Timeline height={170} duration={4_000} tracks={ISSUE_70_TRACKS} onTrackSelect={() => undefined} />
+    </section>
+  );
+}
+
 export default function Playground() {
   // ?view=slides = componentized SlidesPanel; ?view=slides-raw = the raw Figma export
   // (side-by-side fidelity check); default = property-panel fidelity set.
@@ -211,6 +243,15 @@ export default function Playground() {
       <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px]">
         <Issue67IconMatrix mode="light" />
         <Issue67IconMatrix mode="dark" />
+      </main>
+    );
+  }
+
+  if (view === "issue-70-row-states") {
+    return (
+      <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px]">
+        <Issue70RowStateFixture mode="light" />
+        <Issue70RowStateFixture mode="dark" />
       </main>
     );
   }

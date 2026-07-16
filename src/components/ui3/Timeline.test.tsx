@@ -75,6 +75,20 @@ describe("Timeline DOM contracts", () => {
     expect(html).not.toMatch(/grid/i);
   });
 
+  it("projects controlled selection states across the complete label and time lane", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[
+      { id: "parent", name: "Parent", type: "frame", selectionState: "selected", props: [] },
+      { id: "child", name: "Child", type: "shape", depth: 1, selectionState: "descendant", props: [] },
+      { id: "peer", name: "Peer", type: "text", props: [] },
+    ]} onTrackSelect={() => undefined} />);
+    expect(html).toContain('data-composa-row-state="selected"');
+    expect(html).toContain('data-composa-row-state="descendant"');
+    expect(html.match(/data-composa-row-highlight="timeline-full-lane"/g)).toHaveLength(3);
+    expect(html).toContain("bg-c-bg-selected/50 group-hover/selection-row:bg-c-bg-selected");
+    expect(html).toContain('role="option" aria-selected="true" tabindex="0"');
+    expect(html).toContain('role="option" aria-selected="false" tabindex="-1"');
+  });
+
   it("does not let a nested disclosure key activate its selectable row", () => {
     expect(shouldActivateTimelineTrackKey("Enter", false)).toBe(false);
     expect(shouldActivateTimelineTrackKey(" ", false)).toBe(false);
