@@ -19,6 +19,7 @@ import { AlignmentControl, type AlignmentValue } from "./components/ui3/Alignmen
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./components/ui3/LayerTypeIcon";
 import { AnchoredInspectorOverlay } from "./components/ui3/AnchoredInspectorOverlay";
 import { InspectorDialog } from "./components/ui3/InspectorDialog";
+import { Menu, MenuRow, PopoverMenu } from "./components/ui3/Menu";
 import thumb0 from "./imports/SlidesTemplate/9bf3285fa6c14222923aa8fcd4bf31f6e40807d9.png";
 import thumb1 from "./imports/SlidesTemplate/201951eb24dd285dd0794f4e790b8175c012bf20.png";
 import thumb2 from "./imports/SlidesTemplate/4f36d4cb9f77c2e380641dd47deb24943efa0b8a.png";
@@ -151,6 +152,7 @@ function Issue70RowStateFixture({ mode }: { mode: "light" | "dark" }) {
 function Issue77AnchoredOverlayFixture({ mode, collisionProbe = false }: { mode: "light" | "dark"; collisionProbe?: boolean }) {
   const [open, setOpen] = useState(false);
   const [nestedOpen, setNestedOpen] = useState(false);
+  const [menuChosen, setMenuChosen] = useState(false);
   const [compatibilityOpen, setCompatibilityOpen] = useState(false);
   return (
     <section data-composa-mode={mode}
@@ -174,6 +176,11 @@ function Issue77AnchoredOverlayFixture({ mode, collisionProbe = false }: { mode:
                   <input autoFocus aria-label={`${mode} overlay name`} defaultValue="Inside"
                     className="h-[24px] rounded-c-sm bg-c-bg-secondary px-[8px] text-[11px] text-c-text outline-none focus:ring-1 focus:ring-c-border-selected" />
                 </label>
+                <PopoverMenu trigger={<button type="button" aria-label={`Open ${mode} overlay menu`}
+                  className="h-[24px] w-full rounded-c-sm bg-c-bg-secondary px-[8px] text-[11px]">Overlay menu</button>}>
+                  {close => <Menu><MenuRow label={`${mode} overlay menu choice`} onClick={() => { setMenuChosen(true); close(); }} /></Menu>}
+                </PopoverMenu>
+                <span role="status" className="text-[9px] text-c-text-secondary">{menuChosen ? `${mode} overlay menu chosen` : ""}</span>
                 <button type="button" aria-label={`Open ${mode} nested picker`}
                   onPointerDown={() => setNestedOpen(true)} onClick={() => setNestedOpen(true)}
                   className="h-[24px] rounded-c-sm bg-c-bg-secondary px-[8px] text-[11px]">Nested picker</button>
