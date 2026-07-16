@@ -230,6 +230,9 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain('data-easing-preset="custom"');
     expect(html).toContain('aria-haspopup="menu"');
     expect(html).toContain('aria-keyshortcuts="Enter Shift+Enter"');
+    expect(html).toContain('w-[28px]');
+    expect(html).toContain('style="left:25%"');
+    expect(startingMarker).toContain('z-[2]');
     expect(html).not.toContain('data-easing-segment="hero:opacity:end"');
   });
 
