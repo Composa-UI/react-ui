@@ -242,6 +242,20 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain('role="img" data-easing-segment="hero:x:start"');
     expect(html).not.toContain('aria-haspopup="menu"');
   });
+
+  it("keeps locked easing segments selectable without exposing an inert preset menu", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[{
+      id: "locked", name: "Locked", type: "frame", props: [{
+        id: "x", name: "Position X", keyframes: [
+          { id: "start", timeMs: 0, easing: "ease-out", easingEditable: false },
+          { id: "end", timeMs: 1_000, easing: "linear", easingEditable: false },
+        ],
+      }],
+    }]} onEasingSegmentSelect={() => undefined} onEasingPresetChange={() => undefined} />);
+    expect(html).toContain('<button type="button" data-easing-segment="locked:x:start"');
+    expect(html).not.toContain('aria-haspopup="menu"');
+    expect(html).not.toContain('aria-keyshortcuts="Enter Shift+Enter"');
+  });
 });
 
 describe("Timeline empty-lane time mapping", () => {

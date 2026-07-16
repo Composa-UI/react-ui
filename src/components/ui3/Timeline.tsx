@@ -70,7 +70,7 @@ export function timelineTrackNavigationIndex(current: number, count: number, key
   return Math.max(0, Math.min(count - 1, current + (key === "ArrowUp" ? -1 : 1)));
 }
 export type TimelineEasingPreset = "linear" | "ease-in" | "ease-out" | "ease-in-out" | "custom";
-export interface TimelineKeyframe { id: string; timeMs: number; selected?: boolean; easing?: TimelineEasingPreset; }
+export interface TimelineKeyframe { id: string; timeMs: number; selected?: boolean; easing?: TimelineEasingPreset; easingEditable?: boolean; }
 export type TimelineKeyframeValue = number | TimelineKeyframe;
 export interface PropTrack {
   id?: string;
@@ -617,7 +617,7 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
             accent={!!prop.accent}
             viewport={viewport}
             onSelect={onEasingSelect}
-            onPresetChange={onEasingPresetChange}
+            onPresetChange={typeof keyframe !== "number" && keyframe.easingEditable === false ? undefined : onEasingPresetChange}
           />
         );
       })}
