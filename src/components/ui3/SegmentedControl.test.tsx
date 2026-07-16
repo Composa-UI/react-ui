@@ -133,4 +133,47 @@ describe("Segmented control anatomy", () => {
     expect(focus.get("Top left")).toHaveBeenCalledOnce();
     act(() => renderer!.unmount());
   });
+
+  it("wraps horizontal alignment arrows within each three-cell row", () => {
+    const changes: string[] = [];
+    const focused: string[] = [];
+    let renderer: ReturnType<typeof create>;
+    const render = (value: "tl" | "tc" | "tr" | "ml" | "mc" | "mr" | "bl" | "bc" | "br") => (
+      <AlignmentControl value={value} onChange={next => changes.push(next)} />
+    );
+    act(() => {
+      renderer = create(render("tr"), {
+        createNodeMock: element => {
+          if (element.type !== "button") return null;
+          return { focus: () => focused.push(element.props["aria-label"]) };
+        },
+      });
+    });
+
+    const navigate = (
+      value: "tl" | "tc" | "tr" | "ml" | "mc" | "mr" | "bl" | "bc" | "br",
+      label: string,
+      key: "ArrowLeft" | "ArrowRight" | "ArrowDown",
+    ) => {
+      act(() => renderer!.update(render(value)));
+      act(() => button(renderer!.root, label).props.onKeyDown(keyEvent(key)));
+    };
+
+    navigate("tr", "Top right", "ArrowRight");
+    navigate("tl", "Top left", "ArrowLeft");
+    navigate("mr", "Middle right", "ArrowRight");
+    navigate("ml", "Middle left", "ArrowLeft");
+    navigate("br", "Bottom right", "ArrowRight");
+    navigate("bl", "Bottom left", "ArrowLeft");
+    navigate("tr", "Top right", "ArrowDown");
+
+    expect(changes).toEqual(["tl", "tr", "ml", "mr", "bl", "br", "mr"]);
+    expect(focused).toEqual([
+      "Top left", "Top right",
+      "Middle left", "Middle right",
+      "Bottom left", "Bottom right",
+      "Middle right",
+    ]);
+    act(() => renderer!.unmount());
+  });
 });

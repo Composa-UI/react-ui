@@ -38,6 +38,16 @@ function AlignmentGlyph({ x, y }: { x: number; y: number }) {
   );
 }
 
+function nextAlignmentIndex(index: number, key: SingleSelectionKey): number {
+  if (key === "ArrowRight" || key === "ArrowLeft") {
+    const rowStart = Math.floor(index / 3) * 3;
+    const column = index % 3;
+    const nextColumn = key === "ArrowRight" ? (column + 1) % 3 : (column + 2) % 3;
+    return rowStart + nextColumn;
+  }
+  return nextSingleSelectionIndex(index, key, ALIGNMENTS.length, 3);
+}
+
 export function AlignmentControl({
   value,
   onChange,
@@ -51,7 +61,7 @@ export function AlignmentControl({
     if (disabled || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
     event.stopPropagation();
-    const nextIndex = nextSingleSelectionIndex(index, event.key as SingleSelectionKey, ALIGNMENTS.length, 3);
+    const nextIndex = nextAlignmentIndex(index, event.key as SingleSelectionKey);
     const next = ALIGNMENTS[nextIndex];
     if (!next) return;
     onChange(next.value);
