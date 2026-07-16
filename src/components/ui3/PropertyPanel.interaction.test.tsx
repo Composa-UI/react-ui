@@ -1,5 +1,6 @@
 import { act, create, type ReactTestInstance } from "react-test-renderer";
 import { describe, expect, it } from "vitest";
+import { AutoLayoutSettingsDialog } from "./AutoLayoutSettingsDialog";
 import { DimensionSizingFields, PropertyPanel, SizingComboField, type ElementSizingMode, type SizingComboFieldProps } from "./PropertyPanel";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -53,14 +54,38 @@ describe("DimensionSizingFields interactions", () => {
 });
 
 describe("Auto-layout settings interactions", () => {
-  it("routes both settings triggers to the same host callback", () => {
+  it("opens one anchored dialog from either settings trigger and routes controlled patches", () => {
     let requests = 0;
+    const patches: unknown[] = [];
     let renderer: ReturnType<typeof create>;
-    act(() => { renderer = create(<PropertyPanel elementType="frame-auto" onAutoLayoutSettingsRequest={() => { requests += 1; }} />); });
+    act(() => { renderer = create(<PropertyPanel
+      elementType="frame-auto"
+      layout={{
+        mode: "horizontal",
+        gap: 8,
+        padding: { top: 8, right: 8, bottom: 8, left: 8 },
+        align: "mc",
+        widthMode: "fixed",
+        heightMode: "hug",
+        clipsContent: false,
+        textBaseline: false,
+        strokeSizing: "excluded",
+        canvasStacking: "last-on-top",
+      }}
+      onLayoutChange={patch => patches.push(patch)}
+      onAutoLayoutSettingsRequest={() => { requests += 1; }}
+    />); });
     const triggers = renderer!.root.findAll(node => node.type === "button" && node.props["aria-label"] === "Auto-layout settings");
     expect(triggers).toHaveLength(2);
-    act(() => triggers.forEach(trigger => trigger.props.onClick()));
+    act(() => triggers[0].props.onClick());
+    let dialogs = renderer!.root.findAllByType(AutoLayoutSettingsDialog);
+    expect(dialogs.map(dialog => dialog.props.open)).toEqual([true, false]);
+    act(() => dialogs[0].props.onChange({ strokeSizing: "included" }));
+    act(() => triggers[1].props.onClick());
+    dialogs = renderer!.root.findAllByType(AutoLayoutSettingsDialog);
+    expect(dialogs.map(dialog => dialog.props.open)).toEqual([false, true]);
     expect(requests).toBe(2);
+    expect(patches).toEqual([{ strokeSizing: "included" }]);
     act(() => renderer!.unmount());
   });
 });
