@@ -66,12 +66,12 @@ export function AutoLayoutSettingsDialog({
         <SettingRow label="Strokes">
           <PopoverMenu
             align="left"
-            trigger={<Dropdown ariaLabel="Stroke inclusion" value={value.strokeSizing === "included" ? "Included" : "Excluded"} fullWidth />}
+            trigger={<Dropdown ariaLabel={`Stroke inclusion: ${value.strokeSizing === "included" ? "Included" : "Excluded"}`} value={value.strokeSizing === "included" ? "Included" : "Excluded"} fullWidth />}
           >
             {close => (
               <Menu minWidth={156}>
-                <MenuRow type="checkmark" label="Excluded" checked={value.strokeSizing === "excluded"} onClick={() => { onChange?.({ strokeSizing: "excluded" }); close(); }} />
-                <MenuRow type="checkmark" label="Included" checked={value.strokeSizing === "included"} onClick={() => { onChange?.({ strokeSizing: "included" }); close(); }} />
+                <MenuRow type="checkmark" selectionRole="radio" label="Excluded" checked={value.strokeSizing === "excluded"} onClick={() => { onChange?.({ strokeSizing: "excluded" }); close(); }} />
+                <MenuRow type="checkmark" selectionRole="radio" label="Included" checked={value.strokeSizing === "included"} onClick={() => { onChange?.({ strokeSizing: "included" }); close(); }} />
               </Menu>
             )}
           </PopoverMenu>
@@ -79,12 +79,12 @@ export function AutoLayoutSettingsDialog({
         <SettingRow label="Canvas stacking">
           <PopoverMenu
             align="left"
-            trigger={<Dropdown ariaLabel="Canvas stacking" value={value.canvasStacking === "first-on-top" ? "First on top" : "Last on top"} fullWidth />}
+            trigger={<Dropdown ariaLabel={`Canvas stacking: ${value.canvasStacking === "first-on-top" ? "First on top" : "Last on top"}`} value={value.canvasStacking === "first-on-top" ? "First on top" : "Last on top"} fullWidth />}
           >
             {close => (
               <Menu minWidth={156}>
-                <MenuRow type="checkmark" label="First on top" checked={value.canvasStacking === "first-on-top"} onClick={() => { onChange?.({ canvasStacking: "first-on-top" }); close(); }} />
-                <MenuRow type="checkmark" label="Last on top" checked={value.canvasStacking === "last-on-top"} onClick={() => { onChange?.({ canvasStacking: "last-on-top" }); close(); }} />
+                <MenuRow type="checkmark" selectionRole="radio" label="First on top" checked={value.canvasStacking === "first-on-top"} onClick={() => { onChange?.({ canvasStacking: "first-on-top" }); close(); }} />
+                <MenuRow type="checkmark" selectionRole="radio" label="Last on top" checked={value.canvasStacking === "last-on-top"} onClick={() => { onChange?.({ canvasStacking: "last-on-top" }); close(); }} />
               </Menu>
             )}
           </PopoverMenu>

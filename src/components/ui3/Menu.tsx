@@ -35,6 +35,8 @@ interface MenuRowProps {
   leading?: ReactNode;
   trailing?: ReactNode;
   checked?: boolean;
+  /** Checked-state semantics for mutually exclusive or independently toggled rows. */
+  selectionRole?: "radio" | "checkbox";
   /** Indeterminate state for checkmark rows */
   mixed?: boolean;
   disabled?: boolean;
@@ -54,6 +56,7 @@ export function MenuRow({
   leading,
   trailing,
   checked = false,
+  selectionRole,
   mixed = false,
   disabled = false,
   destructive = false,
@@ -104,6 +107,11 @@ export function MenuRow({
 
   // ── Interactive rows ──────────────────────────────────────────────────────
   const interactive = !disabled && !!onClick;
+  const itemRole = selectionRole === "radio"
+    ? "menuitemradio"
+    : selectionRole === "checkbox"
+      ? "menuitemcheckbox"
+      : "menuitem";
   const active = hovered && interactive;
 
   // In dark mode context:
@@ -167,10 +175,10 @@ export function MenuRow({
 
   return (
     <div
-      role="menuitem"
+      role={itemRole}
       tabIndex={interactive ? 0 : undefined}
       aria-disabled={disabled}
-      aria-checked={type === "checkmark" || type === "toggle" ? checked : undefined}
+      aria-checked={selectionRole ? checked : undefined}
       onClick={disabled ? undefined : onClick}
       onMouseEnter={() => interactive && setHovered(true)}
       onMouseLeave={() => setHovered(false)}
