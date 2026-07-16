@@ -15,6 +15,7 @@ export * from "./components/ui3/CreationToolbar";
 export * from "./components/ui3/Dialog";
 export * from "./components/ui3/Dropdown";
 export * from "./components/ui3/EffectDetailsDialog";
+export * from "./components/ui3/AutoLayoutSettingsDialog";
 export * from "./components/ui3/Input";
 export * from "./components/ui3/IconSemantics";
 export * from "./components/ui3/InspectorRailSwitcher";

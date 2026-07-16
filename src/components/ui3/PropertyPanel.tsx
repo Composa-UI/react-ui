@@ -34,6 +34,7 @@ import { SplitButton } from "./SplitButton";
 import { Button } from "./Button";
 import { Tooltip } from "./Tooltip";
 import { EffectDetailsDialog, type EffectDetailsValue } from "./EffectDetailsDialog";
+import { AutoLayoutSettingsDialog } from "./AutoLayoutSettingsDialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -71,6 +72,9 @@ export interface ElementLayoutSettings {
   widthModeMixed?: boolean;
   heightModeMixed?: boolean;
   minWidthMixed?: boolean; minHeightMixed?: boolean; maxWidthMixed?: boolean; maxHeightMixed?: boolean;
+  textBaseline?: boolean;
+  strokeSizing?: "excluded" | "included";
+  canvasStacking?: "first-on-top" | "last-on-top";
 }
 
 export type ElementSizingAxis = "width" | "height";
@@ -463,7 +467,10 @@ interface LayoutAutoProps {
   paddingBottom?: number; paddingLeft?: number;
   alignValue?: string;
   clipContent?: boolean;
-  onLayoutChange?: (patch: Partial<Pick<ElementLayoutSettings, "mode" | "gap">>) => void;
+  textBaseline?: boolean;
+  strokeSizing?: "excluded" | "included";
+  canvasStacking?: "first-on-top" | "last-on-top";
+  onLayoutChange?: (patch: Partial<ElementLayoutSettings>) => void;
   onPaddingChange?: (value: ElementLayoutSettings["padding"]) => void;
   onAlignChange?: (value: string) => void;
   onClipContentChange?: (value: boolean) => void;
@@ -487,8 +494,12 @@ function LayoutAutoSection({
   paddingTop = 16, paddingRight = 0, paddingBottom = 8, paddingLeft = 0,
   alignValue = "mc",
   clipContent = false,
+  textBaseline = false,
+  strokeSizing = "excluded",
+  canvasStacking = "last-on-top",
   onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onAutoLayoutSettingsRequest, sizing,
 }: LayoutAutoProps) {
+  const [settingsTrigger, setSettingsTrigger] = useState<"section" | "row" | null>(null);
   const controlled = flowMode !== undefined;
   const [flow, setFlow] = useState("v");
   const renderedFlow = flowMode === "horizontal" ? "h" : flowMode === "vertical" ? "v" : flowMode ?? flow;
@@ -552,8 +563,28 @@ function LayoutAutoSection({
     </Menu>
   );
 
+  const settingsValue = {
+    mode: flowMode ?? (renderedFlow === "h" ? "horizontal" : renderedFlow === "v" ? "vertical" : "wrap"),
+    textBaseline,
+    strokeSizing,
+    canvasStacking,
+  } as const;
+  const settingsTriggerButton = (placement: "section" | "row") => (
+    <AutoLayoutSettingsDialog
+      open={settingsTrigger === placement}
+      value={settingsValue}
+      trigger={<PanelActionBtn
+        icon={<Settings2 size={16} strokeWidth={1.5} />}
+        label="Auto-layout settings"
+        onClick={() => { setSettingsTrigger(placement); onAutoLayoutSettingsRequest?.(); }}
+      />}
+      onChange={patch => onLayoutChange?.(patch)}
+      onClose={() => setSettingsTrigger(null)}
+    />
+  );
+
   return (
-    <PanelSection title="Auto layout" rightActions={<PanelActionBtn icon={<Settings2 size={16} strokeWidth={1.5} />} label="Auto-layout settings" onClick={onAutoLayoutSettingsRequest} />}>
+    <PanelSection title="Auto layout" rightActions={settingsTriggerButton("section")}>
       {/* Flow + Gap are the canonical first row. Wrap intentionally exposes one
           shared numeric gap; Auto remains unavailable while wrapping. */}
       <div role="group" aria-label="Flow and gap" className="pl-[16px] pr-[16px] py-[8px]">
@@ -580,7 +611,7 @@ function LayoutAutoSection({
             />
           </div>
           <div className="shrink-0 pt-[17px]">
-            <PanelActionBtn icon={<Settings2 size={16} strokeWidth={1.5} />} label="Auto-layout settings" onClick={onAutoLayoutSettingsRequest} />
+            {settingsTriggerButton("row")}
           </div>
         </div>
       </div>
@@ -2190,6 +2221,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             flowMode={layout?.mode}
             gap={layout?.gap} paddingTop={layout?.padding.top} paddingRight={layout?.padding.right} paddingBottom={layout?.padding.bottom} paddingLeft={layout?.padding.left}
             alignValue={layout?.align} clipContent={layout?.clipsContent}
+            textBaseline={layout?.textBaseline} strokeSizing={layout?.strokeSizing} canvasStacking={layout?.canvasStacking}
             widthMode={layout?.widthMode} heightMode={layout?.heightMode}
             sizing={sizingContract}
             onLayoutChange={onLayoutChange} onPaddingChange={onLayoutChange ? padding => onLayoutChange({ padding }) : undefined}
