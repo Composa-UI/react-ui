@@ -88,4 +88,25 @@ describe("Auto-layout settings interactions", () => {
     expect(patches).toEqual([{ strokeSizing: "included" }]);
     act(() => renderer!.unmount());
   });
+
+  it("disables both settings triggers for a non-authorable selection", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel
+      elementType="frame-auto"
+      layout={{
+        mode: "horizontal",
+        gap: 8,
+        padding: { top: 8, right: 8, bottom: 8, left: 8 },
+        align: "mc",
+        widthMode: "fixed",
+        heightMode: "hug",
+        clipsContent: false,
+        autoLayoutSettingsDisabled: true,
+      }}
+    />); });
+    const triggers = renderer!.root.findAll(node => node.type === "button" && node.props["aria-label"] === "Auto-layout settings");
+    expect(triggers).toHaveLength(2);
+    expect(triggers.every(trigger => trigger.props.disabled)).toBe(true);
+    act(() => renderer!.unmount());
+  });
 });
