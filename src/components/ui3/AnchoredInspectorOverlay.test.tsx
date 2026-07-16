@@ -1,38 +1,120 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { act, create } from "react-test-renderer";
-import { describe, expect, it } from "vitest";
+import { act, create, type ReactTestInstance } from "react-test-renderer";
+import { describe, expect, it, vi } from "vitest";
 import {
   ANCHORED_INSPECTOR_OVERLAY_COLLISION_PADDING,
+  ANCHORED_INSPECTOR_OVERLAY_Z_CLASS,
   AnchoredInspectorOverlay,
   shouldMountAnchoredInspectorOverlay,
 } from "./AnchoredInspectorOverlay";
 import { InspectorDialog } from "./InspectorDialog";
 
+vi.mock("@radix-ui/react-popover", async () => {
+  const React = await import("react");
+  const boundary = (name: string) => ({ children, ...props }: { children?: React.ReactNode } & Record<string, unknown>) =>
+    React.createElement("div", { [`data-radix-${name}`]: true, ...props }, children);
+  return {
+    Root: boundary("root"),
+    Anchor: boundary("anchor"),
+    Portal: boundary("portal"),
+    Content: boundary("content"),
+  };
+});
+
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-describe("AnchoredInspectorOverlay contract", () => {
+const rect = { x: 920, y: 80, width: 24, height: 24, top: 80, right: 944, bottom: 104, left: 920, toJSON: () => ({}) } as DOMRect;
+
+function renderOpen(mode: "light" | "dark", onClose = vi.fn(), blockOutsideDismiss = false) {
+  const focus = vi.fn();
+  const trigger = {
+    getBoundingClientRect: () => rect,
+    closest: () => ({ dataset: { composaMode: mode } }),
+    focus,
+  };
+  let renderer: ReturnType<typeof create>;
+  act(() => {
+    renderer = create(
+      <AnchoredInspectorOverlay open onClose={onClose} ariaLabel={`${mode} settings`} blockOutsideDismiss={blockOutsideDismiss}
+        trigger={<button type="button" aria-label={`Open ${mode}`}>Open</button>}>
+        <button type="button">First field</button>
+      </AnchoredInspectorOverlay>,
+      {
+        createNodeMock: element => element.type === "span"
+          ? { querySelector: () => trigger }
+          : null,
+      },
+    );
+  });
+  return { renderer: renderer!, onClose, focus };
+}
+
+function radix(root: ReactTestInstance, name: string) {
+  return root.find(node => node.props[`data-radix-${name}`]);
+}
+
+describe("AnchoredInspectorOverlay runtime contract", () => {
   it("waits for a captured trigger before mounting portalled content", () => {
     expect(shouldMountAnchoredInspectorOverlay(false, false)).toBe(false);
     expect(shouldMountAnchoredInspectorOverlay(true, false)).toBe(false);
     expect(shouldMountAnchoredInspectorOverlay(true, true)).toBe(true);
   });
 
-  it("uses the shared viewport collision inset", () => {
-    expect(ANCHORED_INSPECTOR_OVERLAY_COLLISION_PADDING).toBe(8);
+  it.each(["light", "dark"] as const)("captures %s mode from its own trigger root", mode => {
+    const { renderer } = renderOpen(mode);
+    expect(radix(renderer.root, "content").props["data-composa-mode"]).toBe(mode);
+    act(() => renderer.unmount());
   });
 
-  it("enables the Radix modal focus scope by default", () => {
-    let renderer: ReturnType<typeof create>;
-    act(() => {
-      renderer = create(
-        <AnchoredInspectorOverlay open={false} onClose={() => undefined} ariaLabel="Settings"
-          trigger={<button type="button">Open</button>}>
-          <button type="button">First field</button>
-        </AnchoredInspectorOverlay>,
-      );
-    });
-    expect(renderer!.root.findByType(PopoverPrimitive.Root).props.modal).toBe(true);
-    act(() => renderer!.unmount());
+  it("captures a non-origin virtual anchor before mounting through the portal", () => {
+    const { renderer } = renderOpen("light");
+    const anchor = radix(renderer.root, "anchor");
+    const portal = radix(renderer.root, "portal");
+    expect(anchor.props.virtualRef.current.getBoundingClientRect()).toBe(rect);
+    expect(portal.findAll(node => node.props["data-radix-content"])).toHaveLength(1);
+    act(() => renderer.unmount());
+  });
+
+  it("passes focus trap, collision, clipping, and stacking contracts to Radix", () => {
+    const { renderer } = renderOpen("dark");
+    const root = radix(renderer.root, "root");
+    const content = radix(renderer.root, "content");
+    expect(root.props.modal).toBe(true);
+    expect(content.props.side).toBe("left");
+    expect(content.props.align).toBe("start");
+    expect(content.props.avoidCollisions).toBe(true);
+    expect(content.props.sticky).toBe("always");
+    expect(content.props.collisionPadding).toBe(ANCHORED_INSPECTOR_OVERLAY_COLLISION_PADDING);
+    expect(content.props.className).toContain(ANCHORED_INSPECTOR_OVERLAY_Z_CLASS);
+    expect(content.props.className).toContain("max-w-[calc(100vw-16px)]");
+    act(() => renderer.unmount());
+  });
+
+  it("closes through the controlled Radix dismissal path used by Escape and outside click", () => {
+    const { renderer, onClose } = renderOpen("light");
+    act(() => radix(renderer.root, "root").props.onOpenChange(false));
+    expect(onClose).toHaveBeenCalledOnce();
+    act(() => renderer.unmount());
+  });
+
+  it("returns focus to the captured trigger after dismissal", () => {
+    const { renderer, focus } = renderOpen("light");
+    const event = { preventDefault: vi.fn() };
+    act(() => radix(renderer.root, "content").props.onCloseAutoFocus(event));
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(focus).toHaveBeenCalledOnce();
+    act(() => renderer.unmount());
+  });
+
+  it("blocks nested-overlay outside interaction without weakening explicit close", () => {
+    const { renderer, onClose } = renderOpen("dark", vi.fn(), true);
+    const outside = { preventDefault: vi.fn() };
+    act(() => radix(renderer.root, "content").props.onInteractOutside(outside));
+    expect(outside.preventDefault).toHaveBeenCalledOnce();
+    expect(onClose).not.toHaveBeenCalled();
+    act(() => radix(renderer.root, "root").props.onOpenChange(false));
+    expect(onClose).toHaveBeenCalledOnce();
+    act(() => renderer.unmount());
   });
 
   it("preserves the existing non-modal InspectorDialog compatibility contract", () => {
@@ -45,7 +127,7 @@ describe("AnchoredInspectorOverlay contract", () => {
         </InspectorDialog>,
       );
     });
-    expect(renderer!.root.findByType(PopoverPrimitive.Root).props.modal).toBe(false);
+    expect(radix(renderer!.root, "root").props.modal).toBe(false);
     act(() => renderer!.unmount());
   });
 });

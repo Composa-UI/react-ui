@@ -21,6 +21,9 @@ to the control that launched them.
 - Portalled content mounts only after a real launch rectangle is captured. This
   prevents a top-left measuring flash and freezes the launch position while the
   inspector scrolls.
+- Mode is captured from the trigger's nearest explicit `data-composa-mode` root.
+  Mixed light/dark sibling fixtures must label both roots (`light` and `dark`);
+  page order or the previously focused editor never selects the overlay theme.
 - Focus is trapped by default and returns to the captured trigger on close.
 - Escape and outside pointer interaction close through `onClose`.
 - `blockOutsideDismiss` supports a nested picker without closing its owner.
@@ -32,3 +35,8 @@ trapping for existing non-modal Effects behavior.
 
 Use `?view=issue-77-anchored-overlay` in the playground for light/dark,
 clipped-panel, and viewport-edge verification.
+
+The component-level suite executes capture, virtual-anchor, portal, collision,
+focus, and dismissal event contracts through a Radix boundary mock. Final
+browser geometry (actual flip direction and tab-cycle behavior) remains an app
+E2E responsibility once consumers wire individual dialog bodies.

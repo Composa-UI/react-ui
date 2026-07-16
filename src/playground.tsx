@@ -149,7 +149,7 @@ function Issue70RowStateFixture({ mode }: { mode: "light" | "dark" }) {
 function Issue77AnchoredOverlayFixture({ mode }: { mode: "light" | "dark" }) {
   const [open, setOpen] = useState(false);
   return (
-    <section data-composa-mode={mode === "dark" ? "dark" : undefined}
+    <section data-composa-mode={mode}
       className="relative h-[360px] min-w-0 overflow-hidden rounded-c-lg bg-c-bg-secondary text-c-text shadow-c-200">
       <div className="absolute inset-y-0 right-0 w-[240px] overflow-hidden border-l border-c-border bg-c-bg">
         <header className="h-[40px] flex items-center border-b border-c-border px-[16px] text-[11px] font-[550]">

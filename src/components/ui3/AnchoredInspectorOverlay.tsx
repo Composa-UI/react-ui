@@ -1,12 +1,13 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { clsx } from "clsx";
 import { useLayoutEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
-import { useComposaMode } from "./useComposaMode";
+import { composaModeAt, useComposaMode } from "./useComposaMode";
 
 export type AnchoredInspectorOverlaySide = "left" | "right" | "top" | "bottom";
 export type AnchoredInspectorOverlayAlign = "start" | "center" | "end";
 
 export const ANCHORED_INSPECTOR_OVERLAY_COLLISION_PADDING = 8;
+export const ANCHORED_INSPECTOR_OVERLAY_Z_CLASS = "z-[70]";
 
 export function shouldMountAnchoredInspectorOverlay(open: boolean, anchorReady: boolean): boolean {
   return open && anchorReady;
@@ -56,6 +57,7 @@ export function AnchoredInspectorOverlay({
   className,
 }: AnchoredInspectorOverlayProps) {
   const mode = useComposaMode();
+  const [triggerMode, setTriggerMode] = useState<string>();
   const triggerHost = useRef<HTMLSpanElement>(null);
   const capturedRect = useRef<DOMRect | null>(null);
   const [anchorVersion, setAnchorVersion] = useState(0);
@@ -65,6 +67,7 @@ export function AnchoredInspectorOverlay({
     const target = triggerControl(triggerHost.current);
     if (target) {
       capturedRect.current = target.getBoundingClientRect();
+      setTriggerMode(composaModeAt(target) ?? mode);
       setAnchorVersion(version => version + 1);
     }
   };
@@ -73,6 +76,7 @@ export function AnchoredInspectorOverlay({
     if (open && !capturedRect.current) capture();
     if (!open && capturedRect.current) {
       capturedRect.current = null;
+      setTriggerMode(undefined);
       setAnchorVersion(0);
     }
   }, [open]);
@@ -96,7 +100,7 @@ export function AnchoredInspectorOverlay({
           aria-label={ariaLabel}
           aria-modal={trapFocus}
           data-composa-component="AnchoredInspectorOverlay"
-          data-composa-mode={mode}
+          data-composa-mode={triggerMode ?? mode}
           side={side}
           align={align}
           sideOffset={sideOffset}
@@ -109,7 +113,8 @@ export function AnchoredInspectorOverlay({
             triggerControl(triggerHost.current)?.focus();
           }}
           className={clsx(
-            "z-[70] max-h-[calc(100vh-16px)] max-w-[calc(100vw-16px)] overflow-hidden rounded-c-lg bg-c-bg shadow-c-500 outline-none",
+            ANCHORED_INSPECTOR_OVERLAY_Z_CLASS,
+            "max-h-[calc(100vh-16px)] max-w-[calc(100vw-16px)] overflow-hidden rounded-c-lg bg-c-bg shadow-c-500 outline-none",
             className,
           )}
           style={{ width }}
