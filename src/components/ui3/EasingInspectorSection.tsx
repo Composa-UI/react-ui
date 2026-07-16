@@ -19,6 +19,8 @@ export interface EasingInspectorValue {
   preset: EasingPreset;
   controlPoints?: CubicBezier;
   editable?: boolean;
+  /** Host identity for the selected keyframe/segment; a change cancels an active curve gesture. */
+  interactionKey?: string;
 }
 
 export interface EasingInspectorSectionProps {
@@ -40,6 +42,12 @@ export function easingPointUpdate(points: CubicBezier, index: number, value: num
   return next;
 }
 
+export function easingPointAtClient(rect: Pick<DOMRect, "left" | "top" | "width" | "height">, clientX: number, clientY: number): [number, number] {
+  const viewX = (clientX - rect.left) / Math.max(1, rect.width) * 200;
+  const viewY = (clientY - rect.top) / Math.max(1, rect.height) * 112;
+  return [clampX((viewX - 12) / 176), (100 - viewY) / 88];
+}
+
 export function EasingInspectorSection({
   value,
   applyScope = "segment",
@@ -54,6 +62,10 @@ export function EasingInspectorSection({
   const drag = useRef<{ index: 0 | 1; pointerId: number; start: CubicBezier; startValue: EasingInspectorValue } | null>(null);
   const previewRef = useRef<SVGSVGElement>(null);
   const cancelRef = useRef<() => void>(() => {});
+  const changeRef = useRef(onChange);
+  const curveCancelRef = useRef(onCurveEditCancel);
+  changeRef.current = onChange;
+  curveCancelRef.current = onCurveEditCancel;
   const emitPoints = (next: CubicBezier) => onChange?.({ preset: "custom", controlPoints: next });
   const releaseEscape = () => {
     if (typeof document !== "undefined") document.removeEventListener("keydown", cancelRef.current, true);
@@ -72,7 +84,14 @@ export function EasingInspectorSection({
     event?.stopImmediatePropagation();
     cancel();
   };
-  useEffect(() => () => releaseEscape(), []);
+  useEffect(() => () => {
+    const active = drag.current;
+    drag.current = null;
+    releaseEscape();
+    if (!active) return;
+    changeRef.current?.({ preset: active.startValue.preset, controlPoints: active.startValue.controlPoints });
+    curveCancelRef.current?.();
+  }, []);
   const begin = (index: 0 | 1) => (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (!editable || event.button !== 0 || !event.isPrimary) return;
     event.preventDefault();
@@ -85,8 +104,7 @@ export function EasingInspectorSection({
     const active = drag.current;
     const rect = previewRef.current?.getBoundingClientRect();
     if (!active || !rect || active.pointerId !== event.pointerId) return;
-    const x = clampX((event.clientX - rect.left) / Math.max(1, rect.width));
-    const y = 1 - (event.clientY - rect.top) / Math.max(1, rect.height);
+    const [x, y] = easingPointAtClient(rect, event.clientX, event.clientY);
     const next = [...active.start] as CubicBezier;
     if (active.index === 0) { next[0] = x; next[1] = y; }
     else { next[2] = x; next[3] = y; }
@@ -141,12 +159,15 @@ export function EasingInspectorSection({
             fill="none" stroke="var(--color-c-border-selected-strong)" strokeWidth="2" strokeLinecap="round" />
           <line x1="12" y1="100" x2={12 + points[0] * 176} y2={100 - points[1] * 88} stroke="var(--color-c-icon-secondary)" strokeWidth="1" />
           <line x1="188" y1="12" x2={12 + points[2] * 176} y2={100 - points[3] * 88} stroke="var(--color-c-icon-secondary)" strokeWidth="1" />
-          {[0, 1].map(index => {
+          {value.preset === "custom" && [0, 1].map(index => {
             const x = 12 + points[index === 0 ? 0 : 2] * 176;
             const y = 100 - points[index === 0 ? 1 : 3] * 88;
             return <foreignObject key={index} x={x - 9} y={y - 9} width="18" height="18">
               <button type="button" role="slider" disabled={!editable}
                 aria-label={`Easing control point ${index + 1}`}
+                aria-valuemin={0}
+                aria-valuemax={1}
+                aria-valuenow={points[index === 0 ? 0 : 2]}
                 aria-valuetext={`X ${points[index === 0 ? 0 : 2].toFixed(2)}, Y ${points[index === 0 ? 1 : 3].toFixed(2)}`}
                 aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Shift+ArrowLeft Shift+ArrowRight Shift+ArrowUp Shift+ArrowDown"
                 onPointerDown={begin(index as 0 | 1)} onPointerMove={move} onPointerUp={finish} onPointerCancel={cancel} onLostPointerCapture={finish}

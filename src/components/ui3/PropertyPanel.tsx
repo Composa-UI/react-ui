@@ -2227,7 +2227,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
       {tab === "design" && (
         <div role="tabpanel" id="element-design-panel" aria-labelledby="element-design-panel-tab" className="contents"><ScrollArea>
           {easing && easingContext === "segment" ? (
-            <EasingInspectorSection value={easing} applyScope={easingApplyScope}
+            <EasingInspectorSection key={easing.interactionKey} value={easing} applyScope={easingApplyScope}
               onChange={onEasingChange} onApplyScopeChange={onEasingApplyScopeChange}
               onCurveEditStart={onEasingCurveEditStart} onCurveEditCommit={onEasingCurveEditCommit} onCurveEditCancel={onEasingCurveEditCancel} />
           ) : <>
@@ -2288,7 +2288,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
 
           <ExportSection settings={exportSettings} targetName={exportTargetName ?? elementLabel[elementType]}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
-          {easing && <EasingInspectorSection value={easing} applyScope={easingApplyScope}
+          {easing && <EasingInspectorSection key={easing.interactionKey} value={easing} applyScope={easingApplyScope}
             onChange={onEasingChange} onApplyScopeChange={onEasingApplyScopeChange}
             onCurveEditStart={onEasingCurveEditStart} onCurveEditCommit={onEasingCurveEditCommit} onCurveEditCancel={onEasingCurveEditCancel} />}
           </>}

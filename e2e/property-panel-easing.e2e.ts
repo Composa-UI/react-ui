@@ -13,6 +13,7 @@ test("easing inspector authors presets, custom points, scopes, and fixed-size ac
   await expect(presetMenu.getByRole("menuitemradio")).toHaveCount(9);
   await presetMenu.getByRole("menuitemradio", { name: "Ease in-out (strong)" }).click();
   await expect(lightState).toHaveAttribute("data-easing-inspector-preset", "ease-in-out-strong");
+  await expect(light.getByRole("slider", { name: "Easing control point 1" })).toHaveCount(0);
 
   const x1 = light.getByRole("spinbutton", { name: "Easing X1" });
   await x1.fill("0.55");
@@ -21,6 +22,9 @@ test("easing inspector authors presets, custom points, scopes, and fixed-size ac
   await expect(x1).toHaveValue("0.55");
 
   const handle = light.getByRole("slider", { name: "Easing control point 1" });
+  await expect(handle).toHaveAttribute("aria-valuemin", "0");
+  await expect(handle).toHaveAttribute("aria-valuemax", "1");
+  await expect(handle).toHaveAttribute("aria-valuenow", "0.55");
   const before = await handle.getAttribute("aria-valuetext");
   await handle.press("Shift+ArrowUp");
   await expect(handle).not.toHaveAttribute("aria-valuetext", before ?? "");
