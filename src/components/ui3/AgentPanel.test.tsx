@@ -1,6 +1,14 @@
 import { act, create, type ReactTestInstance } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
-import { AgentPanel, type AgentConversation, type AgentConversationSummary, type AgentPanelProps } from "./AgentPanel";
+import {
+  AgentMarkdown,
+  AgentPanel,
+  agentThreadIsNearBottom,
+  sizeAgentComposer,
+  type AgentConversation,
+  type AgentConversationSummary,
+  type AgentPanelProps,
+} from "./AgentPanel";
 import { InspectorRailSwitcher } from "./InspectorRailSwitcher";
 import { NavRail } from "./NavRail";
 import { TooltipProvider } from "./Tooltip";
@@ -11,6 +19,14 @@ vi.mock("./Tooltip", () => ({
   Tooltip: ({ children }: { children: unknown }) => children,
   TooltipProvider: ({ children }: { children: unknown }) => children,
 }));
+
+class TestResizeObserver implements ResizeObserver {
+  constructor(_callback: ResizeObserverCallback) {}
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver = TestResizeObserver;
 
 const conversations: AgentConversationSummary[] = [
   { id: "today", title: "Today chat", visibility: "private", updatedAt: Date.now(), preview: "Latest message", timeGroup: "today" },
@@ -90,6 +106,24 @@ describe("AgentPanel controlled contracts", () => {
     act(() => renderer!.unmount());
   });
 
+  it("renders safe semantic markdown without interpreting HTML or unsafe links", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<AgentMarkdown content={"**Bold** and *italic* with `code` and [safe](https://example.com) and [unsafe](javascript:alert(1)).\n\n- one\n- two\n\n1. first\n2. second\n\n```ts\nconst x = 1;\n```\n<script>bad()</script>"} />);
+    });
+    expect(renderer!.root.findAllByType("strong")).toHaveLength(1);
+    expect(renderer!.root.findAllByType("em")).toHaveLength(1);
+    expect(renderer!.root.findAllByType("ul")).toHaveLength(1);
+    expect(renderer!.root.findAllByType("ol")).toHaveLength(1);
+    expect(renderer!.root.findAllByType("pre")).toHaveLength(1);
+    const links = renderer!.root.findAllByType("a");
+    expect(links).toHaveLength(1);
+    expect(links[0].props).toMatchObject({ href: "https://example.com", target: "_blank", rel: "noreferrer" });
+    expect(renderer!.root.findAllByType("script")).toHaveLength(0);
+    expect(renderer!.toJSON()).toBeTruthy();
+    act(() => renderer!.unmount());
+  });
+
   it("owns composer key semantics while leaving value and effects controlled", () => {
     const calls: string[] = [];
     let renderer: ReturnType<typeof create>;
@@ -130,6 +164,58 @@ describe("AgentPanel controlled contracts", () => {
     expect(calls).toEqual(["select:selection", "dismiss"]);
     expect(context).toEqual({ id: "selection", label: "Hero", kind: "frame" });
     act(() => renderer!.unmount());
+  });
+
+  it("uses near-bottom policy for appended messages and exposes browser-friendly scroll state", () => {
+    const viewport = { scrollTop: 0, scrollHeight: 300, clientHeight: 200, dataset: {} as Record<string, string> };
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<TooltipProvider><AgentPanel {...props({ activeConversation })} /></TooltipProvider>, {
+        createNodeMock: element => {
+          const elementProps = element.props as { className?: string };
+          if (element.type === "div" && String(elementProps.className).includes("agent-message-scroll")) return viewport;
+          return null;
+        },
+      });
+    });
+    expect(viewport.scrollTop).toBe(300);
+    expect(viewport.dataset.agentAutoScroll).toBe("bottom");
+    viewport.scrollTop = 20;
+    const scrollViewport = renderer!.root.find(node => node.type === "div" && String(node.props.className).includes("agent-message-scroll"));
+    act(() => scrollViewport.props.onScroll({ currentTarget: viewport }));
+    expect(viewport.dataset.agentAutoScroll).toBe("paused");
+    viewport.scrollHeight = 400;
+    const appended = { ...activeConversation, messages: [...activeConversation.messages, { id: "stream", type: "agent" as const, content: "Streaming", status: "streaming" as const }] };
+    act(() => renderer!.update(<TooltipProvider><AgentPanel {...props({ activeConversation: appended })} /></TooltipProvider>));
+    expect(viewport.scrollTop).toBe(20);
+    expect(viewport.dataset.agentAutoScroll).toBe("paused");
+    viewport.scrollTop = 198;
+    act(() => scrollViewport.props.onScroll({ currentTarget: viewport }));
+    const streamed = { ...appended, messages: [...appended.messages.slice(0, -1), { ...appended.messages[appended.messages.length - 1], content: "Streaming more" }] };
+    act(() => renderer!.update(<TooltipProvider><AgentPanel {...props({ activeConversation: streamed })} /></TooltipProvider>));
+    expect(viewport.scrollTop).toBe(400);
+    expect(viewport.dataset.agentAutoScroll).toBe("bottom");
+    act(() => renderer!.unmount());
+  });
+});
+
+describe("Agent panel geometry helpers", () => {
+  it("recognizes the near-bottom threshold", () => {
+    expect(agentThreadIsNearBottom({ scrollTop: 152, scrollHeight: 400, clientHeight: 200 })).toBe(true);
+    expect(agentThreadIsNearBottom({ scrollTop: 100, scrollHeight: 400, clientHeight: 200 })).toBe(false);
+  });
+
+  it("grows the controlled composer from one to four lines and then scrolls", () => {
+    const style = { height: "", overflowY: "" } as CSSStyleDeclaration;
+    const textarea = { scrollHeight: 24, style };
+    expect(sizeAgentComposer(textarea)).toBe(38);
+    expect(style).toMatchObject({ height: "38px", overflowY: "hidden" });
+    textarea.scrollHeight = 62;
+    expect(sizeAgentComposer(textarea)).toBe(62);
+    expect(style).toMatchObject({ height: "62px", overflowY: "hidden" });
+    textarea.scrollHeight = 120;
+    expect(sizeAgentComposer(textarea)).toBe(78);
+    expect(style).toMatchObject({ height: "78px", overflowY: "auto" });
   });
 });
 

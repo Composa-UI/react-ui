@@ -1,4 +1,4 @@
-import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, type KeyboardEvent, type MutableRefObject, type ReactNode } from "react";
 import { clsx } from "clsx";
 import {
   AlertTriangle,
@@ -127,6 +127,121 @@ const GROUP_LABELS: Record<AgentConversationTimeGroup, string> = {
   earlier: "Earlier",
 };
 const GROUP_ORDER: AgentConversationTimeGroup[] = ["today", "yesterday", "last-7-days", "earlier"];
+const AUTO_SCROLL_THRESHOLD_PX = 48;
+const COMPOSER_MIN_HEIGHT_PX = 38;
+const COMPOSER_MAX_HEIGHT_PX = 78;
+
+export function agentThreadIsNearBottom(
+  metrics: Readonly<{ scrollTop: number; scrollHeight: number; clientHeight: number }>,
+  threshold = AUTO_SCROLL_THRESHOLD_PX,
+) {
+  return metrics.scrollHeight - metrics.clientHeight - metrics.scrollTop <= threshold;
+}
+
+export function sizeAgentComposer(
+  textarea: Pick<HTMLTextAreaElement, "scrollHeight" | "style">,
+) {
+  textarea.style.height = "0px";
+  const height = Math.max(COMPOSER_MIN_HEIGHT_PX, Math.min(COMPOSER_MAX_HEIGHT_PX, textarea.scrollHeight));
+  textarea.style.height = `${height}px`;
+  textarea.style.overflowY = textarea.scrollHeight > COMPOSER_MAX_HEIGHT_PX ? "auto" : "hidden";
+  return height;
+}
+
+function safeLinkHref(href: string) {
+  const normalized = href.trim();
+  if (/^(https?:|mailto:)/i.test(normalized) || normalized.startsWith("/") || normalized.startsWith("#")) return normalized;
+  return null;
+}
+
+function inlineMarkdown(content: string, keyPrefix: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  const pattern = /(\*\*[^*\n]+\*\*|__[^_\n]+__|\*[^*\n]+\*|_[^_\n]+_|`[^`\n]+`|\[[^\]\n]+\]\([^\s)\n]+\))/g;
+  let cursor = 0;
+  for (const match of content.matchAll(pattern)) {
+    const index = match.index ?? 0;
+    if (index > cursor) nodes.push(content.slice(cursor, index));
+    const token = match[0];
+    const key = `${keyPrefix}-${index}`;
+    if ((token.startsWith("**") && token.endsWith("**")) || (token.startsWith("__") && token.endsWith("__"))) {
+      nodes.push(<strong key={key} className="font-[650]">{token.slice(2, -2)}</strong>);
+    } else if ((token.startsWith("*") && token.endsWith("*")) || (token.startsWith("_") && token.endsWith("_"))) {
+      nodes.push(<em key={key}>{token.slice(1, -1)}</em>);
+    } else if (token.startsWith("`")) {
+      nodes.push(<code key={key} className="rounded-c-sm bg-c-bg-secondary px-[3px] font-mono text-[10px]">{token.slice(1, -1)}</code>);
+    } else {
+      const link = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(token);
+      const href = link ? safeLinkHref(link[2]) : null;
+      nodes.push(href
+        ? <a key={key} href={href} target={/^https?:/i.test(href) ? "_blank" : undefined} rel={/^https?:/i.test(href) ? "noreferrer" : undefined}
+            className="text-c-text-brand underline underline-offset-2">{link![1]}</a>
+        : <Fragment key={key}>{link?.[1] ?? token}</Fragment>);
+    }
+    cursor = index + token.length;
+  }
+  if (cursor < content.length) nodes.push(content.slice(cursor));
+  return nodes;
+}
+
+export function AgentMarkdown({ content }: { content: string }) {
+  const blocks: ReactNode[] = [];
+  const lines = content.replace(/\r\n?/g, "\n").split("\n");
+  let index = 0;
+  while (index < lines.length) {
+    const line = lines[index];
+    if (!line.trim()) { index += 1; continue; }
+    if (line.startsWith("```")) {
+      const language = line.slice(3).trim();
+      const code: string[] = [];
+      index += 1;
+      while (index < lines.length && !lines[index].startsWith("```")) code.push(lines[index++]);
+      if (index < lines.length) index += 1;
+      blocks.push(
+        <pre key={`code-${index}`} data-agent-markdown="code" className="my-[4px] overflow-x-auto rounded-c-md bg-c-bg-inverse p-[7px] text-c-text-on-inverse">
+          <code className="font-mono text-[10px] leading-[14px]" data-language={language || undefined}>{code.join("\n")}</code>
+        </pre>,
+      );
+      continue;
+    }
+    const unordered = /^[-*]\s+/.test(line);
+    const ordered = /^\d+\.\s+/.test(line);
+    if (unordered || ordered) {
+      const items: string[] = [];
+      const itemPattern = unordered ? /^[-*]\s+(.*)$/ : /^\d+\.\s+(.*)$/;
+      while (index < lines.length) {
+        const match = itemPattern.exec(lines[index]);
+        if (!match) break;
+        items.push(match[1]);
+        index += 1;
+      }
+      const List = ordered ? "ol" : "ul";
+      blocks.push(
+        <List key={`list-${index}`} data-agent-markdown={ordered ? "ordered-list" : "unordered-list"}
+          className={clsx("my-[4px] pl-[18px]", ordered ? "list-decimal" : "list-disc")}>
+          {items.map((item, itemIndex) => <li key={itemIndex}>{inlineMarkdown(item, `list-${index}-${itemIndex}`)}</li>)}
+        </List>,
+      );
+      continue;
+    }
+    const paragraph: string[] = [line];
+    index += 1;
+    while (index < lines.length && lines[index].trim() && !lines[index].startsWith("```") &&
+      !/^[-*]\s+/.test(lines[index]) && !/^\d+\.\s+/.test(lines[index])) {
+      paragraph.push(lines[index++]);
+    }
+    blocks.push(<p key={`paragraph-${index}`} data-agent-markdown="paragraph" className="m-0 my-[4px]">
+      {inlineMarkdown(paragraph.join("\n"), `paragraph-${index}`)}
+    </p>);
+  }
+  return <div data-agent-markdown-root="">{blocks}</div>;
+}
+
+function messageRenderSignature(message: AgentPanelMessage) {
+  if (message.type === "action") return `${message.id}:${message.status}:${message.title}:${message.description}`;
+  if (message.type === "user") return `${message.id}:user:${message.content}`;
+  if (message.type === "error") return `${message.id}:error:${message.severity}:${message.content}`;
+  return `${message.id}:${message.type}:${message.status}:${message.content}`;
+}
 
 function IconButton({
   label,
@@ -367,7 +482,7 @@ function Message({
   if (message.type === "error") return <ErrorMessage message={message} />;
   return (
     <div className={clsx(FONT, "text-[11px] leading-[16px] text-c-text whitespace-pre-wrap break-words")} aria-live={message.status === "streaming" ? "polite" : undefined}>
-      {message.content}
+      <AgentMarkdown content={message.content} />
       {message.status === "streaming" && <span aria-hidden className="ml-[2px] inline-block h-[12px] w-px animate-pulse bg-c-text" />}
       {message.status === "stopped" && <span className="block mt-[2px] text-[9px] text-c-text-secondary">Stopped</span>}
     </div>
@@ -404,14 +519,41 @@ export function AgentPanel({
   const panelRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
+  const threadViewportRef = useRef<HTMLDivElement>(null);
+  const threadNearBottomRef = useRef(true);
+  const previousConversationIdRef = useRef<string | null>(null);
   const canSubmit = composerValue.trim().length > 0 && !sending;
   const expanded = new Set(expandedWorkMessageIds);
+  const messageSignature = activeConversation?.messages.map(messageRenderSignature).join("\u0000") ?? "";
 
   useEffect(() => {
     if (focusTarget === "panel") panelRef.current?.focus();
     if (focusTarget === "search") searchRef.current?.focus();
     if (focusTarget === "composer") composerRef.current?.focus();
   }, [focusTarget, focusRequestKey]);
+
+  useLayoutEffect(() => {
+    if (composerRef.current) sizeAgentComposer(composerRef.current);
+  }, [composerValue, activeConversation?.id]);
+
+  useLayoutEffect(() => {
+    const viewport = threadViewportRef.current;
+    if (!activeConversation) {
+      previousConversationIdRef.current = null;
+      threadNearBottomRef.current = true;
+      return;
+    }
+    if (!viewport) return;
+    const changedConversation = previousConversationIdRef.current !== activeConversation.id;
+    previousConversationIdRef.current = activeConversation.id;
+    if (changedConversation) threadNearBottomRef.current = true;
+    if (threadNearBottomRef.current) {
+      viewport.scrollTop = viewport.scrollHeight;
+      viewport.dataset.agentAutoScroll = "bottom";
+    } else {
+      viewport.dataset.agentAutoScroll = "paused";
+    }
+  }, [activeConversation?.id, messageSignature]);
 
   const handleComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -447,8 +589,16 @@ export function AgentPanel({
               </div>
               {onConversationOptions && <IconButton label="Conversation options" onClick={() => onConversationOptions(activeConversation.id)}><MoreHorizontal size={16} strokeWidth={1.5} /></IconButton>}
             </header>
-            <ScrollArea className="px-[12px] py-[12px]">
-              <div role="log" aria-label="Conversation messages" aria-live="polite" className="min-h-full flex flex-col justify-end gap-[12px]">
+            <ScrollArea viewportRef={threadViewportRef as MutableRefObject<HTMLDivElement | null>}
+              onScroll={() => {
+                const viewport = threadViewportRef.current;
+                if (!viewport) return;
+                threadNearBottomRef.current = agentThreadIsNearBottom(viewport);
+                viewport.dataset.agentAutoScroll = threadNearBottomRef.current ? "bottom" : "paused";
+              }}
+              className="agent-message-scroll px-[12px] py-[12px]">
+              <div role="log" aria-label="Conversation messages" aria-live="polite" data-agent-message-signature={messageSignature}
+                className="min-h-full flex flex-col justify-end gap-[12px]">
                 {!activeConversation.messages.length && (
                   <div className="my-auto px-[12px] text-center">
                     <Sparkles size={20} strokeWidth={1.5} className="mx-auto text-c-icon" />
@@ -483,7 +633,8 @@ export function AgentPanel({
                   value={composerValue}
                   onChange={event => onComposerChange(event.target.value)}
                   onKeyDown={handleComposerKeyDown}
-                  className={clsx(FONT, "block min-h-[38px] max-h-[80px] w-full resize-none overflow-y-auto bg-transparent px-[8px] pt-[7px] text-[11px] leading-[16px] text-c-text placeholder:text-c-text-tertiary outline-none")}
+                  data-agent-composer-lines="1-4"
+                  className={clsx(FONT, "block min-h-[38px] max-h-[78px] w-full resize-none overflow-hidden bg-transparent px-[8px] pt-[7px] text-[11px] leading-[16px] text-c-text placeholder:text-c-text-tertiary outline-none")}
                 />
                 <div className="h-[28px] px-[4px] pb-[4px] flex items-center gap-[2px]">
                   <IconButton label="Add attachment" disabled={!onAttachmentRequest} onClick={onAttachmentRequest}><Plus size={15} strokeWidth={1.5} /></IconButton>
