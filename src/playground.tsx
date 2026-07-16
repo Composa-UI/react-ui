@@ -15,6 +15,7 @@ import { Tooltip, TooltipProvider } from "./components/ui3/Tooltip";
 import { ComposaModeProvider } from "./components/ui3/useComposaMode";
 import { SegmentedControl } from "./components/ui3/SegmentedControl";
 import { AlignmentControl, type AlignmentValue } from "./components/ui3/AlignmentControl";
+import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./components/ui3/LayerTypeIcon";
 import thumb0 from "./imports/SlidesTemplate/9bf3285fa6c14222923aa8fcd4bf31f6e40807d9.png";
 import thumb1 from "./imports/SlidesTemplate/201951eb24dd285dd0794f4e790b8175c012bf20.png";
 import thumb2 from "./imports/SlidesTemplate/4f36d4cb9f77c2e380641dd47deb24943efa0b8a.png";
@@ -80,6 +81,34 @@ function Issue66FixtureCard({ mode }: { mode: "light" | "dark" }) {
         </div>
       </div>
       <Timeline height={160} duration={6_000} tracks={fixtureTracks} viewport={viewport} onViewportChange={setViewport} />
+    </section>
+  );
+}
+
+const ISSUE_67_ICON_ROWS: { label: string; type: LayerIconType; autoLayoutMode?: LayerAutoLayoutMode; tone?: "primary" | "secondary"; state?: "selected" | "disabled" }[] = [
+  { label: "Plain frame", type: "frame" },
+  { label: "Horizontal auto layout", type: "frame", autoLayoutMode: "horizontal", state: "selected" },
+  { label: "Vertical auto layout", type: "frame", autoLayoutMode: "vertical" },
+  { label: "Wrap auto layout", type: "frame", autoLayoutMode: "wrap" },
+  { label: "Text", type: "text" },
+  { label: "Image", type: "image", tone: "secondary", state: "disabled" },
+  { label: "Shape", type: "shape" },
+  { label: "Compatibility group", type: "group" },
+];
+
+function Issue67IconMatrix({ mode }: { mode: "light" | "dark" }) {
+  return (
+    <section data-composa-mode={mode === "dark" ? "dark" : undefined} className="rounded-c-lg overflow-hidden bg-c-bg text-c-text shadow-c-200">
+      <header className="h-[40px] px-[16px] flex items-center border-b border-c-border">
+        <h2 className="text-[11px] font-[550]">{mode === "dark" ? "Dark" : "Light"} icon semantics</h2>
+      </header>
+      <div className="p-[12px] grid gap-[2px]">
+        {ISSUE_67_ICON_ROWS.map(row => <div key={row.label} data-icon-fixture-state={row.state ?? "default"}
+          className={`h-[32px] px-[8px] flex items-center gap-[8px] rounded-c-sm ${row.state === "selected" ? "bg-c-bg-selected" : ""} ${row.state === "disabled" ? "opacity-45" : ""}`}>
+          <LayerTypeIcon type={row.type} autoLayoutMode={row.autoLayoutMode} tone={row.tone} />
+          <span className="text-[11px]">{row.label}</span>
+        </div>)}
+      </div>
     </section>
   );
 }
@@ -173,6 +202,15 @@ export default function Playground() {
       <main className="min-h-screen bg-[#d9d9d9] p-[24px] grid grid-cols-2 gap-[24px]">
         <Issue66FixtureCard mode="light" />
         <Issue66FixtureCard mode="dark" />
+      </main>
+    );
+  }
+
+  if (view === "issue-67-icons") {
+    return (
+      <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px]">
+        <Issue67IconMatrix mode="light" />
+        <Issue67IconMatrix mode="dark" />
       </main>
     );
   }

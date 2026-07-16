@@ -14,10 +14,24 @@ const tree: LayerNode[] = [
 ];
 
 describe("LayerList drag root normalization", () => {
-  it("uses the canonical auto-layout-aware type icon", () => {
-    const html = renderToStaticMarkup(createElement(LayerTypeIcon, { type: "frame", autoLayoutMode: "horizontal" }));
+  it.each(["horizontal", "vertical", "wrap"] as const)("uses one canonical auto-layout-frame glyph while retaining %s mode semantics", autoLayoutMode => {
+    const html = renderToStaticMarkup(createElement(LayerTypeIcon, { type: "frame", autoLayoutMode }));
+    expect(html).toContain('data-icon-semantic="auto-layout-frame"');
     expect(html).toContain('data-layer-icon-type="frame"');
-    expect(html).toContain('data-auto-layout-mode="horizontal"');
+    expect(html).toContain(`data-auto-layout-mode="${autoLayoutMode}"`);
+    expect(html).not.toMatch(/grid/i);
+  });
+
+  it("uses Frame for plain frames and SquareDashed only for compatibility groups", () => {
+    const frame = renderToStaticMarkup(createElement(LayerTypeIcon, { type: "frame" }));
+    const group = renderToStaticMarkup(createElement(LayerTypeIcon, { type: "group" }));
+    expect(frame).toContain('data-icon-semantic="frame"');
+    expect(frame).toContain("lucide-frame");
+    expect(frame).toContain('width="16"');
+    expect(frame).toContain('height="16"');
+    expect(frame).toContain('stroke-width="1.5"');
+    expect(group).toContain('data-icon-semantic="group-compatibility"');
+    expect(group).toContain("lucide-square-dashed");
   });
 
   it("keeps component accent ownership inside the canonical icon", () => {
