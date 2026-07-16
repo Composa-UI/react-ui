@@ -8,16 +8,22 @@ import { Tooltip } from "./Tooltip";
 
 export interface AutoLayoutSettingsValue {
   mode: "none" | "horizontal" | "vertical" | "wrap";
-  textBaseline: boolean;
-  strokeSizing: "excluded" | "included";
-  canvasStacking: "first-on-top" | "last-on-top";
+  textBaseline: boolean | "mixed";
+  strokeSizing: "excluded" | "included" | "mixed";
+  canvasStacking: "first-on-top" | "last-on-top" | "mixed";
+  baselineApplicable?: boolean;
 }
 
 export interface AutoLayoutSettingsDialogProps {
   open: boolean;
   value: AutoLayoutSettingsValue;
   trigger: ReactElement;
-  onChange?: (patch: Partial<Omit<AutoLayoutSettingsValue, "mode">>) => void;
+  disabled?: boolean;
+  onChange?: (patch: {
+    textBaseline?: boolean;
+    strokeSizing?: "excluded" | "included";
+    canvasStacking?: "first-on-top" | "last-on-top";
+  }) => void;
   onClose: () => void;
 }
 
@@ -36,10 +42,13 @@ export function AutoLayoutSettingsDialog({
   open,
   value,
   trigger,
+  disabled = false,
   onChange,
   onClose,
 }: AutoLayoutSettingsDialogProps) {
-  const baselineApplicable = value.mode === "horizontal";
+  const baselineApplicable = value.baselineApplicable ?? value.mode === "horizontal";
+  const strokeLabel = value.strokeSizing === "mixed" ? "Mixed" : value.strokeSizing === "included" ? "Included" : "Excluded";
+  const stackingLabel = value.canvasStacking === "mixed" ? "Mixed" : value.canvasStacking === "first-on-top" ? "First on top" : "Last on top";
   return (
     <InspectorDialog
       open={open}
@@ -66,12 +75,12 @@ export function AutoLayoutSettingsDialog({
         <SettingRow label="Strokes">
           <PopoverMenu
             align="left"
-            trigger={<Dropdown ariaLabel={`Stroke inclusion: ${value.strokeSizing === "included" ? "Included" : "Excluded"}`} value={value.strokeSizing === "included" ? "Included" : "Excluded"} fullWidth />}
+            trigger={<Dropdown ariaLabel={`Stroke inclusion: ${strokeLabel}`} value={strokeLabel} mixed={value.strokeSizing === "mixed"} disabled={disabled} fullWidth />}
           >
             {close => (
               <Menu minWidth={156}>
-                <MenuRow type="checkmark" selectionRole="radio" label="Excluded" checked={value.strokeSizing === "excluded"} onClick={() => { onChange?.({ strokeSizing: "excluded" }); close(); }} />
-                <MenuRow type="checkmark" selectionRole="radio" label="Included" checked={value.strokeSizing === "included"} onClick={() => { onChange?.({ strokeSizing: "included" }); close(); }} />
+                <MenuRow type="checkmark" selectionRole="radio" label="Excluded" checked={value.strokeSizing === "excluded"} disabled={disabled} onClick={() => { onChange?.({ strokeSizing: "excluded" }); close(); }} />
+                <MenuRow type="checkmark" selectionRole="radio" label="Included" checked={value.strokeSizing === "included"} disabled={disabled} onClick={() => { onChange?.({ strokeSizing: "included" }); close(); }} />
               </Menu>
             )}
           </PopoverMenu>
@@ -79,12 +88,12 @@ export function AutoLayoutSettingsDialog({
         <SettingRow label="Canvas stacking">
           <PopoverMenu
             align="left"
-            trigger={<Dropdown ariaLabel={`Canvas stacking: ${value.canvasStacking === "first-on-top" ? "First on top" : "Last on top"}`} value={value.canvasStacking === "first-on-top" ? "First on top" : "Last on top"} fullWidth />}
+            trigger={<Dropdown ariaLabel={`Canvas stacking: ${stackingLabel}`} value={stackingLabel} mixed={value.canvasStacking === "mixed"} disabled={disabled} fullWidth />}
           >
             {close => (
               <Menu minWidth={156}>
-                <MenuRow type="checkmark" selectionRole="radio" label="First on top" checked={value.canvasStacking === "first-on-top"} onClick={() => { onChange?.({ canvasStacking: "first-on-top" }); close(); }} />
-                <MenuRow type="checkmark" selectionRole="radio" label="Last on top" checked={value.canvasStacking === "last-on-top"} onClick={() => { onChange?.({ canvasStacking: "last-on-top" }); close(); }} />
+                <MenuRow type="checkmark" selectionRole="radio" label="First on top" checked={value.canvasStacking === "first-on-top"} disabled={disabled} onClick={() => { onChange?.({ canvasStacking: "first-on-top" }); close(); }} />
+                <MenuRow type="checkmark" selectionRole="radio" label="Last on top" checked={value.canvasStacking === "last-on-top"} disabled={disabled} onClick={() => { onChange?.({ canvasStacking: "last-on-top" }); close(); }} />
               </Menu>
             )}
           </PopoverMenu>
@@ -93,12 +102,12 @@ export function AutoLayoutSettingsDialog({
           <Tooltip
             label="Only applicable for horizontal layouts"
             direction="Left"
-            disabled={baselineApplicable}
+            disabled={baselineApplicable || disabled}
           >
             <span className="inline-flex">
               <Checkbox
                 checked={value.textBaseline}
-                disabled={!baselineApplicable}
+                disabled={disabled || !baselineApplicable}
                 label="Align text baseline"
                 onChange={textBaseline => onChange?.({ textBaseline })}
               />

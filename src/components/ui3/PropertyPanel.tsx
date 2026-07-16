@@ -75,6 +75,11 @@ export interface ElementLayoutSettings {
   textBaseline?: boolean;
   strokeSizing?: "excluded" | "included";
   canvasStacking?: "first-on-top" | "last-on-top";
+  textBaselineMixed?: boolean;
+  strokeSizingMixed?: boolean;
+  canvasStackingMixed?: boolean;
+  autoLayoutSettingsBaselineApplicable?: boolean;
+  autoLayoutSettingsDisabled?: boolean;
 }
 
 export type ElementSizingAxis = "width" | "height";
@@ -470,6 +475,11 @@ interface LayoutAutoProps {
   textBaseline?: boolean;
   strokeSizing?: "excluded" | "included";
   canvasStacking?: "first-on-top" | "last-on-top";
+  textBaselineMixed?: boolean;
+  strokeSizingMixed?: boolean;
+  canvasStackingMixed?: boolean;
+  settingsBaselineApplicable?: boolean;
+  settingsDisabled?: boolean;
   onLayoutChange?: (patch: Partial<ElementLayoutSettings>) => void;
   onPaddingChange?: (value: ElementLayoutSettings["padding"]) => void;
   onAlignChange?: (value: string) => void;
@@ -497,6 +507,11 @@ function LayoutAutoSection({
   textBaseline = false,
   strokeSizing = "excluded",
   canvasStacking = "last-on-top",
+  textBaselineMixed = false,
+  strokeSizingMixed = false,
+  canvasStackingMixed = false,
+  settingsBaselineApplicable,
+  settingsDisabled = false,
   onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onAutoLayoutSettingsRequest, sizing,
 }: LayoutAutoProps) {
   const [settingsTrigger, setSettingsTrigger] = useState<"section" | "row" | null>(null);
@@ -565,18 +580,21 @@ function LayoutAutoSection({
 
   const settingsValue = {
     mode: flowMode ?? (renderedFlow === "h" ? "horizontal" : renderedFlow === "v" ? "vertical" : "wrap"),
-    textBaseline,
-    strokeSizing,
-    canvasStacking,
+    textBaseline: textBaselineMixed ? "mixed" : textBaseline,
+    strokeSizing: strokeSizingMixed ? "mixed" : strokeSizing,
+    canvasStacking: canvasStackingMixed ? "mixed" : canvasStacking,
+    baselineApplicable: settingsBaselineApplicable,
   } as const;
   const settingsTriggerButton = (placement: "section" | "row") => (
     <AutoLayoutSettingsDialog
       open={settingsTrigger === placement}
       value={settingsValue}
+      disabled={settingsDisabled}
       trigger={<PanelActionBtn
         icon={<Settings2 size={16} strokeWidth={1.5} />}
         label="Auto-layout settings"
-        onClick={() => { setSettingsTrigger(placement); onAutoLayoutSettingsRequest?.(); }}
+        disabled={settingsDisabled}
+        onClick={settingsDisabled ? undefined : () => { setSettingsTrigger(placement); onAutoLayoutSettingsRequest?.(); }}
       />}
       onChange={patch => onLayoutChange?.(patch)}
       onClose={() => setSettingsTrigger(null)}
@@ -2222,6 +2240,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
             gap={layout?.gap} paddingTop={layout?.padding.top} paddingRight={layout?.padding.right} paddingBottom={layout?.padding.bottom} paddingLeft={layout?.padding.left}
             alignValue={layout?.align} clipContent={layout?.clipsContent}
             textBaseline={layout?.textBaseline} strokeSizing={layout?.strokeSizing} canvasStacking={layout?.canvasStacking}
+            textBaselineMixed={layout?.textBaselineMixed} strokeSizingMixed={layout?.strokeSizingMixed} canvasStackingMixed={layout?.canvasStackingMixed}
+            settingsBaselineApplicable={layout?.autoLayoutSettingsBaselineApplicable} settingsDisabled={layout?.autoLayoutSettingsDisabled}
             widthMode={layout?.widthMode} heightMode={layout?.heightMode}
             sizing={sizingContract}
             onLayoutChange={onLayoutChange} onPaddingChange={onLayoutChange ? padding => onLayoutChange({ padding }) : undefined}

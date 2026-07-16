@@ -75,4 +75,49 @@ describe("AutoLayoutSettingsDialog", () => {
     });
     act(() => renderer!.unmount());
   });
+
+  it("projects mixed values and capability-intersection gating", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<AutoLayoutSettingsDialog
+        open
+        value={{
+          mode: "horizontal",
+          baselineApplicable: false,
+          textBaseline: "mixed",
+          strokeSizing: "mixed",
+          canvasStacking: "mixed",
+        }}
+        trigger={<button type="button">Settings</button>}
+        onClose={() => undefined}
+      />);
+    });
+    const dropdowns = renderer!.root.findAllByType(Dropdown);
+    expect(dropdowns.map(dropdown => dropdown.props.ariaLabel)).toEqual([
+      "Stroke inclusion: Mixed",
+      "Canvas stacking: Mixed",
+    ]);
+    expect(dropdowns.every(dropdown => dropdown.props.mixed)).toBe(true);
+    expect(renderer!.root.findByType(Checkbox).props).toMatchObject({
+      checked: "mixed",
+      disabled: true,
+    });
+    act(() => renderer!.unmount());
+  });
+
+  it("disables every authoring control for a locked selection", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<AutoLayoutSettingsDialog
+        open
+        disabled
+        value={{ mode: "horizontal", textBaseline: false, strokeSizing: "excluded", canvasStacking: "last-on-top" }}
+        trigger={<button type="button">Settings</button>}
+        onClose={() => undefined}
+      />);
+    });
+    expect(renderer!.root.findAllByType(Dropdown).every(dropdown => dropdown.props.disabled)).toBe(true);
+    expect(renderer!.root.findByType(Checkbox).props.disabled).toBe(true);
+    act(() => renderer!.unmount());
+  });
 });
