@@ -36,6 +36,11 @@ test("modal overlays escape inspector clipping, collide safely, trap focus, and 
   await page.keyboard.press("Tab");
   await expect(input).toBeFocused();
 
+  await page.getByRole("button", { name: "Open dark overlay menu" }).click();
+  await page.getByRole("menuitem", { name: "dark overlay menu choice" }).click();
+  await expect(page.getByRole("status")).toContainText("dark overlay menu chosen");
+  await expect(dialog).toBeVisible();
+
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect(trigger).toBeFocused();

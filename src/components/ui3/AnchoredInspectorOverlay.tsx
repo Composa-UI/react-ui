@@ -7,7 +7,7 @@ export type AnchoredInspectorOverlaySide = "left" | "right" | "top" | "bottom";
 export type AnchoredInspectorOverlayAlign = "start" | "center" | "end";
 
 export const ANCHORED_INSPECTOR_OVERLAY_COLLISION_PADDING = 8;
-export const ANCHORED_INSPECTOR_OVERLAY_Z_CLASS = "z-[70]";
+export const ANCHORED_INSPECTOR_OVERLAY_Z_CLASS = "z-50";
 
 export function shouldMountAnchoredInspectorOverlay(open: boolean, anchorReady: boolean): boolean {
   return open && anchorReady;

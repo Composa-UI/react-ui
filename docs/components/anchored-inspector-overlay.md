@@ -27,6 +27,9 @@ to the control that launched them.
 - Focus is trapped by default and returns to the captured trigger on close.
 - Escape and outside pointer interaction close through `onClose`.
 - `blockOutsideDismiss` supports a nested picker without closing its owner.
+- The overlay shares the canonical `z-50` floating-surface layer so menus,
+  tooltips, and dialogs portalled later from inside it remain interactive above
+  their owner.
 - The compact default width is 240px. Consumers may provide a larger width when
   an approved dialog reference requires it.
 
