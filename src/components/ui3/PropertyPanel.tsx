@@ -23,6 +23,7 @@ import { Tabs } from "./Tabs";
 import { NumericEditSessionProvider, NumericInput, NumericComboInput, InputField, ColorInput, ComboInput, formatNumericDisplay } from "./Input";
 import { Dropdown } from "./Dropdown";
 import { SegmentedControl } from "./SegmentedControl";
+import { AlignmentControl, type AlignmentValue } from "./AlignmentControl";
 import { Chit } from "./Chit";
 import { Checkbox } from "./Checkbox";
 import { ColorDialog } from "./ColorDialog";
@@ -162,58 +163,6 @@ function blendMenu(current: BlendMode, onPick: (m: BlendMode) => void) {
         </Fragment>
       ))}
     </Menu>
-  );
-}
-
-// ─── 9×9 icon groups ──────────────────────────────────────────────────────────
-// Alignment picker for auto-layout child alignment — a 3×3 DOT matrix (not icon
-// glyphs), ported from the older DS's `AlignmentPicker`/`.composa-alignment-*`:
-// an 88px-ish track with a subtle 2px dot per cell; the selected cell's dot grows
-// into a 10px accent-colored bar. This is the anchor-point convention, distinct
-// from Position's directional-icon alignment (AlignLeft/Center/Right).
-
-function AlignmentGrid({
-  value,
-  onChange,
-}: {
-  value?: string;
-  onChange?: (v: string) => void;
-}) {
-  const cells = ["tl", "tc", "tr", "ml", "mc", "mr", "bl", "bc", "br"];
-  const labels: Record<string, string> = {
-    tl: "Top left", tc: "Top center", tr: "Top right",
-    ml: "Middle left", mc: "Middle center", mr: "Middle right",
-    bl: "Bottom left", bc: "Bottom center", br: "Bottom right",
-  };
-
-  return (
-    <div
-      role="radiogroup"
-      aria-label="Alignment"
-      className="shrink-0 grid grid-cols-3 grid-rows-3 place-items-center w-[88px] h-[56px] py-[4px] rounded-c-md bg-c-bg-secondary box-border"
-    >
-      {cells.map(cell => {
-        const selected = value === cell;
-        return (
-          <button
-            key={cell}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            aria-label={labels[cell]}
-            onClick={() => onChange?.(cell)}
-            className="w-[16px] h-[12px] grid place-items-center rounded-c-sm bg-transparent hover:bg-c-bg-hover"
-          >
-            <span
-              className={clsx(
-                "h-[2px] rounded-[2px] transition-[width]",
-                selected ? "w-[10px] bg-c-border-selected" : "w-[2px] bg-c-icon-tertiary",
-              )}
-            />
-          </button>
-        );
-      })}
-    </div>
   );
 }
 
@@ -636,7 +585,13 @@ function LayoutAutoSection({
         </div>
       </div>
 
-      <PanelFieldRow label="Alignment" left={<AlignmentGrid value={renderedAlign} onChange={value => { setAlign(value); onAlignChange?.(value); }} />} />
+      <PanelFieldRow
+        label="Alignment"
+        left={<AlignmentControl
+          value={renderedAlign as AlignmentValue}
+          onChange={value => { setAlign(value); onAlignChange?.(value); }}
+        />}
+      />
 
       {/* Padding — cross layout. Combined (default): Vertical + Horizontal, two
           fields. Expanded (toggle): all four sides independently. */}
