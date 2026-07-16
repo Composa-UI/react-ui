@@ -31,9 +31,13 @@ describe("NumericInput presentation contract", () => {
     expect(html.match(/type="number"/g)).toHaveLength(4);
   });
 
-  it("shows a relative-mode label in the combo trigger", () => {
-    const html = renderToStaticMarkup(<NumericComboInput ariaLabel="Width" dropdownAriaLabel="Width sizing mode: Hug" triggerLabel="Hug" value={240} menu={() => null} />);
+  it("shows a relative-mode label over the idle value and leaves the trigger icon-only", () => {
+    const html = renderToStaticMarkup(<NumericComboInput ariaLabel="Width" dropdownAriaLabel="Width sizing mode: Hug" idleLabel="Hug" value={240} menu={() => null} />);
     expect(html).toContain('aria-label="Width sizing mode: Hug"');
-    expect(html).toMatch(/aria-label="Width sizing mode: Hug"[\s\S]*?>Hug<\/span>/);
+    expect(html).toContain("data-composa-relative-mode-label");
+    expect(html).toMatch(/data-composa-relative-mode-label[^>]*>Hug<\/span>/);
+    const trigger = html.match(/<button[^>]*aria-label="Width sizing mode: Hug"[^>]*>[\s\S]*?<\/button>/)?.[0];
+    expect(trigger).toBeTruthy();
+    expect(trigger).not.toContain("<span");
   });
 });
