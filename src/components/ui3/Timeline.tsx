@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
 import { clsx } from "clsx";
 import { Play, Pause, Square, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film, Volume2 } from "lucide-react";
+import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { collectAggregateKeyframes, createTimelineEdgeDragController, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineDragDeltaMs, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
 import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSelectionState";
 import { ScrollArea } from "./Panel";
+import { Menu, MenuRow } from "./Menu";
+import { useComposaMode } from "./useComposaMode";
 
 // ─── Timeline ───────────────────────────────────────────────────────────────────
 // Polymorphic timeline region (Composa editor spec: docs/composa/specs/timeline.md).
@@ -66,7 +69,8 @@ export function timelineTrackNavigationIndex(current: number, count: number, key
   if (key === "End") return count - 1;
   return Math.max(0, Math.min(count - 1, current + (key === "ArrowUp" ? -1 : 1)));
 }
-export interface TimelineKeyframe { id: string; timeMs: number; selected?: boolean; }
+export type TimelineEasingPreset = "linear" | "ease-in" | "ease-out" | "ease-in-out" | "custom";
+export interface TimelineKeyframe { id: string; timeMs: number; selected?: boolean; easing?: TimelineEasingPreset; }
 export type TimelineKeyframeValue = number | TimelineKeyframe;
 export interface PropTrack {
   id?: string;
@@ -144,6 +148,15 @@ const DEMO_BLOCKS: SlideBlock[] = [
 // ── keyframe lane (bar + diamonds + connecting line) ──────────────────────────────
 export interface KeyframeTarget { trackId: string; propertyId: string; keyframeId: string; timeMs: number; }
 export interface AggregateKeyframeTarget { trackId: string; timeMs: number; keyframeIds: string[]; complete: boolean; }
+export interface TimelineEasingSegmentTarget {
+  trackId: string;
+  propertyId: string;
+  keyframeId: string;
+  nextKeyframeId: string;
+  startMs: number;
+  endMs: number;
+  easing: TimelineEasingPreset;
+}
 export type TimelineGestureTarget =
   | { kind: "keyframe"; id: string; action: "move"; keyframe: KeyframeTarget }
   | { kind: "duration-bar"; id: string; action: TimelineDurationBarAction }
@@ -219,6 +232,138 @@ export function timelineTimeAtClientX(clientX: number, left: number, width: numb
 }
 const percent = (timeMs: number, viewport: TimelineViewport) => `${timeToX(timeMs, viewport, 100)}%`;
 const percentWidth = (startMs: number, endMs: number, viewport: TimelineViewport) => `${timeToX(endMs, viewport, 100) - timeToX(startMs, viewport, 100)}%`;
+
+const EASING_PRESETS: Array<{ value: Exclude<TimelineEasingPreset, "custom">; label: string }> = [
+  { value: "linear", label: "Linear" },
+  { value: "ease-in", label: "Ease in" },
+  { value: "ease-out", label: "Ease out" },
+  { value: "ease-in-out", label: "Ease in-out" },
+];
+const easingLabel = (easing: TimelineEasingPreset) => easing === "custom"
+  ? "Custom"
+  : EASING_PRESETS.find(preset => preset.value === easing)?.label ?? "Linear";
+const easingCurvePath = (easing: TimelineEasingPreset) => {
+  if (easing === "ease-in") return "M1 9 C12 9 21 3 27 1";
+  if (easing === "ease-out") return "M1 9 C7 3 16 1 27 1";
+  if (easing === "ease-in-out") return "M1 9 C8 9 20 1 27 1";
+  if (easing === "custom") return "M1 9 C5 1 23 9 27 1";
+  return "M1 9 L27 1";
+};
+
+function EasingSegment({
+  target,
+  propertyName,
+  selected,
+  accent,
+  viewport,
+  onSelect,
+  onPresetChange,
+}: {
+  target: TimelineEasingSegmentTarget;
+  propertyName: string;
+  selected: boolean;
+  accent: boolean;
+  viewport: TimelineViewport;
+  onSelect?: (target: TimelineEasingSegmentTarget) => void;
+  onPresetChange?: (target: TimelineEasingSegmentTarget, easing: Exclude<TimelineEasingPreset, "custom">) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const mode = useComposaMode();
+  const interactive = !!onSelect || !!onPresetChange;
+  const label = `${propertyName} ${easingLabel(target.easing)} easing from ${target.startMs}ms to ${target.endMs}ms`;
+  const data = {
+    "data-easing-segment": `${target.trackId}:${target.propertyId}:${target.keyframeId}`,
+    "data-easing-preset": target.easing,
+    "data-easing-start-ms": target.startMs,
+    "data-easing-end-ms": target.endMs,
+  } as const;
+  const className = clsx(
+    "absolute top-1/2 z-[1] h-[20px] -translate-y-1/2 text-c-icon-secondary outline-none",
+    interactive && "cursor-pointer hover:text-c-icon",
+    selected && "text-c-icon ring-1 ring-inset ring-c-border-selected-strong bg-c-bg-selected/50",
+    "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring",
+  );
+  const content = (
+    <>
+      <span aria-hidden className={clsx("absolute left-0 right-0 top-1/2 h-px -translate-y-1/2", accent ? "bg-c-bg-brand" : "bg-c-border-strong")} />
+      <svg aria-hidden viewBox="0 0 28 10" className="absolute left-1/2 top-1/2 h-[10px] w-[28px] -translate-x-1/2 -translate-y-1/2 rounded-c-sm bg-c-bg px-[2px]">
+        <path d={easingCurvePath(target.easing)} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    </>
+  );
+  const segment = interactive ? (
+    <button
+      type="button"
+      {...data}
+      aria-label={label}
+      aria-pressed={selected}
+      aria-haspopup={onPresetChange ? "menu" : undefined}
+      aria-keyshortcuts={onPresetChange ? "Enter Shift+Enter" : undefined}
+      onClick={event => { event.stopPropagation(); onSelect?.(target); }}
+      onKeyDown={event => {
+        if (event.key !== "Enter" || !event.shiftKey || !onPresetChange) return;
+        event.preventDefault();
+        event.stopPropagation();
+        setOpen(true);
+      }}
+      onDoubleClick={event => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (onPresetChange) setOpen(true);
+      }}
+      className={className}
+      style={{ left: percent(target.startMs, viewport), width: percentWidth(target.startMs, target.endMs, viewport) }}
+    >
+      {content}
+    </button>
+  ) : (
+    <span
+      role="img"
+      {...data}
+      aria-label={label}
+      className={clsx(className, "pointer-events-none")}
+      style={{ left: percent(target.startMs, viewport), width: percentWidth(target.startMs, target.endMs, viewport) }}
+    >
+      {content}
+    </span>
+  );
+  if (!onPresetChange) return segment;
+  return (
+    <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
+      <PopoverPrimitive.Anchor asChild>{segment}</PopoverPrimitive.Anchor>
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Content
+          data-composa-mode={mode}
+          side="bottom"
+          align="center"
+          sideOffset={4}
+          collisionPadding={8}
+          avoidCollisions
+          sticky="partial"
+          aria-label={`${propertyName} easing presets`}
+          className="z-50 outline-none"
+        >
+          <Menu minWidth={148}>
+            {target.easing === "custom" && <MenuRow type="heading" label="Custom curve" />}
+            {EASING_PRESETS.map(preset => (
+              <MenuRow
+                key={preset.value}
+                type="checkmark"
+                selectionRole="radio"
+                label={preset.label}
+                checked={target.easing === preset.value}
+                onClick={() => {
+                  onPresetChange(target, preset.value);
+                  setOpen(false);
+                }}
+              />
+            ))}
+          </Menu>
+        </PopoverPrimitive.Content>
+      </PopoverPrimitive.Portal>
+    </PopoverPrimitive.Root>
+  );
+}
 
 export interface TimelineDurationBarProjection {
   authoredStartMs: number;
@@ -387,7 +532,7 @@ function DurationBar({ trackId, name, range, projection, selectionState, viewpor
   );
 }
 
-function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag, onSelect, onMove, onDelete, onAdd, onGestureStart, onGestureEnd }: {
+function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag, onSelect, onMove, onDelete, onAdd, onEasingSelect, onEasingPresetChange, onGestureStart, onGestureEnd }: {
   prop: PropTrack; trackId: string; propertyId: string; height: number;
   viewport: TimelineViewport; plotWidth: number;
   edgeDrag: TimelineEdgeDragController;
@@ -395,6 +540,8 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
   onMove?: (target: KeyframeTarget, timeMs: number) => void;
   onDelete?: (target: KeyframeTarget) => void;
   onAdd?: (timeMs: number) => void;
+  onEasingSelect?: (target: TimelineEasingSegmentTarget) => void;
+  onEasingPresetChange?: (target: TimelineEasingSegmentTarget, easing: Exclude<TimelineEasingPreset, "custom">) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
 }) {
@@ -429,7 +576,7 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
       style={{ height }}
       data-timeline-property-lane={`${trackId}:${propertyId}`}
       onClick={event => {
-        if (!onAdd || (event.target as Element).closest?.("[data-keyframe-id]")) return;
+        if (!onAdd || (event.target as Element).closest?.("[data-keyframe-id],[data-easing-segment]")) return;
         const rect = event.currentTarget.getBoundingClientRect();
         onAdd(timelineTimeAtClientX(event.clientX, rect.left, rect.width, viewport));
       }}
@@ -444,12 +591,36 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
           <span className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
         </div>
       )}
-      {kfs.length > 1 && (
+      {kfs.length > 1 && kfs.some(keyframe => typeof keyframe === "number") && (
         <div
           className="absolute top-1/2 -translate-y-1/2 h-px pointer-events-none"
           style={{ left: percent(first, viewport), width: percentWidth(first, last, viewport), backgroundColor: prop.accent ? "#8638e5" : "rgba(0,0,0,0.25)" }}
         />
       )}
+      {kfs.slice(0, -1).map((keyframe, index) => {
+        const next = kfs[index + 1];
+        const target: TimelineEasingSegmentTarget = {
+          trackId,
+          propertyId,
+          keyframeId: keyframeId(keyframe, index),
+          nextKeyframeId: keyframeId(next, index + 1),
+          startMs: keyframeTime(keyframe),
+          endMs: keyframeTime(next),
+          easing: typeof keyframe === "number" ? "linear" : keyframe.easing ?? "linear",
+        };
+        return (
+          <EasingSegment
+            key={`${target.keyframeId}:${target.nextKeyframeId}`}
+            target={target}
+            propertyName={prop.name}
+            selected={typeof keyframe !== "number" && !!keyframe.selected}
+            accent={!!prop.accent}
+            viewport={viewport}
+            onSelect={onEasingSelect}
+            onPresetChange={onEasingPresetChange}
+          />
+        );
+      })}
       {kfs.map((keyframe, i) => {
         const timeMs = keyframeTime(keyframe);
         const id = keyframeId(keyframe, i);
@@ -495,7 +666,7 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
 }
 
 // ── one track (layer row + its property rows) ─────────────────────────────────────
-function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onDurationBarChange, onGestureStart, onGestureEnd }: {
+function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
   track: Track; trackIndex: number;
   focusable: boolean;
   viewport: TimelineViewport; plotWidth: number; duration: number;
@@ -507,6 +678,8 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
   onKeyframeMove?: (target: KeyframeTarget, timeMs: number) => void;
   onKeyframeDelete?: (target: KeyframeTarget) => void;
   onPropertyAddKeyframe?: (trackId: string, propertyId: string, timeMs?: number) => void;
+  onEasingSegmentSelect?: (target: TimelineEasingSegmentTarget) => void;
+  onEasingPresetChange?: (target: TimelineEasingSegmentTarget, easing: Exclude<TimelineEasingPreset, "custom">) => void;
   onDurationBarChange?: (change: TimelineDurationBarChange) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
@@ -603,7 +776,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
             <ChevronRight size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />
             {p.hidden ? <EyeOff size={14} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" /> : <Eye size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />}
           </div>
-          <Lane prop={p} trackId={trackId} propertyId={p.id ?? `property-${i}`} height={ROW_PROP} viewport={viewport} plotWidth={plotWidth} edgeDrag={edgeDrag} onSelect={onKeyframeSelect} onMove={onKeyframeMove} onDelete={onKeyframeDelete} onAdd={onPropertyAddKeyframe ? timeMs => onPropertyAddKeyframe(trackId, p.id ?? `property-${i}`, timeMs) : undefined} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+          <Lane prop={p} trackId={trackId} propertyId={p.id ?? `property-${i}`} height={ROW_PROP} viewport={viewport} plotWidth={plotWidth} edgeDrag={edgeDrag} onSelect={onKeyframeSelect} onMove={onKeyframeMove} onDelete={onKeyframeDelete} onAdd={onPropertyAddKeyframe ? timeMs => onPropertyAddKeyframe(trackId, p.id ?? `property-${i}`, timeMs) : undefined} onEasingSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
         </div>
       ))}
     </>
@@ -899,6 +1072,8 @@ export function Timeline({
   onKeyframeSelect,
   onKeyframeMove,
   onKeyframeDelete,
+  onEasingSegmentSelect,
+  onEasingPresetChange,
   onDurationBarChange,
   onDeleteSelectedKeyframes,
   onBlockSelect,
@@ -945,6 +1120,8 @@ export function Timeline({
   onKeyframeSelect?: (target: KeyframeTarget, additive: boolean) => void;
   onKeyframeMove?: (target: KeyframeTarget, timeMs: number) => void;
   onKeyframeDelete?: (target: KeyframeTarget) => void;
+  onEasingSegmentSelect?: (target: TimelineEasingSegmentTarget) => void;
+  onEasingPresetChange?: (target: TimelineEasingSegmentTarget, easing: Exclude<TimelineEasingPreset, "custom">) => void;
   onDurationBarChange?: (change: TimelineDurationBarChange) => void;
   onDeleteSelectedKeyframes?: () => void;
   onBlockSelect?: (id: string) => void;
@@ -1160,6 +1337,7 @@ export function Timeline({
             {tracks.map((t, i) => <TrackRows key={t.id ?? i} track={t} trackIndex={i} focusable={i === Math.max(0, tracks.findIndex(track => (track.selectionState ?? (track.selected ? "selected" : "none")) === "selected"))} viewport={viewport} plotWidth={plotWidth} duration={duration} edgeDrag={edgeDrag} onTrackSelect={onTrackSelect}
               onExpandedChange={onTrackExpandedChange} onAggregateKeyframeSelect={onAggregateKeyframeSelect}
               onKeyframeSelect={(target, additive) => { revealTime(target.timeMs); onKeyframeSelect?.(target, additive); }} onKeyframeMove={onKeyframeMove} onKeyframeDelete={onKeyframeDelete}
+              onEasingSegmentSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange}
               onDurationBarChange={onDurationBarChange}
               onGestureStart={onGestureStart} onGestureEnd={onGestureEnd}
               onPropertyAddKeyframe={onPropertyAddKeyframe ? (trackId, propertyId, timeMs = playhead) => onPropertyAddKeyframe(trackId, propertyId, timeMs) : undefined} />)}

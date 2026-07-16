@@ -4,7 +4,7 @@ import { PropertyPanel, type ClipSpeed, type ElementEffectSetting, type ElementF
 import SlidesTemplate from "./imports/SlidesTemplate";
 import { SlidesPanel, type SlideData } from "./components/ui3/SlidesPanel";
 import { SlideInspector } from "./components/ui3/SlideInspector";
-import { Timeline, type BaseClipBlock, type TimelineViewport, type Track } from "./components/ui3/Timeline";
+import { Timeline, type BaseClipBlock, type TimelineEasingPreset, type TimelineViewport, type Track } from "./components/ui3/Timeline";
 import { LayerList, type LayerNode } from "./components/ui3/LayerList";
 import { NavRail } from "./components/ui3/NavRail";
 import { CompositionPanel } from "./components/ui3/CompositionPanel";
@@ -242,6 +242,44 @@ function Issue72DurationBarFixture({ mode }: { mode: "light" | "dark" }) {
   );
 }
 
+const ISSUE_72_EASING_KEYFRAMES: Array<{ id: string; timeMs: number; easing: TimelineEasingPreset; selected?: boolean }> = [
+  { id: "linear", timeMs: 500, easing: "linear" },
+  { id: "ease-in", timeMs: 1_500, easing: "ease-in" },
+  { id: "ease-out", timeMs: 2_500, easing: "ease-out" },
+  { id: "ease-in-out", timeMs: 3_500, easing: "ease-in-out" },
+  { id: "custom", timeMs: 4_500, easing: "custom" },
+  { id: "end", timeMs: 5_500, easing: "linear" },
+];
+
+function Issue72EasingFixture({ mode }: { mode: "light" | "dark" }) {
+  const [keyframes, setKeyframes] = useState(ISSUE_72_EASING_KEYFRAMES);
+  const tracks: Track[] = [{
+    id: `${mode}-motion`,
+    name: "Motion",
+    type: "frame",
+    expanded: true,
+    props: [{
+      id: "opacity",
+      name: "Opacity",
+      keyframes: keyframes.map(keyframe => ({ ...keyframe, selected: !!keyframe.selected })),
+    }],
+  }];
+  return (
+    <section data-composa-mode={mode === "dark" ? "dark" : undefined} className="min-w-0 overflow-hidden rounded-c-lg bg-c-bg text-c-text shadow-c-200">
+      <header className="h-[40px] px-[16px] flex items-center border-b border-c-border">
+        <h2 className="text-[11px] font-[550]">{mode === "dark" ? "Dark" : "Light"} easing segments</h2>
+      </header>
+      <Timeline
+        height={210}
+        duration={6_000}
+        tracks={tracks}
+        onEasingSegmentSelect={target => setKeyframes(value => value.map(keyframe => ({ ...keyframe, selected: keyframe.id === target.keyframeId })))}
+        onEasingPresetChange={(target, easing) => setKeyframes(value => value.map(keyframe => keyframe.id === target.keyframeId ? { ...keyframe, easing } : keyframe))}
+      />
+    </section>
+  );
+}
+
 const ISSUE_75_CONVERSATIONS: AgentConversationSummary[] = [
   { id: "detail", title: "Detail property panel", visibility: "private", updatedAt: Date.now() - 24 * 60 * 60 * 1000, preview: "Review the property hierarchy.", timeGroup: "yesterday" },
   { id: "motion", title: "Develop video motion", visibility: "private", updatedAt: Date.now() - 12 * 24 * 60 * 60 * 1000, preview: "Explain the current animation.", timeGroup: "earlier" },
@@ -417,6 +455,15 @@ export default function Playground() {
       <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px]">
         <Issue72DurationBarFixture mode="light" />
         <Issue72DurationBarFixture mode="dark" />
+      </main>
+    );
+  }
+
+  if (view === "issue-72-easing-segments") {
+    return (
+      <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px]">
+        <Issue72EasingFixture mode="light" />
+        <Issue72EasingFixture mode="dark" />
       </main>
     );
   }

@@ -201,6 +201,47 @@ describe("Timeline DOM contracts", () => {
     expect(interactive).toContain('data-timeline-property-lane="hero:opacity"');
     expect(interactive).toContain("cursor-crosshair");
   });
+
+  it("renders one accessible easing indicator per authored keyframe pair", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={4_000} tracks={[{
+      id: "hero",
+      name: "Hero",
+      type: "frame",
+      props: [{
+        id: "opacity",
+        name: "Opacity",
+        keyframes: [
+          { id: "start", timeMs: 500, easing: "linear", selected: true },
+          { id: "middle", timeMs: 1_500, easing: "ease-in" },
+          { id: "custom", timeMs: 2_500, easing: "custom" },
+          { id: "end", timeMs: 3_500, easing: "ease-out" },
+        ],
+      }],
+    }]} onEasingSegmentSelect={() => undefined} onEasingPresetChange={() => undefined} />);
+    expect(html.match(/data-easing-segment=/g)).toHaveLength(3);
+    expect(html).toContain('data-easing-segment="hero:opacity:start"');
+    expect(html).toContain('data-easing-preset="linear"');
+    expect(html).toContain('aria-label="Opacity Linear easing from 500ms to 1500ms"');
+    expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain('data-easing-preset="ease-in"');
+    expect(html).toContain('data-easing-preset="custom"');
+    expect(html).toContain('aria-haspopup="menu"');
+    expect(html).toContain('aria-keyshortcuts="Enter Shift+Enter"');
+    expect(html).not.toContain('data-easing-segment="hero:opacity:end"');
+  });
+
+  it("keeps easing indicators presentational when the host supplies no editing callbacks", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[{
+      id: "hero", name: "Hero", type: "frame", props: [{
+        id: "x", name: "Position X", keyframes: [
+          { id: "start", timeMs: 0, easing: "ease-out" },
+          { id: "end", timeMs: 1_000, easing: "linear" },
+        ],
+      }],
+    }]} />);
+    expect(html).toContain('role="img" data-easing-segment="hero:x:start"');
+    expect(html).not.toContain('aria-haspopup="menu"');
+  });
 });
 
 describe("Timeline empty-lane time mapping", () => {
