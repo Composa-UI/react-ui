@@ -8,6 +8,7 @@ import { ChevronDown } from "lucide-react";
 // (Mirrors the study panel's `.composa-editing-inspector-scroll(bar)`.)
 export function ScrollArea({ children, className, thumbClassName = "bg-c-icon-secondary", onScroll, viewportRef }: { children?: ReactNode; className?: string; thumbClassName?: string; onScroll?: (scrollTop: number) => void; viewportRef?: MutableRefObject<HTMLDivElement | null> }) {
   const ref = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const [thumb, setThumb] = useState<{ top: number; height: number } | null>(null);
   const [active, setActive] = useState(false);
 
@@ -27,7 +28,7 @@ export function ScrollArea({ children, className, thumbClassName = "bg-c-icon-se
     if (!el) return;
     const ro = new ResizeObserver(measure);
     ro.observe(el);
-    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    if (contentRef.current) ro.observe(contentRef.current);
     return () => ro.disconnect();
   }, []);
 
@@ -38,14 +39,18 @@ export function ScrollArea({ children, className, thumbClassName = "bg-c-icon-se
       onMouseLeave={() => setActive(false)}
     >
       <div
+        data-composa-scroll-viewport
         ref={node => { ref.current = node; if (viewportRef) viewportRef.current = node; }}
         onScroll={e => { measure(); setActive(true); onScroll?.(e.currentTarget.scrollTop); }}
         className={clsx("h-full overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", className)}
       >
-        {children}
+        <div ref={contentRef} data-composa-scroll-content className="min-h-full">
+          {children}
+        </div>
       </div>
       {thumb && (
         <div
+          data-composa-scroll-thumb
           className={clsx("absolute right-[2px] w-[6px] rounded-full pointer-events-none transition-opacity duration-200", thumbClassName)}
           style={{ top: thumb.top, height: thumb.height, opacity: active ? 0.45 : 0 }}
         />
