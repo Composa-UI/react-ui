@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MutableRefObject } from "react";
+import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
 import { clsx } from "clsx";
 import { Play, Pause, Square, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film, Volume2 } from "lucide-react";
 import { collectAggregateKeyframes, createTimelineEdgeDragController, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineDragDeltaMs, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
@@ -93,6 +93,8 @@ export interface Track {
    */
   selectionState?: RowSelectionState;
   autoLayoutMode?: LayerAutoLayoutMode;
+  /** Host-authorized duration editing. False preserves duration presentation without exposing inert controls. */
+  durationBarEditable?: boolean;
 }
 
 // master-view slide block — a slide's [start,end] range (ms) on the project timeline
@@ -144,6 +146,7 @@ export interface KeyframeTarget { trackId: string; propertyId: string; keyframeI
 export interface AggregateKeyframeTarget { trackId: string; timeMs: number; keyframeIds: string[]; complete: boolean; }
 export type TimelineGestureTarget =
   | { kind: "keyframe"; id: string; action: "move"; keyframe: KeyframeTarget }
+  | { kind: "duration-bar"; id: string; action: TimelineDurationBarAction }
   | { kind: "slide-block" | "base-clip"; id: string; action: "move" | "trim-start" | "trim-end" };
 
 export function shouldClaimTimelineGestureEscape(key: string, gestureActive: boolean): boolean {
@@ -228,6 +231,33 @@ export interface TimelineDurationBarProjection {
   widthPercent: number;
 }
 
+export type TimelineDurationBarAction = "move" | "trim-start" | "trim-end";
+export interface TimelineDurationBarChange {
+  trackId: string;
+  action: TimelineDurationBarAction;
+  startMs: number;
+  endMs: number;
+}
+
+export function timelineDurationBarTargetRange(
+  range: readonly [number, number],
+  action: TimelineDurationBarAction,
+  deltaMs: number,
+  durationMs: number,
+  minimumSpanMs = 1,
+): [number, number] {
+  const [startMs, endMs] = range;
+  const boundedDuration = Math.max(endMs, Number.isFinite(durationMs) ? durationMs : endMs);
+  if (action === "move") {
+    const offset = Math.max(-startMs, Math.min(boundedDuration - endMs, deltaMs));
+    return [Math.round(startMs + offset), Math.round(endMs + offset)];
+  }
+  if (action === "trim-start") {
+    return [Math.round(Math.max(0, Math.min(endMs - minimumSpanMs, startMs + deltaMs))), endMs];
+  }
+  return [startMs, Math.round(Math.min(boundedDuration, Math.max(startMs + minimumSpanMs, endMs + deltaMs)))];
+}
+
 /** Projects an authored parent-layer duration into the visible timeline viewport. */
 export function timelineDurationBarProjection(
   range: readonly [number, number],
@@ -248,6 +278,113 @@ export function timelineDurationBarProjection(
     leftPercent: timeToX(visibleStartMs, viewport, 100),
     widthPercent: timeToX(visibleEndMs, viewport, 100) - timeToX(visibleStartMs, viewport, 100),
   };
+}
+
+function DurationBar({ trackId, name, range, projection, selectionState, viewport, plotWidth, duration, laneRef, edgeDrag, onChange, onGestureStart, onGestureEnd }: {
+  trackId: string;
+  name: string;
+  range: [number, number];
+  projection: TimelineDurationBarProjection;
+  selectionState: RowSelectionState;
+  viewport: TimelineViewport;
+  plotWidth: number;
+  duration: number;
+  laneRef: { current: HTMLDivElement | null };
+  edgeDrag: TimelineEdgeDragController;
+  onChange?: (change: TimelineDurationBarChange) => void;
+  onGestureStart?: (target: TimelineGestureTarget) => void;
+  onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
+}) {
+  const drag = useRef<{
+    action: TimelineDurationBarAction;
+    initialRange: [number, number];
+    startX: number;
+    startViewportStartMs: number;
+  } | null>(null);
+  const updateAtViewport = (clientX: number, currentViewport: TimelineViewport) => {
+    const active = drag.current;
+    if (!active) return;
+    const deltaMs = timelineDragDeltaMs(active.startX, clientX, active.startViewportStartMs, currentViewport, plotWidth);
+    const [startMs, endMs] = timelineDurationBarTargetRange(active.initialRange, active.action, deltaMs, duration);
+    onChange?.({ trackId, action: active.action, startMs, endMs });
+  };
+  const finish = (cancelled: boolean) => {
+    const active = drag.current;
+    if (!active) return;
+    drag.current = null;
+    edgeDrag.stop();
+    escapeOwnership.release();
+    onGestureEnd?.({ kind: "duration-bar", id: trackId, action: active.action }, { cancelled });
+  };
+  const escapeOwnership = useGestureEscapeOwnership(() => finish(true));
+  const finishRef = useRef(finish);
+  finishRef.current = finish;
+  useEffect(() => () => finishRef.current(true), []);
+  const begin = (action: TimelineDurationBarAction, event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!shouldBeginTimelinePointer(event.button, event.isPrimary)) return;
+    event.stopPropagation();
+    edgeDrag.start(() => finish(true));
+    drag.current = { action, initialRange: range, startX: event.clientX, startViewportStartMs: viewport.startMs };
+    escapeOwnership.claim();
+    onGestureStart?.({ kind: "duration-bar", id: trackId, action });
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const move = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!drag.current) return;
+    const rect = laneRef.current?.getBoundingClientRect();
+    if (!rect) { updateAtViewport(event.clientX, viewport); return; }
+    edgeDrag.update(event.clientX, { left: rect.left, width: rect.width }, next => updateAtViewport(event.clientX, next));
+  };
+  const step = (action: TimelineDurationBarAction, event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    event.stopPropagation();
+    const target = { kind: "duration-bar", id: trackId, action } as const;
+    const deltaMs = (event.shiftKey ? 1_000 : 100) * (event.key === "ArrowLeft" ? -1 : 1);
+    const [startMs, endMs] = timelineDurationBarTargetRange(range, action, deltaMs, duration);
+    onGestureStart?.(target);
+    onChange?.({ trackId, action, startMs, endMs });
+    onGestureEnd?.(target, { cancelled: false });
+  };
+  const barClassName = clsx(
+    "absolute top-1/2 h-[12px] -translate-y-1/2 border",
+    projection.clippedStart ? "rounded-l-none border-l-0" : "rounded-l-[4px]",
+    projection.clippedEnd ? "rounded-r-none border-r-0" : "rounded-r-[4px]",
+    selectionState === "selected"
+      ? "border-c-border-selected-strong bg-c-bg-brand"
+      : "border-c-border-strong bg-c-bg-secondary",
+  );
+  const data = {
+    "data-timeline-duration-bar": trackId,
+    "data-duration-start-ms": projection.authoredStartMs,
+    "data-duration-end-ms": projection.authoredEndMs,
+    "data-visible-start-ms": projection.visibleStartMs,
+    "data-visible-end-ms": projection.visibleEndMs,
+    "data-clipped-start": projection.clippedStart,
+    "data-clipped-end": projection.clippedEnd,
+    "data-duration-bar-state": selectionState === "selected" ? "selected" : "neutral",
+  } as const;
+  const style = { left: `${projection.leftPercent}%`, width: `${projection.widthPercent}%` };
+  if (!onChange) return <span role="img" aria-label={`${name} duration ${projection.authoredStartMs}ms to ${projection.authoredEndMs}ms`} {...data} className={clsx("pointer-events-none", barClassName)} style={style} />;
+  return (
+    <div role="group" aria-label={`${name} duration ${projection.authoredStartMs}ms to ${projection.authoredEndMs}ms`} {...data} className={barClassName} style={style}>
+      <button type="button" aria-label={`Move ${name} duration`} aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight" data-duration-bar-action="move"
+        onPointerDown={event => begin("move", event)} onPointerMove={move}
+        onKeyDown={event => step("move", event)}
+        onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
+        className="absolute inset-0 cursor-grab rounded-[inherit] bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring active:cursor-grabbing" />
+      {!projection.clippedStart && <button type="button" aria-label={`Scale ${name} duration from start`} aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight" data-duration-bar-action="trim-start"
+        onPointerDown={event => begin("trim-start", event)} onPointerMove={move}
+        onKeyDown={event => step("trim-start", event)}
+        onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
+        className="absolute -left-[3px] top-1/2 z-[1] h-[18px] w-[7px] -translate-y-1/2 cursor-ew-resize rounded-c-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />}
+      {!projection.clippedEnd && <button type="button" aria-label={`Scale ${name} duration from end`} aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight" data-duration-bar-action="trim-end"
+        onPointerDown={event => begin("trim-end", event)} onPointerMove={move}
+        onKeyDown={event => step("trim-end", event)}
+        onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
+        className="absolute -right-[3px] top-1/2 z-[1] h-[18px] w-[7px] -translate-y-1/2 cursor-ew-resize rounded-c-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />}
+    </div>
+  );
 }
 
 function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag, onSelect, onMove, onDelete, onAdd, onGestureStart, onGestureEnd }: {
@@ -358,10 +495,10 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
 }
 
 // ── one track (layer row + its property rows) ─────────────────────────────────────
-function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onGestureStart, onGestureEnd }: {
+function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onDurationBarChange, onGestureStart, onGestureEnd }: {
   track: Track; trackIndex: number;
   focusable: boolean;
-  viewport: TimelineViewport; plotWidth: number;
+  viewport: TimelineViewport; plotWidth: number; duration: number;
   edgeDrag: TimelineEdgeDragController;
   onTrackSelect?: (trackId: string, modifiers: TimelineTrackSelectionModifiers) => void;
   onExpandedChange?: (trackId: string, expanded: boolean) => void;
@@ -370,10 +507,12 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, edgeDrag
   onKeyframeMove?: (target: KeyframeTarget, timeMs: number) => void;
   onKeyframeDelete?: (target: KeyframeTarget) => void;
   onPropertyAddKeyframe?: (trackId: string, propertyId: string, timeMs?: number) => void;
+  onDurationBarChange?: (change: TimelineDurationBarChange) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
 }) {
   const trackId = track.id ?? `track-${trackIndex}`;
+  const laneRef = useRef<HTMLDivElement>(null);
   const depth = Math.max(0, track.depth ?? 0);
   const expanded = track.expanded !== false;
   const selectionState = track.selectionState ?? (track.selected ? "selected" : "none");
@@ -432,29 +571,12 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, edgeDrag
             <span className={clsx(FONT, "text-[11px] text-c-text truncate", selectionState === "selected" ? "font-[550]" : "font-[450]")}>{track.name}</span>
           </div>
         </div>
-        <div className="flex-1 relative overflow-hidden" style={{ height: ROW_LAYER }}>
+        <div ref={laneRef} className="flex-1 relative overflow-hidden" style={{ height: ROW_LAYER }}>
           {durationBar && (
-            <span
-              role="img"
-              aria-label={`${track.name} duration ${durationBar.authoredStartMs}ms to ${durationBar.authoredEndMs}ms`}
-              data-timeline-duration-bar={trackId}
-              data-duration-start-ms={durationBar.authoredStartMs}
-              data-duration-end-ms={durationBar.authoredEndMs}
-              data-visible-start-ms={durationBar.visibleStartMs}
-              data-visible-end-ms={durationBar.visibleEndMs}
-              data-clipped-start={durationBar.clippedStart}
-              data-clipped-end={durationBar.clippedEnd}
-              data-duration-bar-state={selectionState === "selected" ? "selected" : "neutral"}
-              className={clsx(
-                "pointer-events-none absolute top-1/2 h-[12px] -translate-y-1/2 border",
-                durationBar.clippedStart ? "rounded-l-none border-l-0" : "rounded-l-[4px]",
-                durationBar.clippedEnd ? "rounded-r-none border-r-0" : "rounded-r-[4px]",
-                selectionState === "selected"
-                  ? "border-c-border-selected-strong bg-c-bg-brand"
-                  : "border-c-border-strong bg-c-bg-secondary",
-              )}
-              style={{ left: `${durationBar.leftPercent}%`, width: `${durationBar.widthPercent}%` }}
-            />
+            <DurationBar trackId={trackId} name={track.name} range={track.bar!} projection={durationBar} selectionState={selectionState}
+              viewport={viewport} plotWidth={plotWidth} duration={duration} laneRef={laneRef} edgeDrag={edgeDrag}
+              onChange={track.durationBarEditable === false ? undefined : onDurationBarChange}
+              onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
           )}
           {aggregateKeys.map(aggregate => {
             const status = aggregate.complete ? "complete" : "partial";
@@ -777,6 +899,7 @@ export function Timeline({
   onKeyframeSelect,
   onKeyframeMove,
   onKeyframeDelete,
+  onDurationBarChange,
   onDeleteSelectedKeyframes,
   onBlockSelect,
   onBlockOpen,
@@ -822,6 +945,7 @@ export function Timeline({
   onKeyframeSelect?: (target: KeyframeTarget, additive: boolean) => void;
   onKeyframeMove?: (target: KeyframeTarget, timeMs: number) => void;
   onKeyframeDelete?: (target: KeyframeTarget) => void;
+  onDurationBarChange?: (change: TimelineDurationBarChange) => void;
   onDeleteSelectedKeyframes?: () => void;
   onBlockSelect?: (id: string) => void;
   onBlockOpen?: (id: string) => void;
@@ -1033,9 +1157,10 @@ export function Timeline({
               </button>
             </div>
             <div role={onTrackSelect ? "listbox" : undefined} aria-label={onTrackSelect ? "Timeline layers" : undefined} aria-multiselectable={onTrackSelect ? true : undefined}>
-            {tracks.map((t, i) => <TrackRows key={t.id ?? i} track={t} trackIndex={i} focusable={i === Math.max(0, tracks.findIndex(track => (track.selectionState ?? (track.selected ? "selected" : "none")) === "selected"))} viewport={viewport} plotWidth={plotWidth} edgeDrag={edgeDrag} onTrackSelect={onTrackSelect}
+            {tracks.map((t, i) => <TrackRows key={t.id ?? i} track={t} trackIndex={i} focusable={i === Math.max(0, tracks.findIndex(track => (track.selectionState ?? (track.selected ? "selected" : "none")) === "selected"))} viewport={viewport} plotWidth={plotWidth} duration={duration} edgeDrag={edgeDrag} onTrackSelect={onTrackSelect}
               onExpandedChange={onTrackExpandedChange} onAggregateKeyframeSelect={onAggregateKeyframeSelect}
               onKeyframeSelect={(target, additive) => { revealTime(target.timeMs); onKeyframeSelect?.(target, additive); }} onKeyframeMove={onKeyframeMove} onKeyframeDelete={onKeyframeDelete}
+              onDurationBarChange={onDurationBarChange}
               onGestureStart={onGestureStart} onGestureEnd={onGestureEnd}
               onPropertyAddKeyframe={onPropertyAddKeyframe ? (trackId, propertyId, timeMs = playhead) => onPropertyAddKeyframe(trackId, propertyId, timeMs) : undefined} />)}
             </div>

@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { shouldActivateTimelineTrackKey, shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, timelineDurationBarProjection, timelineTimeAtClientX, timelineTrackExpansionForKey, timelineTrackNavigationIndex, Timeline, type Track } from "./Timeline";
+import { shouldActivateTimelineTrackKey, shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, timelineDurationBarProjection, timelineDurationBarTargetRange, timelineTimeAtClientX, timelineTrackExpansionForKey, timelineTrackNavigationIndex, Timeline, type Track } from "./Timeline";
 
 const numericTrack: Track = { id: "hero", name: "Hero", type: "frame", props: [
   { id: "opacity", name: "Opacity", keyframes: [500, 900] },
@@ -119,6 +119,33 @@ describe("Timeline DOM contracts", () => {
     expect(html).not.toContain('data-timeline-duration-bar="invalid"');
   });
 
+  it("exposes independently operable move and scale targets only for host-authorized duration bars", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={6_000} tracks={[
+      { id: "editable", name: "Editable", type: "frame", bar: [1_000, 4_000], props: [] },
+      { id: "locked", name: "Locked", type: "frame", bar: [1_500, 4_500], durationBarEditable: false, props: [] },
+    ]} onDurationBarChange={() => undefined} />);
+    expect(html).toContain('role="group" aria-label="Editable duration 1000ms to 4000ms"');
+    expect(html).toContain('aria-label="Move Editable duration"');
+    expect(html).toContain('data-duration-bar-action="move"');
+    expect(html).toContain('aria-label="Scale Editable duration from start"');
+    expect(html).toContain('data-duration-bar-action="trim-start"');
+    expect(html).toContain('aria-label="Scale Editable duration from end"');
+    expect(html).toContain('data-duration-bar-action="trim-end"');
+    expect(html).toContain('role="img" aria-label="Locked duration 1500ms to 4500ms"');
+    expect(html).not.toContain('aria-label="Move Locked duration"');
+  });
+
+  it("does not expose a scale handle for an authored edge outside the viewport", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={8_000} viewport={{ startMs: 2_000, endMs: 6_000 }} tracks={[
+      { id: "clipped-start", name: "Clipped start", type: "frame", bar: [500, 3_000], props: [] },
+      { id: "clipped-end", name: "Clipped end", type: "frame", bar: [5_000, 7_500], props: [] },
+    ]} onDurationBarChange={() => undefined} />);
+    expect(html).not.toContain('aria-label="Scale Clipped start duration from start"');
+    expect(html).toContain('aria-label="Scale Clipped start duration from end"');
+    expect(html).toContain('aria-label="Scale Clipped end duration from start"');
+    expect(html).not.toContain('aria-label="Scale Clipped end duration from end"');
+  });
+
   it("does not let a nested disclosure key activate its selectable row", () => {
     expect(shouldActivateTimelineTrackKey("Enter", false)).toBe(false);
     expect(shouldActivateTimelineTrackKey(" ", false)).toBe(false);
@@ -205,6 +232,21 @@ describe("Timeline parent duration projection", () => {
     expect(timelineDurationBarProjection([7_000, 8_000], viewport)).toBeNull();
     expect(timelineDurationBarProjection([4_000, 4_000], viewport)).toBeNull();
     expect(timelineDurationBarProjection([5_000, 4_000], viewport)).toBeNull();
+  });
+});
+
+describe("Timeline parent duration editing", () => {
+  it("moves the complete authored range and clamps it at timeline bounds", () => {
+    expect(timelineDurationBarTargetRange([500, 2_500], "move", 500, 4_000)).toEqual([1_000, 3_000]);
+    expect(timelineDurationBarTargetRange([500, 2_500], "move", -1_000, 4_000)).toEqual([0, 2_000]);
+    expect(timelineDurationBarTargetRange([500, 2_500], "move", 5_000, 4_000)).toEqual([2_000, 4_000]);
+  });
+
+  it("scales either authored edge around the opposite fixed edge", () => {
+    expect(timelineDurationBarTargetRange([500, 2_500], "trim-start", -1_000, 4_000)).toEqual([0, 2_500]);
+    expect(timelineDurationBarTargetRange([500, 2_500], "trim-start", 5_000, 4_000)).toEqual([2_499, 2_500]);
+    expect(timelineDurationBarTargetRange([500, 2_500], "trim-end", 3_000, 4_000)).toEqual([500, 4_000]);
+    expect(timelineDurationBarTargetRange([500, 2_500], "trim-end", -3_000, 4_000)).toEqual([500, 501]);
   });
 });
 
