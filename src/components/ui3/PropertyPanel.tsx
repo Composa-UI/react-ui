@@ -35,6 +35,8 @@ import { Button } from "./Button";
 import { Tooltip } from "./Tooltip";
 import { EffectDetailsDialog, type EffectDetailsValue } from "./EffectDetailsDialog";
 import { AutoLayoutSettingsDialog } from "./AutoLayoutSettingsDialog";
+import { EasingInspectorSection, type EasingInspectorSectionProps, type EasingInspectorValue } from "./EasingInspectorSection";
+import type { EasingApplyScope } from "./easing";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1762,6 +1764,15 @@ export interface PropertyPanelProps {
   onNumericEditStart?: () => void;
   onNumericEditCommit?: () => void;
   onNumericEditCancel?: () => void;
+  /** Timeline-owned easing projection. Segment context renders Easing as the only Design section. */
+  easing?: EasingInspectorValue;
+  easingContext?: "keyframe" | "segment";
+  easingApplyScope?: EasingApplyScope;
+  onEasingChange?: EasingInspectorSectionProps["onChange"];
+  onEasingApplyScopeChange?: EasingInspectorSectionProps["onApplyScopeChange"];
+  onEasingCurveEditStart?: () => void;
+  onEasingCurveEditCommit?: () => void;
+  onEasingCurveEditCancel?: () => void;
   width?: number; height?: number;
   onWidthChange?: (value: number) => void;
   onHeightChange?: (value: number) => void;
@@ -1905,6 +1916,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
   x = 0, y = 0, rotation = 0,
   onXChange, onYChange, onRotationChange,
   onNumericEditStart, onNumericEditCommit, onNumericEditCancel,
+  easing, easingContext = "keyframe", easingApplyScope, onEasingChange, onEasingApplyScopeChange,
+  onEasingCurveEditStart, onEasingCurveEditCommit, onEasingCurveEditCancel,
   width = 1200, height = 115,
   onWidthChange, onHeightChange,
   opacity = 100,
@@ -2213,6 +2226,11 @@ export function PropertyPanel(props: PropertyPanelProps) {
       {/* Design tab content */}
       {tab === "design" && (
         <div role="tabpanel" id="element-design-panel" aria-labelledby="element-design-panel-tab" className="contents"><ScrollArea>
+          {easing && easingContext === "segment" ? (
+            <EasingInspectorSection value={easing} applyScope={easingApplyScope}
+              onChange={onEasingChange} onApplyScopeChange={onEasingApplyScopeChange}
+              onCurveEditStart={onEasingCurveEditStart} onCurveEditCommit={onEasingCurveEditCommit} onCurveEditCancel={onEasingCurveEditCancel} />
+          ) : <>
           {/* Element type label */}
           <div className="h-[40px] flex items-center px-[16px] border-b border-c-border">
             <span className={clsx(FONT, "text-[11px] font-[550] text-c-text")}>
@@ -2270,6 +2288,10 @@ export function PropertyPanel(props: PropertyPanelProps) {
 
           <ExportSection settings={exportSettings} targetName={exportTargetName ?? elementLabel[elementType]}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
+          {easing && <EasingInspectorSection value={easing} applyScope={easingApplyScope}
+            onChange={onEasingChange} onApplyScopeChange={onEasingApplyScopeChange}
+            onCurveEditStart={onEasingCurveEditStart} onCurveEditCommit={onEasingCurveEditCommit} onCurveEditCancel={onEasingCurveEditCancel} />}
+          </>}
         </ScrollArea></div>
       )}
 

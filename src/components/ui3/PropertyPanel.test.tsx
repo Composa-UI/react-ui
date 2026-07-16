@@ -3,6 +3,25 @@ import { describe, expect, it } from "vitest";
 import { getSizingMenuLabels, PropertyPanel, reconcileAutoLayoutGap } from "./PropertyPanel";
 import { TooltipProvider } from "./Tooltip";
 
+describe("Timeline easing inspector composition", () => {
+  it("renders segment easing as the only Design inspector section", () => {
+    const html = renderToStaticMarkup(<PropertyPanel elementType="text" easingContext="segment"
+      easing={{ preset: "custom", controlPoints: [0.2, 0, 0.8, 1], editable: true }}
+      onEasingChange={() => undefined} />);
+    expect(html).toContain(">Easing</span>");
+    expect(html).not.toContain(">Position</span>");
+    expect(html).not.toContain(">Appearance</span>");
+  });
+
+  it("appends keyframe easing to the normal element inspector", () => {
+    const html = renderToStaticMarkup(<PropertyPanel elementType="text" easingContext="keyframe"
+      easing={{ preset: "ease-in", editable: true }} onEasingChange={() => undefined} />);
+    expect(html).toContain(">Position</span>");
+    expect(html).toContain(">Appearance</span>");
+    expect(html).toContain(">Easing</span>");
+  });
+});
+
 describe("Video Clip inspector semantics", () => {
   it("exposes opt-in landmarks and precisely named controls", () => {
     const html = renderToStaticMarkup(<PropertyPanel mode="video-clip" clipStart={2} clipDuration={3}

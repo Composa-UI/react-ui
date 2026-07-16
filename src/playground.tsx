@@ -5,6 +5,7 @@ import SlidesTemplate from "./imports/SlidesTemplate";
 import { SlidesPanel, type SlideData } from "./components/ui3/SlidesPanel";
 import { SlideInspector } from "./components/ui3/SlideInspector";
 import { Timeline, type BaseClipBlock, type TimelineEasingPreset, type TimelineViewport, type Track } from "./components/ui3/Timeline";
+import type { EasingApplyScope, EasingPreset, CubicBezier } from "./components/ui3/easing";
 import { LayerList, type LayerNode } from "./components/ui3/LayerList";
 import { NavRail } from "./components/ui3/NavRail";
 import { CompositionPanel } from "./components/ui3/CompositionPanel";
@@ -284,6 +285,23 @@ function Issue72EasingFixture({ mode }: { mode: "light" | "dark" }) {
   );
 }
 
+function Issue72EasingInspectorFixture({ mode }: { mode: "light" | "dark" }) {
+  const [preset, setPreset] = useState<EasingPreset>(mode === "dark" ? "spring" : "custom");
+  const [controlPoints, setControlPoints] = useState<CubicBezier | undefined>(mode === "dark" ? [0.175, 0.885, 0.32, 1.275] : [0.2, -0.1, 0.75, 1.15]);
+  const [scope, setScope] = useState<EasingApplyScope>("segment");
+  return (
+    <section data-composa-mode={mode === "dark" ? "dark" : undefined} className="min-w-0 flex justify-center rounded-c-lg bg-c-bg-secondary p-[24px]">
+      <PropertyPanel
+        easingContext="segment"
+        easing={{ preset, controlPoints, editable: true }}
+        easingApplyScope={scope}
+        onEasingChange={next => { setPreset(next.preset); setControlPoints(next.controlPoints); }}
+        onEasingApplyScopeChange={setScope}
+      />
+    </section>
+  );
+}
+
 const ISSUE_75_CONVERSATIONS: AgentConversationSummary[] = [
   { id: "detail", title: "Detail property panel", visibility: "private", updatedAt: Date.now() - 24 * 60 * 60 * 1000, preview: "Review the property hierarchy.", timeGroup: "yesterday" },
   { id: "motion", title: "Develop video motion", visibility: "private", updatedAt: Date.now() - 12 * 24 * 60 * 60 * 1000, preview: "Explain the current animation.", timeGroup: "earlier" },
@@ -468,6 +486,15 @@ export default function Playground() {
       <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px]">
         <Issue72EasingFixture mode="light" />
         <Issue72EasingFixture mode="dark" />
+      </main>
+    );
+  }
+
+  if (view === "issue-72-easing-inspector") {
+    return (
+      <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px]">
+        <Issue72EasingInspectorFixture mode="light" />
+        <Issue72EasingInspectorFixture mode="dark" />
       </main>
     );
   }
