@@ -300,6 +300,10 @@ export default function Playground() {
   const [contractTimelineViewport, setContractTimelineViewport] = useState<TimelineViewport>({ startMs: 0, endMs: 4_000 });
   const [contractTimelineExpanded, setContractTimelineExpanded] = useState(true);
   const [contractTimelineKeyIds, setContractTimelineKeyIds] = useState<string[]>(["hero-opacity-0", "hero-x-0"]);
+  const [durationBarTracks, setDurationBarTracks] = useState<Track[]>([
+    { id: "hero-duration", name: "Hero", type: "frame", bar: [1_000, 4_000], props: [] },
+    { id: "locked-duration", name: "Locked title", type: "text", bar: [1_500, 3_500], durationBarEditable: false, props: [] },
+  ]);
   const [contractX, setContractX] = useState(270);
   const [assetQuery, setAssetQuery] = useState("");
   const [assetFilter, setAssetFilter] = useState<AssetFilter>("all");
@@ -601,6 +605,15 @@ export default function Playground() {
         onReorder={(sourceId, targetId, position) => console.info("Reorder", sourceId, targetId, position)}
         onReparent={(sourceId, parentId) => console.info("Reparent", sourceId, parentId)} />
       <div style={{ flex: 1 }} />
+    </div>;
+  }
+
+  if (view === "timeline-duration-contract") {
+    return <div data-composa-mode="dark" style={{ height: "100vh", width: "100vw", display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "#2c2c2c" }}>
+      <Timeline height={220} duration={6_000} tracks={durationBarTracks}
+        onDurationBarChange={({ trackId, startMs, endMs }) => setDurationBarTracks(current => current.map(track =>
+          track.id === trackId ? { ...track, bar: [startMs, endMs] } : track))}
+      />
     </div>;
   }
 
