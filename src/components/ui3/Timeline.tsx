@@ -272,19 +272,18 @@ function EasingSegment({
     "data-easing-start-ms": target.startMs,
     "data-easing-end-ms": target.endMs,
   } as const;
+  const segmentLeft = timeToX(target.startMs, viewport, 100);
+  const segmentWidth = timeToX(target.endMs, viewport, 100) - segmentLeft;
   const className = clsx(
-    "absolute top-1/2 z-[1] h-[20px] -translate-y-1/2 text-c-icon-secondary outline-none",
+    "absolute top-1/2 z-[1] h-[20px] w-[28px] -translate-x-1/2 -translate-y-1/2 text-c-icon-secondary outline-none",
     interactive && "cursor-pointer hover:text-c-icon",
     selected && "text-c-icon ring-1 ring-inset ring-c-border-selected-strong bg-c-bg-selected/50",
     "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring",
   );
   const content = (
-    <>
-      <span aria-hidden className={clsx("absolute left-0 right-0 top-1/2 h-px -translate-y-1/2", accent ? "bg-c-bg-brand" : "bg-c-border-strong")} />
       <svg aria-hidden viewBox="0 0 28 10" className="absolute left-1/2 top-1/2 h-[10px] w-[28px] -translate-x-1/2 -translate-y-1/2 rounded-c-sm bg-c-bg px-[2px]">
         <path d={easingSvgPath(easingControlPoints(target.easing))} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
-    </>
   );
   const segment = interactive ? (
     <button
@@ -307,7 +306,7 @@ function EasingSegment({
         if (onPresetChange) setOpen(true);
       }}
       className={className}
-      style={{ left: percent(target.startMs, viewport), width: percentWidth(target.startMs, target.endMs, viewport) }}
+      style={{ left: `${segmentLeft + segmentWidth / 2}%` }}
     >
       {content}
     </button>
@@ -317,13 +316,12 @@ function EasingSegment({
       {...data}
       aria-label={label}
       className={clsx(className, "pointer-events-none")}
-      style={{ left: percent(target.startMs, viewport), width: percentWidth(target.startMs, target.endMs, viewport) }}
+      style={{ left: `${segmentLeft + segmentWidth / 2}%` }}
     >
       {content}
     </span>
   );
-  if (!onPresetChange) return segment;
-  return (
+  const control = !onPresetChange ? segment : (
     <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
       <PopoverPrimitive.Anchor asChild>{segment}</PopoverPrimitive.Anchor>
       <PopoverPrimitive.Portal>
@@ -357,6 +355,16 @@ function EasingSegment({
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>
+  );
+  return (
+    <>
+      <span
+        aria-hidden
+        className={clsx("pointer-events-none absolute top-1/2 h-px -translate-y-1/2", accent ? "bg-c-bg-brand" : "bg-c-border-strong")}
+        style={{ left: `${segmentLeft}%`, width: `${segmentWidth}%` }}
+      />
+      {control}
+    </>
   );
 }
 
@@ -653,7 +661,7 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
             edgeDrag.update(event.clientX, { left: rect.left, width: rect.width }, next => updateAtViewport(event.clientX, next));
           }}
           onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
-          className={clsx("absolute top-1/2 size-[7px] p-0 border-0 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-c-bg", selected && "ring-2 ring-c-border-selected-strong")}
+          className={clsx("absolute top-1/2 z-[2] size-[7px] p-0 border-0 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-c-bg", selected && "ring-2 ring-c-border-selected-strong")}
           style={{ left: percent(timeMs, viewport), backgroundColor: prop.accent ? "#8638e5" : BLUE }}
         />
       );})}
