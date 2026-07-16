@@ -145,6 +145,30 @@ function Issue70RowStateFixture({ mode }: { mode: "light" | "dark" }) {
   );
 }
 
+const ISSUE_72_DURATION_TRACKS: Track[] = [
+  { id: "selected-duration", name: "Selected duration", type: "frame", bar: [1_500, 4_200], selectionState: "selected", props: [] },
+  { id: "neutral-duration", name: "Neutral duration", type: "text", bar: [2_400, 4_700], props: [] },
+  { id: "clipped-start", name: "Continues before", type: "shape", bar: [0, 2_200], props: [] },
+  { id: "clipped-end", name: "Continues after", type: "image", bar: [4_300, 7_000], props: [] },
+];
+
+function Issue72DurationBarFixture({ mode }: { mode: "light" | "dark" }) {
+  return (
+    <section data-composa-mode={mode === "dark" ? "dark" : undefined} className="min-w-0 overflow-hidden rounded-c-lg bg-c-bg text-c-text shadow-c-200">
+      <header className="h-[40px] px-[16px] flex items-center border-b border-c-border">
+        <h2 className="text-[11px] font-[550]">{mode === "dark" ? "Dark" : "Light"} parent duration bars</h2>
+      </header>
+      <Timeline
+        height={210}
+        duration={8_000}
+        viewport={{ startMs: 1_000, endMs: 6_000 }}
+        tracks={ISSUE_72_DURATION_TRACKS}
+        onTrackSelect={() => undefined}
+      />
+    </section>
+  );
+}
+
 export default function Playground() {
   // ?view=slides = componentized SlidesPanel; ?view=slides-raw = the raw Figma export
   // (side-by-side fidelity check); default = property-panel fidelity set.
@@ -252,6 +276,15 @@ export default function Playground() {
       <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px]">
         <Issue70RowStateFixture mode="light" />
         <Issue70RowStateFixture mode="dark" />
+      </main>
+    );
+  }
+
+  if (view === "issue-72-duration-bars") {
+    return (
+      <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px]">
+        <Issue72DurationBarFixture mode="light" />
+        <Issue72DurationBarFixture mode="dark" />
       </main>
     );
   }
