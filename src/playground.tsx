@@ -242,7 +242,7 @@ function Issue72DurationBarFixture({ mode }: { mode: "light" | "dark" }) {
   );
 }
 
-const ISSUE_72_EASING_KEYFRAMES: Array<{ id: string; timeMs: number; easing: TimelineEasingPreset; selected?: boolean }> = [
+const ISSUE_72_EASING_KEYFRAMES: Array<{ id: string; timeMs: number; easing: TimelineEasingPreset; easingSelected?: boolean }> = [
   { id: "linear", timeMs: 500, easing: "linear" },
   { id: "ease-in", timeMs: 1_500, easing: "ease-in" },
   { id: "ease-out", timeMs: 2_500, easing: "ease-out" },
@@ -261,7 +261,7 @@ function Issue72EasingFixture({ mode }: { mode: "light" | "dark" }) {
     props: [{
       id: "opacity",
       name: "Opacity",
-      keyframes: keyframes.map(keyframe => ({ ...keyframe, selected: !!keyframe.selected })),
+      keyframes,
     }],
   }];
   return (
@@ -273,7 +273,7 @@ function Issue72EasingFixture({ mode }: { mode: "light" | "dark" }) {
         height={210}
         duration={6_000}
         tracks={tracks}
-        onEasingSegmentSelect={target => setKeyframes(value => value.map(keyframe => ({ ...keyframe, selected: keyframe.id === target.keyframeId })))}
+        onEasingSegmentSelect={target => setKeyframes(value => value.map(keyframe => ({ ...keyframe, easingSelected: keyframe.id === target.keyframeId })))}
         onEasingPresetChange={(target, easing) => setKeyframes(value => value.map(keyframe => keyframe.id === target.keyframeId ? { ...keyframe, easing } : keyframe))}
       />
     </section>

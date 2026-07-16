@@ -70,7 +70,15 @@ export function timelineTrackNavigationIndex(current: number, count: number, key
   return Math.max(0, Math.min(count - 1, current + (key === "ArrowUp" ? -1 : 1)));
 }
 export type TimelineEasingPreset = "linear" | "ease-in" | "ease-out" | "ease-in-out" | "custom";
-export interface TimelineKeyframe { id: string; timeMs: number; selected?: boolean; easing?: TimelineEasingPreset; easingEditable?: boolean; }
+export interface TimelineKeyframe {
+  id: string;
+  timeMs: number;
+  selected?: boolean;
+  easing?: TimelineEasingPreset;
+  easingEditable?: boolean;
+  /** Independent segment selection for the interval owned by this keyframe. */
+  easingSelected?: boolean;
+}
 export type TimelineKeyframeValue = number | TimelineKeyframe;
 export interface PropTrack {
   id?: string;
@@ -613,7 +621,7 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
             key={`${target.keyframeId}:${target.nextKeyframeId}`}
             target={target}
             propertyName={prop.name}
-            selected={typeof keyframe !== "number" && !!keyframe.selected}
+            selected={typeof keyframe !== "number" && !!keyframe.easingSelected}
             accent={!!prop.accent}
             viewport={viewport}
             onSelect={onEasingSelect}

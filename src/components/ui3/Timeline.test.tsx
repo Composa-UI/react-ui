@@ -211,7 +211,7 @@ describe("Timeline DOM contracts", () => {
         id: "opacity",
         name: "Opacity",
         keyframes: [
-          { id: "start", timeMs: 500, easing: "linear", selected: true },
+          { id: "start", timeMs: 500, easing: "linear", easingSelected: true },
           { id: "middle", timeMs: 1_500, easing: "ease-in" },
           { id: "custom", timeMs: 2_500, easing: "custom" },
           { id: "end", timeMs: 3_500, easing: "ease-out" },
@@ -223,6 +223,9 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain('data-easing-preset="linear"');
     expect(html).toContain('aria-label="Opacity Linear easing from 500ms to 1500ms"');
     expect(html).toContain('aria-pressed="true"');
+    const startingMarker = html.match(/<button type="button" data-keyframe-id="start"[^>]*>/)?.[0];
+    expect(startingMarker).toContain('aria-label="Opacity keyframe at 500ms"');
+    expect(startingMarker).not.toContain("aria-pressed");
     expect(html).toContain('data-easing-preset="ease-in"');
     expect(html).toContain('data-easing-preset="custom"');
     expect(html).toContain('aria-haspopup="menu"');
