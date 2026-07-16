@@ -8,6 +8,7 @@ import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSel
 import { ScrollArea } from "./Panel";
 import { Menu, MenuRow } from "./Menu";
 import { useComposaMode } from "./useComposaMode";
+import { EASING_PRESETS, easingControlPoints, easingPresetLabel, easingSvgPath, type EasingPreset, type NamedEasingPreset } from "./easing";
 
 // ─── Timeline ───────────────────────────────────────────────────────────────────
 // Polymorphic timeline region (Composa editor spec: docs/composa/specs/timeline.md).
@@ -69,7 +70,7 @@ export function timelineTrackNavigationIndex(current: number, count: number, key
   if (key === "End") return count - 1;
   return Math.max(0, Math.min(count - 1, current + (key === "ArrowUp" ? -1 : 1)));
 }
-export type TimelineEasingPreset = "linear" | "ease-in" | "ease-out" | "ease-in-out" | "custom";
+export type TimelineEasingPreset = EasingPreset;
 export interface TimelineKeyframe {
   id: string;
   timeMs: number;
@@ -241,22 +242,8 @@ export function timelineTimeAtClientX(clientX: number, left: number, width: numb
 const percent = (timeMs: number, viewport: TimelineViewport) => `${timeToX(timeMs, viewport, 100)}%`;
 const percentWidth = (startMs: number, endMs: number, viewport: TimelineViewport) => `${timeToX(endMs, viewport, 100) - timeToX(startMs, viewport, 100)}%`;
 
-const EASING_PRESETS: Array<{ value: Exclude<TimelineEasingPreset, "custom">; label: string }> = [
-  { value: "linear", label: "Linear" },
-  { value: "ease-in", label: "Ease in" },
-  { value: "ease-out", label: "Ease out" },
-  { value: "ease-in-out", label: "Ease in-out" },
-];
-const easingLabel = (easing: TimelineEasingPreset) => easing === "custom"
-  ? "Custom"
-  : EASING_PRESETS.find(preset => preset.value === easing)?.label ?? "Linear";
-const easingCurvePath = (easing: TimelineEasingPreset) => {
-  if (easing === "ease-in") return "M1 9 C12 9 21 3 27 1";
-  if (easing === "ease-out") return "M1 9 C7 3 16 1 27 1";
-  if (easing === "ease-in-out") return "M1 9 C8 9 20 1 27 1";
-  if (easing === "custom") return "M1 9 C5 1 23 9 27 1";
-  return "M1 9 L27 1";
-};
+const TIMELINE_QUICK_EASING_PRESETS = EASING_PRESETS.filter(preset =>
+  ["linear", "ease-in", "ease-out", "ease-in-out"].includes(preset.value));
 
 function EasingSegment({
   target,
@@ -273,12 +260,12 @@ function EasingSegment({
   accent: boolean;
   viewport: TimelineViewport;
   onSelect?: (target: TimelineEasingSegmentTarget) => void;
-  onPresetChange?: (target: TimelineEasingSegmentTarget, easing: Exclude<TimelineEasingPreset, "custom">) => void;
+  onPresetChange?: (target: TimelineEasingSegmentTarget, easing: NamedEasingPreset) => void;
 }) {
   const [open, setOpen] = useState(false);
   const mode = useComposaMode();
   const interactive = !!onSelect || !!onPresetChange;
-  const label = `${propertyName} ${easingLabel(target.easing)} easing from ${target.startMs}ms to ${target.endMs}ms`;
+  const label = `${propertyName} ${easingPresetLabel(target.easing)} easing from ${target.startMs}ms to ${target.endMs}ms`;
   const data = {
     "data-easing-segment": `${target.trackId}:${target.propertyId}:${target.keyframeId}`,
     "data-easing-preset": target.easing,
@@ -295,7 +282,7 @@ function EasingSegment({
     <>
       <span aria-hidden className={clsx("absolute left-0 right-0 top-1/2 h-px -translate-y-1/2", accent ? "bg-c-bg-brand" : "bg-c-border-strong")} />
       <svg aria-hidden viewBox="0 0 28 10" className="absolute left-1/2 top-1/2 h-[10px] w-[28px] -translate-x-1/2 -translate-y-1/2 rounded-c-sm bg-c-bg px-[2px]">
-        <path d={easingCurvePath(target.easing)} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <path d={easingSvgPath(easingControlPoints(target.easing))} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
     </>
   );
@@ -353,7 +340,7 @@ function EasingSegment({
         >
           <Menu minWidth={148}>
             {target.easing === "custom" && <MenuRow type="heading" label="Custom curve" />}
-            {EASING_PRESETS.map(preset => (
+            {TIMELINE_QUICK_EASING_PRESETS.map(preset => (
               <MenuRow
                 key={preset.value}
                 type="checkmark"
@@ -549,7 +536,7 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
   onDelete?: (target: KeyframeTarget) => void;
   onAdd?: (timeMs: number) => void;
   onEasingSelect?: (target: TimelineEasingSegmentTarget) => void;
-  onEasingPresetChange?: (target: TimelineEasingSegmentTarget, easing: Exclude<TimelineEasingPreset, "custom">) => void;
+  onEasingPresetChange?: (target: TimelineEasingSegmentTarget, easing: NamedEasingPreset) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
 }) {
@@ -688,7 +675,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
   onKeyframeDelete?: (target: KeyframeTarget) => void;
   onPropertyAddKeyframe?: (trackId: string, propertyId: string, timeMs?: number) => void;
   onEasingSegmentSelect?: (target: TimelineEasingSegmentTarget) => void;
-  onEasingPresetChange?: (target: TimelineEasingSegmentTarget, easing: Exclude<TimelineEasingPreset, "custom">) => void;
+  onEasingPresetChange?: (target: TimelineEasingSegmentTarget, easing: NamedEasingPreset) => void;
   onDurationBarChange?: (change: TimelineDurationBarChange) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
@@ -1130,7 +1117,7 @@ export function Timeline({
   onKeyframeMove?: (target: KeyframeTarget, timeMs: number) => void;
   onKeyframeDelete?: (target: KeyframeTarget) => void;
   onEasingSegmentSelect?: (target: TimelineEasingSegmentTarget) => void;
-  onEasingPresetChange?: (target: TimelineEasingSegmentTarget, easing: Exclude<TimelineEasingPreset, "custom">) => void;
+  onEasingPresetChange?: (target: TimelineEasingSegmentTarget, easing: NamedEasingPreset) => void;
   onDurationBarChange?: (change: TimelineDurationBarChange) => void;
   onDeleteSelectedKeyframes?: () => void;
   onBlockSelect?: (id: string) => void;
