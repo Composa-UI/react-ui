@@ -6,7 +6,7 @@ import {
   RotateCw, FlipHorizontal, FlipVertical,
   Link2, Link2Off, MoreHorizontal,
   AlignHorizontalJustifyCenter,
-  Maximize2, Plus, Eye, Square,
+  Maximize2, Minimize2, Plus, Eye, Square,
   Rows2, Columns, WrapText,
   Settings2, BookOpen, Diamond,
   Crosshair, Grid3x3, ExternalLink, Unlink,
@@ -202,8 +202,8 @@ export function getSizingMenuLabels({
     ...(availableModes.includes("fixed") ? [`Fixed ${noun} (${formatNumericDisplay(value)})`] : []),
     ...(availableModes.includes("hug") ? ["Hug contents"] : []),
     ...(availableModes.includes("fill") ? ["Fill container"] : []),
-    minValue === undefined ? `Add min ${noun}` : `Remove min ${noun}`,
-    maxValue === undefined ? `Add max ${noun}` : `Remove max ${noun}`,
+    ...(minValue === undefined ? [`Add min ${noun}`] : []),
+    ...(maxValue === undefined ? [`Add max ${noun}`] : []),
     ...(variablesEnabled ? ["Apply variable"] : []),
   ];
 }
@@ -227,8 +227,8 @@ export function SizingComboField({
       {availableModes.includes("hug") && <MenuRow type="checkmark" label="Hug contents" checked={!mixed && mode === "hug"} onClick={() => { emitMode("hug"); close(); }} />}
       {availableModes.includes("fill") && <MenuRow type="checkmark" label="Fill container" checked={!mixed && mode === "fill"} onClick={() => { emitMode("fill"); close(); }} />}
       <MenuRow type="divider" />
-      <MenuRow type="simple" label={minValue === undefined ? `Add min ${axis}` : `Remove min ${axis}`} onClick={() => { onConstraintChange?.("min", minValue === undefined ? initialMin : undefined); close(); }} />
-      <MenuRow type="simple" label={maxValue === undefined ? `Add max ${axis}` : `Remove max ${axis}`} onClick={() => { onConstraintChange?.("max", maxValue === undefined ? initialMax : undefined); close(); }} />
+      {minValue === undefined && <MenuRow type="simple" leading={<Minimize2 size={14} strokeWidth={1.5} />} label={`Add min ${axis}`} onClick={() => { onConstraintChange?.("min", initialMin); close(); }} />}
+      {maxValue === undefined && <MenuRow type="simple" leading={<Maximize2 size={14} strokeWidth={1.5} />} label={`Add max ${axis}`} onClick={() => { onConstraintChange?.("max", initialMax); close(); }} />}
       {variablesEnabled && <><MenuRow type="divider" /><MenuRow type="simple" label="Apply variable" disabled={!onApplyVariable} onClick={onApplyVariable ? () => { onApplyVariable(); close(); } : undefined} /></>}
     </Menu>
   );
@@ -284,11 +284,17 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
     }
     props.onSizingChange?.(axis, change);
   };
-  const constraintFields = [
-    ["min", "width", "Min width", values.minWidth, props.minWidthMixed], ["min", "height", "Min height", values.minHeight, props.minHeightMixed],
-    ["max", "width", "Max width", values.maxWidth, props.maxWidthMixed], ["max", "height", "Max height", values.maxHeight, props.maxHeightMixed],
+  const constraintRows = [
+    [
+      ["min", "width", "Min width", values.minWidth, props.minWidthMixed],
+      ["min", "height", "Min height", values.minHeight, props.minHeightMixed],
+    ],
+    [
+      ["max", "width", "Max width", values.maxWidth, props.maxWidthMixed],
+      ["max", "height", "Max height", values.maxHeight, props.maxHeightMixed],
+    ],
   ] as const;
-  const hasConstraints = constraintFields.some(([, , , value, mixed]) => value !== undefined || mixed);
+  const hasConstraints = constraintRows.flat().some(([, , , value, mixed]) => value !== undefined || mixed);
   return <>
     <PanelFieldRow
       label="Dimensions"
@@ -296,10 +302,34 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
       right={<SizingComboField axis="height" value={props.height} mode={controlledSizing ? props.heightMode ?? "fixed" : localHeightMode} mixed={props.heightMixed} availableModes={props.availableHeightModes} minValue={values.minHeight} maxValue={values.maxHeight} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("height", change)} onConstraintChange={(constraint, value) => changeConstraint("height", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("height") : undefined} />}
       rightAction={<PanelActionBtn icon={lockAspect ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />} label="Lock aspect ratio" active={lockAspect} onClick={() => setLockAspect(value => !value)} />}
     />
-    {hasConstraints && <div className="grid grid-cols-2 gap-x-[8px] gap-y-[6px] px-[16px] pb-[8px]">
-      {constraintFields.map(([constraint, axis, label, value, mixed]) => value === undefined && !mixed ? <div key={`${constraint}-${axis}`} /> : <div key={`${constraint}-${axis}`} className="min-w-0">
-        <div className={clsx(SUBLABEL, "mb-[3px]")}>{label}</div>
-        <NumericInput ariaLabel={label} value={value} defaultValue={0} mixed={mixed} onChange={next => changeConstraint(axis, constraint, next)} min={constraint === "max" ? (axis === "width" ? values.minWidth : values.minHeight) ?? 0 : 0} max={constraint === "min" ? (axis === "width" ? values.maxWidth : values.maxHeight) : undefined} />
+    {hasConstraints && <div className="flex flex-col gap-y-[6px] px-[16px] pb-[8px]">
+      {constraintRows.map((row, rowIndex) => <div key={rowIndex} className="flex items-end gap-[8px]">
+        {row.map(([constraint, axis, label, value, mixed]) => value === undefined && !mixed
+          ? <div key={`${constraint}-${axis}`} className="flex-1 min-w-0" />
+          : <div key={`${constraint}-${axis}`} className="flex-1 min-w-0">
+            <div className={clsx(SUBLABEL, "mb-[3px]")}>{label}</div>
+            <NumericComboInput
+              dataMode="constraint"
+              ariaLabel={label}
+              dropdownAriaLabel={`${label} options`}
+              value={value}
+              defaultValue={0}
+              mixed={mixed}
+              onChange={next => changeConstraint(axis, constraint, next)}
+              min={constraint === "max" ? (axis === "width" ? values.minWidth : values.minHeight) ?? 0 : 0}
+              max={constraint === "min" ? (axis === "width" ? values.maxWidth : values.maxHeight) : undefined}
+              menu={close => <Menu minWidth={160}>
+                <MenuRow
+                  type="simple"
+                  leading={<Minus size={14} strokeWidth={1.5} />}
+                  label={`Remove ${constraint} ${axis}`}
+                  onClick={() => { changeConstraint(axis, constraint, undefined); close(); }}
+                />
+              </Menu>}
+              className="w-full"
+            />
+          </div>)}
+        <div aria-hidden className="shrink-0 w-[24px]" />
       </div>)}
     </div>}
   </>;

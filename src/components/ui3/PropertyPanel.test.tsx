@@ -95,12 +95,15 @@ describe("Auto-layout gap control", () => {
     expect(html).toMatch(/data-composa-numeric-combo="hug"[\s\S]*?data-composa-relative-mode-label[^>]*>Hug<\/span>/);
     expect(html).toContain('aria-label="Min width"');
     expect(html).toContain('aria-label="Max height"');
+    expect(html).toContain('aria-label="Min width options"');
+    expect(html).toContain('aria-label="Max height options"');
+    expect(html).toContain('data-composa-numeric-combo="constraint"');
     expect(html).not.toContain('aria-label="Min height"');
   });
 
   it("projects valid mode intersections, constraints and variable gating into canonical menu labels", () => {
     expect(getSizingMenuLabels({ axis: "width", value: 320, availableModes: ["fixed", "fill"], minValue: 120, variablesEnabled: false })).toEqual([
-      "Fixed width (320)", "Fill container", "Remove min width", "Add max width",
+      "Fixed width (320)", "Fill container", "Add max width",
     ]);
     expect(getSizingMenuLabels({ axis: "height", value: 180, availableModes: ["fixed", "hug"], variablesEnabled: true })).toContain("Apply variable");
   });
