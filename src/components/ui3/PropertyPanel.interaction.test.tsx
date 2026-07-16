@@ -1,6 +1,7 @@
 import { act, create, type ReactTestInstance } from "react-test-renderer";
 import { describe, expect, it } from "vitest";
 import { AutoLayoutSettingsDialog } from "./AutoLayoutSettingsDialog";
+import { NumericComboInput } from "./Input";
 import { DimensionSizingFields, PropertyPanel, SizingComboField, type ElementSizingMode, type SizingComboFieldProps } from "./PropertyPanel";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -19,6 +20,21 @@ function chooseMode(field: ReactTestInstance, mode: ElementSizingMode) {
 }
 
 describe("DimensionSizingFields interactions", () => {
+  it("gives Add min/max actions leading icons before constraints exist", () => {
+    const combo = SizingComboField({
+      axis: "width",
+      value: 320,
+      mode: "fixed",
+      onConstraintChange: () => undefined,
+    });
+    const menu = combo.props.menu(() => undefined);
+    const rows = menu.props.children.flat(Infinity);
+    for (const label of ["Add min width", "Add max width"]) {
+      const row = rows.find((child: { props?: { label?: string } }) => child?.props?.label === label);
+      expect(row?.props?.leading).toBeTruthy();
+    }
+  });
+
   it("keeps sizing mode local when only numeric dimensions are controlled", () => {
     const widthChanges: number[] = [];
     let renderer: ReturnType<typeof create>;
@@ -49,6 +65,30 @@ describe("DimensionSizingFields interactions", () => {
       { axis: "width", change: { mode: "fixed", value: 360 } },
     ]);
     expect(widthField(renderer!.root).props.mode).toBe("fill");
+    act(() => renderer!.unmount());
+  });
+
+  it("houses constraint removal in each constraint ComboField menu", () => {
+    const actions: Array<{ axis: string; constraint: string; value: number | undefined }> = [];
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<DimensionSizingFields
+      width={320}
+      height={180}
+      minWidth={120}
+      maxHeight={360}
+      onConstraintChange={(axis, constraint, value) => actions.push({ axis, constraint, value })}
+    />); });
+
+    const constraintCombos = renderer!.root.findAllByType(NumericComboInput)
+      .filter(combo => combo.props.dataMode === "constraint");
+    expect(constraintCombos).toHaveLength(2);
+    const minWidth = constraintCombos.find(combo => combo.props.ariaLabel === "Min width")!;
+    const menu = minWidth.props.menu(() => undefined);
+    const remove = Array.isArray(menu.props.children)
+      ? menu.props.children.find((child: { props?: { label?: string } }) => child?.props?.label === "Remove min width")
+      : menu.props.children;
+    act(() => remove.props.onClick());
+    expect(actions).toEqual([{ axis: "width", constraint: "min", value: undefined }]);
     act(() => renderer!.unmount());
   });
 });
