@@ -4,14 +4,14 @@ import { ChevronRight, Eye, EyeOff, LockOpen } from "lucide-react";
 import { Lock as LockDuotone } from "@phosphor-icons/react";
 import { ScrollArea } from "./Panel";
 import { LayerTypeIcon, type LayerAutoLayoutMode } from "./LayerTypeIcon";
+import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSelectionState";
 
 // ─── Layer list ─────────────────────────────────────────────────────────────────
 // A layers tree (Figma-style), componentized from the previous DS tree + Dark export.
 // Light theme (c-* tokens). Data-driven: a LayerNode[] with nesting; each row =
 // chevron (if group) · type icon · name · visibility/lock. Component/instance types
-// use the purple accent. Selecting a parent/group highlights its full visible subtree
-// as ONE continuous rounded block (rounded top on the first row, rounded bottom on the
-// last, square in between) — matches the UI3 reference (Figma node 2352-118293).
+// use the purple accent. Parent selection projects an emphasized row plus
+// de-emphasized visible descendants; direct child selection remains emphasized.
 
 const FONT = "font-[family-name:var(--composa-font-family)]";
 
@@ -114,7 +114,6 @@ export function layerNavigationResult(rows: readonly FlatLayerRow[], focusedId: 
   return parentId ? { focusedId: parentId } : null;
 }
 
-const ROW_H = 30;
 // Outer inset for the hover/selection shapes — matches the slides panel's 8px gutter.
 const INSET = 8;
 type LayerDropZone = "before" | "inside" | "after";
@@ -161,7 +160,7 @@ export function nextLayerSelection(
   return { ids: [targetId], anchorId: targetId };
 }
 
-function LayerRow({ row, hasChildren, open, focused, renaming, renameDraft, onRenameDraftChange, onRenameCommit, onRenameCancel, onDomFocus, onToggle, isSelfSelected, onSelect, onVisibilityChange, onLockChange, onRenameRequest, onContextMenu, draggable, dropZone, onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop, onKeyDown, rowRef }: {
+function LayerRow({ row, hasChildren, open, focused, renaming, renameDraft, onRenameDraftChange, onRenameCommit, onRenameCancel, onDomFocus, onToggle, selectionState, onSelect, onVisibilityChange, onLockChange, onRenameRequest, onContextMenu, draggable, dropZone, onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop, onKeyDown, rowRef }: {
   row: FlatLayerRow;
   hasChildren: boolean;
   open: boolean;
@@ -173,7 +172,7 @@ function LayerRow({ row, hasChildren, open, focused, renaming, renameDraft, onRe
   onRenameCancel: () => void;
   onDomFocus: (targetIsRow: boolean) => void;
   onToggle: () => void;
-  isSelfSelected: boolean;
+  selectionState: RowSelectionState;
   onSelect: (modifiers: LayerSelectionModifiers) => void;
   onVisibilityChange?: () => void;
   onLockChange?: () => void;
@@ -201,11 +200,12 @@ function LayerRow({ row, hasChildren, open, focused, renaming, renameDraft, onRe
       aria-label={node.name}
       aria-level={depth + 1}
       tabIndex={layerRowTabIndex(focused, renaming)}
-      aria-selected={isSelfSelected}
+      aria-selected={selectionState === "selected"}
+      data-composa-row-state={selectionState}
       aria-expanded={hasChildren ? open : undefined}
       onFocus={event => onDomFocus(event.currentTarget === event.target)}
       onClick={event => {
-        if (isSelfSelected && !event.metaKey && !event.ctrlKey && !event.shiftKey) onRenameRequest?.();
+        if (selectionState === "selected" && !event.metaKey && !event.ctrlKey && !event.shiftKey) onRenameRequest?.();
         else onSelect({ toggle: event.metaKey || event.ctrlKey, range: event.shiftKey });
       }}
       onDoubleClick={onRenameRequest}
@@ -217,12 +217,15 @@ function LayerRow({ row, hasChildren, open, focused, renaming, renameDraft, onRe
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       onKeyDown={onKeyDown}
-      className={clsx("group/layer relative flex items-center gap-[6px] h-[30px] pr-[12px] cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-c-border-selected", effectivelyHidden && "opacity-45")}
+      className={clsx("group/layer group/selection-row relative flex items-center gap-[6px] h-[30px] pr-[12px] cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-c-border-selected", effectivelyHidden && "opacity-45")}
       style={{ paddingLeft: 8 + depth * 16 }}
     >
-      {/* hover — single row only (the cascade selection highlight renders once, as
-          a single shape, in the parent — see LayerList) */}
-      <span aria-hidden className={clsx("pointer-events-none absolute inset-y-[2px] rounded-c-md bg-c-bg-hover opacity-0 group-hover/layer:opacity-100")} style={{ left: INSET, right: INSET }} />
+      <span
+        aria-hidden
+        data-composa-row-highlight="layer"
+        className={clsx("pointer-events-none absolute inset-y-[2px] rounded-c-md", rowSelectionHighlightClassName(selectionState))}
+        style={{ left: INSET, right: INSET }}
+      />
       {dropZone === "inside" && <span aria-hidden className="pointer-events-none absolute inset-y-[2px] rounded-c-md bg-c-bg-selected" style={{ left: INSET, right: INSET }} />}
       {(dropZone === "before" || dropZone === "after") && <span aria-hidden className={clsx("pointer-events-none absolute h-[2px] bg-c-border-selected z-10", dropZone === "before" ? "top-0" : "bottom-0")} style={{ left: INSET + depth * 16, right: INSET }} />}
       {/* disclosure */}
@@ -257,7 +260,7 @@ function LayerRow({ row, hasChildren, open, focused, renaming, renameDraft, onRe
           className={clsx(FONT, "relative flex-1 min-w-0 h-[22px] rounded-c-sm border border-c-border-selected bg-c-bg px-[4px] text-[11px] font-[450] leading-[16px] text-c-text outline-none")}
         />
       ) : (
-        <span className={clsx(FONT, "relative flex-1 min-w-0 text-[11px] font-[450] leading-[16px] truncate", isComponent ? "text-accent-component" : "text-c-text")}>{node.name}</span>
+        <span className={clsx(FONT, "relative flex-1 min-w-0 text-[11px] leading-[16px] truncate", selectionState === "selected" ? "font-[550]" : "font-[450]", isComponent ? "text-accent-component" : "text-c-text")}>{node.name}</span>
       )}
       {/* trailing: lock first (open padlock on hover; closed duotone padlock persistent when locked), then visibility */}
       <button type="button" tabIndex={-1} disabled={!!node.inheritedLocked && !node.locked} aria-label={node.inheritedLocked && !node.locked ? `${node.name} locked by parent` : node.locked ? `Unlock ${node.name}` : `Lock ${node.name}`} onClick={event => { event.stopPropagation(); onLockChange?.(); }} className={clsx("relative shrink-0 size-[14px] flex items-center justify-center text-c-icon-secondary focus-visible:opacity-100", !effectivelyLocked && "opacity-0 group-hover/layer:opacity-100")}>
@@ -352,23 +355,6 @@ export function LayerList({
   const visibleIds = useMemo(() => flat.map(row => row.node.id), [flat]);
   const fallbackFocusedId = [...selected].reverse().find(id => visibleIds.includes(id)) ?? visibleIds[0] ?? null;
   const effectiveFocusedId = requestedFocusedId && visibleIds.includes(requestedFocusedId) ? requestedFocusedId : fallbackFocusedId;
-
-  // The selection highlight is rendered ONCE as a single continuous shape spanning
-  // the selected node + its visible descendants (not one pill per row) — this is
-  // what makes it read as one seamless block rather than N adjacent translucent
-  // rows (which produced faint seams at the row boundaries).
-  const highlightRanges = useMemo(() => {
-    const ranges = selected.flatMap(id => {
-      let first = -1, last = -1;
-      flat.forEach((row, index) => { if (row.node.id === id || row.ancestors.includes(id)) { if (first === -1) first = index; last = index; } });
-      return first === -1 ? [] : [{ first, last }];
-    }).sort((left, right) => left.first - right.first);
-    return ranges.reduce<Array<{ first: number; last: number }>>((merged, range) => {
-      const previous = merged[merged.length - 1];
-      if (previous && range.first <= previous.last + 1) previous.last = Math.max(previous.last, range.last); else merged.push({ ...range });
-      return merged;
-    }, []).map(range => ({ top: range.first * ROW_H, height: (range.last - range.first + 1) * ROW_H }));
-  }, [flat, selected]);
 
   const [scrolled, setScrolled] = useState(false);
   const [draggedIds, setDraggedIds] = useState<string[]>([]);
@@ -519,14 +505,6 @@ export function LayerList({
       {/* tree — overlay scrollbar (theme-aware thumb), matching inspector/slides panels */}
       <ScrollArea viewportRef={viewportRef} className="py-[4px]" onScroll={st => setScrolled(st > 0)}>
         <div role="tree" aria-label={title} aria-multiselectable={selectedIds !== undefined || undefined} className="relative">
-          {highlightRanges.map(range => (
-            <span
-              key={`${range.top}:${range.height}`}
-              aria-hidden
-              className="pointer-events-none absolute rounded-t-c-md rounded-b-c-md bg-c-bg-selected"
-              style={{ left: INSET, right: INSET, top: range.top + 2, height: range.height - 4 }}
-            />
-          ))}
           {!flat.length && <div className={clsx(FONT, "flex h-[88px] flex-col items-center justify-center px-[16px] text-center") }>
             <span className="text-[11px] font-[550] leading-[16px] text-c-text">No layers</span>
             <span className="mt-[2px] text-[9px] font-[450] leading-[14px] text-c-text-secondary">Use the toolbar to add elements</span>
@@ -535,6 +513,9 @@ export function LayerList({
             const row = internalNames[rowValue.node.id] ? { ...rowValue, node: { ...rowValue.node, name: internalNames[rowValue.node.id] } } : rowValue;
             const hasChildren = !!row.node.children?.length;
             const rowId = row.node.id;
+            const selectionState: RowSelectionState = selectedSet.has(rowId)
+              ? "selected"
+              : row.ancestors.some(id => selectedSet.has(id)) ? "descendant" : "none";
             const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
               if (event.key === "Enter") {
                 event.preventDefault(); event.stopPropagation();
@@ -585,7 +566,7 @@ export function LayerList({
                   commitFocusedId(rowId, "pointer", !nextExpanded && !!focusedRow?.ancestors.includes(rowId));
                   setNodeExpanded(rowId, nextExpanded, "pointer");
                 }}
-                isSelfSelected={selectedSet.has(rowId)}
+                selectionState={selectionState}
                 onSelect={modifiers => {
                   updateUncontrolledSelection(rowId, modifiers, visibleIds);
                   onSelectionChange?.(rowId, { ...modifiers, visibleOrder: visibleIds });

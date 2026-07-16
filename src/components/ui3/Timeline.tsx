@@ -3,6 +3,7 @@ import { clsx } from "clsx";
 import { Play, Pause, Square, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film, Volume2 } from "lucide-react";
 import { collectAggregateKeyframes, createTimelineEdgeDragController, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineDragDeltaMs, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
+import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSelectionState";
 import { ScrollArea } from "./Panel";
 
 // ─── Timeline ───────────────────────────────────────────────────────────────────
@@ -86,6 +87,11 @@ export interface Track {
   /** Controlled property-row visibility. Undefined preserves the legacy expanded state. */
   expanded?: boolean;
   selected?: boolean;
+  /**
+   * Controlled visual projection for hierarchy-aware selection. When omitted,
+   * `selected` preserves the legacy selected/default behavior.
+   */
+  selectionState?: RowSelectionState;
   autoLayoutMode?: LayerAutoLayoutMode;
 }
 
@@ -337,6 +343,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, edgeDrag
   const trackId = track.id ?? `track-${trackIndex}`;
   const depth = Math.max(0, track.depth ?? 0);
   const expanded = track.expanded !== false;
+  const selectionState = track.selectionState ?? (track.selected ? "selected" : "none");
   const aggregateKeys = onAggregateKeyframeSelect ? collectAggregateKeyframes(track.props.flatMap((prop, propertyIndex) => {
     const propertyId = prop.id ?? `property-${propertyIndex}`;
     return prop.keyframes.map((keyframe, keyframeIndex) => ({
@@ -349,8 +356,13 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, edgeDrag
   return (
     <>
       {/* layer row */}
-      <div className="flex" style={{ height: ROW_LAYER }}>
-        <div className={clsx("shrink-0 flex items-center gap-[8px] pr-[8px] border-r border-c-border", track.selected && "bg-c-bg-selected")}
+      <div className="group/selection-row relative flex" style={{ height: ROW_LAYER }} data-composa-row-state={selectionState}>
+        <span
+          aria-hidden
+          data-composa-row-highlight="timeline-full-lane"
+          className={clsx("pointer-events-none absolute inset-0", rowSelectionHighlightClassName(selectionState))}
+        />
+        <div className="relative shrink-0 flex items-center gap-[8px] pr-[8px] border-r border-c-border"
           style={{ width: LEFT_W, paddingLeft: 8 + depth * 16 }}>
           {track.props.length ? onExpandedChange ? <button type="button" aria-label={`${expanded ? "Collapse" : "Expand"} ${track.name}`} aria-expanded={expanded}
             tabIndex={onTrackSelect ? -1 : undefined}
@@ -359,7 +371,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, edgeDrag
           </button> : <span aria-hidden className="size-[16px] shrink-0 flex items-center justify-center text-c-icon-secondary">
             {expanded ? <ChevronDown size={12} strokeWidth={1.5} /> : <DisclosureRight size={12} strokeWidth={1.5} />}
           </span> : <span className="size-[16px] shrink-0" />}
-          <div role={onTrackSelect ? "option" : undefined} aria-selected={onTrackSelect ? !!track.selected : undefined}
+          <div role={onTrackSelect ? "option" : undefined} aria-selected={onTrackSelect ? selectionState === "selected" : undefined}
             aria-expanded={onTrackSelect && onExpandedChange && track.props.length ? expanded : undefined} tabIndex={onTrackSelect ? focusable ? 0 : -1 : undefined}
             onClick={onTrackSelect ? event => onTrackSelect(trackId, { toggle: event.metaKey || event.ctrlKey, range: event.shiftKey }) : undefined}
             onKeyDown={onTrackSelect ? event => {
@@ -381,9 +393,9 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, edgeDrag
               event.preventDefault(); event.stopPropagation();
               onTrackSelect(trackId, { toggle: event.metaKey || event.ctrlKey, range: event.shiftKey });
             } : undefined}
-            className={clsx("flex flex-1 min-w-0 h-full items-center gap-[8px] outline-none", onTrackSelect && "cursor-pointer hover:bg-c-bg-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-border-selected-strong")}>
+            className={clsx("flex flex-1 min-w-0 h-full items-center gap-[8px] outline-none", onTrackSelect && "cursor-pointer focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-border-selected-strong")}>
             <LayerTypeIcon type={track.type} autoLayoutMode={track.autoLayoutMode} tone="secondary" />
-            <span className={clsx(FONT, "text-[11px] font-[450] text-c-text truncate")}>{track.name}</span>
+            <span className={clsx(FONT, "text-[11px] text-c-text truncate", selectionState === "selected" ? "font-[550]" : "font-[450]")}>{track.name}</span>
           </div>
         </div>
         <div className="flex-1 relative overflow-hidden" style={{ height: ROW_LAYER }}>
@@ -973,7 +985,7 @@ export function Timeline({
               </button>
             </div>
             <div role={onTrackSelect ? "listbox" : undefined} aria-label={onTrackSelect ? "Timeline layers" : undefined} aria-multiselectable={onTrackSelect ? true : undefined}>
-            {tracks.map((t, i) => <TrackRows key={t.id ?? i} track={t} trackIndex={i} focusable={i === Math.max(0, tracks.findIndex(track => track.selected))} viewport={viewport} plotWidth={plotWidth} edgeDrag={edgeDrag} onTrackSelect={onTrackSelect}
+            {tracks.map((t, i) => <TrackRows key={t.id ?? i} track={t} trackIndex={i} focusable={i === Math.max(0, tracks.findIndex(track => (track.selectionState ?? (track.selected ? "selected" : "none")) === "selected"))} viewport={viewport} plotWidth={plotWidth} edgeDrag={edgeDrag} onTrackSelect={onTrackSelect}
               onExpandedChange={onTrackExpandedChange} onAggregateKeyframeSelect={onAggregateKeyframeSelect}
               onKeyframeSelect={(target, additive) => { revealTime(target.timeMs); onKeyframeSelect?.(target, additive); }} onKeyframeMove={onKeyframeMove} onKeyframeDelete={onKeyframeDelete}
               onGestureStart={onGestureStart} onGestureEnd={onGestureEnd}

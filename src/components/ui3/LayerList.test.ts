@@ -1,8 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
-import { layerDomFocusSource, layerNavigationResult, layerRowTabIndex, layerSelectionRevealSignature, nextLayerSelection, normalizeLayerDragRoots, visibleLayerRows, type LayerNode } from "./LayerList";
+import { LayerList, layerDomFocusSource, layerNavigationResult, layerRowTabIndex, layerSelectionRevealSignature, nextLayerSelection, normalizeLayerDragRoots, visibleLayerRows, type LayerNode } from "./LayerList";
 import { LayerTypeIcon } from "./LayerTypeIcon";
+import { rowSelectionHighlightClassName } from "./RowSelectionState";
 
 const tree: LayerNode[] = [
   { id: "frame", name: "Frame", type: "frame", children: [
@@ -14,6 +15,25 @@ const tree: LayerNode[] = [
 ];
 
 describe("LayerList drag root normalization", () => {
+  it("shares emphasized, descendant, and neutral hover row-state rules", () => {
+    expect(rowSelectionHighlightClassName("selected")).toContain("bg-c-bg-selected");
+    expect(rowSelectionHighlightClassName("selected")).not.toContain("bg-c-bg-hover");
+    expect(rowSelectionHighlightClassName("descendant")).toContain("bg-c-bg-selected/50");
+    expect(rowSelectionHighlightClassName("descendant")).toContain("group-hover/selection-row:bg-c-bg-selected");
+    expect(rowSelectionHighlightClassName("none")).toContain("group-hover/selection-row:bg-c-bg-hover");
+  });
+
+  it("projects a selected parent as emphasized and its children as de-emphasized", () => {
+    const html = renderToStaticMarkup(createElement(LayerList, {
+      layers: tree,
+      selectedIds: ["frame"],
+      expandedIds: ["frame"],
+    }));
+    expect(html).toContain('aria-selected="true" data-composa-row-state="selected"');
+    expect(html.match(/data-composa-row-state="descendant"/g)).toHaveLength(2);
+    expect(html).toContain("bg-c-bg-selected/50 group-hover/selection-row:bg-c-bg-selected");
+  });
+
   it.each(["horizontal", "vertical", "wrap"] as const)("uses one canonical auto-layout-frame glyph while retaining %s mode semantics", autoLayoutMode => {
     const html = renderToStaticMarkup(createElement(LayerTypeIcon, { type: "frame", autoLayoutMode }));
     expect(html).toContain('data-icon-semantic="auto-layout-frame"');
