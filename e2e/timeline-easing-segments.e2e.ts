@@ -4,6 +4,8 @@ test("easing segments select and double-click quick-switch presets", async ({ pa
   await page.goto("/?view=issue-72-easing-segments");
 
   const segment = page.locator('[data-easing-segment="light-motion:opacity:linear"]');
+  const lane = page.locator('[data-timeline-property-lane="light-motion:opacity"]');
+  await expect(lane.locator("[data-keyframe-id]")).toHaveCount(6);
   await expect(segment).toHaveAttribute("data-easing-preset", "linear");
   await segment.click();
   await expect(segment).toHaveAttribute("aria-pressed", "true");
@@ -13,6 +15,7 @@ test("easing segments select and double-click quick-switch presets", async ({ pa
   await expect(menu).toBeVisible();
   await menu.getByRole("menuitemradio", { name: "Ease out" }).click();
   await expect(segment).toHaveAttribute("data-easing-preset", "ease-out");
+  await expect(lane.locator("[data-keyframe-id]")).toHaveCount(6);
   await expect(menu).toBeHidden();
 
   await segment.focus();

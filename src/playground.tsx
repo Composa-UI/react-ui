@@ -275,6 +275,10 @@ function Issue72EasingFixture({ mode }: { mode: "light" | "dark" }) {
         tracks={tracks}
         onEasingSegmentSelect={target => setKeyframes(value => value.map(keyframe => ({ ...keyframe, easingSelected: keyframe.id === target.keyframeId })))}
         onEasingPresetChange={(target, easing) => setKeyframes(value => value.map(keyframe => keyframe.id === target.keyframeId ? { ...keyframe, easing } : keyframe))}
+        onPropertyAddKeyframe={(_trackId, _propertyId, timeMs) => setKeyframes(value => [
+          ...value.filter(keyframe => keyframe.timeMs !== timeMs),
+          { id: `added-${timeMs}`, timeMs, easing: "linear" as const },
+        ].sort((left, right) => left.timeMs - right.timeMs))}
       />
     </section>
   );

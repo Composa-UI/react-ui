@@ -584,6 +584,7 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
       style={{ height }}
       data-timeline-property-lane={`${trackId}:${propertyId}`}
       onClick={event => {
+        if (!(event.target instanceof Node) || !event.currentTarget.contains(event.target)) return;
         if (!onAdd || (event.target as Element).closest?.("[data-keyframe-id],[data-easing-segment]")) return;
         const rect = event.currentTarget.getBoundingClientRect();
         onAdd(timelineTimeAtClientX(event.clientX, rect.left, rect.width, viewport));
