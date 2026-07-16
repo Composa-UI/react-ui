@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { shouldActivateTimelineTrackKey, shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, timelineTimeAtClientX, timelineTrackExpansionForKey, timelineTrackNavigationIndex, Timeline, type Track } from "./Timeline";
+import { shouldActivateTimelineTrackKey, shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, timelineDurationBarProjection, timelineTimeAtClientX, timelineTrackExpansionForKey, timelineTrackNavigationIndex, Timeline, type Track } from "./Timeline";
 
 const numericTrack: Track = { id: "hero", name: "Hero", type: "frame", props: [
   { id: "opacity", name: "Opacity", keyframes: [500, 900] },
@@ -89,6 +89,36 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain('role="option" aria-selected="false" tabindex="-1"');
   });
 
+  it("exposes stable parent duration semantics and selected/neutral visual states", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={6_000} viewport={{ startMs: 1_000, endMs: 5_000 }} tracks={[
+      { id: "selected", name: "Selected layer", type: "frame", bar: [1_500, 4_000], selectionState: "selected", props: [] },
+      { id: "neutral", name: "Neutral layer", type: "text", bar: [2_000, 4_500], props: [] },
+    ]} />);
+    expect(html).toContain('role="img" aria-label="Selected layer duration 1500ms to 4000ms"');
+    expect(html).toContain('data-timeline-duration-bar="selected"');
+    expect(html).toContain('data-duration-start-ms="1500"');
+    expect(html).toContain('data-duration-end-ms="4000"');
+    expect(html).toContain('data-duration-bar-state="selected"');
+    expect(html).toContain("border-c-border-selected-strong bg-c-bg-brand");
+    expect(html).toContain('data-duration-bar-state="neutral"');
+    expect(html).toContain("border-c-border-strong bg-c-bg-secondary");
+  });
+
+  it("clips parent duration bars to the viewport and omits fully hidden or invalid ranges", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={8_000} viewport={{ startMs: 2_000, endMs: 6_000 }} tracks={[
+      { id: "clipped-start", name: "Clipped start", type: "frame", bar: [500, 3_000], props: [] },
+      { id: "clipped-end", name: "Clipped end", type: "frame", bar: [5_000, 7_500], props: [] },
+      { id: "hidden", name: "Hidden", type: "frame", bar: [500, 1_500], props: [] },
+      { id: "invalid", name: "Invalid", type: "frame", bar: [4_000, 4_000], props: [] },
+    ]} />);
+    expect(html).toContain('data-timeline-duration-bar="clipped-start"');
+    expect(html).toContain('data-visible-start-ms="2000" data-visible-end-ms="3000" data-clipped-start="true" data-clipped-end="false"');
+    expect(html).toContain('data-timeline-duration-bar="clipped-end"');
+    expect(html).toContain('data-visible-start-ms="5000" data-visible-end-ms="6000" data-clipped-start="false" data-clipped-end="true"');
+    expect(html).not.toContain('data-timeline-duration-bar="hidden"');
+    expect(html).not.toContain('data-timeline-duration-bar="invalid"');
+  });
+
   it("does not let a nested disclosure key activate its selectable row", () => {
     expect(shouldActivateTimelineTrackKey("Enter", false)).toBe(false);
     expect(shouldActivateTimelineTrackKey(" ", false)).toBe(false);
@@ -152,6 +182,29 @@ describe("Timeline empty-lane time mapping", () => {
     expect(timelineTimeAtClientX(100, 100, 400, viewport)).toBe(2_000);
     expect(timelineTimeAtClientX(300, 100, 400, viewport)).toBe(4_000);
     expect(timelineTimeAtClientX(900, 100, 400, viewport)).toBe(6_000);
+  });
+});
+
+describe("Timeline parent duration projection", () => {
+  it("preserves authored bounds while projecting visible geometry", () => {
+    expect(timelineDurationBarProjection([500, 7_000], { startMs: 2_000, endMs: 6_000 })).toEqual({
+      authoredStartMs: 500,
+      authoredEndMs: 7_000,
+      visibleStartMs: 2_000,
+      visibleEndMs: 6_000,
+      clippedStart: true,
+      clippedEnd: true,
+      leftPercent: 0,
+      widthPercent: 100,
+    });
+  });
+
+  it("returns no presentation for offscreen, reversed, or zero-length ranges", () => {
+    const viewport = { startMs: 2_000, endMs: 6_000 };
+    expect(timelineDurationBarProjection([0, 1_000], viewport)).toBeNull();
+    expect(timelineDurationBarProjection([7_000, 8_000], viewport)).toBeNull();
+    expect(timelineDurationBarProjection([4_000, 4_000], viewport)).toBeNull();
+    expect(timelineDurationBarProjection([5_000, 4_000], viewport)).toBeNull();
   });
 });
 

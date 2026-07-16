@@ -217,6 +217,39 @@ export function timelineTimeAtClientX(clientX: number, left: number, width: numb
 const percent = (timeMs: number, viewport: TimelineViewport) => `${timeToX(timeMs, viewport, 100)}%`;
 const percentWidth = (startMs: number, endMs: number, viewport: TimelineViewport) => `${timeToX(endMs, viewport, 100) - timeToX(startMs, viewport, 100)}%`;
 
+export interface TimelineDurationBarProjection {
+  authoredStartMs: number;
+  authoredEndMs: number;
+  visibleStartMs: number;
+  visibleEndMs: number;
+  clippedStart: boolean;
+  clippedEnd: boolean;
+  leftPercent: number;
+  widthPercent: number;
+}
+
+/** Projects an authored parent-layer duration into the visible timeline viewport. */
+export function timelineDurationBarProjection(
+  range: readonly [number, number],
+  viewport: TimelineViewport,
+): TimelineDurationBarProjection | null {
+  const [authoredStartMs, authoredEndMs] = range;
+  if (![authoredStartMs, authoredEndMs].every(Number.isFinite) || authoredEndMs <= authoredStartMs) return null;
+  const visibleStartMs = Math.max(authoredStartMs, viewport.startMs);
+  const visibleEndMs = Math.min(authoredEndMs, viewport.endMs);
+  if (visibleEndMs <= visibleStartMs) return null;
+  return {
+    authoredStartMs,
+    authoredEndMs,
+    visibleStartMs,
+    visibleEndMs,
+    clippedStart: visibleStartMs !== authoredStartMs,
+    clippedEnd: visibleEndMs !== authoredEndMs,
+    leftPercent: timeToX(visibleStartMs, viewport, 100),
+    widthPercent: timeToX(visibleEndMs, viewport, 100) - timeToX(visibleStartMs, viewport, 100),
+  };
+}
+
 function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag, onSelect, onMove, onDelete, onAdd, onGestureStart, onGestureEnd }: {
   prop: PropTrack; trackId: string; propertyId: string; height: number;
   viewport: TimelineViewport; plotWidth: number;
@@ -344,6 +377,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, edgeDrag
   const depth = Math.max(0, track.depth ?? 0);
   const expanded = track.expanded !== false;
   const selectionState = track.selectionState ?? (track.selected ? "selected" : "none");
+  const durationBar = track.bar ? timelineDurationBarProjection(track.bar, viewport) : null;
   const aggregateKeys = onAggregateKeyframeSelect ? collectAggregateKeyframes(track.props.flatMap((prop, propertyIndex) => {
     const propertyId = prop.id ?? `property-${propertyIndex}`;
     return prop.keyframes.map((keyframe, keyframeIndex) => ({
@@ -399,14 +433,28 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, edgeDrag
           </div>
         </div>
         <div className="flex-1 relative overflow-hidden" style={{ height: ROW_LAYER }}>
-          {track.bar && (
-            <div
-              className="absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] bg-c-bg-secondary"
-              style={{ left: percent(track.bar[0], viewport), width: percentWidth(track.bar[0], track.bar[1], viewport) }}
-            >
-              <span className="absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
-              <span className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
-            </div>
+          {durationBar && (
+            <span
+              role="img"
+              aria-label={`${track.name} duration ${durationBar.authoredStartMs}ms to ${durationBar.authoredEndMs}ms`}
+              data-timeline-duration-bar={trackId}
+              data-duration-start-ms={durationBar.authoredStartMs}
+              data-duration-end-ms={durationBar.authoredEndMs}
+              data-visible-start-ms={durationBar.visibleStartMs}
+              data-visible-end-ms={durationBar.visibleEndMs}
+              data-clipped-start={durationBar.clippedStart}
+              data-clipped-end={durationBar.clippedEnd}
+              data-duration-bar-state={selectionState === "selected" ? "selected" : "neutral"}
+              className={clsx(
+                "pointer-events-none absolute top-1/2 h-[12px] -translate-y-1/2 border",
+                durationBar.clippedStart ? "rounded-l-none border-l-0" : "rounded-l-[4px]",
+                durationBar.clippedEnd ? "rounded-r-none border-r-0" : "rounded-r-[4px]",
+                selectionState === "selected"
+                  ? "border-c-border-selected-strong bg-c-bg-brand"
+                  : "border-c-border-strong bg-c-bg-secondary",
+              )}
+              style={{ left: `${durationBar.leftPercent}%`, width: `${durationBar.widthPercent}%` }}
+            />
           )}
           {aggregateKeys.map(aggregate => {
             const status = aggregate.complete ? "complete" : "partial";
