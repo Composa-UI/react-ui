@@ -1,12 +1,13 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { clsx } from "clsx";
-import { SlidersHorizontal, Plus, Trash2, MonitorPlay, Clock, ArrowRight, ArrowDown, Type, SquareDashedMousePointer, GripVertical } from "lucide-react";
+import { Plus, Trash2, MonitorPlay, Clock, ArrowRight, ArrowDown, Type, SquareDashedMousePointer, GripVertical } from "lucide-react";
 import { PanelSection, PanelActionBtn, ScrollArea } from "./Panel";
 import { Dropdown } from "./Dropdown";
 import { ComboInput, NumericInput } from "./Input";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { Button } from "./Button";
 import { SegmentedControl } from "./SegmentedControl";
+import { iconForSemantic } from "./IconSemantics";
 
 // ─── Animate panel ──────────────────────────────────────────────────────────────
 // The "Animate" tab body. Two always-present sections (Slide transition · Object
@@ -16,6 +17,7 @@ import { SegmentedControl } from "./SegmentedControl";
 // it grey) in styles/accents.css to reskin.
 
 const FONT = "font-[family-name:var(--composa-font-family)]";
+const SettingsIcon = iconForSemantic("settings");
 
 type AnimKind = "In" | "Out" | "Action";
 
@@ -149,7 +151,7 @@ function CompTransitionSection({ value, callbacks, contextKey }: { value?: CompT
   const setStyle = (style: CompTransitionStyle) => { update({ style }); callbacks?.onStyleChange?.(style); };
   const directional = rendered.style === "push" || rendered.style === "slide" || rendered.style === "wipe";
   if (rendered.style === "none" && !open) return (
-    <PanelSection title="Comp transition" rightActions={<PanelActionBtn icon={<SlidersHorizontal size={16} strokeWidth={1.5} />} label="Comp transition settings" />}>
+    <PanelSection title="Comp transition" rightActions={<PanelActionBtn icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />} label="Comp transition settings" />}>
       <div className="px-[16px] pt-[3px] pb-[8px]">
         <button onClick={() => setOpen(true)} className="h-[32px] w-full rounded-c-md border border-c-border bg-c-bg flex items-center gap-[8px] px-[8px] hover:bg-c-bg-hover">
           <MonitorPlay size={16} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" />
@@ -159,7 +161,7 @@ function CompTransitionSection({ value, callbacks, contextKey }: { value?: CompT
     </PanelSection>
   );
   return (
-    <PanelSection title="Comp transition" rightActions={<PanelActionBtn icon={<SlidersHorizontal size={16} strokeWidth={1.5} />} label="Comp transition settings" />}>
+    <PanelSection title="Comp transition" rightActions={<PanelActionBtn icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />} label="Comp transition settings" />}>
       <div className="px-[16px] pt-[3px] pb-[8px]">
         <AnimationCard
           icon={<MonitorPlay size={16} strokeWidth={1.5} />}
@@ -214,7 +216,7 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
           <PopoverMenu align="right" trigger={<PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add animation" disabled={addablePhases.length === 0} />}>
             {addMenu}
           </PopoverMenu>
-          <PanelActionBtn icon={<SlidersHorizontal size={16} strokeWidth={1.5} />} label="Object animation settings" />
+          <PanelActionBtn icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />} label="Object animation settings" />
         </>
       }
     >

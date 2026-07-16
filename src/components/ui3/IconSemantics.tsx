@@ -6,6 +6,7 @@ import {
   Image as ImageIcon,
   Minus,
   Scan,
+  Settings2,
   Shrink,
   Square,
   SquareDashed,
@@ -42,7 +43,8 @@ export type ComposaIconSemantic =
   | "text-align-center"
   | "text-align-bottom"
   | "resize-to-fit"
-  | "absolute-position";
+  | "absolute-position"
+  | "settings";
 
 export const composaIconSemantics = {
   frame: Frame,
@@ -64,6 +66,7 @@ export const composaIconSemantics = {
   "text-align-bottom": ArrowDownToLine,
   "resize-to-fit": Shrink,
   "absolute-position": Scan,
+  settings: Settings2,
 } as const satisfies Record<ComposaIconSemantic, LucideIcon>;
 
 export function iconForSemantic(semantic: ComposaIconSemantic): LucideIcon {

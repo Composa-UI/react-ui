@@ -8,9 +8,9 @@ import {
   AlignHorizontalJustifyCenter,
   Maximize2, Minimize2, Plus, Eye, Square,
   Rows2, Columns, WrapText,
-  Settings2, BookOpen, Diamond,
+  BookOpen, Diamond,
   Crosshair, Grid3x3, ExternalLink, Unlink,
-  Minus, EyeOff, SlidersHorizontal, AlignJustify, Maximize, ChevronDown,
+  Minus, EyeOff, AlignJustify, Maximize, ChevronDown,
   MoveHorizontal, MoveVertical, Play, Pause,
   Image as ImageIcon, Video, Clock,
 } from "lucide-react";
@@ -37,6 +37,7 @@ import { EffectDetailsDialog, type EffectDetailsValue } from "./EffectDetailsDia
 import { AutoLayoutSettingsDialog } from "./AutoLayoutSettingsDialog";
 import { EasingInspectorSection, type EasingInspectorSectionProps, type EasingInspectorValue } from "./EasingInspectorSection";
 import type { EasingApplyScope } from "./easing";
+import { iconForSemantic } from "./IconSemantics";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -105,6 +106,7 @@ const BLEND_GROUPS: string[][] = [
 const FONT = "font-[family-name:var(--composa-font-family)]";
 const BODY = clsx(FONT, "text-[11px] font-[450] leading-[16px] tracking-[0.055px] text-c-text");
 const SUBLABEL = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary");
+const SettingsIcon = iconForSemantic("settings");
 
 // Two independently-labeled fields side by side. Used by the project/slide/clip
 // panels (not the element PropertyPanel) where two related controls read better as
@@ -623,7 +625,7 @@ function LayoutAutoSection({
       value={settingsValue}
       disabled={settingsDisabled}
       trigger={<PanelActionBtn
-        icon={<Settings2 size={16} strokeWidth={1.5} />}
+        icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />}
         label="Auto-layout settings"
         disabled={settingsDisabled}
         onClick={settingsDisabled ? undefined : () => { setSettingsOpen(true); onAutoLayoutSettingsRequest?.(); }}
@@ -897,7 +899,7 @@ function TypographySection({ value, onChange, stylesAvailable }: { value?: Eleme
         label="Alignment"
         left={<IconButtonRow buttons={textAlignBtns} value={settings.align} onChange={align => update({ align: align as ElementTypographySettings["align"] })} fill />}
         right={<IconButtonRow buttons={vAlignBtns} value={settings.verticalAlign} onChange={verticalAlign => update({ verticalAlign: verticalAlign as ElementTypographySettings["verticalAlign"] })} fill />}
-        rightAction={<PanelActionBtn icon={<Settings2 size={16} strokeWidth={1.5} />} label="Type settings" />}
+        rightAction={<PanelActionBtn icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />} label="Type settings" />}
       />
     </PanelSection>
   );
@@ -1037,7 +1039,7 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
               <div className={subLabel}>Weight</div>
               <NumericInput iconLead={<AlignJustify size={16} strokeWidth={1.5} />} value={stroke.weight} onChange={weight => update(stroke.id, { weight })} min={0} />
             </div>
-            <PanelActionBtn icon={<SlidersHorizontal size={16} strokeWidth={1.5} />} label="Stroke settings" />
+            <PanelActionBtn icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />} label="Stroke settings" />
             <PanelActionBtn icon={<Square size={16} strokeWidth={1.5} />} label="Individual sides" />
           </div>
         </div>
@@ -1530,7 +1532,7 @@ function TemplateStyleSection({ name = "Radicle", fonts = "Whyte Inktrap, Inter"
     <PanelSection
       title="Slide template"
       rightActions={
-        <PanelActionBtn icon={<Settings2 size={16} strokeWidth={1.5} />} label="Template settings" />
+        <PanelActionBtn icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />} label="Template settings" />
       }
     >
       <div className="px-[16px] pb-[8px]">
