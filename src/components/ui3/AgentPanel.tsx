@@ -28,6 +28,7 @@ export interface AgentContextReference {
   label: string;
   kind: AgentContextKind;
   count?: number;
+  selectable?: boolean;
 }
 
 export interface AgentConversationSummary {
@@ -136,6 +137,18 @@ export function agentThreadIsNearBottom(
   threshold = AUTO_SCROLL_THRESHOLD_PX,
 ) {
   return metrics.scrollHeight - metrics.clientHeight - metrics.scrollTop <= threshold;
+}
+
+export function agentPanelEscapeIsEditableTarget(target: EventTarget | null) {
+  const element = target as (EventTarget & {
+    tagName?: string;
+    isContentEditable?: boolean;
+    getAttribute?: (name: string) => string | null;
+  }) | null;
+  const tagName = element?.tagName?.toLowerCase();
+  if (tagName === "input" || tagName === "textarea" || tagName === "select" || element?.isContentEditable) return true;
+  const role = element?.getAttribute?.("role");
+  return role === "textbox" || role === "searchbox" || role === "combobox" || role === "spinbutton";
 }
 
 export function sizeAgentComposer(
@@ -317,22 +330,41 @@ function ContextChip({
   onDismiss?: () => void;
 }) {
   const label = context.count && context.count > 1 ? `${context.count} elements` : context.label;
+  const selectable = context.selectable !== false && !!onSelect;
+  const content = (
+    <>
+      <span className="size-[14px] shrink-0 flex items-center justify-center text-c-icon"><ContextIcon kind={context.kind} /></span>
+      <span className="truncate">{label}</span>
+    </>
+  );
   return (
     <span className="inline-flex max-w-full items-center rounded-c-md bg-c-bg-secondary text-c-text ring-1 ring-inset ring-c-border-translucent">
-      <button
-        type="button"
-        onClick={onSelect}
-        disabled={!onSelect}
-        aria-label={onSelect ? `Select context ${label}` : undefined}
-        className={clsx(
-          FONT,
-          "h-[24px] min-w-0 flex items-center gap-[4px] pl-[6px] pr-[7px] text-[9px] leading-[14px]",
-          onSelect && "hover:bg-c-bg-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-c-focus-ring",
-        )}
-      >
-        <span className="size-[14px] shrink-0 flex items-center justify-center text-c-icon"><ContextIcon kind={context.kind} /></span>
-        <span className="truncate">{label}</span>
-      </button>
+      {selectable ? (
+        <button
+          type="button"
+          onClick={onSelect}
+          aria-label={`Select context ${label}`}
+          className={clsx(
+            FONT,
+            "h-[24px] min-w-0 flex items-center gap-[4px] pl-[6px] pr-[7px] text-[9px] leading-[14px]",
+            "hover:bg-c-bg-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-c-focus-ring",
+          )}
+        >
+          {content}
+        </button>
+      ) : (
+        <span
+          role={context.selectable === false ? "note" : undefined}
+          aria-label={context.selectable === false ? `Context unavailable ${label}` : undefined}
+          className={clsx(
+            FONT,
+            "h-[24px] min-w-0 flex items-center gap-[4px] pl-[6px] pr-[7px] text-[9px] leading-[14px]",
+            context.selectable === false && "text-c-text-secondary",
+          )}
+        >
+          {content}
+        </span>
+      )}
       {dismissible && (
         <button
           type="button"
@@ -379,7 +411,10 @@ function ConversationCard({
 function UserMessage({ message, onSelectContext }: { message: Extract<AgentPanelMessage, { type: "user" }>; onSelectContext?: AgentPanelProps["onSelectContext"] }) {
   return (
     <div className="flex flex-col items-end gap-[4px]">
-      {message.context && <ContextChip context={message.context} onSelect={onSelectContext ? () => onSelectContext(message.context!) : undefined} />}
+      {message.context && <ContextChip
+        context={message.context}
+        onSelect={message.context.selectable !== false && onSelectContext ? () => onSelectContext(message.context!) : undefined}
+      />}
       <div className={clsx(FONT, "max-w-[196px] rounded-c-lg bg-c-bg-selected px-[8px] py-[6px] text-[11px] leading-[16px] text-c-text whitespace-pre-wrap break-words")}>
         {message.content}
       </div>
@@ -556,6 +591,7 @@ export function AgentPanel({
   }, [activeConversation?.id, messageSignature]);
 
   const handleComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.nativeEvent?.isComposing || event.keyCode === 229) return;
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       if (sending) onStop?.();
@@ -575,7 +611,22 @@ export function AgentPanel({
 
   return (
     <Panel className={clsx("h-full overflow-hidden", className)}>
-      <div ref={panelRef} tabIndex={-1} aria-label="Agent panel" className="h-full min-h-0 flex flex-col outline-none">
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        aria-label="Agent panel"
+        onKeyDown={event => {
+          if (
+            event.key !== "Escape" ||
+            event.nativeEvent?.isComposing ||
+            event.keyCode === 229 ||
+            agentPanelEscapeIsEditableTarget(event.target)
+          ) return;
+          event.preventDefault();
+          onEscape?.();
+        }}
+        className="h-full min-h-0 flex flex-col outline-none"
+      >
         {activeConversation ? (
           <>
             <header className="h-[52px] shrink-0 px-[8px] border-b border-c-border flex items-center gap-[6px]">
@@ -621,7 +672,12 @@ export function AgentPanel({
               {storageNotice && <div role="status" className={clsx(FONT, "mb-[6px] text-[9px] leading-[14px] text-c-text-warning")}>{storageNotice}</div>}
               {context && (
                 <div className="mb-[6px]">
-                  <ContextChip context={context} dismissible={!!onDismissContext} onSelect={onSelectContext ? () => onSelectContext(context) : undefined} onDismiss={onDismissContext} />
+                  <ContextChip
+                    context={context}
+                    dismissible={!!onDismissContext}
+                    onSelect={context.selectable !== false && onSelectContext ? () => onSelectContext(context) : undefined}
+                    onDismiss={onDismissContext}
+                  />
                 </div>
               )}
               <div className="rounded-c-lg bg-c-bg-secondary ring-1 ring-inset ring-c-border-translucent focus-within:ring-c-focus-ring">
