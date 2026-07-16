@@ -20,6 +20,7 @@ import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./c
 import { AnchoredInspectorOverlay } from "./components/ui3/AnchoredInspectorOverlay";
 import { InspectorDialog } from "./components/ui3/InspectorDialog";
 import { Menu, MenuRow, PopoverMenu } from "./components/ui3/Menu";
+import { AgentPanel, type AgentConversation, type AgentConversationSummary } from "./components/ui3/AgentPanel";
 import thumb0 from "./imports/SlidesTemplate/9bf3285fa6c14222923aa8fcd4bf31f6e40807d9.png";
 import thumb1 from "./imports/SlidesTemplate/201951eb24dd285dd0794f4e790b8175c012bf20.png";
 import thumb2 from "./imports/SlidesTemplate/4f36d4cb9f77c2e380641dd47deb24943efa0b8a.png";
@@ -241,6 +242,52 @@ function Issue72DurationBarFixture({ mode }: { mode: "light" | "dark" }) {
   );
 }
 
+const ISSUE_75_CONVERSATIONS: AgentConversationSummary[] = [
+  { id: "detail", title: "Detail property panel", visibility: "private", updatedAt: Date.now() - 24 * 60 * 60 * 1000, preview: "Review the property hierarchy.", timeGroup: "yesterday" },
+  { id: "motion", title: "Develop video motion", visibility: "private", updatedAt: Date.now() - 12 * 24 * 60 * 60 * 1000, preview: "Explain the current animation.", timeGroup: "earlier" },
+];
+
+const ISSUE_75_THREAD: AgentConversation = {
+  id: "detail",
+  title: "Detail property panel",
+  visibility: "private",
+  messages: [
+    { id: "user", type: "user", content: "Review this selection.", context: { id: "hero", label: "Hero section", kind: "frame" } },
+    { id: "work", type: "work", content: "Inspected 3 text layers and one image.", status: "complete", durationMs: 4_000 },
+    { id: "agent", type: "agent", content: "The hierarchy is sound. The image can remain inside the auto-layout frame.", status: "complete" },
+    { id: "action", type: "action", title: "Media result", description: "Action buttons appear only when a host supplies real callbacks.", status: "ready" },
+    { id: "error", type: "error", content: "No provider is connected in this presentation fixture.", severity: "warning" },
+  ],
+};
+
+function Issue75AgentPanelFixture({ mode, thread }: { mode: "light" | "dark"; thread: boolean }) {
+  const [search, setSearch] = useState("");
+  const [composer, setComposer] = useState("");
+  const [active, setActive] = useState<AgentConversation | null>(thread ? ISSUE_75_THREAD : null);
+  const [context, setContext] = useState<{ id: string; label: string; kind: "frame" } | null>({ id: "hero", label: "Hero section", kind: "frame" });
+  const filtered = ISSUE_75_CONVERSATIONS.filter(item => `${item.title} ${item.preview}`.toLowerCase().includes(search.toLowerCase()));
+  return (
+    <section data-composa-mode={mode} className="h-[620px] flex justify-end overflow-hidden rounded-c-lg bg-c-bg-secondary shadow-c-200">
+      <AgentPanel
+        conversations={filtered}
+        activeConversation={active}
+        search={search}
+        composerValue={composer}
+        context={active ? context : null}
+        onSearchChange={setSearch}
+        onNewConversation={() => setActive({ id: "new", title: "New chat", visibility: "private", messages: [] })}
+        onOpenConversation={() => setActive(ISSUE_75_THREAD)}
+        onBack={() => setActive(null)}
+        onComposerChange={setComposer}
+        onSubmit={() => setComposer("")}
+        onEscape={() => composer ? setComposer("") : setActive(null)}
+        onDismissContext={() => setContext(null)}
+        onSelectContext={() => undefined}
+      />
+    </section>
+  );
+}
+
 export default function Playground() {
   // ?view=slides = componentized SlidesPanel; ?view=slides-raw = the raw Figma export
   // (side-by-side fidelity check); default = property-panel fidelity set.
@@ -366,6 +413,15 @@ export default function Playground() {
       <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px]">
         <Issue72DurationBarFixture mode="light" />
         <Issue72DurationBarFixture mode="dark" />
+      </main>
+    );
+  }
+
+  if (view === "issue-75-agent-panel") {
+    return (
+      <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px]">
+        <Issue75AgentPanelFixture mode="light" thread={false} />
+        <Issue75AgentPanelFixture mode="dark" thread />
       </main>
     );
   }

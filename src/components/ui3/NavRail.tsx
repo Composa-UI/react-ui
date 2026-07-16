@@ -1,15 +1,11 @@
 import { useState, type ReactNode } from "react";
 import { clsx } from "clsx";
-import { LayoutGrid, Sparkles, Image as ImageIcon, Layers } from "lucide-react";
+import { LayoutGrid, Image as ImageIcon, Layers } from "lucide-react";
 
 // ─── Navigation rail ──────────────────────────────────────────────────────────
 // The editor's left rail — a few primary destinations, each an icon button with a
 // LABEL BELOW (label style matches the property-panel sub-label: 9px secondary).
 // The active destination uses the accent (text-c-text-brand + tinted button).
-// NOTE: app-shell.md specs an icon-only 40px rail with hover tooltips + 2 items
-// (Composition, Assets); this follows the newer direct instruction (3 items +
-// labels: Composition · Agent · Assets).
-
 const FONT = "font-[family-name:var(--composa-font-family)]";
 const S = 18;
 
@@ -21,7 +17,6 @@ export interface NavItem {
 
 const DEFAULT_ITEMS: NavItem[] = [
   { id: "composition", icon: <LayoutGrid size={S} strokeWidth={1.5} />, label: "Comp" },
-  { id: "agent",       icon: <Sparkles size={S} strokeWidth={1.5} />,   label: "Agent" },
   { id: "assets",      icon: <ImageIcon size={S} strokeWidth={1.5} />,  label: "Assets" },
 ];
 
