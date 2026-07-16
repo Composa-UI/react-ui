@@ -36,7 +36,9 @@ trapping for existing non-modal Effects behavior.
 Use `?view=issue-77-anchored-overlay` in the playground for light/dark,
 clipped-panel, and viewport-edge verification.
 
-The component-level suite executes capture, virtual-anchor, portal, collision,
-focus, and dismissal event contracts through a Radix boundary mock. Final
-browser geometry (actual flip direction and tab-cycle behavior) remains an app
-E2E responsibility once consumers wire individual dialog bodies.
+The component-level suite verifies controlled props and callbacks through a
+Radix boundary mock. `npm run test:e2e` exercises the real Radix package in the
+playground and proves body-portal escape, viewport collision, modal tab cycling,
+Escape/outside dismissal with trigger focus return, nested-layer ownership, and
+the non-modal `InspectorDialog` compatibility path. App E2E remains responsible
+for each product dialog body's controlled values and engine round trip.

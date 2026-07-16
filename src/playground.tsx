@@ -1,4 +1,5 @@
 import { useState } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { PropertyPanel, type ClipSpeed, type ElementEffectSetting, type ElementFillSetting, type ElementLayoutGuideSetting, type ElementLayoutSettings, type ElementSelectionColorSetting, type ElementStrokeSetting, type ElementTypographySettings, type InspectorExportSetting, type ProjectFrameRate, type SlideBackgroundType, type SlideTransitionDirection, type SlideTransitionEasing, type SlideTransitionType } from "./components/ui3/PropertyPanel";
 import SlidesTemplate from "./imports/SlidesTemplate";
 import { SlidesPanel, type SlideData } from "./components/ui3/SlidesPanel";
@@ -17,6 +18,7 @@ import { SegmentedControl } from "./components/ui3/SegmentedControl";
 import { AlignmentControl, type AlignmentValue } from "./components/ui3/AlignmentControl";
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./components/ui3/LayerTypeIcon";
 import { AnchoredInspectorOverlay } from "./components/ui3/AnchoredInspectorOverlay";
+import { InspectorDialog } from "./components/ui3/InspectorDialog";
 import thumb0 from "./imports/SlidesTemplate/9bf3285fa6c14222923aa8fcd4bf31f6e40807d9.png";
 import thumb1 from "./imports/SlidesTemplate/201951eb24dd285dd0794f4e790b8175c012bf20.png";
 import thumb2 from "./imports/SlidesTemplate/4f36d4cb9f77c2e380641dd47deb24943efa0b8a.png";
@@ -146,19 +148,23 @@ function Issue70RowStateFixture({ mode }: { mode: "light" | "dark" }) {
   );
 }
 
-function Issue77AnchoredOverlayFixture({ mode }: { mode: "light" | "dark" }) {
+function Issue77AnchoredOverlayFixture({ mode, collisionProbe = false }: { mode: "light" | "dark"; collisionProbe?: boolean }) {
   const [open, setOpen] = useState(false);
+  const [nestedOpen, setNestedOpen] = useState(false);
+  const [compatibilityOpen, setCompatibilityOpen] = useState(false);
   return (
     <section data-composa-mode={mode}
       className="relative h-[360px] min-w-0 overflow-hidden rounded-c-lg bg-c-bg-secondary text-c-text shadow-c-200">
-      <div className="absolute inset-y-0 right-0 w-[240px] overflow-hidden border-l border-c-border bg-c-bg">
+      <div data-issue-77-clipped-inspector={mode} className="absolute inset-y-0 right-0 w-[240px] overflow-hidden border-l border-c-border bg-c-bg">
         <header className="h-[40px] flex items-center border-b border-c-border px-[16px] text-[11px] font-[550]">
           {mode === "dark" ? "Dark" : "Light"} clipped inspector
         </header>
-        <div className="h-full overflow-hidden p-[12px]">
+        <div className="h-full overflow-hidden p-[12px] grid content-start gap-[12px]">
           <div className="flex items-center justify-between gap-[8px]">
             <span className="text-[11px]">Stroke settings</span>
-            <AnchoredInspectorOverlay open={open} onClose={() => setOpen(false)} ariaLabel={`${mode} anchored inspector overlay`}
+            <AnchoredInspectorOverlay open={open} onClose={() => { setNestedOpen(false); setOpen(false); }} ariaLabel={`${mode} anchored inspector overlay`}
+              side={collisionProbe ? "right" : "left"}
+              blockOutsideDismiss={nestedOpen}
               trigger={<button type="button" aria-label={`Open ${mode} anchored overlay`} onClick={() => setOpen(true)}
                 className="h-[24px] rounded-c-sm bg-c-bg-secondary px-[8px] text-[11px] hover:bg-c-bg-hover">Open</button>}>
               <div className="flex h-[40px] items-center border-b border-c-border px-[12px] text-[11px] font-[550]">Anchored settings</div>
@@ -168,11 +174,33 @@ function Issue77AnchoredOverlayFixture({ mode }: { mode: "light" | "dark" }) {
                   <input autoFocus aria-label={`${mode} overlay name`} defaultValue="Inside"
                     className="h-[24px] rounded-c-sm bg-c-bg-secondary px-[8px] text-[11px] text-c-text outline-none focus:ring-1 focus:ring-c-border-selected" />
                 </label>
+                <button type="button" aria-label={`Open ${mode} nested picker`}
+                  onPointerDown={() => setNestedOpen(true)} onClick={() => setNestedOpen(true)}
+                  className="h-[24px] rounded-c-sm bg-c-bg-secondary px-[8px] text-[11px]">Nested picker</button>
+                <DialogPrimitive.Root open={nestedOpen} onOpenChange={setNestedOpen}>
+                  <DialogPrimitive.Portal>
+                    <DialogPrimitive.Content aria-label={`${mode} nested picker`} data-composa-mode={mode}
+                      className="fixed left-1/2 top-1/2 z-[80] grid w-[160px] -translate-x-1/2 -translate-y-1/2 gap-[8px] rounded-c-lg bg-c-bg p-[12px] text-c-text shadow-c-500 outline-none">
+                    <button type="button" aria-label={`${mode} nested choice`}
+                      className="h-[24px] rounded-c-sm bg-c-bg-selected px-[8px] text-[11px]">Choice</button>
+                    </DialogPrimitive.Content>
+                  </DialogPrimitive.Portal>
+                </DialogPrimitive.Root>
                 <button type="button" onClick={() => setOpen(false)}
                   className="h-[24px] rounded-c-sm bg-c-bg-selected px-[8px] text-[11px]">Done</button>
               </div>
             </AnchoredInspectorOverlay>
           </div>
+          <InspectorDialog open={compatibilityOpen} onClose={() => setCompatibilityOpen(false)}
+            ariaLabel={`${mode} inspector dialog compatibility`}
+            trigger={<button type="button" aria-label={`Open ${mode} inspector dialog compatibility`}
+              onClick={() => setCompatibilityOpen(true)}
+              className="h-[24px] w-full rounded-c-sm bg-c-bg-secondary px-[8px] text-[11px]">Compatibility dialog</button>}>
+            <div className="grid gap-[8px] p-[12px]">
+              <button type="button" aria-label={`${mode} compatibility action`}
+                className="h-[24px] rounded-c-sm bg-c-bg-selected px-[8px] text-[11px]">Action</button>
+            </div>
+          </InspectorDialog>
         </div>
       </div>
       <div className="absolute bottom-[12px] left-[12px] max-w-[180px] text-[9px] leading-[14px] text-c-text-secondary">
@@ -297,7 +325,7 @@ export default function Playground() {
     return (
       <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px]">
         <Issue77AnchoredOverlayFixture mode="light" />
-        <Issue77AnchoredOverlayFixture mode="dark" />
+        <Issue77AnchoredOverlayFixture mode="dark" collisionProbe />
       </main>
     );
   }
