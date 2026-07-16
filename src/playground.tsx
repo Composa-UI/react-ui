@@ -16,6 +16,7 @@ import { ComposaModeProvider } from "./components/ui3/useComposaMode";
 import { SegmentedControl } from "./components/ui3/SegmentedControl";
 import { AlignmentControl, type AlignmentValue } from "./components/ui3/AlignmentControl";
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./components/ui3/LayerTypeIcon";
+import { AnchoredInspectorOverlay } from "./components/ui3/AnchoredInspectorOverlay";
 import thumb0 from "./imports/SlidesTemplate/9bf3285fa6c14222923aa8fcd4bf31f6e40807d9.png";
 import thumb1 from "./imports/SlidesTemplate/201951eb24dd285dd0794f4e790b8175c012bf20.png";
 import thumb2 from "./imports/SlidesTemplate/4f36d4cb9f77c2e380641dd47deb24943efa0b8a.png";
@@ -145,6 +146,42 @@ function Issue70RowStateFixture({ mode }: { mode: "light" | "dark" }) {
   );
 }
 
+function Issue77AnchoredOverlayFixture({ mode }: { mode: "light" | "dark" }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section data-composa-mode={mode === "dark" ? "dark" : undefined}
+      className="relative h-[360px] min-w-0 overflow-hidden rounded-c-lg bg-c-bg-secondary text-c-text shadow-c-200">
+      <div className="absolute inset-y-0 right-0 w-[240px] overflow-hidden border-l border-c-border bg-c-bg">
+        <header className="h-[40px] flex items-center border-b border-c-border px-[16px] text-[11px] font-[550]">
+          {mode === "dark" ? "Dark" : "Light"} clipped inspector
+        </header>
+        <div className="h-full overflow-hidden p-[12px]">
+          <div className="flex items-center justify-between gap-[8px]">
+            <span className="text-[11px]">Stroke settings</span>
+            <AnchoredInspectorOverlay open={open} onClose={() => setOpen(false)} ariaLabel={`${mode} anchored inspector overlay`}
+              trigger={<button type="button" aria-label={`Open ${mode} anchored overlay`} onClick={() => setOpen(true)}
+                className="h-[24px] rounded-c-sm bg-c-bg-secondary px-[8px] text-[11px] hover:bg-c-bg-hover">Open</button>}>
+              <div className="flex h-[40px] items-center border-b border-c-border px-[12px] text-[11px] font-[550]">Anchored settings</div>
+              <div className="grid gap-[8px] p-[12px]">
+                <label className="grid gap-[4px] text-[9px] text-c-text-secondary">
+                  Name
+                  <input autoFocus aria-label={`${mode} overlay name`} defaultValue="Inside"
+                    className="h-[24px] rounded-c-sm bg-c-bg-secondary px-[8px] text-[11px] text-c-text outline-none focus:ring-1 focus:ring-c-border-selected" />
+                </label>
+                <button type="button" onClick={() => setOpen(false)}
+                  className="h-[24px] rounded-c-sm bg-c-bg-selected px-[8px] text-[11px]">Done</button>
+              </div>
+            </AnchoredInspectorOverlay>
+          </div>
+        </div>
+      </div>
+      <div className="absolute bottom-[12px] left-[12px] max-w-[180px] text-[9px] leading-[14px] text-c-text-secondary">
+        The inspector clips its own contents. The overlay portals outside it and flips or shifts inside the viewport.
+      </div>
+    </section>
+  );
+}
+
 export default function Playground() {
   // ?view=slides = componentized SlidesPanel; ?view=slides-raw = the raw Figma export
   // (side-by-side fidelity check); default = property-panel fidelity set.
@@ -252,6 +289,15 @@ export default function Playground() {
       <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px]">
         <Issue70RowStateFixture mode="light" />
         <Issue70RowStateFixture mode="dark" />
+      </main>
+    );
+  }
+
+  if (view === "issue-77-anchored-overlay") {
+    return (
+      <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px]">
+        <Issue77AnchoredOverlayFixture mode="light" />
+        <Issue77AnchoredOverlayFixture mode="dark" />
       </main>
     );
   }
