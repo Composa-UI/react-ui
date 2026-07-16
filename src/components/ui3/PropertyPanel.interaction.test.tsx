@@ -54,7 +54,7 @@ describe("DimensionSizingFields interactions", () => {
 });
 
 describe("Auto-layout settings interactions", () => {
-  it("opens one anchored dialog from either settings trigger and routes controlled patches", () => {
+  it("opens one anchored dialog from the section trigger and routes controlled patches", () => {
     let requests = 0;
     const patches: unknown[] = [];
     let renderer: ReturnType<typeof create>;
@@ -76,20 +76,17 @@ describe("Auto-layout settings interactions", () => {
       onAutoLayoutSettingsRequest={() => { requests += 1; }}
     />); });
     const triggers = renderer!.root.findAll(node => node.type === "button" && node.props["aria-label"] === "Auto-layout settings");
-    expect(triggers).toHaveLength(2);
+    expect(triggers).toHaveLength(1);
     act(() => triggers[0].props.onClick());
     let dialogs = renderer!.root.findAllByType(AutoLayoutSettingsDialog);
-    expect(dialogs.map(dialog => dialog.props.open)).toEqual([true, false]);
+    expect(dialogs.map(dialog => dialog.props.open)).toEqual([true]);
     act(() => dialogs[0].props.onChange({ strokeSizing: "included" }));
-    act(() => triggers[1].props.onClick());
-    dialogs = renderer!.root.findAllByType(AutoLayoutSettingsDialog);
-    expect(dialogs.map(dialog => dialog.props.open)).toEqual([false, true]);
-    expect(requests).toBe(2);
+    expect(requests).toBe(1);
     expect(patches).toEqual([{ strokeSizing: "included" }]);
     act(() => renderer!.unmount());
   });
 
-  it("disables both settings triggers for a non-authorable selection", () => {
+  it("disables the settings trigger for a non-authorable selection", () => {
     let renderer: ReturnType<typeof create>;
     act(() => { renderer = create(<PropertyPanel
       elementType="frame-auto"
@@ -105,7 +102,7 @@ describe("Auto-layout settings interactions", () => {
       }}
     />); });
     const triggers = renderer!.root.findAll(node => node.type === "button" && node.props["aria-label"] === "Auto-layout settings");
-    expect(triggers).toHaveLength(2);
+    expect(triggers).toHaveLength(1);
     expect(triggers.every(trigger => trigger.props.disabled)).toBe(true);
     act(() => renderer!.unmount());
   });

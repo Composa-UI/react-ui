@@ -236,7 +236,7 @@ export function SizingComboField({
     dataMode={mixed ? "mixed" : mode}
     ariaLabel={axisLabel}
     dropdownAriaLabel={`${axisLabel} sizing mode: ${mixed ? "Mixed" : modeLabel ?? "Fixed"}`}
-    triggerLabel={modeLabel}
+    idleLabel={modeLabel}
     iconLead={<span className={FONT}>{axis === "width" ? "W" : "H"}</span>}
     value={value}
     onChange={emitValue}
@@ -516,7 +516,7 @@ function LayoutAutoSection({
   settingsDisabled = false,
   onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onAutoLayoutSettingsRequest, sizing,
 }: LayoutAutoProps) {
-  const [settingsTrigger, setSettingsTrigger] = useState<"section" | "row" | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const controlled = flowMode !== undefined;
   const [flow, setFlow] = useState("v");
   const renderedFlow = flowMode === "horizontal" ? "h" : flowMode === "vertical" ? "v" : flowMode ?? flow;
@@ -587,62 +587,62 @@ function LayoutAutoSection({
     canvasStacking: canvasStackingMixed ? "mixed" : canvasStacking,
     baselineApplicable: settingsBaselineApplicable,
   } as const;
-  const settingsTriggerButton = (placement: "section" | "row") => (
+  const settingsTriggerButton = (
     <AutoLayoutSettingsDialog
-      open={settingsTrigger === placement}
+      open={settingsOpen}
       value={settingsValue}
       disabled={settingsDisabled}
       trigger={<PanelActionBtn
         icon={<Settings2 size={16} strokeWidth={1.5} />}
         label="Auto-layout settings"
         disabled={settingsDisabled}
-        onClick={settingsDisabled ? undefined : () => { setSettingsTrigger(placement); onAutoLayoutSettingsRequest?.(); }}
+        onClick={settingsDisabled ? undefined : () => { setSettingsOpen(true); onAutoLayoutSettingsRequest?.(); }}
       />}
       onChange={patch => onLayoutChange?.(patch)}
-      onClose={() => setSettingsTrigger(null)}
+      onClose={() => setSettingsOpen(false)}
     />
   );
 
   return (
-    <PanelSection title="Auto layout" rightActions={settingsTriggerButton("section")}>
-      {/* Flow + Gap are the canonical first row. Wrap intentionally exposes one
-          shared numeric gap; Auto remains unavailable while wrapping. */}
-      <div role="group" aria-label="Flow and gap" className="pl-[16px] pr-[16px] py-[8px]">
-        <div className="flex items-start gap-[8px]">
-          <div className="flex-[3] min-w-0">
-            <div className={subLabel}>Flow</div>
-            <SegmentedControl segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon, ariaLabel: b.label }))} value={renderedFlow} onChange={handleFlowChange} className="w-full" />
-          </div>
-          <div className="flex-[2] min-w-0">
-            <div className={subLabel}>Gap</div>
-            <NumericComboInput
-              dataMode={gapMode}
-              ariaLabel="Gap"
-              dropdownAriaLabel={`Gap sizing mode: ${gapMode === "auto" ? "Auto" : "Fixed"}`}
-              iconLead={gapIcon}
-              readOnlyLabel={gapMode === "auto" ? "Auto" : undefined}
-              value={gapControlled && typeof renderedGap === "number" ? renderedGap : undefined}
-              defaultValue={lastFixedGap}
-              onChange={emitGap}
-              min={0}
-              suffix="px"
-              menu={gapMenu}
-              className="w-full"
-            />
-          </div>
-          <div className="shrink-0 pt-[17px]">
-            {settingsTriggerButton("row")}
-          </div>
-        </div>
+    <PanelSection title="Auto layout" rightActions={settingsTriggerButton}>
+      <div role="group" aria-label="Flow" className="px-[16px] pt-[8px]">
+        <div className={subLabel}>Flow</div>
+        <SegmentedControl
+          segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon, ariaLabel: b.label }))}
+          value={renderedFlow}
+          onChange={handleFlowChange}
+          className="w-full"
+        />
       </div>
 
-      <PanelFieldRow
-        label="Alignment"
-        left={<AlignmentControl
-          value={renderedAlign as AlignmentValue}
-          onChange={value => { setAlign(value); onAlignChange?.(value); }}
-        />}
-      />
+      {/* Alignment and Gap are the paired authoring row. Wrap intentionally
+          exposes one shared numeric gap; Auto remains unavailable while wrapping. */}
+      <div role="group" aria-label="Alignment and gap" className="flex items-start gap-[8px] px-[16px] pt-[8px] pb-[4px]">
+        <div className="shrink-0">
+          <div className={subLabel}>Alignment</div>
+          <AlignmentControl
+            value={renderedAlign as AlignmentValue}
+            onChange={value => { setAlign(value); onAlignChange?.(value); }}
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className={subLabel}>Gap</div>
+          <NumericComboInput
+            dataMode={gapMode}
+            ariaLabel="Gap"
+            dropdownAriaLabel={`Gap sizing mode: ${gapMode === "auto" ? "Auto" : "Fixed"}`}
+            iconLead={gapIcon}
+            readOnlyLabel={gapMode === "auto" ? "Auto" : undefined}
+            value={gapControlled && typeof renderedGap === "number" ? renderedGap : undefined}
+            defaultValue={lastFixedGap}
+            onChange={emitGap}
+            min={0}
+            suffix="px"
+            menu={gapMenu}
+            className="w-full"
+          />
+        </div>
+      </div>
 
       {/* Padding — cross layout. Combined (default): Vertical + Horizontal, two
           fields. Expanded (toggle): all four sides independently. */}

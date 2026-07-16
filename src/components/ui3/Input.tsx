@@ -514,6 +514,11 @@ export interface NumericComboInputProps extends Omit<NumericInputProps, "dropdow
   dropdownAriaLabel: string;
   /** Replaces the numeric editor for relative/non-numeric modes such as Auto. */
   readOnlyLabel?: string;
+  /**
+   * Covers the resolved numeric value while idle, then reveals that value on
+   * hover/focus so typing can atomically convert a relative sizing mode.
+   */
+  idleLabel?: string;
   /** Optional visible state in the menu segment (for example Hug, Fill or Mixed). */
   triggerLabel?: string;
   menu: (close: () => void) => ReactNode;
@@ -524,6 +529,7 @@ export interface NumericComboInputProps extends Omit<NumericInputProps, "dropdow
 export function NumericComboInput({
   dropdownAriaLabel,
   readOnlyLabel,
+  idleLabel,
   triggerLabel,
   menu,
   menuAlign = "right",
@@ -536,7 +542,7 @@ export function NumericComboInput({
 }: NumericComboInputProps) {
   return (
     <div data-composa-numeric-combo={dataMode ?? "fixed"} className={clsx("flex items-start gap-px", className)}>
-      <div className="flex-1 min-w-0">
+      <div className="group relative flex-1 min-w-0">
         {readOnlyLabel !== undefined ? (
           <FieldShell focused={false} disabled={disabled} size={size} numeric className="!rounded-r-none">
             {iconLead && (
@@ -547,7 +553,31 @@ export function NumericComboInput({
             <span className={clsx("min-w-0 truncate text-c-text", FONT, T[size], iconLead ? "pl-[26px]" : "pl-[8px]")}>{readOnlyLabel}</span>
           </FieldShell>
         ) : (
-          <NumericInput {...numericProps} iconLead={iconLead} size={size} disabled={disabled} className="!rounded-r-none" />
+          <NumericInput
+            {...numericProps}
+            iconLead={iconLead}
+            size={size}
+            disabled={disabled}
+            className={clsx(
+              "!rounded-r-none",
+              idleLabel && "[&>input]:text-transparent group-hover:[&>input]:text-c-text group-focus-within:[&>input]:text-c-text",
+            )}
+          />
+        )}
+        {idleLabel && readOnlyLabel === undefined && (
+          <span
+            data-composa-relative-mode-label
+            aria-hidden="true"
+            className={clsx(
+              "pointer-events-none absolute inset-y-0 right-0 flex min-w-0 items-center truncate pr-[4px] text-c-text",
+              FONT,
+              T[size],
+              iconLead ? "left-[26px]" : "left-[8px]",
+              "group-hover:hidden group-focus-within:hidden",
+            )}
+          >
+            {idleLabel}
+          </span>
         )}
       </div>
       <PopoverMenu

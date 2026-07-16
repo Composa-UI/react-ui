@@ -71,7 +71,8 @@ describe("Auto-layout gap control", () => {
 
     expect(html.match(/data-composa-numeric-combo=/g)).toHaveLength(3);
     expect(html).toContain('data-composa-numeric-combo="fixed"');
-    expect(html).toContain('role="group" aria-label="Flow and gap"');
+    expect(html).toContain('role="group" aria-label="Flow"');
+    expect(html).toContain('role="group" aria-label="Alignment and gap"');
     expect(html).toContain('aria-label="Gap"');
     expect(html).toContain('aria-label="Gap sizing mode: Fixed"');
     expect(html).toContain('aria-haspopup="menu"');
@@ -84,13 +85,14 @@ describe("Auto-layout gap control", () => {
     expect(vertical).toBeLessThan(horizontal);
     expect(horizontal).toBeLessThan(wrap);
     expect(html).not.toContain('aria-label="Freeform"');
-    expect(html.match(/aria-label="Auto-layout settings"/g)).toHaveLength(2);
+    expect(html.match(/aria-label="Auto-layout settings"/g)).toHaveLength(1);
   });
 
   it("renders menu-backed W/H modes and the shared min/max grid", () => {
     const html = renderToStaticMarkup(<PropertyPanel elementType="frame-auto" width={320} height={180} layout={{ ...layout, widthMode: "hug", minWidth: 120, maxHeight: 360 }} />);
     expect(html).toContain('data-composa-numeric-combo="hug"');
     expect(html).toContain('aria-label="Width sizing mode: Hug"');
+    expect(html).toMatch(/data-composa-numeric-combo="hug"[\s\S]*?data-composa-relative-mode-label[^>]*>Hug<\/span>/);
     expect(html).toContain('aria-label="Min width"');
     expect(html).toContain('aria-label="Max height"');
     expect(html).not.toContain('aria-label="Min height"');
