@@ -112,7 +112,14 @@ export function SegmentedControl({ segments, value, onChange, disabled = false, 
   };
 
   return (
-    <SegmentedControlGroup role="group" aria-label={ariaLabel} className={className}>
+    <SegmentedControlGroup
+      role="group"
+      aria-label={ariaLabel}
+      // p-[1px] insets the selected thumb so it floats INSIDE the enclosing
+      // ring rather than painting flush over it — mirrors AlignmentControl, so
+      // the #214 stroke is visible all the way around the plain control.
+      className={clsx("p-[1px]", className)}
+    >
       {segments.map((seg, index) => {
         const isActive = seg.value === value;
         return (

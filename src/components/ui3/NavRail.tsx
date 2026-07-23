@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { clsx } from "clsx";
-import { LayoutGrid, Image as ImageIcon, Layers, ArrowLeft } from "lucide-react";
+import { LayoutGrid, Image as ImageIcon, Layers } from "lucide-react";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 
 // ─── Navigation rail ──────────────────────────────────────────────────────────
@@ -68,7 +68,6 @@ export function NavRail({
               <Menu>
                 <MenuRow
                   label="Back to Files"
-                  leading={<ArrowLeft size={16} strokeWidth={1.5} />}
                   onClick={() => { close(); onBackToFiles(); }}
                 />
               </Menu>
