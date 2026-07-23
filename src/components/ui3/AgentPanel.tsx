@@ -17,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "./Button";
-import { Panel, ScrollArea } from "./Panel";
+import { ScrollArea } from "./Panel";
 import { Tooltip } from "./Tooltip";
 
 export type AgentConversationTimeGroup = "today" | "yesterday" | "last-7-days" | "earlier";
@@ -610,7 +610,10 @@ export function AgentPanel({
   })).filter(entry => entry.conversations.length);
 
   return (
-    <Panel className={clsx("h-full overflow-hidden", className)}>
+    // Left-column panel: same outer shell as CompositionPanel / AssetsPanel —
+    // a right-border-only column (no top/left inset ring) so the Agent panel sits
+    // flush with its siblings' top-left edges (Composa#211 director feedback).
+    <div className={clsx("relative w-[240px] shrink-0 h-full flex flex-col bg-c-bg border-r border-c-border overflow-hidden", className)}>
       <div
         ref={panelRef}
         tabIndex={-1}
@@ -712,7 +715,7 @@ export function AgentPanel({
           </>
         ) : (
           <>
-            <header className="h-[40px] shrink-0 px-[12px] border-b border-c-border flex items-center gap-[6px]">
+            <header className="h-[40px] shrink-0 pl-[16px] pr-[8px] border-b border-c-border flex items-center gap-[6px]">
               <h2 className={clsx(FONT, "m-0 text-[11px] font-[550] leading-[16px] text-c-text")}>Chats</h2>
               <BetaBadge />
               <span className="flex-1" />
@@ -756,6 +759,6 @@ export function AgentPanel({
           </>
         )}
       </div>
-    </Panel>
+    </div>
   );
 }
