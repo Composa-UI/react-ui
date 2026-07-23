@@ -321,6 +321,35 @@ const ISSUE_75_THREAD: AgentConversation = {
   ],
 };
 
+// Composa#211: Agent as a left-rail destination. When "Agent" is selected in the
+// NavRail, the left column swaps to this panel (the right panel stays the
+// inspector) — no right-side Inspector/Agent tablist.
+function EditorAgentColumn() {
+  const [search, setSearch] = useState("");
+  const [composer, setComposer] = useState("");
+  const [active, setActive] = useState<AgentConversation | null>(null);
+  const [context, setContext] = useState<{ id: string; label: string; kind: "frame" } | null>({ id: "hero", label: "Hero section", kind: "frame" });
+  const filtered = ISSUE_75_CONVERSATIONS.filter(item => `${item.title} ${item.preview}`.toLowerCase().includes(search.toLowerCase()));
+  return (
+    <AgentPanel
+      conversations={filtered}
+      activeConversation={active}
+      search={search}
+      composerValue={composer}
+      context={active ? context : null}
+      onSearchChange={setSearch}
+      onNewConversation={() => setActive({ id: "new", title: "New chat", visibility: "private", messages: [] })}
+      onOpenConversation={() => setActive(ISSUE_75_THREAD)}
+      onBack={() => setActive(null)}
+      onComposerChange={setComposer}
+      onSubmit={() => setComposer("")}
+      onEscape={() => composer ? setComposer("") : setActive(null)}
+      onDismissContext={() => setContext(null)}
+      onSelectContext={() => undefined}
+    />
+  );
+}
+
 function Issue75AgentPanelFixture({ mode, thread }: { mode: "light" | "dark"; thread: boolean }) {
   const [search, setSearch] = useState("");
   const [composer, setComposer] = useState("");
@@ -763,11 +792,7 @@ export default function Playground() {
       >
         <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
           <NavRail active={nav} onSelect={setNav} onBackToFiles={() => window.alert("Back to Files (app wires editor → /projects)")} />
-          {nav === "composition" ? <CompositionPanel /> : nav === "assets" ? <AssetsPanel /> : (
-            <div className="w-[240px] shrink-0 h-full flex items-center justify-center bg-c-bg border-r border-c-border">
-              <span className="text-[11px] text-c-text-secondary font-[family-name:var(--composa-font-family)]">Agent — coming soon</span>
-            </div>
-          )}
+          {nav === "composition" ? <CompositionPanel /> : nav === "assets" ? <AssetsPanel /> : <EditorAgentColumn />}
           <div style={{ flex: 1, minWidth: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <div style={{ width: "70%", aspectRatio: "16/9", background: dark ? "#2c2c2c" : "#fff", borderRadius: 6, boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }} />
             {/* creation toolbar floats over the canvas */}

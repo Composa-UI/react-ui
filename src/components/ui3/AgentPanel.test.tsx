@@ -306,13 +306,16 @@ describe("canonical rail access", () => {
     act(() => renderer!.unmount());
   });
 
-  it("keeps the default left rail canonical to Composition and Assets", () => {
+  it("makes Agent a first-class left-rail destination in order Comp · Agent · Assets (Composa#211)", () => {
     let renderer: ReturnType<typeof create>;
     act(() => { renderer = create(<NavRail />); });
-    const labels = renderer!.root.findAll(node => node.type === "button" && node.props["aria-label"]).map(node => node.props["aria-label"]);
-    expect(labels).toContain("Comp");
-    expect(labels).toContain("Assets");
-    expect(labels).not.toContain("Agent");
+    // Nav destination buttons carry aria-label; the brand button ("Composa") is
+    // excluded so we assert only the ordered destinations.
+    const labels = renderer!.root
+      .findAll(node => node.type === "button" && node.props["aria-label"])
+      .map(node => node.props["aria-label"])
+      .filter(label => label !== "Composa");
+    expect(labels).toEqual(["Comp", "Agent", "Assets"]);
     act(() => renderer!.unmount());
   });
 });

@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { clsx } from "clsx";
-import { LayoutGrid, Image as ImageIcon, Layers } from "lucide-react";
+import { LayoutGrid, Image as ImageIcon, Layers, Sparkles } from "lucide-react";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 
 // ─── Navigation rail ──────────────────────────────────────────────────────────
@@ -16,8 +16,13 @@ export interface NavItem {
   label: string;
 }
 
+// Order is deliberate: Comp · Agent · Assets. Agent is a first-class left-rail
+// destination (Composa#211) — selecting it swaps the left column to the Agent
+// panel; the right panel stays the inspector (no right-side Inspector/Agent
+// tablist). Consumers may still pass a custom `items` array to override.
 const DEFAULT_ITEMS: NavItem[] = [
   { id: "composition", icon: <LayoutGrid size={S} strokeWidth={1.5} />, label: "Comp" },
+  { id: "agent",       icon: <Sparkles size={S} strokeWidth={1.5} />,   label: "Agent" },
   { id: "assets",      icon: <ImageIcon size={S} strokeWidth={1.5} />,  label: "Assets" },
 ];
 
