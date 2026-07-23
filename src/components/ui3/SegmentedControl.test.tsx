@@ -34,6 +34,8 @@ describe("Segmented control anatomy", () => {
     expect(html).toContain('aria-pressed="false"');
     expect(html).toContain("bg-c-bg text-c-text");
     expect(html).toContain("focus-visible:ring-c-border-selected-strong");
+    // Enclosing stroke: same inset-ring + c-border token Dropdown/Button use (#214).
+    expect(html).toContain("ring-1 ring-inset ring-c-border");
     expect(html).not.toContain("ring-c-border-translucent");
     expect(html).not.toMatch(/\bborder-[lr]\b/);
   });

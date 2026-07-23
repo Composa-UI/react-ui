@@ -26,6 +26,9 @@ export function SegmentedControlGroup({ children, className, ...props }: Segment
       data-composa-segmented-surface
       className={clsx(
         "bg-c-bg-secondary flex items-stretch overflow-hidden rounded-c-md shrink-0",
+        // Enclosing stroke — same inset-ring + c-border token Dropdown/Button use, so the
+        // segmented control reads as enclosed and consistent with the rest of the DS (#214).
+        "ring-1 ring-inset ring-c-border",
         className,
       )}
       {...props}
