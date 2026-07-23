@@ -136,14 +136,18 @@ function ChoiceDropdown<T extends string>({ value, options, labels, onChange }: 
 }
 
 // ── Composition transition ───────────────────────────────────────────────────────
-function CompTransitionSection({ value, callbacks, contextKey }: { value?: CompTransitionSettings; callbacks?: CompTransitionCallbacks; contextKey?: string }) {
+function CompTransitionSection({ value, callbacks, contextKey, selectionType }: { value?: CompTransitionSettings; callbacks?: CompTransitionCallbacks; contextKey?: string; selectionType?: "slide" | "element" }) {
   const [demo, setDemo] = useState<CompTransitionSettings>({ style: "fade", direction: "right", durationMs: 300, easing: "ease-out" });
   const controlled = value !== undefined;
   const rendered = value ?? demo;
-  const [open, setOpen] = useState(rendered.style !== "none");
+  // Comp transition is a slide-scoped property. It is the default-expanded/focused
+  // card only when a SLIDE is selected. When an element is selected it still reflects
+  // the slide's real transition, but stays collapsed (never the focused card).
+  const shouldOpen = selectionType !== "element" && rendered.style !== "none";
+  const [open, setOpen] = useState(shouldOpen);
   useEffect(() => {
-    setOpen(rendered.style !== "none");
-  }, [contextKey]);
+    setOpen(shouldOpen);
+  }, [contextKey, selectionType]);
   useEffect(() => { if (value?.style === "none") setOpen(false); }, [value?.style]);
   const update = (patch: Partial<CompTransitionSettings>) => {
     if (!controlled) setDemo(current => ({ ...current, ...patch }));
@@ -194,10 +198,18 @@ function DurationPill({ duration, kind }: { duration: string; kind: AnimKind }) 
   );
 }
 
-function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-click", delayMs: 0 }, addablePhases = ["build-in", "action", "build-out"] }: {
-  anims: ObjectAnimationItem[]; callbacks?: ObjectAnimationCallbacks; settings?: ObjectAnimationSequenceSettings; addablePhases?: ObjectAnimationPhase[];
+function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-click", delayMs: 0 }, addablePhases = ["build-in", "action", "build-out"], contextKey, selectionType }: {
+  anims: ObjectAnimationItem[]; callbacks?: ObjectAnimationCallbacks; settings?: ObjectAnimationSequenceSettings; addablePhases?: ObjectAnimationPhase[]; contextKey?: string; selectionType?: "slide" | "element";
 }) {
-  const [expanded, setExpanded] = useState<string | null>(null);
+  // When an element is selected, default-expand that element's own animation card
+  // (the one flagged `selected`). For a slide selection nothing is auto-expanded —
+  // the Comp transition card is the focus there.
+  const selectedIndex = anims.findIndex(a => a.selected);
+  const defaultExpandedId = selectionType === "element" && selectedIndex >= 0
+    ? (anims[selectedIndex].id ?? String(selectedIndex))
+    : null;
+  const [expanded, setExpanded] = useState<string | null>(defaultExpandedId);
+  useEffect(() => { setExpanded(defaultExpandedId); }, [contextKey, selectionType, defaultExpandedId]);
   const [dragged, setDragged] = useState<string | null>(null);
   const phaseOptions: Array<{ value: ObjectAnimationPhase; label: string }> = [
     { value: "build-in", label: "Build in" }, { value: "action", label: "Action" }, { value: "build-out", label: "Build out" },
@@ -279,14 +291,14 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
   );
 }
 
-export function AnimatePanel({ anims = DEMO_ANIMS, compTransition, compTransitionCallbacks, contextKey, objectAnimationCallbacks, objectAnimationSettings, addablePhases }: {
-  anims?: ObjectAnimationItem[]; compTransition?: CompTransitionSettings; compTransitionCallbacks?: CompTransitionCallbacks; contextKey?: string;
+export function AnimatePanel({ anims = DEMO_ANIMS, compTransition, compTransitionCallbacks, contextKey, selectionType, objectAnimationCallbacks, objectAnimationSettings, addablePhases }: {
+  anims?: ObjectAnimationItem[]; compTransition?: CompTransitionSettings; compTransitionCallbacks?: CompTransitionCallbacks; contextKey?: string; selectionType?: "slide" | "element";
   objectAnimationCallbacks?: ObjectAnimationCallbacks; objectAnimationSettings?: ObjectAnimationSequenceSettings; addablePhases?: ObjectAnimationPhase[];
 }) {
   return (
     <ScrollArea>
-      <CompTransitionSection value={compTransition} callbacks={compTransitionCallbacks} contextKey={contextKey} />
-      <ObjectAnimationsSection anims={anims} callbacks={objectAnimationCallbacks} settings={objectAnimationSettings} addablePhases={addablePhases} />
+      <CompTransitionSection value={compTransition} callbacks={compTransitionCallbacks} contextKey={contextKey} selectionType={selectionType} />
+      <ObjectAnimationsSection anims={anims} callbacks={objectAnimationCallbacks} settings={objectAnimationSettings} addablePhases={addablePhases} contextKey={contextKey} selectionType={selectionType} />
     </ScrollArea>
   );
 }

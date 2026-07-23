@@ -561,6 +561,43 @@ export default function Playground() {
     );
   }
 
+  if (view === "issue-174-animate") {
+    const issue174Anims = [
+      { id: "a1", n: 1, name: "Title", kind: "In" as const, duration: "0.6s", style: "fade-in", buildDuration: "600ms" },
+      { id: "a2", n: 2, name: "Subtitle", kind: "In" as const, duration: "0.4s", style: "slide-in", buildDuration: "400ms", direction: "left" as const, selected: true },
+      { id: "a3", n: 3, name: "Body", kind: "Action" as const, duration: "0.5s", style: "pulse" },
+    ];
+    return (
+      <div style={{ height: "100vh", width: "100vw", display: "flex", gap: 24, justifyContent: "center", alignItems: "flex-start", background: "#e6e6e6", padding: 24 }}>
+        {/* Slide selected — real transition (push) → Comp transition card expanded by default */}
+        <div style={{ width: 280 }}>
+          <div style={{ font: "12px system-ui", marginBottom: 8 }}>Slide selected (transition = push)</div>
+          <PropertyPanel
+            mode="slide"
+            slideName="Opening title"
+            slideId="slide-1"
+            slideTransitionType="push"
+            slideTransitionDirection="right"
+            slideTransitionDuration={500}
+            slideTransitionEasing="ease-in-out"
+            objectAnimations={issue174Anims}
+          />
+        </div>
+        {/* Element selected — slide has NO transition → Comp transition must reflect None
+            (no phantom Fade), and the selected element's object-animation card expands. */}
+        <div style={{ width: 280 }}>
+          <div style={{ font: "12px system-ui", marginBottom: 8 }}>Text element selected (slide transition = none)</div>
+          <PropertyPanel
+            elementType="text"
+            slideId="slide-1"
+            slideTransitionType="none"
+            objectAnimations={issue174Anims}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (view === "selection-colors-empty") {
     return <div style={{ height: "100vh", width: "100vw", display: "flex", justifyContent: "flex-end", background: "#e6e6e6" }}>
       <PropertyPanel multiSelect selectionColors={[]} />

@@ -2196,6 +2196,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
 
           {tab === "animate" && <div role="tabpanel" id="slide-animate-panel" aria-labelledby="slide-animate-panel-tab" className="contents"><AnimatePanel anims={objectAnimations}
             contextKey={slideId}
+            selectionType="slide"
             objectAnimationCallbacks={objectAnimationCallbacks} objectAnimationSettings={objectAnimationSettings} addablePhases={addableAnimationPhases}
             compTransition={{ style: renderedTransitionType, direction: renderedTransitionDirection, durationMs: renderedTransitionDuration, easing: renderedTransitionEasing }}
             compTransitionCallbacks={{
@@ -2327,8 +2328,23 @@ export function PropertyPanel(props: PropertyPanelProps) {
         </ScrollArea></div>
       )}
 
-      {/* Animate tab — the animation panel */}
-      {tab === "animate" && <div role="tabpanel" id="element-animate-panel" aria-labelledby="element-animate-panel-tab" className="contents"><AnimatePanel anims={objectAnimations} contextKey={slideId} objectAnimationCallbacks={objectAnimationCallbacks} objectAnimationSettings={objectAnimationSettings} addablePhases={addableAnimationPhases} /></div>}
+      {/* Animate tab — the animation panel.
+          Comp transition is slide-scoped, so an element selection still forwards the
+          slide's REAL transition (None when none) — never the internal demo 'Fade'.
+          selectionType drives default card expansion: the element's Object animation
+          card is the focus here, not Comp transition. */}
+      {tab === "animate" && <div role="tabpanel" id="element-animate-panel" aria-labelledby="element-animate-panel-tab" className="contents"><AnimatePanel anims={objectAnimations}
+        contextKey={slideId}
+        selectionType="element"
+        objectAnimationCallbacks={objectAnimationCallbacks} objectAnimationSettings={objectAnimationSettings} addablePhases={addableAnimationPhases}
+        compTransition={{ style: renderedTransitionType, direction: renderedTransitionDirection, durationMs: renderedTransitionDuration, easing: renderedTransitionEasing }}
+        compTransitionCallbacks={{
+          onStyleChange: value => { if (slideTransitionType === undefined) setDemoTransitionType(value); onSlideTransitionTypeChange?.(value); },
+          onDirectionChange: value => { if (slideTransitionDirection === undefined) setDemoTransitionDirection(value); onSlideTransitionDirectionChange?.(value); },
+          onDurationChange: value => { if (slideTransitionDuration === undefined) setDemoTransitionDuration(value); onSlideTransitionDurationChange?.(value); },
+          onEasingChange: value => { if (slideTransitionEasing === undefined) setDemoTransitionEasing(value); onSlideTransitionEasingChange?.(value); },
+          onApplyToAll: onApplySlideTransitionToAll,
+        }} /></div>}
 
       {/* Prototype placeholder */}
       {tab === "prototype" && (
