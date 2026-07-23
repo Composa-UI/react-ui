@@ -725,7 +725,7 @@ export default function Playground() {
         style={{ height: "100vh", width: "100vw", display: "flex", flexDirection: "column", background: dark ? "#1e1e1e" : "#e6e6e6" }}
       >
         <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
-          <NavRail active={nav} onSelect={setNav} />
+          <NavRail active={nav} onSelect={setNav} onBackToFiles={() => window.alert("Back to Files (app wires editor → /projects)")} />
           {nav === "composition" ? <CompositionPanel /> : nav === "assets" ? <AssetsPanel /> : (
             <div className="w-[240px] shrink-0 h-full flex items-center justify-center bg-c-bg border-r border-c-border">
               <span className="text-[11px] text-c-text-secondary font-[family-name:var(--composa-font-family)]">Agent — coming soon</span>

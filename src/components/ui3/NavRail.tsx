@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { clsx } from "clsx";
-import { LayoutGrid, Image as ImageIcon, Layers } from "lucide-react";
+import { LayoutGrid, Image as ImageIcon, Layers, ArrowLeft } from "lucide-react";
+import { Menu, MenuRow, PopoverMenu } from "./Menu";
 
 // ─── Navigation rail ──────────────────────────────────────────────────────────
 // The editor's left rail — a few primary destinations, each an icon button with a
@@ -25,25 +26,55 @@ export function NavRail({
   defaultActive = "composition",
   active: controlled,
   onSelect,
+  onBackToFiles,
 }: {
   items?: NavItem[];
   defaultActive?: string;
   active?: string;
   onSelect?: (id: string) => void;
+  /**
+   * Optional handler for the "Back to Files" affordance. When provided, the
+   * brand button becomes a menu trigger whose single action, "Back to Files",
+   * invokes this callback (the consumer wires the actual editor → /projects
+   * navigation). When omitted, the brand button stays inert as before, so
+   * existing consumers are unaffected.
+   */
+  onBackToFiles?: () => void;
 }) {
   const [internal, setInternal] = useState(defaultActive);
   const active = controlled ?? internal;
   const select = (id: string) => { if (controlled === undefined) setInternal(id); onSelect?.(id); };
 
+  // brand/app icon slot — a plain icon button, no label below (unlike the
+  // nav destinations). Standing in with lucide Layers until the real mark is
+  // designed. With `onBackToFiles`, it triggers the design-system Menu below.
+  const brandButton = (
+    <button
+      type="button"
+      aria-label="Composa"
+      aria-haspopup={onBackToFiles ? "menu" : undefined}
+      className="size-[32px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover"
+    >
+      <Layers size={18} strokeWidth={1.5} />
+    </button>
+  );
+
   return (
     <nav aria-label="Navigation" className="w-[60px] shrink-0 h-full flex flex-col items-center bg-c-bg border-r border-c-border">
-      {/* brand/app icon slot — a plain icon button, no label below (unlike the
-          nav destinations). Standing in with lucide Layers until the real mark
-          is designed. */}
       <div className="w-full flex justify-center py-[8px]">
-        <button aria-label="Composa" className="size-[32px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover">
-          <Layers size={18} strokeWidth={1.5} />
-        </button>
+        {onBackToFiles ? (
+          <PopoverMenu directTrigger trigger={brandButton}>
+            {close => (
+              <Menu>
+                <MenuRow
+                  label="Back to Files"
+                  leading={<ArrowLeft size={16} strokeWidth={1.5} />}
+                  onClick={() => { close(); onBackToFiles(); }}
+                />
+              </Menu>
+            )}
+          </PopoverMenu>
+        ) : brandButton}
       </div>
       {/* divider — inset from the rail edges, not full-width */}
       <div aria-hidden className="w-full px-[12px]">
