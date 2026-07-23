@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { CirclesFour } from "@phosphor-icons/react";
 import {
-  Panel, PanelSection, PanelFieldRow, PanelFullRow, PanelRow,
+  PanelSection, PanelFieldRow, PanelFullRow, PanelRow,
   IconButtonRow, PanelActionBtn, PanelEntry, ScrollArea, type IconBtn,
 } from "./Panel";
 import { Tabs } from "./Tabs";
@@ -2109,7 +2109,11 @@ export function PropertyPanel(props: PropertyPanelProps) {
 
   return (
     <NumericEditSessionProvider onEditStart={onNumericEditStart} onEditCommit={onNumericEditCommit} onEditCancel={onNumericEditCancel}>
-    <Panel className={clsx("h-full overflow-hidden flex flex-col", className)}>
+    {/* Right-column inspector: flush full-height column mirroring the left-column
+        panels (CompositionPanel / AssetsPanel), flipped to a left border since it
+        sits to the right of the canvas. No inset ring on top/right/bottom — a single
+        border-l against the canvas (Composa#250, analogous to #33). */}
+    <div className={clsx("relative w-[240px] shrink-0 h-full flex flex-col bg-c-bg border-l border-c-border overflow-hidden", className)}>
       {/* Multiplayer tools — above the tabs; shared across all modes */}
       <MultiplayerBar previewPlaying={previewPlaying} onPreviewToggle={onPreviewToggle} onPreviewMenu={onPreviewMenu} />
 
@@ -2354,7 +2358,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
       )}
       </>
       )}
-    </Panel>
+    </div>
     </NumericEditSessionProvider>
   );
 }
