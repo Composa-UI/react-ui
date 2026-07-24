@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { clsx } from "clsx";
-import { Plus, Trash2, MonitorPlay, Clock, ArrowRight, ArrowDown, Type, SquareDashedMousePointer, GripVertical } from "lucide-react";
+import { Plus, Trash2, MonitorPlay, Clock, ArrowRight, ArrowDown, Type, Play, GripVertical } from "lucide-react";
 import { PanelSection, PanelActionBtn, ScrollArea } from "./Panel";
 import { Dropdown } from "./Dropdown";
 import { ComboInput, NumericInput } from "./Input";
@@ -48,6 +48,9 @@ export interface ObjectAnimationCallbacks {
   onReorder?: (id: string, targetId: string, placement: "before" | "after" | "with") => void;
   onStartChange?: (start: ObjectAnimationSequenceSettings["start"]) => void;
   onDelayChange?: (delayMs: number) => void;
+  /** Play back every object animation on the current selection. Host-wired to real
+   *  playback — the component only renders the trigger (see #179). */
+  onPlayAllObjectAnimations?: () => void;
 }
 
 export type CompTransitionStyle = "none" | "fade" | "push" | "slide" | "wipe";
@@ -229,7 +232,10 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
       title="Object animations"
       rightActions={
         <>
-          <PanelActionBtn icon={<SquareDashedMousePointer size={16} strokeWidth={1.5} />} label="Select object" />
+          {/* #179: plays back all object animations on the current selection. Gated the
+              same way as "+" (Add animation) — disabled when there are no animations to
+              play. Host wires `onPlayAllObjectAnimations` to real playback. */}
+          <PanelActionBtn icon={<Play size={16} strokeWidth={1.5} />} label="Play all animations" disabled={anims.length === 0} onClick={callbacks?.onPlayAllObjectAnimations} />
           <PopoverMenu align="right" trigger={<PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add animation" disabled={addablePhases.length === 0} />}>
             {addMenu}
           </PopoverMenu>
