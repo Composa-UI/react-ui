@@ -36,14 +36,23 @@ export function normalizeViewport(viewport: TimelineViewport, durationMs: number
   return { startMs, endMs: startMs + span };
 }
 
+// The plot origin (time = viewport.startMs) is inset from the left edge by this
+// fraction of the plot width (Figma parity — Composa#326). Applied at the single
+// forward/inverse chokepoint so positions (ruler, playhead, keyframes, duration
+// bars) and pointer mapping (scrub, drag) stay consistent. The right edge is not
+// inset: frac 0 → INSET, frac 1 → 1.
+export const PLOT_INSET_FRACTION = 0.02;
+
 export function timeToX(timeMs: number, viewport: TimelineViewport, widthPx: number): number {
   const span = Math.max(1, viewport.endMs - viewport.startMs);
-  return (timeMs - viewport.startMs) / span * Math.max(0, widthPx);
+  const frac = (timeMs - viewport.startMs) / span;
+  return (PLOT_INSET_FRACTION + (1 - PLOT_INSET_FRACTION) * frac) * Math.max(0, widthPx);
 }
 
 export function xToTime(xPx: number, viewport: TimelineViewport, widthPx: number): number {
   const width = Math.max(1, widthPx);
-  return viewport.startMs + xPx / width * (viewport.endMs - viewport.startMs);
+  const frac = (xPx / width - PLOT_INSET_FRACTION) / (1 - PLOT_INSET_FRACTION);
+  return viewport.startMs + frac * (viewport.endMs - viewport.startMs);
 }
 
 export function zoomViewport(viewport: TimelineViewport, anchorRatio: number, factor: number, durationMs: number): TimelineViewport {
@@ -104,7 +113,9 @@ export function timelineDragDeltaMs(
   viewport: TimelineViewport,
   widthPx: number,
 ): number {
-  const pointerDeltaMs = (clientX - startClientX) / Math.max(1, widthPx) * (viewport.endMs - viewport.startMs);
+  // Divide by the inset-compressed plot width so a dragged item tracks the cursor
+  // 1:1 despite the origin inset (Composa#326).
+  const pointerDeltaMs = (clientX - startClientX) / Math.max(1, widthPx * (1 - PLOT_INSET_FRACTION)) * (viewport.endMs - viewport.startMs);
   return pointerDeltaMs + (viewport.startMs - startViewportStartMs);
 }
 

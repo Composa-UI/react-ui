@@ -236,8 +236,8 @@ const keyframeId = (keyframe: TimelineKeyframeValue, index: number) => typeof ke
 const aggregateKeyframeId = (keyframe: TimelineKeyframeValue, index: number, propertyId: string) => typeof keyframe === "number" ? `${propertyId}:aggregate-keyframe-${index}-${keyframe}` : keyframe.id;
 
 export function timelineTimeAtClientX(clientX: number, left: number, width: number, viewport: TimelineViewport): number {
-  const ratio = Math.max(0, Math.min(1, (clientX - left) / Math.max(1, width)));
-  return Math.round(viewport.startMs + ratio * (viewport.endMs - viewport.startMs));
+  // Route through xToTime so the origin inset (PLOT_INSET_FRACTION) is respected.
+  return Math.round(Math.max(viewport.startMs, Math.min(viewport.endMs, xToTime(clientX - left, viewport, width))));
 }
 const percent = (timeMs: number, viewport: TimelineViewport) => `${timeToX(timeMs, viewport, 100)}%`;
 const percentWidth = (startMs: number, endMs: number, viewport: TimelineViewport) => `${timeToX(endMs, viewport, 100) - timeToX(startMs, viewport, 100)}%`;
@@ -871,9 +871,10 @@ function Ruler({ viewport, width }: { viewport: TimelineViewport; width: number 
   return (
     <div className="absolute inset-0 overflow-hidden">
       {ticks.map(t => (
-        <div key={t} className="absolute top-0 bottom-0" style={{ left: percent(t, viewport) }}>
-          <span className="absolute bottom-0 left-0 w-px h-[5px] bg-c-border-strong" />
-          <span className={clsx(FONT, "absolute top-1/2 -translate-y-1/2 left-[4px] text-[11px] text-c-text-secondary tabular-nums whitespace-nowrap")}>{Math.round(t)}</span>
+        <div key={t} className="absolute top-0 bottom-0 pointer-events-none" style={{ left: percent(t, viewport) }}>
+          {/* number above · tick below at the exact time position (adjacent to lanes) */}
+          <span className={clsx(FONT, "absolute bottom-[6px] left-[3px] text-[11px] text-c-text-secondary tabular-nums leading-none whitespace-nowrap")}>{Math.round(t)}</span>
+          <span className="absolute bottom-0 left-0 w-px h-[4px] bg-c-border-strong" />
         </div>
       ))}
     </div>
@@ -886,9 +887,9 @@ function SecondRuler({ viewport, width }: { viewport: TimelineViewport; width: n
   return (
     <div className="absolute inset-0 overflow-hidden">
       {ticks.map(timeMs => (
-        <div key={timeMs} className="absolute top-0 bottom-0" style={{ left: percent(timeMs, viewport) }}>
-          <span className="absolute bottom-0 left-0 w-px h-[5px] bg-c-border-strong" />
-          <span className={clsx(FONT, "absolute top-1/2 -translate-y-1/2 left-[4px] text-[11px] text-c-text-secondary tabular-nums whitespace-nowrap")}>{Number((timeMs / 1000).toFixed(2))}s</span>
+        <div key={timeMs} className="absolute top-0 bottom-0 pointer-events-none" style={{ left: percent(timeMs, viewport) }}>
+          <span className={clsx(FONT, "absolute bottom-[6px] left-[3px] text-[11px] text-c-text-secondary tabular-nums leading-none whitespace-nowrap")}>{Number((timeMs / 1000).toFixed(2))}s</span>
+          <span className="absolute bottom-0 left-0 w-px h-[4px] bg-c-border-strong" />
         </div>
       ))}
     </div>
