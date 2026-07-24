@@ -620,6 +620,33 @@ function Share289Fixture() {
   );
 }
 
+// Slides / Comp panel fixture — light + dark, with the header inline-rename and the
+// per-slide actions menu (Rename / Duplicate / Delete) wired so both are exercisable.
+function SlidesFixture() {
+  const [lightName, setLightName] = useState("Product review");
+  const [darkName, setDarkName] = useState("Product review");
+  const wire = (name: string, setName: (n: string) => void) => ({
+    title: name,
+    onTitleChange: setName,
+    onTitleMenu: () => console.info("comp menu"),
+    onRenameRequest: (i: number) => console.info("rename slide", i),
+    onSlideDuplicate: (i: number) => console.info("duplicate slide", i),
+    onSlideDelete: (i: number) => console.info("delete slide", i),
+  });
+  return (
+    <div style={{ height: "100vh", width: "100vw", display: "flex", gap: 24, padding: 24, boxSizing: "border-box", background: "#e6e6e6" }}>
+      <div style={{ height: "100%", boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}>
+        <SlidesPanel slides={DEMO_SLIDES} {...wire(lightName, setLightName)} />
+      </div>
+      <div data-composa-mode="dark" style={{ height: "100%", boxShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
+        <SlidesPanel slides={DEMO_SLIDES} {...wire(darkName, setDarkName)} />
+      </div>
+      <div style={{ flex: 1 }} />
+      <SlideInspector />
+    </div>
+  );
+}
+
 export default function Playground() {
   // ?view=slides = componentized SlidesPanel; ?view=slides-raw = the raw Figma export
   // (side-by-side fidelity check); default = property-panel fidelity set.
@@ -1148,13 +1175,7 @@ export default function Playground() {
   }
 
   if (view === "slides") {
-    return (
-      <div style={{ height: "100vh", width: "100vw", display: "flex", background: "#1e1e1e" }}>
-        <SlidesPanel slides={DEMO_SLIDES} />
-        <div style={{ flex: 1 }} />
-        <SlideInspector />
-      </div>
-    );
+    return <SlidesFixture />;
   }
 
   return (
