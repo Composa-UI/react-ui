@@ -92,6 +92,8 @@ interface InputFieldProps {
   size?: InputSize;
   disabled?: boolean;
   readOnly?: boolean;
+  /** Focus the field on mount (native autofocus). */
+  autoFocus?: boolean;
   multiline?: boolean;
   leadingIcon?: ReactNode;
   trailingIcon?: ReactNode;
@@ -114,6 +116,7 @@ export function InputField({
   size = "medium",
   disabled = false,
   readOnly = false,
+  autoFocus = false,
   multiline = false,
   leadingIcon,
   trailingIcon,
@@ -177,7 +180,18 @@ export function InputField({
           />
         </div>
       ) : (
-        <FieldShell focused={focused} disabled={disabled} variant={variant} size={size}>
+        <FieldShell
+          focused={focused}
+          disabled={disabled}
+          variant={variant}
+          size={size}
+          // For an autofocused field (default variant), drive the focus ring from
+          // real DOM focus via CSS. Radix's dialog FocusScope can leave the input
+          // focused without a clean React onFocus, so the JS `focused` state is
+          // unreliable on open; :focus-within is deterministic and self-clearing.
+          className={clsx(autoFocus && variant === "default" &&
+            "focus-within:ring-1 focus-within:ring-inset focus-within:ring-c-focus-ring")}
+        >
           {leadingIcon && (
             <span className="absolute left-0 flex items-center justify-center size-[24px] shrink-0 text-c-icon-secondary pointer-events-none">
               {leadingIcon}
@@ -196,6 +210,7 @@ export function InputField({
             placeholder={placeholder}
             disabled={disabled}
             readOnly={readOnly}
+            autoFocus={autoFocus}
             onChange={e => onChange?.(e.target.value)}
             onFocus={e => { setFocused(true); e.target.select(); }}
             onBlur={() => setFocused(false)}

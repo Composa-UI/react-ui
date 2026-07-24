@@ -34,6 +34,7 @@ import { UndoCard } from "./components/ui3/UndoCard";
 import { MultiChoiceCard } from "./components/ui3/MultiChoiceCard";
 import { GitHubToolResultCard } from "./components/ui3/GitHubToolResultCard";
 import { GitHubPermissionCard } from "./components/ui3/GitHubPermissionCard";
+import { ShareModal, type SharePerson } from "./components/ui3/ShareModal";
 import thumb0 from "./imports/SlidesTemplate/9bf3285fa6c14222923aa8fcd4bf31f6e40807d9.png";
 import thumb1 from "./imports/SlidesTemplate/201951eb24dd285dd0794f4e790b8175c012bf20.png";
 import thumb2 from "./imports/SlidesTemplate/4f36d4cb9f77c2e380641dd47deb24943efa0b8a.png";
@@ -592,6 +593,33 @@ function Dialog288Fixture() {
   );
 }
 
+// Composa#289 — rebuilt share dialog (Figma node 288-5750). The Modal portals to
+// document.body, so variants can't be gridded (a portal escapes any cell). Instead
+// one modal renders per query param: ?view=share-289&variant=project|team&theme=light|dark&roster=owner|invited
+function Share289Fixture() {
+  const params = new URLSearchParams(window.location.search);
+  const variant = (params.get("variant") ?? "project") as "project" | "team";
+  const dark = params.get("theme") === "dark";
+  const roster = params.get("roster") ?? (variant === "team" ? "invited" : "owner");
+
+  // Owner-only roster matches the Figma node exactly.
+  const ownerOnly: SharePerson[] = [
+    { id: "you", name: "Samuel", you: true, owner: true, color: "purple", initial: "S" },
+  ];
+  // Demos the reused RoleMenu on invited (non-owner) people.
+  const withInvited: SharePerson[] = [
+    ...ownerOnly,
+    { id: "alan", name: "Alan Anabelle", access: "can edit", color: "blue", initial: "A" },
+    { id: "bobby", name: "Bobby Bucalini", access: "can view", color: "green", initial: "B" },
+  ];
+
+  return (
+    <div {...(dark ? { "data-composa-mode": "dark" } : {})} className="min-h-screen bg-c-bg-secondary">
+      <ShareModal open onClose={() => undefined} variant={variant} people={roster === "invited" ? withInvited : ownerOnly} />
+    </div>
+  );
+}
+
 export default function Playground() {
   // ?view=slides = componentized SlidesPanel; ?view=slides-raw = the raw Figma export
   // (side-by-side fidelity check); default = property-panel fidelity set.
@@ -682,6 +710,10 @@ export default function Playground() {
 
   if (view === "dialogs-288") {
     return <Dialog288Fixture />;
+  }
+
+  if (view === "share-289") {
+    return <Share289Fixture />;
   }
 
   if (view === "issue-66-fixtures") {
