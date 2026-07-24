@@ -561,11 +561,6 @@ function Dialog288Fixture() {
           onRemoveMember={onRemove}
           onChangeName={noop}
           onAddDescription={noop}
-          onSetProfileHandle={noop}
-          onViewLibraries={noop}
-          onGoToBilling={noop}
-          onTransferTeam={noop}
-          onUpgrade={noop}
         />
       )}
 

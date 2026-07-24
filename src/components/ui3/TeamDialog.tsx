@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Users, Info, ChevronDown, Check } from "lucide-react";
+import { Users, ChevronDown, Check } from "lucide-react";
 import { clsx } from "clsx";
 import { Modal, ModalHeader, ModalBody, MODAL_WIDTHS } from "./Dialog";
 import { Tabs } from "./Tabs";
@@ -114,11 +114,6 @@ function SettingsSection({
 interface TeamSettingsCallbacks {
   onChangeName?: () => void;
   onAddDescription?: () => void;
-  onSetProfileHandle?: () => void;
-  onViewLibraries?: () => void;
-  onGoToBilling?: () => void;
-  onTransferTeam?: () => void;
-  onUpgrade?: () => void;
 }
 
 function SettingsView({
@@ -141,55 +136,6 @@ function SettingsView({
         <SettingsSection title="About">
           <LinkAction label="Add a description" onClick={callbacks.onAddDescription} />
         </SettingsSection>
-
-        <SettingsSection title="Community profile">
-          <LinkAction label="Set profile handle" onClick={callbacks.onSetProfileHandle} />
-        </SettingsSection>
-
-        <SettingsSection title="Libraries">
-          <LinkAction label="View team's libraries" onClick={callbacks.onViewLibraries} />
-        </SettingsSection>
-
-        <SettingsSection title="Plan and Billing" value="Manage your plan, billing details, and more.">
-          <LinkAction label="Go to Billing" onClick={callbacks.onGoToBilling} />
-        </SettingsSection>
-
-        <SettingsSection title="Transfer">
-          {/* Link + trailing muted text on one line: "Transfer team to an external organization" */}
-          <p className={clsx(VALUE, "text-c-text")}>
-            <button
-              type="button"
-              disabled={!callbacks.onTransferTeam}
-              onClick={callbacks.onTransferTeam}
-              className={clsx(
-                VALUE, "bg-transparent border-0 p-0",
-                callbacks.onTransferTeam ? "text-c-text-brand hover:underline cursor-pointer" : "text-c-text-disabled cursor-not-allowed",
-              )}
-            >
-              Transfer team
-            </button>
-            <span className="text-c-text"> to an external organization</span>
-          </p>
-        </SettingsSection>
-
-        {/* Upgrade banner */}
-        <div className="mt-[24px] w-full flex items-start gap-[8px] rounded-c-md bg-c-bg-selected px-[16px] py-[14px]">
-          <Info size={16} strokeWidth={1.5} className="shrink-0 text-c-icon-secondary mt-[1px]" />
-          <p className={clsx(LABEL, "text-c-text")}>
-            Upgrade to an Organization to access cross-team design libraries, SSO, and admin controls.{" "}
-            <button
-              type="button"
-              disabled={!callbacks.onUpgrade}
-              onClick={callbacks.onUpgrade}
-              className={clsx(
-                LABEL, "bg-transparent border-0 p-0",
-                callbacks.onUpgrade ? "text-c-text-brand hover:underline cursor-pointer" : "text-c-text-disabled cursor-not-allowed",
-              )}
-            >
-              Upgrade
-            </button>
-          </p>
-        </div>
       </div>
     </div>
   );
@@ -386,7 +332,7 @@ export function TeamDialog({
           />
         }
       />
-      <ModalBody className="px-[48px] py-[8px]">
+      <ModalBody className="px-[24px] py-[8px]">
         {activeTab === "settings" ? (
           <SettingsView teamName={teamName} teamIconSrc={teamIconSrc} callbacks={settings} />
         ) : (
