@@ -720,7 +720,7 @@ function Lane({ prop, trackId, propertyId, active = false, height, viewport, plo
 }
 
 // ── one track (layer row + its property rows) ─────────────────────────────────────
-function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onPropertyValueChange, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
+function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onPropertyValueChange, onPropertyToggleHidden, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
   track: Track; trackIndex: number;
   focusable: boolean;
   viewport: TimelineViewport; plotWidth: number; duration: number;
@@ -736,6 +736,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
   selectedTimelineRowId?: string | null;
   onPropertyRowSelect?: (propertyId: string) => void;
   onPropertyValueChange?: (trackId: string, propertyId: string, value: number) => void;
+  onPropertyToggleHidden?: (trackId: string, propertyId: string) => void;
   onEasingSegmentSelect?: (target: TimelineEasingSegmentTarget) => void;
   onEasingPresetChange?: (target: TimelineEasingSegmentTarget, easing: NamedEasingPreset) => void;
   onDurationBarChange?: (change: TimelineDurationBarChange) => void;
@@ -862,7 +863,11 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
                   onChange={value => onPropertyValueChange?.(trackId, propertyId, value)} />
               </div>
             )}
-            {p.hidden ? <EyeOff size={14} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" /> : <Eye size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />}
+            <button type="button" aria-label={p.hidden ? `Show ${p.name}` : `Hide ${p.name}`} aria-pressed={p.hidden}
+              onClick={() => onPropertyToggleHidden?.(trackId, propertyId)}
+              className={clsx("shrink-0 flex items-center justify-center", !p.hidden && "opacity-0 group-hover/prop:opacity-100")}>
+              {p.hidden ? <EyeOff size={14} strokeWidth={1.5} className="text-c-icon-secondary" /> : <Eye size={14} strokeWidth={1.5} className="text-c-icon-secondary" />}
+            </button>
           </div>
           <Lane prop={p} trackId={trackId} propertyId={p.id ?? `property-${i}`} active={trackActive} height={ROW_PROP} viewport={viewport} plotWidth={plotWidth} edgeDrag={edgeDrag} onSelect={onKeyframeSelect} onMove={onKeyframeMove} onDelete={onKeyframeDelete} onEasingSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
         </div>
@@ -1180,6 +1185,7 @@ export function Timeline({
   selectedTimelineRowId,
   onPropertyRowSelect,
   onPropertyValueChange,
+  onPropertyToggleHidden,
   onTrackExpandedChange,
   onTrackSelect,
   onAggregateKeyframeSelect,
@@ -1238,6 +1244,8 @@ export function Timeline({
   onPropertyRowSelect?: (propertyId: string) => void;
   /** Edit a property's value at the playhead from its inline timeline field (#343b). */
   onPropertyValueChange?: (trackId: string, propertyId: string, value: number) => void;
+  /** Toggle a property track's visibility (eye) — muted when hidden (#322). */
+  onPropertyToggleHidden?: (trackId: string, propertyId: string) => void;
   onTrackExpandedChange?: (trackId: string, expanded: boolean) => void;
   onTrackSelect?: (trackId: string, modifiers: TimelineTrackSelectionModifiers) => void;
   onAggregateKeyframeSelect?: (target: AggregateKeyframeTarget, additive: boolean) => void;
@@ -1471,7 +1479,7 @@ export function Timeline({
               onGestureStart={onGestureStart} onGestureEnd={onGestureEnd}
               onPropertyAddKeyframe={onPropertyAddKeyframe ? (trackId, propertyId, timeMs = playhead) => onPropertyAddKeyframe(trackId, propertyId, timeMs) : undefined}
               onPropertyStepKeyframe={onPropertyStepKeyframe}
-              selectedTimelineRowId={selectedTimelineRowId} onPropertyRowSelect={onPropertyRowSelect} onPropertyValueChange={onPropertyValueChange} />)}
+              selectedTimelineRowId={selectedTimelineRowId} onPropertyRowSelect={onPropertyRowSelect} onPropertyValueChange={onPropertyValueChange} onPropertyToggleHidden={onPropertyToggleHidden} />)}
             </div>
           </>
         )}
