@@ -291,7 +291,9 @@ function EasingSegment({
           // Opaque bg fill so the connecting line is occluded ('cut-through'), not seen
           // passing behind the box (Composa#321).
           "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center size-[16px] rounded-[4px] border bg-c-bg",
-          interactive && "opacity-0 transition-opacity group-hover/easing:opacity-100 group-focus-visible/easing:opacity-100",
+          // Hidden until hover/focus — but a SELECTED segment (its easing is open in the
+          // inspector) stays in view (Composa#321).
+          interactive && !selected && "opacity-0 transition-opacity group-hover/easing:opacity-100 group-focus-visible/easing:opacity-100",
         )}
         style={{ borderColor: "#0d99ff" }}
       >
@@ -375,7 +377,7 @@ function EasingSegment({
     <>
       <span
         aria-hidden
-        className={clsx("pointer-events-none absolute top-1/2 h-px -translate-y-1/2", lineActive ? "bg-[#0d99ff]" : accent ? "bg-c-bg-brand" : "bg-c-border-strong")}
+        className={clsx("pointer-events-none absolute top-1/2 h-px -translate-y-1/2", lineActive ? "bg-[#0d99ff]" : accent ? "bg-c-bg-brand" : "bg-c-text-secondary")}
         style={{ left: `${segmentLeft}%`, width: `${segmentWidth}%` }}
       />
       {control}
@@ -516,8 +518,9 @@ function DurationBar({ trackId, name, range, projection, selectionState, viewpor
     projection.clippedEnd ? "rounded-r-none border-r-0" : "rounded-r-[4px]",
     selectionState === "selected"
       ? "border-c-border-selected-strong bg-c-bg-brand"
-      // Unselected: de-emphasized (lighter) stroke, not the strong border.
-      : "border-c-border bg-c-bg-secondary",
+      // Unselected: de-emphasized light-secondary stroke (matches the timeline line /
+      // diamond stroke and the secondary property-name text) — Composa#324/#320.
+      : "border-c-text-secondary bg-c-bg-secondary",
   );
   const data = {
     "data-timeline-duration-bar": trackId,
@@ -555,8 +558,10 @@ function DurationBar({ trackId, name, range, projection, selectionState, viewpor
   );
 }
 
-function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag, onSelect, onMove, onDelete, onEasingSelect, onEasingPresetChange, onGestureStart, onGestureEnd }: {
-  prop: PropTrack; trackId: string; propertyId: string; height: number;
+function Lane({ prop, trackId, propertyId, active = false, height, viewport, plotWidth, edgeDrag, onSelect, onMove, onDelete, onEasingSelect, onEasingPresetChange, onGestureStart, onGestureEnd }: {
+  prop: PropTrack; trackId: string; propertyId: string;
+  /** Parent object has a selected keyframe — lines + unselected diamonds go blue (Composa#320). */
+  active?: boolean; height: number;
   viewport: TimelineViewport; plotWidth: number;
   edgeDrag: TimelineEdgeDragController;
   onSelect?: (target: KeyframeTarget, additive: boolean) => void;
@@ -633,7 +638,7 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
             target={target}
             propertyName={prop.name}
             selected={typeof keyframe !== "number" && !!keyframe.easingSelected}
-            lineActive={kfs.some(item => typeof item !== "number" && item.selected)}
+            lineActive={active}
             accent={!!prop.accent}
             viewport={viewport}
             onSelect={onEasingSelect}
@@ -680,7 +685,12 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
           // Figma keyframe-diamond states (Composa#320): unselected = no fill + secondary
           // outline; selected = solid blue fill (no ring/scale). accent = the parent's
           // "animation applied" tint (purple), used when the parent is being animated.
-          className={clsx("absolute top-1/2 z-[2] size-[7px] p-0 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-c-bg", selected ? "border-0" : "border border-c-border-strong bg-c-bg")}
+          className={clsx(
+            "absolute top-1/2 z-[2] size-[7px] p-0 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-c-bg",
+            // selected = solid blue fill; parent-active but unselected = blue stroke with
+            // the highlight-bg inner fill; otherwise = light secondary stroke, lane-bg fill.
+            selected ? "border-0" : active ? "border border-[#0d99ff] bg-c-bg-selected" : "border border-c-text-secondary bg-c-bg",
+          )}
           style={{ left: percent(timeMs, viewport), backgroundColor: selected ? (prop.accent ? "#8638e5" : BLUE) : undefined }}
         />
       );})}
@@ -787,10 +797,13 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
           })}
         </div>
       </div>
+      {/* When any keyframe on this object (parent) is selected, its animation reads as
+          'applied': all its lines + unselected diamonds go blue (Composa#320). */}
       {/* property rows — a row goes blue when one of its keyframes or easing
           segments is selected (Composa#323: prop-row selection, was parent-only). */}
       {expanded && track.props.map((p, i) => {
         const propSelected = p.keyframes.some(keyframe => typeof keyframe !== "number" && (keyframe.selected || keyframe.easingSelected));
+        const trackActive = track.props.some(property => property.keyframes.some(keyframe => typeof keyframe !== "number" && keyframe.selected));
         return (
         <div key={i} className={clsx("flex", p.hidden && "opacity-40", propSelected && "bg-c-bg-selected")} style={{ height: ROW_PROP }}>
           <div className="group/prop shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
@@ -807,7 +820,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
             </button>
             {p.hidden ? <EyeOff size={14} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" /> : <Eye size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />}
           </div>
-          <Lane prop={p} trackId={trackId} propertyId={p.id ?? `property-${i}`} height={ROW_PROP} viewport={viewport} plotWidth={plotWidth} edgeDrag={edgeDrag} onSelect={onKeyframeSelect} onMove={onKeyframeMove} onDelete={onKeyframeDelete} onEasingSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+          <Lane prop={p} trackId={trackId} propertyId={p.id ?? `property-${i}`} active={trackActive} height={ROW_PROP} viewport={viewport} plotWidth={plotWidth} edgeDrag={edgeDrag} onSelect={onKeyframeSelect} onMove={onKeyframeMove} onDelete={onKeyframeDelete} onEasingSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
         </div>
         );
       })}
@@ -882,9 +895,9 @@ function Ruler({ viewport, width }: { viewport: TimelineViewport; width: number 
     <div className="absolute inset-0 overflow-hidden">
       {ticks.map(t => (
         <div key={t} className="absolute top-0 bottom-0 pointer-events-none" style={{ left: percent(t, viewport) }}>
-          {/* number above · tick below at the exact time position (adjacent to lanes) */}
-          <span className={clsx(FONT, "absolute bottom-[6px] left-[3px] text-[11px] text-c-text-secondary tabular-nums leading-none whitespace-nowrap")}>{Math.round(t)}</span>
-          <span className="absolute bottom-0 left-0 w-px h-[4px] bg-c-border-strong" />
+          {/* number + tick both CENTERED on the time position; tick below the number */}
+          <span className={clsx(FONT, "absolute bottom-[6px] left-0 -translate-x-1/2 text-[11px] text-c-text-secondary tabular-nums leading-none whitespace-nowrap")}>{Math.round(t)}</span>
+          <span className="absolute bottom-0 left-0 -translate-x-1/2 w-px h-[4px] bg-c-text-secondary" />
         </div>
       ))}
     </div>
@@ -898,8 +911,8 @@ function SecondRuler({ viewport, width }: { viewport: TimelineViewport; width: n
     <div className="absolute inset-0 overflow-hidden">
       {ticks.map(timeMs => (
         <div key={timeMs} className="absolute top-0 bottom-0 pointer-events-none" style={{ left: percent(timeMs, viewport) }}>
-          <span className={clsx(FONT, "absolute bottom-[6px] left-[3px] text-[11px] text-c-text-secondary tabular-nums leading-none whitespace-nowrap")}>{Number((timeMs / 1000).toFixed(2))}s</span>
-          <span className="absolute bottom-0 left-0 w-px h-[4px] bg-c-border-strong" />
+          <span className={clsx(FONT, "absolute bottom-[6px] left-0 -translate-x-1/2 text-[11px] text-c-text-secondary tabular-nums leading-none whitespace-nowrap")}>{Number((timeMs / 1000).toFixed(2))}s</span>
+          <span className="absolute bottom-0 left-0 -translate-x-1/2 w-px h-[4px] bg-c-text-secondary" />
         </div>
       ))}
     </div>
@@ -1341,7 +1354,7 @@ export function Timeline({
         >
           {master ? <SecondRuler viewport={viewport} width={plotWidth} /> : <Ruler viewport={viewport} width={plotWidth} />}
           {/* playhead handle — recolors red when auto-keyframe/record is armed (Composa#330) */}
-          <div className="absolute top-[4px] -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport) }}>
+          <div className="absolute top-[4px] z-20 -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport) }}>
             <svg width="12" height="10" viewBox="0 0 12 10"><path d="M0 0h12v4l-6 6-6-6V0Z" fill={autoKeyframe ? "#ff3b30" : BLUE} /></svg>
           </div>
         </div>
@@ -1406,8 +1419,8 @@ export function Timeline({
             </div>
           </>
         )}
-        {/* shared playhead line spanning the body */}
-        <div className="absolute top-0 bottom-0 right-0 overflow-hidden pointer-events-none" style={{ left: LEFT_W }}>
+        {/* shared playhead line spanning the body — above the keyframe diamonds (Composa#320) */}
+        <div className="absolute top-0 bottom-0 right-0 z-20 overflow-hidden pointer-events-none" style={{ left: LEFT_W }}>
           <div className="absolute top-0 bottom-0 w-px" style={{ left: percent(playhead, viewport), backgroundColor: autoKeyframe ? "#ff3b30" : BLUE }} />
         </div>
       </ScrollArea>
