@@ -472,8 +472,9 @@ function PositionSection({
         />
       )}
 
-      {/* Rotation — in motion mode the flip/rotate actions are hidden (Figma parity:
-          the row shows just the animatable value + its keyframe diamond). */}
+      {/* Rotation — single-column value (with its keyframe diamond) in the left column;
+          the flip/rotate segmented control is PRESERVED in the right column (Composa#319:
+          Figma keeps rotation half-width; we keep our flip actions beside it). */}
       <PanelFieldRow
         label="Rotation"
         left={
@@ -484,7 +485,7 @@ function PositionSection({
             keyframe={rotationKeyframe}
           />
         }
-        right={rotationKeyframe ? undefined : <IconButtonRow buttons={rotateBtns} fill />}
+        right={<IconButtonRow buttons={rotateBtns} fill />}
       />
 
     </PanelSection>
