@@ -783,6 +783,40 @@ export default function Playground() {
     );
   }
 
+  if (view === "issue-179-play") {
+    const issue179Anims = [
+      { id: "a1", n: 1, name: "Title", kind: "In" as const, duration: "0.6s", style: "fade-in", buildDuration: "600ms" },
+      { id: "a2", n: 2, name: "Subtitle", kind: "In" as const, duration: "0.4s", style: "slide-in", buildDuration: "400ms", direction: "left" as const, selected: true },
+      { id: "a3", n: 3, name: "Body", kind: "Action" as const, duration: "0.5s", style: "pulse" },
+    ];
+    return (
+      <div style={{ height: "100vh", width: "100vw", display: "flex", gap: 24, justifyContent: "center", alignItems: "flex-start", background: "#e6e6e6", padding: 24 }}>
+        {/* Element selected WITH animations → Play (first action) is enabled. */}
+        <div style={{ width: 280 }}>
+          <div style={{ font: "12px system-ui", marginBottom: 8 }}>Element w/ animations → Play enabled</div>
+          <PropertyPanel
+            elementType="text"
+            slideId="slide-1"
+            slideTransitionType="none"
+            objectAnimations={issue179Anims}
+            objectAnimationCallbacks={{ onPlayAllObjectAnimations: () => console.info("Play all object animations") }}
+          />
+        </div>
+        {/* No animations / no selection → Play is disabled (mirrors the "+" gate). */}
+        <div style={{ width: 280 }}>
+          <div style={{ font: "12px system-ui", marginBottom: 8 }}>No animations → Play disabled</div>
+          <PropertyPanel
+            elementType="text"
+            slideId="slide-2"
+            slideTransitionType="none"
+            objectAnimations={[]}
+            objectAnimationCallbacks={{ onPlayAllObjectAnimations: () => console.info("Play all object animations") }}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (view === "selection-colors-empty") {
     return <div style={{ height: "100vh", width: "100vw", display: "flex", justifyContent: "flex-end", background: "#e6e6e6" }}>
       <PropertyPanel multiSelect selectionColors={[]} />

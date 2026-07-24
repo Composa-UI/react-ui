@@ -52,6 +52,29 @@ describe("AnimatePanel — default card expansion follows selection type (issue 
   });
 });
 
+// Composa-App/Composa#179
+describe("AnimatePanel — object-animations lead action is Play, gated like '+' (issue #179)", () => {
+  // The play button is the first rightAction; capture just that <button> element.
+  const playButton = (html: string) =>
+    html.match(/<button[^>]*aria-label="Play all animations"[^>]*>/)?.[0] ?? "";
+
+  it("renders a Play button (not the old 'Select object' control)", () => {
+    const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={ANIMS} />);
+    expect(html).toContain('aria-label="Play all animations"');
+    expect(html).not.toContain('aria-label="Select object"');
+  });
+
+  it("enables Play when there are animations to play", () => {
+    const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={ANIMS} />);
+    expect(playButton(html)).not.toContain("disabled");
+  });
+
+  it("disables Play when there are no animations / no real selection (mirrors the '+' gate)", () => {
+    const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={[]} />);
+    expect(playButton(html)).toContain("disabled");
+  });
+});
+
 // Composa-App/Composa#222
 describe("AnimatePanel — settings icon + delay gated behind the animationDelay capability (issue #222)", () => {
   it("hides the settings icon and the start/delay block by default (flag OFF)", () => {
