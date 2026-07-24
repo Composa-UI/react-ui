@@ -13,6 +13,9 @@ import { AssetsPanel, type AssetFilter, type AssetItem } from "./components/ui3/
 import { CreationToolbar } from "./components/ui3/CreationToolbar";
 import { Button } from "./components/ui3/Button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "./components/ui3/Dialog";
+import { TeamDialog, type TeamMember, type TeamTab, type TeamRole } from "./components/ui3/TeamDialog";
+import { DeleteConfirmDialog } from "./components/ui3/DeleteConfirmDialog";
+import { ImageAdjustDialog } from "./components/ui3/ImageAdjustDialog";
 import { Tooltip, TooltipProvider } from "./components/ui3/Tooltip";
 import { ComposaModeProvider } from "./components/ui3/useComposaMode";
 import { SegmentedControl } from "./components/ui3/SegmentedControl";
@@ -516,6 +519,84 @@ function ChatIntegrationFixture({ mode }: { mode: "light" | "dark" }) {
   );
 }
 
+// Composa#288 — DS container dialogs. Renders one dialog per ?d= value on a
+// neutral canvas so each can be gh-imaged against its Figma node (light + dark
+// via ?theme=dark). d ∈ team-settings | team-members | team-members-empty |
+// delete | image-adjust.
+const DIALOG_288_MEMBERS: TeamMember[] = [
+  { id: "1", name: "Peace Aghaeze", email: "peace4aghaeze@gmail.com", avatarColor: "blue", initial: "P", role: "can edit" },
+  { id: "2", name: "Precious Aghaeze", email: "aghaeze.precious@philander.edu", avatarColor: "purple", initial: "P", role: "can edit" },
+  { id: "3", name: "Samuel", email: "harlahke@gmail.com", avatarSrc: thumb3, role: "Owner", isYou: true },
+  { id: "4", name: "Sam Davis Omekara", email: "omekara.samdavis@philander.edu", avatarColor: "grey", initial: "S", role: "can edit", pending: true },
+];
+
+function Dialog288Fixture() {
+  const params = new URLSearchParams(window.location.search);
+  const d = params.get("d") ?? "team-settings";
+  const dark = params.get("theme") === "dark";
+  const [tab, setTab] = useState<TeamTab>(d === "team-settings" ? "settings" : "members");
+  const [members, setMembers] = useState<TeamMember[]>(DIALOG_288_MEMBERS);
+  const [zoomKey] = useState(0);
+  const noop = () => undefined;
+
+  const onChangeRole = (id: string, role: TeamRole) =>
+    setMembers(prev => prev.map(m => (m.id === id ? { ...m, role } : m)));
+  const onRemove = (id: string) => setMembers(prev => prev.filter(m => m.id !== id));
+
+  return (
+    <div
+      {...(dark ? { "data-composa-mode": "dark" } : {})}
+      style={{ height: "100vh", width: "100vw", background: dark ? "#1e1e1e" : "#d9d9d9" }}
+    >
+      {(d === "team-settings" || d === "team-members") && (
+        <TeamDialog
+          open
+          onClose={noop}
+          tab={tab}
+          onTabChange={setTab}
+          teamName={d === "team-members" ? "Hackathons" : "Just me"}
+          teamIconSrc={d === "team-members" ? thumb2 : undefined}
+          members={members}
+          onChangeMemberRole={onChangeRole}
+          onRemoveMember={onRemove}
+          onChangeName={noop}
+          onAddDescription={noop}
+          onSetProfileHandle={noop}
+          onViewLibraries={noop}
+          onGoToBilling={noop}
+          onTransferTeam={noop}
+          onUpgrade={noop}
+        />
+      )}
+
+      {d === "team-members-empty" && (
+        <TeamDialog
+          open
+          onClose={noop}
+          tab="members"
+          teamName="Just me"
+          members={[{ id: "me", name: "Samuel", email: "harlahke@gmail.com", avatarSrc: thumb3, role: "Owner", isYou: true }]}
+        />
+      )}
+
+      {d === "delete" && (
+        <DeleteConfirmDialog
+          open
+          onClose={noop}
+          onConfirm={noop}
+          title="Delete team?"
+          message='Are you sure you want to delete "Just me"? This action cannot be undone.'
+          confirmLabel="Delete team"
+        />
+      )}
+
+      {d === "image-adjust" && (
+        <ImageAdjustDialog key={zoomKey} open onClose={noop} src={thumb0} shape="circle" onSave={noop} />
+      )}
+    </div>
+  );
+}
+
 export default function Playground() {
   // ?view=slides = componentized SlidesPanel; ?view=slides-raw = the raw Figma export
   // (side-by-side fidelity check); default = property-panel fidelity set.
@@ -603,6 +684,10 @@ export default function Playground() {
     transitionEasing: "ease-in-out",
     guides: [{ id: "guide-1", type: "Grid", visible: true, size: 8 }],
   });
+
+  if (view === "dialogs-288") {
+    return <Dialog288Fixture />;
+  }
 
   if (view === "issue-66-fixtures") {
     return (
