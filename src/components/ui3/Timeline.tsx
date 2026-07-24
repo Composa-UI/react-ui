@@ -535,14 +535,13 @@ function DurationBar({ trackId, name, range, projection, selectionState, viewpor
   );
 }
 
-function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag, onSelect, onMove, onDelete, onAdd, onEasingSelect, onEasingPresetChange, onGestureStart, onGestureEnd }: {
+function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag, onSelect, onMove, onDelete, onEasingSelect, onEasingPresetChange, onGestureStart, onGestureEnd }: {
   prop: PropTrack; trackId: string; propertyId: string; height: number;
   viewport: TimelineViewport; plotWidth: number;
   edgeDrag: TimelineEdgeDragController;
   onSelect?: (target: KeyframeTarget, additive: boolean) => void;
   onMove?: (target: KeyframeTarget, timeMs: number) => void;
   onDelete?: (target: KeyframeTarget) => void;
-  onAdd?: (timeMs: number) => void;
   onEasingSelect?: (target: TimelineEasingSegmentTarget) => void;
   onEasingPresetChange?: (target: TimelineEasingSegmentTarget, easing: NamedEasingPreset) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
@@ -575,15 +574,11 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
   return (
     <div
       ref={laneRef}
-      className={clsx("flex-1 relative overflow-hidden", onAdd && "cursor-crosshair")}
+      // Keyframes are added through the inspector diamond only — the timeline lane is
+      // NOT an add surface: no crosshair cursor and no click-to-add (Composa#325).
+      className="flex-1 relative overflow-hidden"
       style={{ height }}
       data-timeline-property-lane={`${trackId}:${propertyId}`}
-      onClick={event => {
-        if (!(event.target instanceof Node) || !event.currentTarget.contains(event.target)) return;
-        if (!onAdd || (event.target as Element).closest?.("[data-keyframe-id],[data-easing-segment]")) return;
-        const rect = event.currentTarget.getBoundingClientRect();
-        onAdd(timelineTimeAtClientX(event.clientX, rect.left, rect.width, viewport));
-      }}
     >
       {prop.bar && (
         <div
@@ -661,8 +656,11 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
             edgeDrag.update(event.clientX, { left: rect.left, width: rect.width }, next => updateAtViewport(event.clientX, next));
           }}
           onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
-          className={clsx("absolute top-1/2 z-[2] size-[7px] p-0 border-0 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-c-bg", selected && "ring-2 ring-c-border-selected-strong")}
-          style={{ left: percent(timeMs, viewport), backgroundColor: prop.accent ? "#8638e5" : BLUE }}
+          // Figma keyframe-diamond states (Composa#320): unselected = no fill + secondary
+          // outline; selected = solid blue fill (no ring/scale). accent = the parent's
+          // "animation applied" tint (purple), used when the parent is being animated.
+          className={clsx("absolute top-1/2 z-[2] size-[7px] p-0 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-c-bg", selected ? "border-0" : "border border-c-border-strong")}
+          style={{ left: percent(timeMs, viewport), backgroundColor: selected ? (prop.accent ? "#8638e5" : BLUE) : "transparent" }}
         />
       );})}
     </div>
@@ -670,7 +668,7 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
 }
 
 // ── one track (layer row + its property rows) ─────────────────────────────────────
-function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
+function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
   track: Track; trackIndex: number;
   focusable: boolean;
   viewport: TimelineViewport; plotWidth: number; duration: number;
@@ -682,6 +680,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
   onKeyframeMove?: (target: KeyframeTarget, timeMs: number) => void;
   onKeyframeDelete?: (target: KeyframeTarget) => void;
   onPropertyAddKeyframe?: (trackId: string, propertyId: string, timeMs?: number) => void;
+  onPropertyStepKeyframe?: (trackId: string, propertyId: string, direction: "prev" | "next") => void;
   onEasingSegmentSelect?: (target: TimelineEasingSegmentTarget) => void;
   onEasingPresetChange?: (target: TimelineEasingSegmentTarget, easing: NamedEasingPreset) => void;
   onDurationBarChange?: (change: TimelineDurationBarChange) => void;
@@ -772,15 +771,19 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
         <div key={i} className={clsx("flex", p.hidden && "opacity-40")} style={{ height: ROW_PROP }}>
           <div className="group/prop shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate", p.accent ? "text-[#8638e5]" : "text-c-text-secondary")}>{p.name}</span>
-            {/* keyframe stepper */}
-            <ChevronLeft size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />
-            <button aria-label={`Add ${p.name} keyframe`} onClick={() => onPropertyAddKeyframe?.(trackId, p.id ?? `property-${i}`)} className="shrink-0 flex items-center justify-center">
+            {/* keyframe stepper: ◀ prev-keyframe · ◇ toggle-at-playhead · ▶ next-keyframe */}
+            <button type="button" aria-label={`Previous ${p.name} keyframe`} onClick={() => onPropertyStepKeyframe?.(trackId, p.id ?? `property-${i}`, "prev")} className="shrink-0 flex items-center justify-center opacity-0 group-hover/prop:opacity-100 disabled:opacity-0" disabled={!onPropertyStepKeyframe}>
+              <ChevronLeft size={14} strokeWidth={1.5} className="text-c-icon-secondary" />
+            </button>
+            <button type="button" aria-label={`Add ${p.name} keyframe`} onClick={() => onPropertyAddKeyframe?.(trackId, p.id ?? `property-${i}`)} className="shrink-0 flex items-center justify-center">
               <Diamond size={12} strokeWidth={1.5} className="text-c-icon-secondary" />
             </button>
-            <ChevronRight size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />
+            <button type="button" aria-label={`Next ${p.name} keyframe`} onClick={() => onPropertyStepKeyframe?.(trackId, p.id ?? `property-${i}`, "next")} className="shrink-0 flex items-center justify-center opacity-0 group-hover/prop:opacity-100 disabled:opacity-0" disabled={!onPropertyStepKeyframe}>
+              <ChevronRight size={14} strokeWidth={1.5} className="text-c-icon-secondary" />
+            </button>
             {p.hidden ? <EyeOff size={14} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" /> : <Eye size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />}
           </div>
-          <Lane prop={p} trackId={trackId} propertyId={p.id ?? `property-${i}`} height={ROW_PROP} viewport={viewport} plotWidth={plotWidth} edgeDrag={edgeDrag} onSelect={onKeyframeSelect} onMove={onKeyframeMove} onDelete={onKeyframeDelete} onAdd={onPropertyAddKeyframe ? timeMs => onPropertyAddKeyframe(trackId, p.id ?? `property-${i}`, timeMs) : undefined} onEasingSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+          <Lane prop={p} trackId={trackId} propertyId={p.id ?? `property-${i}`} height={ROW_PROP} viewport={viewport} plotWidth={plotWidth} edgeDrag={edgeDrag} onSelect={onKeyframeSelect} onMove={onKeyframeMove} onDelete={onKeyframeDelete} onEasingSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
         </div>
       ))}
     </>
@@ -1070,6 +1073,7 @@ export function Timeline({
   onStop,
   onAddKeyframe,
   onPropertyAddKeyframe,
+  onPropertyStepKeyframe,
   onTrackExpandedChange,
   onTrackSelect,
   onAggregateKeyframeSelect,
@@ -1118,6 +1122,8 @@ export function Timeline({
   onStop?: () => void;
   onAddKeyframe?: (timeMs: number) => void;
   onPropertyAddKeyframe?: (trackId: string, propertyId: string, timeMs: number) => void;
+  /** Step the playhead to the previous/next keyframe of a specific property track. */
+  onPropertyStepKeyframe?: (trackId: string, propertyId: string, direction: "prev" | "next") => void;
   onTrackExpandedChange?: (trackId: string, expanded: boolean) => void;
   onTrackSelect?: (trackId: string, modifiers: TimelineTrackSelectionModifiers) => void;
   onAggregateKeyframeSelect?: (target: AggregateKeyframeTarget, additive: boolean) => void;
@@ -1344,7 +1350,8 @@ export function Timeline({
               onEasingSegmentSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange}
               onDurationBarChange={onDurationBarChange}
               onGestureStart={onGestureStart} onGestureEnd={onGestureEnd}
-              onPropertyAddKeyframe={onPropertyAddKeyframe ? (trackId, propertyId, timeMs = playhead) => onPropertyAddKeyframe(trackId, propertyId, timeMs) : undefined} />)}
+              onPropertyAddKeyframe={onPropertyAddKeyframe ? (trackId, propertyId, timeMs = playhead) => onPropertyAddKeyframe(trackId, propertyId, timeMs) : undefined}
+              onPropertyStepKeyframe={onPropertyStepKeyframe} />)}
             </div>
           </>
         )}
