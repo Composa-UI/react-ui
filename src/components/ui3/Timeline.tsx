@@ -699,7 +699,7 @@ function Lane({ prop, trackId, propertyId, active = false, height, viewport, plo
 }
 
 // ── one track (layer row + its property rows) ─────────────────────────────────────
-function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
+function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
   track: Track; trackIndex: number;
   focusable: boolean;
   viewport: TimelineViewport; plotWidth: number; duration: number;
@@ -712,6 +712,8 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
   onKeyframeDelete?: (target: KeyframeTarget) => void;
   onPropertyAddKeyframe?: (trackId: string, propertyId: string, timeMs?: number) => void;
   onPropertyStepKeyframe?: (trackId: string, propertyId: string, direction: "prev" | "next") => void;
+  selectedTimelineRowId?: string | null;
+  onPropertyRowSelect?: (propertyId: string) => void;
   onEasingSegmentSelect?: (target: TimelineEasingSegmentTarget) => void;
   onEasingPresetChange?: (target: TimelineEasingSegmentTarget, easing: NamedEasingPreset) => void;
   onDurationBarChange?: (change: TimelineDurationBarChange) => void;
@@ -803,9 +805,14 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
           segments is selected (Composa#323: prop-row selection, was parent-only). */}
       {expanded && track.props.map((p, i) => {
         const propSelected = p.keyframes.some(keyframe => typeof keyframe !== "number" && (keyframe.selected || keyframe.easingSelected));
+        const propertyId = p.id ?? `property-${i}`;
+        const rowGraySelected = !propSelected && selectedTimelineRowId === propertyId;
         const trackActive = track.props.some(property => property.keyframes.some(keyframe => typeof keyframe !== "number" && keyframe.selected));
         return (
-        <div key={i} className={clsx("flex", p.hidden && "opacity-40", propSelected && "bg-c-bg-selected")} style={{ height: ROW_PROP }}>
+        <div key={i}
+          className={clsx("flex", p.hidden && "opacity-40", propSelected ? "bg-c-bg-selected" : rowGraySelected && "bg-c-bg-secondary")}
+          style={{ height: ROW_PROP }}
+          onClick={event => { if (!(event.target as Element).closest?.("button,[data-keyframe-id],[data-easing-segment]")) onPropertyRowSelect?.(propertyId); }}>
           <div className="group/prop shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate", p.accent ? "text-[#8638e5]" : "text-c-text-secondary")}>{p.name}</span>
             {/* keyframe stepper: ◀ prev-keyframe · ◇ toggle-at-playhead · ▶ next-keyframe */}
@@ -1133,6 +1140,8 @@ export function Timeline({
   onAddKeyframe,
   onPropertyAddKeyframe,
   onPropertyStepKeyframe,
+  selectedTimelineRowId,
+  onPropertyRowSelect,
   onTrackExpandedChange,
   onTrackSelect,
   onAggregateKeyframeSelect,
@@ -1186,6 +1195,9 @@ export function Timeline({
   onPropertyAddKeyframe?: (trackId: string, propertyId: string, timeMs: number) => void;
   /** Step the playhead to the previous/next keyframe of a specific property track. */
   onPropertyStepKeyframe?: (trackId: string, propertyId: string, direction: "prev" | "next") => void;
+  /** Gray row-selection (Composa#323): the property row whose row body was clicked. */
+  selectedTimelineRowId?: string | null;
+  onPropertyRowSelect?: (propertyId: string) => void;
   onTrackExpandedChange?: (trackId: string, expanded: boolean) => void;
   onTrackSelect?: (trackId: string, modifiers: TimelineTrackSelectionModifiers) => void;
   onAggregateKeyframeSelect?: (target: AggregateKeyframeTarget, additive: boolean) => void;
@@ -1415,7 +1427,8 @@ export function Timeline({
               onDurationBarChange={onDurationBarChange}
               onGestureStart={onGestureStart} onGestureEnd={onGestureEnd}
               onPropertyAddKeyframe={onPropertyAddKeyframe ? (trackId, propertyId, timeMs = playhead) => onPropertyAddKeyframe(trackId, propertyId, timeMs) : undefined}
-              onPropertyStepKeyframe={onPropertyStepKeyframe} />)}
+              onPropertyStepKeyframe={onPropertyStepKeyframe}
+              selectedTimelineRowId={selectedTimelineRowId} onPropertyRowSelect={onPropertyRowSelect} />)}
             </div>
           </>
         )}
