@@ -96,12 +96,21 @@ export interface PropTrack {
   hidden?: boolean;            // greyed + eye-off
   accent?: boolean;            // purple-selected track
 }
+/** An Animate preset shown as a labeled bar (its resolved window) — Composa#362. */
+export interface TimelinePresetBar {
+  id: string;
+  label: string;
+  timeRange: [number, number];
+  phase?: "build-in" | "action" | "build-out";
+}
 export interface Track {
   id?: string;
   name: string;
   type: TrackType;
   bar?: [number, number];
   props: PropTrack[];
+  /** Animate-preset bars, rendered as labeled bar rows above the property rows (#362). */
+  bars?: TimelinePresetBar[];
   /** Visual nesting only. Product hierarchy remains host-owned. */
   depth?: number;
   /** Controlled property-row visibility. Undefined preserves the legacy expanded state. */
@@ -828,6 +837,25 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
       </div>
       {/* When any keyframe on this object (parent) is selected, its animation reads as
           'applied': all its lines + unselected diamonds go blue (Composa#320). */}
+      {/* Animate-preset bars (Composa#362) — a labeled bar per preset at its resolved
+          window, ABOVE the authored keyframe rows. Presets are NOT keyframes. */}
+      {expanded && track.bars?.map(preset => (
+        <div key={preset.id} className="flex" style={{ height: ROW_PROP }}>
+          <div className="relative shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
+            {Array.from({ length: depth + 1 }).map((_, level) => (
+              <span key={level} aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-c-border" style={{ left: 16 + level * 16 }} />
+            ))}
+            <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate text-c-text-secondary")}>{preset.label}</span>
+          </div>
+          <div className="flex-1 relative overflow-hidden">
+            <div role="img" aria-label={`${preset.label} preset`}
+              className="absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-[#0d99ff]/10 border-[#0d99ff]"
+              style={{ left: percent(preset.timeRange[0], viewport), width: percentWidth(preset.timeRange[0], preset.timeRange[1], viewport) }}>
+              <span className={clsx(FONT, "text-[11px] truncate text-[#0d99ff]")}>{preset.label}</span>
+            </div>
+          </div>
+        </div>
+      ))}
       {/* property rows — a row goes blue when one of its keyframes or easing
           segments is selected (Composa#323: prop-row selection, was parent-only). */}
       {expanded && track.props.map((p, i) => {
