@@ -247,7 +247,7 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
             const styleLabels = Object.fromEntries(styleOptions.map(style => [style, style.split("-").map(word => word[0].toUpperCase() + word.slice(1)).join(" ")])) as Record<string, string>;
             const deliveryLabels = { "all-at-once": "All at once", "by-object": "By object", "by-word": "By word", "by-character": "By character" };
             const deliveryValue = Object.entries(deliveryLabels).find(([, label]) => label === a.delivery)?.[0] as keyof typeof deliveryLabels | undefined;
-            return <div key={id} className={clsx("group flex items-start gap-[4px] rounded-c-md", a.selected && "bg-c-bg-selected")}
+            return <div key={id} className="group flex items-start gap-[4px]"
               onDragOver={event => { if (dragged && dragged !== id) { event.preventDefault(); event.dataTransfer.dropEffect = "move"; } }}
               onDrop={event => {
                 event.preventDefault();
@@ -257,14 +257,19 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                 callbacks?.onReorder?.(dragged, id, placement);
                 setDragged(null);
               }}>
-              <div className={clsx(FONT, "w-[16px] shrink-0 pt-[8px] text-center text-[9px] font-[450] leading-[14px] tracking-[0.045px] text-c-text-secondary")}>
-                <span className="group-hover:hidden">{a.n}</span>
-                <button type="button" draggable={!!callbacks?.onReorder} aria-label={`Drag ${a.name} animation`} className="hidden group-hover:flex size-[16px] items-center justify-center cursor-grab"
+              {/* Left inset holds the build-order drag handle — the reorder control.
+                  It appears on hover; dragging it reorders the animation. */}
+              <div className="w-[16px] shrink-0 flex justify-center pt-[26px]">
+                <button type="button" draggable={!!callbacks?.onReorder} aria-label={`Drag ${a.name} animation`} className="hidden group-hover:flex size-[16px] items-center justify-center cursor-grab text-c-icon-secondary"
                   onDragStart={event => { setDragged(id); event.dataTransfer.effectAllowed = "move"; }} onDragEnd={() => setDragged(null)}>
                   <GripVertical size={14} />
                 </button>
               </div>
-              <div className="min-w-0 flex-1"><AnimationCard
+              <div className="min-w-0 flex-1 flex flex-col gap-[2px]">
+              {/* Build-order number sits ON TOP of the card, aligned with the card's
+                  left edge, so the card can take the full available width. */}
+              <div className={clsx(FONT, "h-[16px] flex items-center pl-[2px] text-[9px] font-[450] leading-[14px] tracking-[0.045px] text-c-text-secondary")}>{a.n}</div>
+              <AnimationCard
                   icon={<Type size={14} strokeWidth={1.5} />}
                   title={a.name}
                   badge={<><KindGlyph kind={a.kind} /><DurationPill duration={a.duration} kind={a.kind} /></>}
@@ -278,7 +283,8 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                   {directional && <LabeledRow label="Direction"><ChoiceDropdown value={a.direction ?? "left"} options={["left", "right", "up", "down"]} labels={{ left: phase === "build-out" ? "To left" : "From left", right: phase === "build-out" ? "To right" : "From right", up: phase === "build-out" ? "To top" : "From top", down: phase === "build-out" ? "To bottom" : "From bottom" }} onChange={direction => callbacks?.onDirectionChange?.(id, direction)} /></LabeledRow>}
                   {deliveryValue && <LabeledRow label="Delivery"><ChoiceDropdown value={deliveryValue} options={["all-at-once", "by-object", "by-word", "by-character"]} labels={deliveryLabels} onChange={delivery => callbacks?.onDeliveryChange?.(id, delivery)} /></LabeledRow>}
                   {phase === "action" && <LabeledRow label="Intensity"><SegmentedControl className="w-full" value={a.intensity ?? "medium"} segments={[{ value: "small", label: "Small" }, { value: "medium", label: "Medium" }, { value: "large", label: "Large" }]} onChange={value => callbacks?.onIntensityChange?.(id, value as "small" | "medium" | "large")} /></LabeledRow>}
-                </AnimationCard></div>
+                </AnimationCard>
+              </div>
             </div>;
           })}
           <div className="flex flex-col gap-[8px] pt-[4px] border-t border-c-border">
