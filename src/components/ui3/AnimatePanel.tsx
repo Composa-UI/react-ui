@@ -7,6 +7,7 @@ import { ComboInput, NumericInput } from "./Input";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { Button } from "./Button";
 import { SegmentedControl } from "./SegmentedControl";
+import { AnimationStylesPicker } from "./AnimationStylesPicker";
 import { iconForSemantic } from "./IconSemantics";
 
 // ─── Animate panel ──────────────────────────────────────────────────────────────
@@ -291,7 +292,17 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                   onRemove={() => callbacks?.onRemove?.(id)}
                 >
                   <div className={clsx(FONT, "text-[11px] font-[550] leading-[16px] text-c-text")}>{phaseLabel}</div>
-                  <LabeledRow label="Style"><ChoiceDropdown value={a.style ?? styleOptions[0]} options={styleOptions} labels={styleLabels} onChange={style => callbacks?.onStyleChange?.(id, style)} /></LabeledRow>
+                  <LabeledRow label="Style">
+                    <PopoverMenu align="right" className="w-full" trigger={<Dropdown value={styleLabels[a.style ?? styleOptions[0]]} fullWidth />}>
+                      {close => <AnimationStylesPicker
+                        title={`${phaseLabel} styles`}
+                        groups={[{ label: phase === "action" ? "Emphasis" : "Basic", options: styleOptions.map(style => ({ value: style, label: styleLabels[style] })) }]}
+                        value={a.style ?? styleOptions[0]}
+                        onSelect={style => { callbacks?.onStyleChange?.(id, style); close(); }}
+                        onClose={close}
+                      />}
+                    </PopoverMenu>
+                  </LabeledRow>
                   <LabeledRow label="Duration"><NumericInput value={Number.parseFloat(a.buildDuration ?? a.duration) * (a.buildDuration?.includes("ms") ? 1 : 1000)} min={0} suffix="ms" commitOnBlur className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} onChange={durationMs => callbacks?.onDurationChange?.(id, durationMs)} /></LabeledRow>
                   {directional && <LabeledRow label="Direction"><ChoiceDropdown value={a.direction ?? "left"} options={["left", "right", "up", "down"]} labels={{ left: phase === "build-out" ? "To left" : "From left", right: phase === "build-out" ? "To right" : "From right", up: phase === "build-out" ? "To top" : "From top", down: phase === "build-out" ? "To bottom" : "From bottom" }} onChange={direction => callbacks?.onDirectionChange?.(id, direction)} /></LabeledRow>}
                   {deliveryValue && <LabeledRow label="Delivery"><ChoiceDropdown value={deliveryValue} options={["all-at-once", "by-object", "by-word", "by-character"]} labels={deliveryLabels} onChange={delivery => callbacks?.onDeliveryChange?.(id, delivery)} /></LabeledRow>}
