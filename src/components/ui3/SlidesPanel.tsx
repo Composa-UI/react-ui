@@ -1,7 +1,8 @@
 import { clsx } from "clsx";
-import { useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
-import { ChevronRight, ChevronDown, Plus } from "lucide-react";
+import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { ChevronRight, ChevronDown, Plus, MoreHorizontal, Pencil, Copy, Trash2 } from "lucide-react";
 import { ScrollArea } from "./Panel";
+import { Menu, MenuRow } from "./Menu";
 
 // Figma "animate" glyph (icon.24.animate.small → svgPaths.p75f4980 in the
 // `imports/SlidesTemplate` study export). Drawn in a 24×24 viewBox.
@@ -74,7 +75,7 @@ function SlideThumb({ item }: { item: SlideData }) {
 }
 
 // ── One slide row ─────────────────────────────────────────────────────────────
-export function SlideListItem({ item, tabIndex = 0, onNavigate, onRenameRequest, onFocus, itemRef }: { item: SlideData; tabIndex?: number; onNavigate?: (event: KeyboardEvent<HTMLDivElement>) => void; onRenameRequest?: () => void; onFocus?: () => void; itemRef?: (node: HTMLDivElement | null) => void }) {
+export function SlideListItem({ item, tabIndex = 0, onNavigate, onRenameRequest, onMenuRequest, onFocus, itemRef }: { item: SlideData; tabIndex?: number; onNavigate?: (event: KeyboardEvent<HTMLDivElement>) => void; onRenameRequest?: () => void; onMenuRequest?: (event: { clientX: number; clientY: number }) => void; onFocus?: () => void; itemRef?: (node: HTMLDivElement | null) => void }) {
   const numLeft = item.sub ? "left-[36px]" : "left-[12px]";
   // Row height tracks the responsive thumbnail. An in-flow spacer uses the same
   // left-gutter + 12px-right margins, so it fills the remaining width; aspect-ratio
@@ -83,10 +84,11 @@ export function SlideListItem({ item, tabIndex = 0, onNavigate, onRenameRequest,
   const spacerLeft = item.sub ? 68 : 44;
   const spacerBottom = item.stacked ? 20 : 8; // 8, plus 12 for the stacked cards
   return (
-    <div className="relative w-full shrink-0 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-c-border-selected"
+    <div className="group/slide relative w-full shrink-0 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-c-border-selected"
       ref={itemRef} role="option" tabIndex={tabIndex} aria-selected={item.selected} data-in-view={item.inView || undefined} aria-label={`Composition ${item.n}`}
       onFocus={onFocus}
       onClick={item.onClick}
+      onContextMenu={onMenuRequest ? event => { event.preventDefault(); onMenuRequest({ clientX: event.clientX, clientY: event.clientY }); } : undefined}
       onKeyDown={event => {
         const action = slideItemKeyboardAction(event.key);
         if (action === "rename") { event.preventDefault(); onRenameRequest?.(); }
@@ -130,22 +132,111 @@ export function SlideListItem({ item, tabIndex = 0, onNavigate, onRenameRequest,
           <ChevronRight size={16} className={clsx("text-c-text transition-transform", item.expanded && "rotate-90")} />
         )}
       </div>
+
+      {/* Hover ⋯ affordance — opens the slide actions menu at the click point.
+          Hidden until row hover / keyboard focus, so it doesn't cover the thumb. */}
+      {onMenuRequest && (
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label={`Composition ${item.n} options`}
+          onClick={event => { event.stopPropagation(); onMenuRequest({ clientX: event.clientX, clientY: event.clientY }); }}
+          className="absolute top-[10px] right-[16px] z-10 size-[20px] flex items-center justify-center rounded-c-sm bg-c-bg text-c-icon-secondary shadow-c-100 opacity-0 group-hover/slide:opacity-100 focus-visible:opacity-100 hover:bg-c-bg-hover"
+        >
+          <MoreHorizontal size={14} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Editable composition title ────────────────────────────────────────────────
+// Inline-rename combo (mirrors the DS ComboInput split + the LayerList inline
+// rename): the name reads as a button at rest and swaps to a bordered input on
+// click / Enter; a trailing chevron opens the composition menu. Enter (or blur)
+// commits, Escape cancels. Controlled name in, committed name out.
+function EditableCompTitle({ title, onCommit, onMenu }: {
+  title: string;
+  onCommit?: (name: string) => void;
+  onMenu?: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(title);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) { inputRef.current?.focus(); inputRef.current?.select(); }
+  }, [editing]);
+
+  const startEdit = () => { setDraft(title); setEditing(true); };
+  const commit = () => {
+    setEditing(false);
+    const next = draft.trim();
+    if (next && next !== title) onCommit?.(next);
+  };
+  const cancel = () => { setEditing(false); setDraft(title); };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        aria-label="Composition name"
+        value={draft}
+        onChange={event => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={event => {
+          if (event.key === "Enter") { event.preventDefault(); commit(); }
+          else if (event.key === "Escape") { event.preventDefault(); cancel(); }
+        }}
+        className="flex-1 min-w-0 h-[24px] rounded-c-sm border border-c-border-selected bg-c-bg px-[6px] text-c-text text-[13px] font-[550] leading-[22px] tracking-[-0.0325px] outline-none"
+        style={INTER}
+      />
+    );
+  }
+  return (
+    <div className="flex-1 min-w-0 flex items-center gap-[2px]">
+      <button
+        type="button"
+        onClick={startEdit}
+        aria-label={`Rename composition ${title}`}
+        className="min-w-0 flex items-center h-[24px] px-[4px] -mx-[4px] rounded-c-sm hover:bg-c-bg-hover"
+      >
+        <span className="text-c-text text-[13px] font-[550] leading-[22px] tracking-[-0.0325px] truncate" style={INTER}>{title}</span>
+      </button>
+      <button
+        type="button"
+        onClick={onMenu}
+        aria-label="Composition options"
+        className="shrink-0 flex items-center justify-center size-[20px] rounded-c-sm text-c-text hover:bg-c-bg-hover"
+      >
+        <ChevronDown size={11} />
+      </button>
     </div>
   );
 }
 
 // ── Panel ─────────────────────────────────────────────────────────────────────
-export function SlidesPanel({ slides, title = "Product review", subtitle = "", onNewSlide, onNewSlideMenu, onRenameRequest }: {
+export function SlidesPanel({ slides, title = "Product review", subtitle: _subtitle = "", onNewSlide, onNewSlideMenu, onRenameRequest, onTitleChange, onTitleMenu, onSlideDuplicate, onSlideDelete }: {
   slides: SlideData[];
   title?: string;
+  /** @deprecated The fixed 40px DS header no longer renders a subtitle line. */
   subtitle?: string;
   onNewSlide?: () => void;
   onNewSlideMenu?: () => void;
   onRenameRequest?: (index: number) => void;
+  /** Commit an inline rename of the composition (header title). */
+  onTitleChange?: (name: string) => void;
+  /** Open the composition options menu (header title chevron). */
+  onTitleMenu?: () => void;
+  /** Slide-item menu actions. Duplicate/Delete semantics are not yet pinned. */
+  onSlideDuplicate?: (index: number) => void;
+  onSlideDelete?: (index: number) => void;
 }) {
   const initialFocus = Math.max(0, slides.findIndex(slide => slide.selected));
   const [focusIndex, setFocusIndex] = useState(initialFocus);
+  const [menu, setMenu] = useState<{ index: number; x: number; y: number } | null>(null);
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const hasItemMenu = Boolean(onRenameRequest || onSlideDuplicate || onSlideDelete);
   const navigate = (index: number, event: KeyboardEvent<HTMLDivElement>) => {
     let next = index;
     if (event.key === "ArrowDown" || event.key === "ArrowRight") next = Math.min(slides.length - 1, index + 1);
@@ -159,16 +250,10 @@ export function SlidesPanel({ slides, title = "Product review", subtitle = "", o
   };
   return (
     <div className="w-[200px] shrink-0 h-full flex flex-col bg-c-bg overflow-hidden border-r border-c-border">
-      {/* Header — title + subtitle only */}
-      <div className="shrink-0 flex flex-col pt-[8px] pb-[12px] px-[8px]">
-        {/* title + subtitle */}
-        <div className="flex flex-col px-[8px] pt-[4px]">
-          <div className="flex gap-[4px] items-center h-[24px]">
-            <span className="text-c-text text-[13px] font-[550] leading-[22px] tracking-[-0.0325px] truncate" style={INTER}>{title}</span>
-            <ChevronDown size={11} className="text-c-text shrink-0" />
-          </div>
-          <span className="text-c-text-secondary text-[11px] font-[450] leading-[16px] tracking-[0.055px]" style={INTER}>{subtitle}</span>
-        </div>
+      {/* Header — fixed 40px to match the DS panel-header standard (LayerList /
+          PanelSection). Holds the inline-rename composition title combo. */}
+      <div className="shrink-0 h-[40px] flex items-center px-[16px]">
+        <EditableCompTitle title={title} onCommit={onTitleChange} onMenu={onTitleMenu} />
       </div>
 
       {/* New composition (split: label + chevron on the left, plus on the right) */}
@@ -189,9 +274,26 @@ export function SlidesPanel({ slides, title = "Product review", subtitle = "", o
         <div className="flex flex-col py-[4px]" role="listbox" aria-label="Compositions">
           {slides.map((s, i) => <SlideListItem key={i} item={s} tabIndex={i === focusIndex ? 0 : -1}
             itemRef={node => { itemRefs.current[i] = node; }} onFocus={() => setFocusIndex(i)} onNavigate={event => navigate(i, event)}
-            onRenameRequest={() => onRenameRequest?.(i)} />)}
+            onRenameRequest={() => onRenameRequest?.(i)}
+            onMenuRequest={hasItemMenu ? event => setMenu({ index: i, x: event.clientX, y: event.clientY }) : undefined} />)}
         </div>
       </ScrollArea>
+
+      {/* Slide actions menu — anchored at the cursor / ⋯ click (mirrors the
+          AssetsPanel context menu). Backdrop closes it. */}
+      {menu && (
+        <>
+          <button type="button" aria-label="Close menu" className="fixed inset-0 z-40 cursor-default" onClick={() => setMenu(null)} />
+          <div className="fixed z-50" style={{ left: menu.x, top: menu.y }}>
+            <Menu minWidth={176}>
+              <MenuRow label="Rename" leading={<Pencil size={14} />} onClick={() => { onRenameRequest?.(menu.index); setMenu(null); }} />
+              <MenuRow label="Duplicate" leading={<Copy size={14} />} onClick={() => { onSlideDuplicate?.(menu.index); setMenu(null); }} />
+              <MenuRow type="divider" />
+              <MenuRow label="Delete" leading={<Trash2 size={14} />} destructive onClick={() => { onSlideDelete?.(menu.index); setMenu(null); }} />
+            </Menu>
+          </div>
+        </>
+      )}
     </div>
   );
 }

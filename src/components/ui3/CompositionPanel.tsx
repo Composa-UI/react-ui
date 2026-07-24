@@ -41,6 +41,12 @@ export interface CompositionPanelProps {
   onNewSlide?: () => void;
   onNewSlideMenu?: () => void;
   onSlideRenameRequest?: (index: number) => void;
+  onSlideDuplicate?: (index: number) => void;
+  onSlideDelete?: (index: number) => void;
+  /** Commit an inline rename of the composition (Slides header title). */
+  onCompRename?: (name: string) => void;
+  /** Open the composition options menu (Slides header title chevron). */
+  onCompMenu?: () => void;
   slidesTitle?: string;
   slidesSubtitle?: string;
   layersTitle?: string;
@@ -82,6 +88,10 @@ export function CompositionPanel({
   onNewSlide,
   onNewSlideMenu,
   onSlideRenameRequest,
+  onSlideDuplicate,
+  onSlideDelete,
+  onCompRename,
+  onCompMenu,
   slidesTitle,
   slidesSubtitle,
   layersTitle,
@@ -201,7 +211,7 @@ export function CompositionPanel({
       {/* Top — Slides (min 80px). `[&>*]:!w-full` stretches the child to the column
           width; `[&>*]:!border-r-0` drops its own right border (the container owns it). */}
       <div className="min-h-[80px] overflow-hidden [&>*]:!w-full [&>*]:!border-r-0" style={{ flexBasis: `calc(${split} * 100%)`, flexGrow: 0, flexShrink: 1 }}>
-        <SlidesPanel slides={slides} title={slidesTitle} subtitle={slidesSubtitle} onNewSlide={onNewSlide} onNewSlideMenu={onNewSlideMenu} onRenameRequest={onSlideRenameRequest} />
+        <SlidesPanel slides={slides} title={slidesTitle} subtitle={slidesSubtitle} onNewSlide={onNewSlide} onNewSlideMenu={onNewSlideMenu} onRenameRequest={onSlideRenameRequest} onSlideDuplicate={onSlideDuplicate} onSlideDelete={onSlideDelete} onTitleChange={onCompRename} onTitleMenu={onCompMenu} />
       </div>
 
       {/* Bottom — Layers (min 80px, fills the rest). Same stretch/border overrides. */}
