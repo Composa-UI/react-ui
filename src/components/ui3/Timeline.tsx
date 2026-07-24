@@ -845,13 +845,6 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
               <span key={`guide-${level}`} aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-c-border" style={{ left: 16 + level * 16 }} />
             ))}
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate", p.accent ? "text-[#8638e5]" : "text-c-text-secondary")}>{p.name}</span>
-            {/* inline value at the playhead — revealed on hover/selection (Composa#343b) */}
-            {p.value !== undefined && (
-              <div className={clsx("shrink-0 w-[56px]", !(propSelected || rowGraySelected) && "opacity-0 group-hover/prop:opacity-100 focus-within:opacity-100")}>
-                <NumericInput ariaLabel={`${p.name} value`} value={p.value} size="small" disabled={p.valueEditable === false}
-                  onChange={value => onPropertyValueChange?.(trackId, propertyId, value)} />
-              </div>
-            )}
             {/* keyframe stepper: ◀ prev-keyframe · ◇ toggle-at-playhead · ▶ next-keyframe */}
             <button type="button" aria-label={`Previous ${p.name} keyframe`} onClick={() => onPropertyStepKeyframe?.(trackId, p.id ?? `property-${i}`, "prev")} className="shrink-0 flex items-center justify-center opacity-0 group-hover/prop:opacity-100 disabled:opacity-0" disabled={!onPropertyStepKeyframe}>
               <ChevronLeft size={14} strokeWidth={1.5} className="text-c-icon-secondary" />
@@ -862,6 +855,13 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
             <button type="button" aria-label={`Next ${p.name} keyframe`} onClick={() => onPropertyStepKeyframe?.(trackId, p.id ?? `property-${i}`, "next")} className="shrink-0 flex items-center justify-center opacity-0 group-hover/prop:opacity-100 disabled:opacity-0" disabled={!onPropertyStepKeyframe}>
               <ChevronRight size={14} strokeWidth={1.5} className="text-c-icon-secondary" />
             </button>
+            {/* inline value at the playhead — between the stepper and the eye, revealed on hover/selection (Composa#343b) */}
+            {p.value !== undefined && (
+              <div className={clsx("shrink-0 w-[56px]", !(propSelected || rowGraySelected) && "opacity-0 group-hover/prop:opacity-100 focus-within:opacity-100")}>
+                <NumericInput ariaLabel={`${p.name} value`} value={p.value} size="small" disabled={p.valueEditable === false}
+                  onChange={value => onPropertyValueChange?.(trackId, propertyId, value)} />
+              </div>
+            )}
             {p.hidden ? <EyeOff size={14} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" /> : <Eye size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />}
           </div>
           <Lane prop={p} trackId={trackId} propertyId={p.id ?? `property-${i}`} active={trackActive} height={ROW_PROP} viewport={viewport} plotWidth={plotWidth} edgeDrag={edgeDrag} onSelect={onKeyframeSelect} onMove={onKeyframeMove} onDelete={onKeyframeDelete} onEasingSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
