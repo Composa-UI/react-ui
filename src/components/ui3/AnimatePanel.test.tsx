@@ -51,3 +51,28 @@ describe("AnimatePanel — default card expansion follows selection type (issue 
     expect(html).not.toContain(">Fade<");
   });
 });
+
+// Composa-App/Composa#222
+describe("AnimatePanel — settings icon + delay gated behind the animationDelay capability (issue #222)", () => {
+  it("hides the settings icon and the start/delay block by default (flag OFF)", () => {
+    const html = renderToStaticMarkup(
+      <AnimatePanel selectionType="element" compTransition={{ style: "none", direction: "right", durationMs: 300, easing: "ease-out" }} anims={ANIMS} />,
+    );
+    // No settings affordance on either card.
+    expect(html).not.toContain('aria-label="Object animation settings"');
+    expect(html).not.toContain('aria-label="Comp transition settings"');
+    // No dangling "starts automatically" / delay authoring in the default path.
+    expect(html).not.toContain(">Start<");
+    expect(html).not.toContain(">Delay<");
+  });
+
+  it("restores the settings icon and the start/delay block when animationDelay is ON", () => {
+    const html = renderToStaticMarkup(
+      <AnimatePanel selectionType="element" animationDelay compTransition={{ style: "none", direction: "right", durationMs: 300, easing: "ease-out" }} anims={ANIMS} />,
+    );
+    expect(html).toContain('aria-label="Object animation settings"');
+    expect(html).toContain('aria-label="Comp transition settings"');
+    expect(html).toContain(">Start<");
+    expect(html).toContain(">Delay<");
+  });
+});

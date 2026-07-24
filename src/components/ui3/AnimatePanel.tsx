@@ -136,7 +136,12 @@ function ChoiceDropdown<T extends string>({ value, options, labels, onChange }: 
 }
 
 // ── Composition transition ───────────────────────────────────────────────────────
-function CompTransitionSection({ value, callbacks, contextKey, selectionType }: { value?: CompTransitionSettings; callbacks?: CompTransitionCallbacks; contextKey?: string; selectionType?: "slide" | "element" }) {
+function CompTransitionSection({ value, callbacks, contextKey, selectionType, animationDelay = false }: { value?: CompTransitionSettings; callbacks?: CompTransitionCallbacks; contextKey?: string; selectionType?: "slide" | "element"; animationDelay?: boolean }) {
+  // #222: the settings ("starts automatically" + delay) affordance is gated behind the
+  // `animationDelay` capability (default OFF). When off, the settings icon is not rendered.
+  const settingsAction = animationDelay
+    ? <PanelActionBtn icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />} label="Comp transition settings" />
+    : undefined;
   const [demo, setDemo] = useState<CompTransitionSettings>({ style: "fade", direction: "right", durationMs: 300, easing: "ease-out" });
   const controlled = value !== undefined;
   const rendered = value ?? demo;
@@ -155,7 +160,7 @@ function CompTransitionSection({ value, callbacks, contextKey, selectionType }: 
   const setStyle = (style: CompTransitionStyle) => { update({ style }); callbacks?.onStyleChange?.(style); };
   const directional = rendered.style === "push" || rendered.style === "slide" || rendered.style === "wipe";
   if (rendered.style === "none" && !open) return (
-    <PanelSection title="Comp transition" rightActions={<PanelActionBtn icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />} label="Comp transition settings" />}>
+    <PanelSection title="Comp transition" rightActions={settingsAction}>
       <div className="px-[16px] pt-[3px] pb-[8px]">
         <button onClick={() => setOpen(true)} className="h-[32px] w-full rounded-c-md border border-c-border bg-c-bg flex items-center gap-[8px] px-[8px] hover:bg-c-bg-hover">
           <MonitorPlay size={16} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" />
@@ -165,7 +170,7 @@ function CompTransitionSection({ value, callbacks, contextKey, selectionType }: 
     </PanelSection>
   );
   return (
-    <PanelSection title="Comp transition" rightActions={<PanelActionBtn icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />} label="Comp transition settings" />}>
+    <PanelSection title="Comp transition" rightActions={settingsAction}>
       <div className="px-[16px] pt-[3px] pb-[8px]">
         <AnimationCard
           icon={<MonitorPlay size={16} strokeWidth={1.5} />}
@@ -198,8 +203,8 @@ function DurationPill({ duration, kind }: { duration: string; kind: AnimKind }) 
   );
 }
 
-function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-click", delayMs: 0 }, addablePhases = ["build-in", "action", "build-out"], contextKey, selectionType }: {
-  anims: ObjectAnimationItem[]; callbacks?: ObjectAnimationCallbacks; settings?: ObjectAnimationSequenceSettings; addablePhases?: ObjectAnimationPhase[]; contextKey?: string; selectionType?: "slide" | "element";
+function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-click", delayMs: 0 }, addablePhases = ["build-in", "action", "build-out"], contextKey, selectionType, animationDelay = false }: {
+  anims: ObjectAnimationItem[]; callbacks?: ObjectAnimationCallbacks; settings?: ObjectAnimationSequenceSettings; addablePhases?: ObjectAnimationPhase[]; contextKey?: string; selectionType?: "slide" | "element"; animationDelay?: boolean;
 }) {
   // When an element is selected, default-expand that element's own animation card
   // (the one flagged `selected`). For a slide selection nothing is auto-expanded —
@@ -228,7 +233,9 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
           <PopoverMenu align="right" trigger={<PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add animation" disabled={addablePhases.length === 0} />}>
             {addMenu}
           </PopoverMenu>
-          <PanelActionBtn icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />} label="Object animation settings" />
+          {/* #222: settings ("starts automatically" + delay) gated behind the
+              `animationDelay` capability (default OFF) — not rendered when off. */}
+          {animationDelay && <PanelActionBtn icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />} label="Object animation settings" />}
         </>
       }
     >
@@ -247,7 +254,7 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
             const styleLabels = Object.fromEntries(styleOptions.map(style => [style, style.split("-").map(word => word[0].toUpperCase() + word.slice(1)).join(" ")])) as Record<string, string>;
             const deliveryLabels = { "all-at-once": "All at once", "by-object": "By object", "by-word": "By word", "by-character": "By character" };
             const deliveryValue = Object.entries(deliveryLabels).find(([, label]) => label === a.delivery)?.[0] as keyof typeof deliveryLabels | undefined;
-            return <div key={id} className="group flex items-start gap-[4px]"
+            return <div key={id} className="group relative min-w-0 flex flex-col gap-[2px]"
               onDragOver={event => { if (dragged && dragged !== id) { event.preventDefault(); event.dataTransfer.dropEffect = "move"; } }}
               onDrop={event => {
                 event.preventDefault();
@@ -257,15 +264,14 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                 callbacks?.onReorder?.(dragged, id, placement);
                 setDragged(null);
               }}>
-              {/* Left inset holds the build-order drag handle — the reorder control.
-                  It appears on hover; dragging it reorders the animation. */}
-              <div className="w-[16px] shrink-0 flex justify-center pt-[26px]">
-                <button type="button" draggable={!!callbacks?.onReorder} aria-label={`Drag ${a.name} animation`} className="hidden group-hover:flex size-[16px] items-center justify-center cursor-grab text-c-icon-secondary"
-                  onDragStart={event => { setDragged(id); event.dataTransfer.effectAllowed = "move"; }} onDragEnd={() => setDragged(null)}>
-                  <GripVertical size={14} />
-                </button>
-              </div>
-              <div className="min-w-0 flex-1 flex flex-col gap-[2px]">
+              {/* Drag handle — the reorder control. Rendered as a hover-revealed overlay
+                  in the panel's own left padding (negative offset) so it reserves NO
+                  horizontal space: the number + card sit FLUSH at the container's left
+                  edge at rest, and the grip appears on hover without shifting the card. */}
+              <button type="button" draggable={!!callbacks?.onReorder} aria-label={`Drag ${a.name} animation`} className="hidden group-hover:flex absolute -left-[16px] top-[26px] size-[16px] items-center justify-center cursor-grab text-c-icon-secondary"
+                onDragStart={event => { setDragged(id); event.dataTransfer.effectAllowed = "move"; }} onDragEnd={() => setDragged(null)}>
+                <GripVertical size={14} />
+              </button>
               {/* Build-order number sits ON TOP of the card, aligned with the card's
                   left edge, so the card can take the full available width. */}
               <div className={clsx(FONT, "h-[16px] flex items-center pl-[2px] text-[9px] font-[450] leading-[14px] tracking-[0.045px] text-c-text-secondary")}>{a.n}</div>
@@ -284,27 +290,35 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                   {deliveryValue && <LabeledRow label="Delivery"><ChoiceDropdown value={deliveryValue} options={["all-at-once", "by-object", "by-word", "by-character"]} labels={deliveryLabels} onChange={delivery => callbacks?.onDeliveryChange?.(id, delivery)} /></LabeledRow>}
                   {phase === "action" && <LabeledRow label="Intensity"><SegmentedControl className="w-full" value={a.intensity ?? "medium"} segments={[{ value: "small", label: "Small" }, { value: "medium", label: "Medium" }, { value: "large", label: "Large" }]} onChange={value => callbacks?.onIntensityChange?.(id, value as "small" | "medium" | "large")} /></LabeledRow>}
                 </AnimationCard>
-              </div>
             </div>;
           })}
-          <div className="flex flex-col gap-[8px] pt-[4px] border-t border-c-border">
-            <LabeledRow label="Start"><ChoiceDropdown value={settings.start} options={["on-click", "automatically"]} labels={{ "on-click": "On click", automatically: "Automatically" }} onChange={callbacks?.onStartChange} /></LabeledRow>
-            <LabeledRow label="Delay"><NumericInput value={settings.delayMs} min={0} suffix="ms" commitOnBlur className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} onChange={callbacks?.onDelayChange} /></LabeledRow>
-          </div>
+          {/* #222: the "starts automatically" + delay authoring block is gated behind the
+              `animationDelay` capability (default OFF). When off it is not rendered, so no
+              dangling start/delay state is shown; the delay is removed from the default path. */}
+          {animationDelay && (
+            <div className="flex flex-col gap-[8px] pt-[4px] border-t border-c-border">
+              <LabeledRow label="Start"><ChoiceDropdown value={settings.start} options={["on-click", "automatically"]} labels={{ "on-click": "On click", automatically: "Automatically" }} onChange={callbacks?.onStartChange} /></LabeledRow>
+              <LabeledRow label="Delay"><NumericInput value={settings.delayMs} min={0} suffix="ms" commitOnBlur className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} onChange={callbacks?.onDelayChange} /></LabeledRow>
+            </div>
+          )}
         </div>
       )}
     </PanelSection>
   );
 }
 
-export function AnimatePanel({ anims = DEMO_ANIMS, compTransition, compTransitionCallbacks, contextKey, selectionType, objectAnimationCallbacks, objectAnimationSettings, addablePhases }: {
+export function AnimatePanel({ anims = DEMO_ANIMS, compTransition, compTransitionCallbacks, contextKey, selectionType, objectAnimationCallbacks, objectAnimationSettings, addablePhases, animationDelay = false }: {
   anims?: ObjectAnimationItem[]; compTransition?: CompTransitionSettings; compTransitionCallbacks?: CompTransitionCallbacks; contextKey?: string; selectionType?: "slide" | "element";
   objectAnimationCallbacks?: ObjectAnimationCallbacks; objectAnimationSettings?: ObjectAnimationSequenceSettings; addablePhases?: ObjectAnimationPhase[];
+  /** #222: host-owned capability gating the animation "starts automatically" + delay
+   *  authoring (and its settings icon). Default OFF — the delay is removed from the
+   *  default path and recoverable by flipping this flag on. */
+  animationDelay?: boolean;
 }) {
   return (
     <ScrollArea>
-      <CompTransitionSection value={compTransition} callbacks={compTransitionCallbacks} contextKey={contextKey} selectionType={selectionType} />
-      <ObjectAnimationsSection anims={anims} callbacks={objectAnimationCallbacks} settings={objectAnimationSettings} addablePhases={addablePhases} contextKey={contextKey} selectionType={selectionType} />
+      <CompTransitionSection value={compTransition} callbacks={compTransitionCallbacks} contextKey={contextKey} selectionType={selectionType} animationDelay={animationDelay} />
+      <ObjectAnimationsSection anims={anims} callbacks={objectAnimationCallbacks} settings={objectAnimationSettings} addablePhases={addablePhases} contextKey={contextKey} selectionType={selectionType} animationDelay={animationDelay} />
     </ScrollArea>
   );
 }

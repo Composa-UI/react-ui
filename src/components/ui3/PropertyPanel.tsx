@@ -58,7 +58,7 @@ export interface ElementStrokeSetting extends ElementFillSetting { weight: numbe
 export interface ElementEffectSetting extends EffectDetailsValue { id: string; }
 export interface ElementLayoutGuideSetting { id: string; type: "Grid" | "Columns" | "Rows"; visible: boolean; size: number; }
 export interface ElementSelectionColorSetting { id: string; color: string; opacity: number; usageCount?: number; }
-export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; }
+export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; animationDelay?: boolean; }
 export interface ElementTypographySettings {
   fontFamily: string; fontWeight: string; fontSize: number; lineHeight: number; letterSpacing: number;
   align: "left" | "center" | "right"; verticalAlign: "top" | "middle" | "bottom"; styleName?: string;
@@ -1245,7 +1245,7 @@ const DEMO_SELECTION_COLORS: ElementSelectionColorSetting[] = [
   { id: "demo-selection-6", color: "#9747FF", opacity: 100 },
 ];
 
-function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = { templates: true, styles: true, variables: true, libraries: true } }: {
+function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = { templates: true, styles: true, variables: true, libraries: true, animationDelay: false } }: {
   colors?: ElementSelectionColorSetting[];
   onUpdate?: (id: string, patch: Partial<Omit<ElementSelectionColorSetting, "id">>) => void;
   onSelectAll?: (id: string) => void;
@@ -2032,6 +2032,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
     styles: capabilityOverrides?.styles ?? true,
     variables: capabilityOverrides?.variables ?? true,
     libraries: capabilityOverrides?.libraries ?? true,
+    // #222: animation "starts automatically" + delay authoring — default OFF (unlike the
+    // other capabilities) so the delay is removed from the default path until re-enabled.
+    animationDelay: capabilityOverrides?.animationDelay ?? false,
   };
   const [tab, setTab] = useState("design");
   const [demoSlideName, setDemoSlideName] = useState(slideName);
@@ -2201,6 +2204,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           {tab === "animate" && <div role="tabpanel" id="slide-animate-panel" aria-labelledby="slide-animate-panel-tab" className="contents"><AnimatePanel anims={objectAnimations}
             contextKey={slideId}
             selectionType="slide"
+            animationDelay={capabilities.animationDelay}
             objectAnimationCallbacks={objectAnimationCallbacks} objectAnimationSettings={objectAnimationSettings} addablePhases={addableAnimationPhases}
             compTransition={{ style: renderedTransitionType, direction: renderedTransitionDirection, durationMs: renderedTransitionDuration, easing: renderedTransitionEasing }}
             compTransitionCallbacks={{
@@ -2340,6 +2344,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
       {tab === "animate" && <div role="tabpanel" id="element-animate-panel" aria-labelledby="element-animate-panel-tab" className="contents"><AnimatePanel anims={objectAnimations}
         contextKey={slideId}
         selectionType="element"
+        animationDelay={capabilities.animationDelay}
         objectAnimationCallbacks={objectAnimationCallbacks} objectAnimationSettings={objectAnimationSettings} addablePhases={addableAnimationPhases}
         compTransition={{ style: renderedTransitionType, direction: renderedTransitionDirection, durationMs: renderedTransitionDuration, easing: renderedTransitionEasing }}
         compTransitionCallbacks={{
