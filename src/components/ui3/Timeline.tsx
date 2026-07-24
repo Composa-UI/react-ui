@@ -249,6 +249,7 @@ function EasingSegment({
   target,
   propertyName,
   selected,
+  lineActive = false,
   accent,
   viewport,
   onSelect,
@@ -257,6 +258,8 @@ function EasingSegment({
   target: TimelineEasingSegmentTarget;
   propertyName: string;
   selected: boolean;
+  /** The property has a selected keyframe — its connecting line reads blue (Composa#320). */
+  lineActive?: boolean;
   accent: boolean;
   viewport: TimelineViewport;
   onSelect?: (target: TimelineEasingSegmentTarget) => void;
@@ -285,10 +288,12 @@ function EasingSegment({
   const content = (
       <span
         className={clsx(
-          "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center size-[16px] rounded-[4px] border",
+          // Opaque bg fill so the connecting line is occluded ('cut-through'), not seen
+          // passing behind the box (Composa#321).
+          "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center size-[16px] rounded-[4px] border bg-c-bg",
           interactive && "opacity-0 transition-opacity group-hover/easing:opacity-100 group-focus-visible/easing:opacity-100",
         )}
-        style={{ borderColor: "#0d99ff", backgroundColor: "rgba(13,153,255,0.12)" }}
+        style={{ borderColor: "#0d99ff" }}
       >
         <svg aria-hidden viewBox="0 0 28 10" preserveAspectRatio="xMidYMid meet" className="h-[8px] w-[12px]">
           <path d={easingSvgPath(easingControlPoints(target.easing))} fill="none" stroke="#0d99ff" strokeWidth="1.5" strokeLinecap="round" />
@@ -370,7 +375,7 @@ function EasingSegment({
     <>
       <span
         aria-hidden
-        className={clsx("pointer-events-none absolute top-1/2 h-px -translate-y-1/2", accent ? "bg-c-bg-brand" : "bg-c-border-strong")}
+        className={clsx("pointer-events-none absolute top-1/2 h-px -translate-y-1/2", lineActive ? "bg-[#0d99ff]" : accent ? "bg-c-bg-brand" : "bg-c-border-strong")}
         style={{ left: `${segmentLeft}%`, width: `${segmentWidth}%` }}
       />
       {control}
@@ -534,8 +539,8 @@ function DurationBar({ trackId, name, range, projection, selectionState, viewpor
         onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
         className="absolute inset-0 cursor-grab rounded-[inherit] bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring active:cursor-grabbing" />
       {/* Visible L/R drag indicators (Composa#324) — grip pips inset at each edge. */}
-      {!projection.clippedStart && <span className="pointer-events-none absolute left-[3px] top-1/2 z-[1] h-[10px] w-[2px] -translate-y-1/2 rounded-full bg-c-icon-secondary" />}
-      {!projection.clippedEnd && <span className="pointer-events-none absolute right-[3px] top-1/2 z-[1] h-[10px] w-[2px] -translate-y-1/2 rounded-full bg-c-icon-secondary" />}
+      {!projection.clippedStart && <span className={clsx("pointer-events-none absolute left-[3px] top-1/2 z-[1] h-[10px] w-[2px] -translate-y-1/2 rounded-full", selectionState === "selected" ? "bg-white" : "bg-c-icon-secondary")} />}
+      {!projection.clippedEnd && <span className={clsx("pointer-events-none absolute right-[3px] top-1/2 z-[1] h-[10px] w-[2px] -translate-y-1/2 rounded-full", selectionState === "selected" ? "bg-white" : "bg-c-icon-secondary")} />}
       {!projection.clippedStart && <button type="button" aria-label={`Scale ${name} duration from start`} aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight" data-duration-bar-action="trim-start"
         onPointerDown={event => begin("trim-start", event)} onPointerMove={move}
         onKeyDown={event => step("trim-start", event)}
@@ -628,6 +633,7 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
             target={target}
             propertyName={prop.name}
             selected={typeof keyframe !== "number" && !!keyframe.easingSelected}
+            lineActive={kfs.some(item => typeof item !== "number" && item.selected)}
             accent={!!prop.accent}
             viewport={viewport}
             onSelect={onEasingSelect}
@@ -674,8 +680,8 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
           // Figma keyframe-diamond states (Composa#320): unselected = no fill + secondary
           // outline; selected = solid blue fill (no ring/scale). accent = the parent's
           // "animation applied" tint (purple), used when the parent is being animated.
-          className={clsx("absolute top-1/2 z-[2] size-[7px] p-0 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-c-bg", selected ? "border-0" : "border border-c-border-strong")}
-          style={{ left: percent(timeMs, viewport), backgroundColor: selected ? (prop.accent ? "#8638e5" : BLUE) : "transparent" }}
+          className={clsx("absolute top-1/2 z-[2] size-[7px] p-0 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-c-bg", selected ? "border-0" : "border border-c-border-strong bg-c-bg")}
+          style={{ left: percent(timeMs, viewport), backgroundColor: selected ? (prop.accent ? "#8638e5" : BLUE) : undefined }}
         />
       );})}
     </div>
