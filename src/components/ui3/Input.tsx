@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useId, useRef, useCallback, useEffect, type ReactNode } from "react";
 import { clsx } from "clsx";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Diamond } from "lucide-react";
 import { Chit, type ChitType } from "./Chit";
 import { ChipVariable } from "./ChipVariable";
 import { PopoverMenu } from "./Menu";
@@ -264,6 +264,9 @@ export interface NumericInputProps extends NumericEditSessionCallbacks {
   size?: InputSize;
   disabled?: boolean;
   dropdown?: boolean;         // show chevron on right
+  /** Motion-mode keyframe affordance: a trailing diamond segment (in place of the
+   *  combo chevron). Filled = keyframe at the current playhead; click toggles. */
+  keyframe?: { active: boolean; onToggle: () => void };
   mixed?: boolean;            // multi-select with differing values — shows "Mixed", edits commit to all (v5 §7)
   variableValue?: string;     // if set, shows ChipVariable instead of raw number
   onVariableDetach?: () => void;
@@ -285,6 +288,7 @@ export function NumericInput({
   size = "medium",
   disabled = false,
   dropdown = false,
+  keyframe,
   mixed = false,
   variableValue,
   onVariableDetach,
@@ -499,7 +503,7 @@ export function NumericInput({
             !focused && "truncate",
             "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
             iconLead ? "pl-[26px]" : "pl-[8px]",
-            (suffix || dropdown) ? "pr-[2px]" : "pr-[8px]",
+            (suffix || dropdown || keyframe) ? "pr-[2px]" : "pr-[8px]",
             disabled && "cursor-not-allowed",
           )}
         />
@@ -511,10 +515,23 @@ export function NumericInput({
         </span>
       )}
 
-      {dropdown && (
+      {dropdown && !keyframe && (
         <span className="shrink-0 flex items-center justify-center size-[24px] text-c-icon-secondary">
           <ChevronDown size={10} strokeWidth={2} />
         </span>
+      )}
+
+      {/* Motion-mode keyframe diamond — trailing combo segment (replaces the chevron). */}
+      {keyframe && (
+        <button
+          type="button"
+          aria-label={ariaLabel ? `${ariaLabel} keyframe` : "Toggle keyframe"}
+          aria-pressed={keyframe.active}
+          onClick={event => { event.stopPropagation(); keyframe.onToggle(); }}
+          className="shrink-0 flex items-center justify-center size-[24px] rounded-c-sm hover:bg-c-bg-hover"
+        >
+          <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active ? "fill-current text-c-icon" : "text-c-icon-secondary")} />
+        </button>
       )}
     </FieldShell>
   );

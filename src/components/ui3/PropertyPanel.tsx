@@ -8,7 +8,7 @@ import {
   AlignHorizontalJustifyCenter,
   Maximize2, Minimize2, Plus, Eye, Square,
   Rows2, Columns, WrapText,
-  BookOpen, Diamond,
+  BookOpen,
   Crosshair, Grid3x3, ExternalLink, Unlink,
   Minus, EyeOff, AlignJustify, Maximize, ChevronDown,
   MoveHorizontal, MoveVertical, Play, Pause,
@@ -194,6 +194,8 @@ export interface SizingComboFieldProps {
   onValueChange?: (value: number) => void;
   onSizingChange?: (change: ElementSizingChange) => void;
   onConstraintChange?: (constraint: ElementSizingConstraint, value: number | undefined) => void;
+  /** Motion mode: drop the sizing-mode combo and show the value + keyframe diamond. */
+  keyframe?: { active: boolean; onToggle: () => void };
 }
 
 export function getSizingMenuLabels({
@@ -212,7 +214,7 @@ export function getSizingMenuLabels({
 
 export function SizingComboField({
   axis, value, mode, mixed = false, availableModes = ["fixed", "hug", "fill"],
-  minValue, maxValue, variablesEnabled = false, onValueChange, onSizingChange, onConstraintChange, onApplyVariable,
+  minValue, maxValue, variablesEnabled = false, onValueChange, onSizingChange, onConstraintChange, onApplyVariable, keyframe,
 }: SizingComboFieldProps) {
   const axisLabel = axis === "width" ? "Width" : "Height";
   const modeLabel = mixed ? "Mixed" : mode === "hug" ? "Hug" : mode === "fill" ? "Fill" : undefined;
@@ -234,6 +236,16 @@ export function SizingComboField({
       {variablesEnabled && <><MenuRow type="divider" /><MenuRow type="simple" label="Apply variable" disabled={!onApplyVariable} onClick={onApplyVariable ? () => { onApplyVariable(); close(); } : undefined} /></>}
     </Menu>
   );
+  if (keyframe) {
+    // Motion mode: value + keyframe diamond (the sizing-mode combo is dropped —
+    // a keyframed dimension is fixed, matching Figma's motion inspector).
+    return <NumericInput
+      ariaLabel={axisLabel}
+      iconLead={<span className={FONT}>{axis === "width" ? "W" : "H"}</span>}
+      value={value} onChange={emitValue} min={1}
+      keyframe={keyframe}
+    />;
+  }
   return <NumericComboInput
     dataMode={mixed ? "mixed" : mode}
     ariaLabel={axisLabel}
@@ -260,6 +272,8 @@ export interface DimensionSizingFieldsProps {
   onSizingChange?: (axis: ElementSizingAxis, change: ElementSizingChange) => void;
   onConstraintChange?: (axis: ElementSizingAxis, constraint: ElementSizingConstraint, value: number | undefined) => void;
   onApplySizingVariable?: (axis: ElementSizingAxis) => void;
+  /** Motion mode: width/height become value + keyframe diamond (diamond on the H field). */
+  dimensionsKeyframe?: { active: boolean; onToggle: () => void };
 }
 
 export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
@@ -301,7 +315,7 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
     <PanelFieldRow
       label="Dimensions"
       left={<SizingComboField axis="width" value={props.width} mode={controlledSizing ? props.widthMode ?? "fixed" : localWidthMode} mixed={props.widthMixed} availableModes={props.availableWidthModes} minValue={values.minWidth} maxValue={values.maxWidth} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("width", change)} onConstraintChange={(constraint, value) => changeConstraint("width", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("width") : undefined} />}
-      right={<SizingComboField axis="height" value={props.height} mode={controlledSizing ? props.heightMode ?? "fixed" : localHeightMode} mixed={props.heightMixed} availableModes={props.availableHeightModes} minValue={values.minHeight} maxValue={values.maxHeight} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("height", change)} onConstraintChange={(constraint, value) => changeConstraint("height", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("height") : undefined} />}
+      right={<SizingComboField axis="height" value={props.height} mode={controlledSizing ? props.heightMode ?? "fixed" : localHeightMode} mixed={props.heightMixed} availableModes={props.availableHeightModes} minValue={values.minHeight} maxValue={values.maxHeight} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("height", change)} onConstraintChange={(constraint, value) => changeConstraint("height", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("height") : undefined} keyframe={props.dimensionsKeyframe} />}
       rightAction={<PanelActionBtn icon={lockAspect ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />} label="Lock aspect ratio" active={lockAspect} onClick={() => setLockAspect(value => !value)} />}
     />
     {hasConstraints && <div className="flex flex-col gap-y-[6px] px-[16px] pb-[8px]">
@@ -349,21 +363,7 @@ export interface InspectorKeyframeControls {
   scale?: InspectorKeyframeControl;
   rotation?: InspectorKeyframeControl;
   opacity?: InspectorKeyframeControl;
-}
-
-function KeyframeDot({ control, label }: { control?: InspectorKeyframeControl; label: string }) {
-  if (!control) return null;
-  return (
-    <button
-      type="button"
-      aria-label={`${label} keyframe`}
-      aria-pressed={control.active}
-      onClick={control.onToggle}
-      className="shrink-0 flex items-center justify-center size-[24px] rounded-c-sm hover:bg-c-bg-hover"
-    >
-      <Diamond size={12} strokeWidth={1.5} className={clsx(control.active ? "fill-current text-c-icon" : "text-c-icon-secondary")} />
-    </button>
-  );
+  dimensions?: InspectorKeyframeControl;
 }
 
 // ─── Section: Position ────────────────────────────────────────────────────────
@@ -445,9 +445,9 @@ function PositionSection({
             ariaLabel="Position Y"
             iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>}
             value={y} onChange={onYChange} defaultValue={0}
+            keyframe={positionKeyframe}
           />
         }
-        rightAction={positionKeyframe ? <KeyframeDot control={positionKeyframe} label="Position" /> : undefined}
       />
 
       {/* Scale — % of the object's base size. Present when the host marks it applicable. */}
@@ -466,13 +466,14 @@ function PositionSection({
               ariaLabel="Scale Y"
               iconLead={<MoveVertical size={16} strokeWidth={1.5} />}
               value={scaleY} onChange={onScaleYChange} min={0} suffix="%" defaultValue={100}
+              keyframe={scaleKeyframe}
             />
           }
-          rightAction={scaleKeyframe ? <KeyframeDot control={scaleKeyframe} label="Scale" /> : undefined}
         />
       )}
 
-      {/* Rotation */}
+      {/* Rotation — in motion mode the flip/rotate actions are hidden (Figma parity:
+          the row shows just the animatable value + its keyframe diamond). */}
       <PanelFieldRow
         label="Rotation"
         left={
@@ -480,10 +481,10 @@ function PositionSection({
             ariaLabel="Rotation"
             iconLead={<RotateCw size={16} strokeWidth={1.5} />}
             value={rotation} onChange={onRotationChange} min={-360} max={360} suffix="°"
+            keyframe={rotationKeyframe}
           />
         }
-        right={<IconButtonRow buttons={rotateBtns} fill />}
-        rightAction={rotationKeyframe ? <KeyframeDot control={rotationKeyframe} label="Rotation" /> : undefined}
+        right={rotationKeyframe ? undefined : <IconButtonRow buttons={rotateBtns} fill />}
       />
 
     </PanelSection>
@@ -839,10 +840,7 @@ function AppearanceSection({
       <div className="flex items-end gap-[8px] pl-[16px] pr-[16px] pt-[3px]">
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Opacity</div>
-          <div className="flex items-center gap-[4px]">
-            <div className="flex-1 min-w-0"><NumericInput ariaLabel="Opacity" value={opacity} onChange={onOpacityChange} min={0} max={100} suffix="%" /></div>
-            {opacityKeyframe && <KeyframeDot control={opacityKeyframe} label="Opacity" />}
-          </div>
+          <NumericInput ariaLabel="Opacity" value={opacity} onChange={onOpacityChange} min={0} max={100} suffix="%" keyframe={opacityKeyframe} />
         </div>
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Corner radius</div>
@@ -2391,7 +2389,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onAutoLayoutSettingsRequest={onAutoLayoutSettingsRequest} />}
           {(isShape || isText) && (
             <PanelSection title="Layout">
-              <DimensionSizingFields {...sizingContract} width={width} height={height} />
+              <DimensionSizingFields {...sizingContract} width={width} height={height} dimensionsKeyframe={keyframeControls?.dimensions} />
               {/* Corner radius moved to Appearance */}
             </PanelSection>
           )}
