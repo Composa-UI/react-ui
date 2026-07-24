@@ -31,8 +31,8 @@ describe("AnimatePanel — default card expansion follows selection type (issue 
     const html = renderToStaticMarkup(
       <AnimatePanel selectionType="slide" compTransition={{ style: "push", direction: "right", durationMs: 500, easing: "ease-in-out" }} anims={ANIMS} />,
     );
-    // Expanded Comp transition card renders the accent header + the editable Style row.
-    expect(html).toContain("bg-accent/15");
+    // Expanded Comp transition card renders the selection-blue header + the editable Style row.
+    expect(html).toContain("bg-c-bg-selected");
     expect(html).toContain(">Push<");
     // No object-animation card is auto-expanded for a slide selection: the per-phase
     // body label ("Build in") only renders inside an expanded card.

@@ -12,9 +12,9 @@ import { iconForSemantic } from "./IconSemantics";
 // ─── Animate panel ──────────────────────────────────────────────────────────────
 // The "Animate" tab body. Two always-present sections (Slide transition · Object
 // animations). Both use the SHARED `AnimationCard`: a neutral row when collapsed,
-// an accent-header card (accent tint + stroke + trash, no chevron, no body bg) when
-// expanded. Accent is the `--color-accent` token used at opacity — swap it (or set
-// it grey) in styles/accents.css to reskin.
+// a selection-header card (the DS selected-content blue `bg-c-bg-selected` — the
+// same token the timeline / nav rail / layer list use for selection — over a
+// gray-bordered card, no chevron, no body bg) when expanded.
 
 const FONT = "font-[family-name:var(--composa-font-family)]";
 const SettingsIcon = iconForSemantic("settings");
@@ -111,8 +111,9 @@ function AnimationCard({ icon, title, badge, expanded, onToggle, onRemove, child
   }
   return (
     <div className="rounded-c-md border border-c-border overflow-hidden">
-      {/* accent header (orange fill) over a gray-bordered card; gray divider to the white body */}
-      <div className="h-[32px] flex items-center gap-[8px] pl-[8px] pr-[6px] bg-accent/15 border-b border-c-border">
+      {/* selection header: the DS selected-content blue (bg-c-bg-selected, same as
+          timeline / nav rail / layer list) over a gray-bordered card */}
+      <div className="h-[32px] flex items-center gap-[8px] pl-[8px] pr-[6px] bg-c-bg-selected border-b border-c-border">
         <button onClick={onToggle} aria-expanded className="flex-1 min-w-0 flex items-center gap-[8px] h-full">
           <span className="shrink-0 flex text-c-icon">{icon}</span>
           <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] text-c-text text-left truncate")}>{title}</span>
