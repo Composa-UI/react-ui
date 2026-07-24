@@ -781,9 +781,12 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
           })}
         </div>
       </div>
-      {/* property rows */}
-      {expanded && track.props.map((p, i) => (
-        <div key={i} className={clsx("flex", p.hidden && "opacity-40")} style={{ height: ROW_PROP }}>
+      {/* property rows — a row goes blue when one of its keyframes or easing
+          segments is selected (Composa#323: prop-row selection, was parent-only). */}
+      {expanded && track.props.map((p, i) => {
+        const propSelected = p.keyframes.some(keyframe => typeof keyframe !== "number" && (keyframe.selected || keyframe.easingSelected));
+        return (
+        <div key={i} className={clsx("flex", p.hidden && "opacity-40", propSelected && "bg-c-bg-selected")} style={{ height: ROW_PROP }}>
           <div className="group/prop shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate", p.accent ? "text-[#8638e5]" : "text-c-text-secondary")}>{p.name}</span>
             {/* keyframe stepper: ◀ prev-keyframe · ◇ toggle-at-playhead · ▶ next-keyframe */}
@@ -800,7 +803,8 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
           </div>
           <Lane prop={p} trackId={trackId} propertyId={p.id ?? `property-${i}`} height={ROW_PROP} viewport={viewport} plotWidth={plotWidth} edgeDrag={edgeDrag} onSelect={onKeyframeSelect} onMove={onKeyframeMove} onDelete={onKeyframeDelete} onEasingSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
         </div>
-      ))}
+        );
+      })}
     </>
   );
 }
