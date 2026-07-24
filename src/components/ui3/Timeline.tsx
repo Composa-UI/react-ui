@@ -274,16 +274,26 @@ function EasingSegment({
   } as const;
   const segmentLeft = timeToX(target.startMs, viewport, 100);
   const segmentWidth = timeToX(target.endMs, viewport, 100) - segmentLeft;
+  // Figma easing handle (Composa#321): a small SQUARE blue box holding the curve,
+  // hidden by default and revealed on hover (or keyboard focus). No selected-state
+  // representation — Figma has none, so we match first.
   const className = clsx(
-    "absolute top-1/2 z-[1] h-[20px] w-[28px] -translate-x-1/2 -translate-y-1/2 text-c-icon-secondary outline-none",
-    interactive && "cursor-pointer hover:text-c-icon",
-    selected && "text-c-icon ring-1 ring-inset ring-c-border-selected-strong bg-c-bg-selected/50",
+    "group/easing absolute top-1/2 z-[1] h-[20px] w-[28px] -translate-x-1/2 -translate-y-1/2 rounded-c-sm outline-none",
+    interactive && "cursor-pointer",
     "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring",
   );
   const content = (
-      <svg aria-hidden viewBox="0 0 28 10" className="absolute left-1/2 top-1/2 h-[10px] w-[28px] -translate-x-1/2 -translate-y-1/2 rounded-c-sm bg-c-bg px-[2px]">
-        <path d={easingSvgPath(easingControlPoints(target.easing))} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
+      <span
+        className={clsx(
+          "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center size-[16px] rounded-[4px] border",
+          interactive && "opacity-0 transition-opacity group-hover/easing:opacity-100 group-focus-visible/easing:opacity-100",
+        )}
+        style={{ borderColor: "#0d99ff", backgroundColor: "rgba(13,153,255,0.12)" }}
+      >
+        <svg aria-hidden viewBox="0 0 28 10" preserveAspectRatio="xMidYMid meet" className="h-[8px] w-[12px]">
+          <path d={easingSvgPath(easingControlPoints(target.easing))} fill="none" stroke="#0d99ff" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      </span>
   );
   const segment = interactive ? (
     <button
