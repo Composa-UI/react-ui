@@ -255,6 +255,7 @@ export function ShareModal({
           <div className="flex items-center gap-[8px] py-[8px]">
             <div className="flex-1 min-w-0">
               <InputField
+                autoFocus
                 size="large"
                 placeholder="Add emails, names, or user groups"
                 value={invite}
