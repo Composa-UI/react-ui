@@ -1,9 +1,11 @@
 import { useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { clsx } from "clsx";
+import { Copy } from "lucide-react";
 import { Dropdown } from "./Dropdown";
 import { NumericInput } from "./Input";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
-import { PanelFieldRow, PanelFullRow, PanelSection } from "./Panel";
+import { PanelActionBtn, PanelFieldRow, PanelFullRow, PanelSection } from "./Panel";
+import { SegmentedControl } from "./SegmentedControl";
 import {
   EASING_PRESETS,
   EASING_SCOPE_LABELS,
@@ -14,6 +16,19 @@ import {
   type EasingApplyScope,
   type EasingPreset,
 } from "./easing";
+
+const FONT = "font-[family-name:var(--composa-font-family)]";
+const SPRING_POINTS = EASING_PRESETS.find(preset => preset.value === "spring")!.controlPoints;
+
+// Compact cubic readout, e.g. [0,0,1,1] -> "0, 0, 1, 1" (matches the export).
+function formatCubic(points: CubicBezier): string {
+  return points
+    .map(value => {
+      const rounded = Math.round((value + Number.EPSILON) * 1000) / 1000;
+      return Object.is(rounded, -0) ? "0" : String(rounded);
+    })
+    .join(", ");
+}
 
 export interface EasingInspectorValue {
   preset: EasingPreset;
@@ -133,6 +148,20 @@ export function EasingInspectorSection({
   };
   const numeric = (index: number) => (next: number) => emitPoints(easingPointUpdate(points, index, next));
 
+  // Curve/Spring tabs (export parity): Spring selects the spring preset; Curve
+  // keeps a hand-editable cubic. The preset dropdown still offers every preset.
+  const easingType = value.preset === "spring" ? "spring" : "curve";
+  const setEasingType = (next: string) => {
+    if (!editable || next === easingType) return;
+    if (next === "spring") onChange?.({ preset: "spring", controlPoints: [...SPRING_POINTS] });
+    else onChange?.({ preset: "custom", controlPoints: points });
+  };
+  const copyCubic = () => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      void navigator.clipboard.writeText(`cubic-bezier(${formatCubic(points)})`);
+    }
+  };
+
   return (
     <div data-easing-inspector-preset={value.preset} data-easing-inspector-control-points={JSON.stringify(value.controlPoints ?? null)}>
     <PanelSection title="Easing" landmark>
@@ -149,6 +178,17 @@ export function EasingInspectorSection({
               onClick={() => { onChange?.({ preset: "custom", controlPoints: points }); close(); }} />
           </Menu>}
         </PopoverMenu>
+      </PanelFullRow>
+
+      <PanelFullRow height={32}>
+        <SegmentedControl
+          ariaLabel="Easing type"
+          className="w-full"
+          value={easingType}
+          onChange={setEasingType}
+          disabled={!editable}
+          segments={[{ value: "curve", label: "Curve" }, { value: "spring", label: "Spring" }]}
+        />
       </PanelFullRow>
 
       <div className={clsx("mx-[16px] my-[8px] h-[112px] rounded-c-md bg-c-bg-secondary ring-1 ring-inset ring-c-border-translucent", !editable && "opacity-60")}
@@ -182,6 +222,17 @@ export function EasingInspectorSection({
         left={<div className="flex gap-[4px]"><NumericInput ariaLabel="Easing X1" value={points[0]} onChange={numeric(0)} min={0} max={1} step={0.01} disabled={!editable} /><NumericInput ariaLabel="Easing Y1" value={points[1]} onChange={numeric(1)} step={0.01} disabled={!editable} /></div>}
         right={<div className="flex gap-[4px]"><NumericInput ariaLabel="Easing X2" value={points[2]} onChange={numeric(2)} min={0} max={1} step={0.01} disabled={!editable} /><NumericInput ariaLabel="Easing Y2" value={points[3]} onChange={numeric(3)} step={0.01} disabled={!editable} /></div>}
         reserveRightSlot={false} />
+
+      {/* Compact cubic-bezier readout with copy (export parity). */}
+      <PanelFullRow label="Cubic" height={32} rightAction={
+        <PanelActionBtn icon={<Copy size={12} strokeWidth={1.5} />} label="Copy cubic bézier" onClick={copyCubic} disabled={!editable} />
+      }>
+        <div className="flex h-[24px] items-center rounded-c-md bg-c-bg-secondary px-[8px]">
+          <span data-easing-cubic-readout className={clsx(FONT, "truncate text-[11px] leading-[16px] font-[450] tracking-[0.055px] text-c-text")}>
+            {formatCubic(points)}
+          </span>
+        </div>
+      </PanelFullRow>
 
       <PanelFullRow label="Apply to" height={40}>
         <PopoverMenu directTrigger align="right" className="w-full" trigger={
