@@ -44,7 +44,9 @@ describe("settings icon semantics", () => {
   });
 
   it("uses the canonical semantic for current Animate settings entry points", () => {
-    const html = renderToStaticMarkup(<AnimatePanel />);
+    // #222: the Animate settings icons are gated behind the `animationDelay` capability
+    // (default OFF). Their icon semantics only apply when the capability is enabled.
+    const html = renderToStaticMarkup(<AnimatePanel animationDelay />);
     for (const label of ["Comp transition settings", "Object animation settings"]) {
       const trigger = settingsTrigger(html, label);
       expect(trigger, `${label} trigger`).toBeTruthy();
