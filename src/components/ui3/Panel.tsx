@@ -34,7 +34,7 @@ export function ScrollArea({ children, className, thumbClassName = "bg-c-icon-se
 
   return (
     <div
-      className="relative flex-1 min-h-0"
+      className="relative flex-1 min-h-0 flex flex-col"
       onMouseEnter={() => setActive(true)}
       onMouseLeave={() => setActive(false)}
     >
@@ -42,7 +42,13 @@ export function ScrollArea({ children, className, thumbClassName = "bg-c-icon-se
         data-composa-scroll-viewport
         ref={node => { ref.current = node; if (viewportRef) viewportRef.current = node; }}
         onScroll={e => { measure(); setActive(true); onScroll?.(e.currentTarget.scrollTop); }}
-        className={clsx("h-full overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", className)}
+        // Fill via flex (not `h-full`): a percentage height only resolves under a
+        // definite-height ancestor (editor panels sit under an h-screen chain), but a
+        // modal card sizes via max-height on a content-sized element — indefinite —
+        // so `h-full` would collapse and the viewport would grow to full content
+        // height and never scroll. `flex-1 min-h-0` fills the flex-resolved root
+        // height in both cases.
+        className={clsx("flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", className)}
       >
         <div ref={contentRef} data-composa-scroll-content className="min-h-full">
           {children}
