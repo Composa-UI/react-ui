@@ -1,207 +1,240 @@
-import { useState } from "react";
-import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Link, MoreHorizontal, Play, BookOpen, ChevronDown, Check, Copy } from "lucide-react";
+import { forwardRef, useState, type ComponentPropsWithoutRef, type ReactNode } from "react";
+import { Link, Users, ChevronRight, ChevronDown } from "lucide-react";
 import { clsx } from "clsx";
-import {
-  Modal, ModalHeader, ModalBody, ModalFooter,
-  ModalDivider, ModalSection, MODAL_WIDTHS,
-} from "./Dialog";
+import { Modal, ModalHeader, ModalBody, MODAL_WIDTHS } from "./Dialog";
 import { Button } from "./Button";
 import { InputField } from "./Input";
 import { Avatar, type AvatarColor } from "./Avatar";
-import { ListCell, ListCellGroup } from "./ListCell";
-import { RadioButton } from "./RadioButton";
+import { Menu, MenuRow, PopoverMenu } from "./Menu";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────────────────────────────
+// Rebuilt to match Figma node 288-5750 (Editor-Study / project share). The same
+// UX drives both project and team sharing — the only difference is the header
+// (`variant`), per the owner's decision.
 
-type AccessLevel = "can edit" | "can view";
+/** Which entity is being shared — switches the header/context only. */
+export type ShareVariant = "project" | "team";
 
-interface SharePerson {
+/** Per-person access level (owner is rendered as static, non-editable text). */
+export type ShareAccess = "can edit" | "can view";
+
+export interface SharePerson {
   id: string;
   name: string;
-  color: AvatarColor;
-  initial: string;
-  access: AccessLevel | "Owner";
+  /** Appends a muted "(you)" after the name. */
+  you?: boolean;
+  /** Renders static "owner" text instead of an editable role menu. */
+  owner?: boolean;
+  /** Editable role — used when the person is not the owner. */
+  access?: ShareAccess;
+  /** Avatar identity colour (used when no photo `src`). */
+  color?: AvatarColor;
+  initial?: string;
+  /** Avatar photo. */
+  src?: string;
+}
+
+export interface ShareScopeOption {
+  value: string;
+  label: string;
 }
 
 const FONT  = "font-[family-name:var(--composa-font-family)]";
+// body/medium — Inter Medium 11px, matches Figma body text on every row.
 const LABEL = clsx(FONT, "text-[11px] font-[450] leading-[16px] tracking-[0.055px]");
 
-// ─── Menu item styles (always dark surface) ────────────────────────────────────
+const HEADER_TITLE: Record<ShareVariant, string> = {
+  project: "Share this project",
+  team:    "Invite to team",
+};
 
-const MENU_ITEM = clsx(
-  "flex items-center gap-[4px] min-h-[24px] mx-[4px] px-[4px] rounded-c-md select-none",
-  "cursor-pointer outline-none",
-  FONT, "text-[11px] font-[450] leading-[16px] tracking-[0.055px] text-white",
-  "data-[highlighted]:bg-c-bg-brand",
-);
-const MENU_ITEM_MUTED    = "text-[rgba(255,255,255,0.4)]";
-const MENU_ITEM_DANGER   = "text-c-text-danger data-[highlighted]:bg-c-bg-brand data-[highlighted]:text-white";
-
-// ─── RoleMenu — Radix DropdownMenu + our dark menu styling ────────────────────
+// ─── RoleMenu — editable access for non-owner people ─────────────────────────────
+// Reuses the DS dark Menu / MenuRow (Menu.tsx) — the same pattern as the rest of
+// the system's overflow menus — rather than a bespoke surface.
 
 function RoleMenu({
-  personId,
   access,
   onChangeAccess,
   onRemove,
 }: {
-  personId: string;
-  access: AccessLevel | "Owner";
-  onChangeAccess: (id: string, access: AccessLevel) => void;
-  onRemove: (id: string) => void;
+  access: ShareAccess;
+  onChangeAccess: (access: ShareAccess) => void;
+  onRemove: () => void;
 }) {
-  if (access === "Owner") {
+  return (
+    <PopoverMenu
+      directTrigger
+      align="right"
+      trigger={
+        <button
+          type="button"
+          aria-haspopup="menu"
+          className={clsx(
+            "flex items-center gap-[2px] h-[24px] pl-[6px] pr-[4px] rounded-c-md",
+            "hover:bg-c-bg-hover outline-none focus-visible:ring-1 focus-visible:ring-c-focus-ring",
+          )}
+        >
+          <span className={clsx(LABEL, "text-c-text")}>{access}</span>
+          <ChevronDown size={10} strokeWidth={2} className="text-c-icon-secondary" />
+        </button>
+      }
+    >
+      {close => (
+        <Menu>
+          <MenuRow
+            type="checkmark"
+            label="Can edit"
+            checked={access === "can edit"}
+            onClick={() => { onChangeAccess("can edit"); close(); }}
+          />
+          <MenuRow
+            type="checkmark"
+            label="Can view"
+            checked={access === "can view"}
+            onClick={() => { onChangeAccess("can view"); close(); }}
+          />
+          <MenuRow type="divider" />
+          <MenuRow label="Resend invite" onClick={() => close()} />
+          <MenuRow label="Remove" destructive onClick={() => { onRemove(); close(); }} />
+        </Menu>
+      )}
+    </PopoverMenu>
+  );
+}
+
+// ─── Row primitive ──────────────────────────────────────────────────────────────
+// A 36px row: 24px leading slot + label + trailing. Used for both the access-scope
+// row and each person, so their leading glyphs / avatars and labels align.
+
+// Rest carries Radix-injected trigger props (onClick, data-state, aria-*, …) when
+// the row is used as a menu trigger.
+type ShareRowProps = {
+  leading: ReactNode;
+  children: ReactNode;
+  trailing?: ReactNode;
+  interactive?: boolean;
+  ariaLabel?: string;
+} & Omit<ComponentPropsWithoutRef<"button">, "children" | "ref">;
+
+// forwardRef + prop spread so the interactive variant can serve as a Radix
+// PopoverMenu `asChild` trigger (a plain component would swallow the ref/props).
+const ShareRow = forwardRef<HTMLButtonElement, ShareRowProps>(function ShareRow(
+  { leading, children, trailing, interactive = false, ariaLabel, ...rest },
+  ref,
+) {
+  const inner = (
+    <>
+      <span className="shrink-0 flex items-center justify-center size-[24px] text-c-icon">
+        {leading}
+      </span>
+      <span className="flex-1 min-w-0 flex items-center gap-[3px] overflow-hidden">
+        {children}
+      </span>
+      {trailing && <span className="shrink-0 flex items-center">{trailing}</span>}
+    </>
+  );
+
+  if (interactive) {
     return (
-      <span className={clsx(LABEL, "text-c-text pr-[8px]")}>Owner</span>
+      <button
+        ref={ref}
+        type="button"
+        aria-label={ariaLabel}
+        aria-haspopup="menu"
+        className={clsx(
+          "flex items-center gap-[8px] h-[36px] w-full pl-[6px] pr-[8px] rounded-c-md text-left",
+          "hover:bg-c-bg-hover outline-none focus-visible:ring-1 focus-visible:ring-c-focus-ring",
+        )}
+        {...rest}
+      >
+        {inner}
+      </button>
     );
   }
 
   return (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger asChild>
-        {/* Trigger styled like our Dropdown component — no-stroke variant */}
-        <button className={clsx(
-          "flex items-center gap-[2px] h-[24px] pl-[6px] pr-[4px] rounded-c-md",
-          "hover:bg-c-bg-hover outline-none",
-        )}>
-          <span className={clsx(LABEL, "text-c-text")}>{access}</span>
-          <ChevronDown size={10} strokeWidth={2} className="text-c-icon-secondary" />
-        </button>
-      </DropdownMenu.Trigger>
-
-      <DropdownMenu.Portal>
-        {/* Menu surface — always dark, matches our Menu component */}
-        <DropdownMenu.Content
-          sideOffset={4}
-          align="end"
-          className="z-[60] py-[8px] rounded-c-lg shadow-c-400 ring-1 ring-inset ring-c-border-translucent"
-          style={{ backgroundColor: "var(--color-bg-menu)", minWidth: 160 }}
-          data-composa-mode="dark"
-        >
-          {/* Can edit */}
-          <DropdownMenu.Item
-            className={MENU_ITEM}
-            onSelect={() => onChangeAccess(personId, "can edit")}
-          >
-            <span className="flex items-center justify-center size-[24px]">
-              {access === "can edit" && <Check size={12} strokeWidth={2.5} />}
-            </span>
-            Can edit
-          </DropdownMenu.Item>
-
-          {/* Can view */}
-          <DropdownMenu.Item
-            className={MENU_ITEM}
-            onSelect={() => onChangeAccess(personId, "can view")}
-          >
-            <span className="flex items-center justify-center size-[24px]">
-              {access === "can view" && <Check size={12} strokeWidth={2.5} />}
-            </span>
-            Can view
-          </DropdownMenu.Item>
-
-          {/* Divider */}
-          <DropdownMenu.Separator className="h-px my-[8px] bg-c-border-menu" />
-
-          {/* Resend invite */}
-          <DropdownMenu.Item
-            className={MENU_ITEM}
-            onSelect={() => {}}
-          >
-            <span className="size-[24px]" />
-            Resend invite
-          </DropdownMenu.Item>
-
-          {/* Remove — destructive */}
-          <DropdownMenu.Item
-            className={clsx(MENU_ITEM, MENU_ITEM_DANGER)}
-            onSelect={() => onRemove(personId)}
-          >
-            <span className="size-[24px]" />
-            Remove
-          </DropdownMenu.Item>
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu.Root>
+    <div className="flex items-center gap-[8px] h-[36px] pl-[6px] pr-[8px] rounded-c-md">
+      {inner}
+    </div>
   );
-}
-
-// ─── PersonRow ────────────────────────────────────────────────────────────────
-// Composed from ListCell + Avatar (leading) + RoleMenu (trailing).
-// Avatar size="default" (24px) matches Figma leading slot spec.
-
-function PersonRow({
-  person,
-  onChangeAccess,
-  onRemove,
-}: {
-  person: SharePerson;
-  onChangeAccess: (id: string, access: AccessLevel) => void;
-  onRemove: (id: string) => void;
-}) {
-  return (
-    <ListCell
-      size="large"
-      label={person.name}
-      leading={
-        <Avatar
-          color={person.color}
-          initial={person.initial}
-          size="default"
-          shape="circle"
-        />
-      }
-      trailing={
-        <RoleMenu
-          personId={person.id}
-          access={person.access}
-          onChangeAccess={onChangeAccess}
-          onRemove={onRemove}
-        />
-      }
-    />
-  );
-}
+});
 
 // ─── ShareModal ───────────────────────────────────────────────────────────────
+
+export interface ShareModalProps {
+  open: boolean;
+  onClose: () => void;
+  /** "project" → "Share this project"; "team" → "Invite to team". */
+  variant?: ShareVariant;
+  /** Override the header title (defaults to the per-variant text above). */
+  title?: string;
+  /** People with access. Owner rows render static "owner"; others get a role menu. */
+  people?: SharePerson[];
+  /** Current access-scope label, e.g. "Anyone in Just me". */
+  scopeLabel?: string;
+  /** Options offered by the access-scope menu. */
+  scopeOptions?: ShareScopeOption[];
+  /** Selected scope option value (controlled). */
+  scopeValue?: string;
+  onScopeChange?: (value: string) => void;
+  onCopyLink?: () => void;
+  onInvite?: (value: string) => void;
+  onChangeAccess?: (id: string, access: ShareAccess) => void;
+  onRemovePerson?: (id: string) => void;
+}
+
+// Placeholder scope options — no real permissions model yet (owner: "we have no
+// membership right now"). Flagged in the PR pending the real model.
+const DEFAULT_SCOPE_OPTIONS: ShareScopeOption[] = [
+  { value: "workspace", label: "Anyone in the workspace" },
+  { value: "link",      label: "Anyone with the link" },
+  { value: "invited",   label: "Only people invited" },
+];
 
 export function ShareModal({
   open,
   onClose,
-  filename = "Untitled",
-}: {
-  open: boolean;
-  onClose: () => void;
-  filename?: string;
-}) {
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole]                  = useState<AccessLevel>("can edit");
-  const [accessType, setAccessType]   = useState<"anyone" | "invited">("invited");
-  const [expanded, setExpanded]       = useState(false);
+  variant = "project",
+  title,
+  people,
+  scopeLabel = "Anyone in Just me",
+  scopeOptions = DEFAULT_SCOPE_OPTIONS,
+  scopeValue,
+  onScopeChange,
+  onCopyLink,
+  onInvite,
+  onChangeAccess,
+  onRemovePerson,
+}: ShareModalProps) {
+  const [invite, setInvite] = useState("");
 
-  const [people, setPeople] = useState<SharePerson[]>([
-    { id: "1", name: "Lizzy Lasagna (you)", color: "purple", initial: "L", access: "Owner"    },
-    { id: "2", name: "Alan Anabelle",       color: "blue",   initial: "A", access: "can edit" },
-    { id: "3", name: "Bobby Bucalini",      color: "green",  initial: "B", access: "can edit" },
-    { id: "4", name: "Pedro Penne",         color: "yellow", initial: "P", access: "can edit" },
+  // Uncontrolled fallbacks so the component is usable without wiring every prop.
+  const [internalPeople, setInternalPeople] = useState<SharePerson[]>([
+    { id: "you", name: "Samuel", you: true, owner: true, color: "purple", initial: "S" },
   ]);
+  const roster = people ?? internalPeople;
 
-  const handleChangeAccess = (id: string, access: AccessLevel) =>
-    setPeople(prev => prev.map(p => p.id === id ? { ...p, access } : p));
+  const handleChangeAccess = (id: string, access: ShareAccess) => {
+    onChangeAccess?.(id, access);
+    if (!people) setInternalPeople(prev => prev.map(p => p.id === id ? { ...p, access } : p));
+  };
+  const handleRemove = (id: string) => {
+    onRemovePerson?.(id);
+    if (!people) setInternalPeople(prev => prev.filter(p => p.id !== id));
+  };
 
-  const handleRemove = (id: string) =>
-    setPeople(prev => prev.filter(p => p.id !== id));
-
-  const visiblePeople = expanded ? people : people.slice(0, 4);
-  const hasMore = people.length > 4;
+  const handleInvite = () => {
+    const value = invite.trim();
+    if (!value) return;
+    onInvite?.(value);
+    setInvite("");
+  };
 
   return (
     <Modal open={open} onClose={onClose} width={MODAL_WIDTHS.standard} backdrop>
-
-      {/* ── Header ──────────────────────────────────────────────────────── */}
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <ModalHeader
-        title={`Share "${filename}"`}
+        title={title ?? HEADER_TITLE[variant]}
         onClose={onClose}
         actions={
           <Button
@@ -210,106 +243,107 @@ export function ShareModal({
             size="small"
             icon={<Link size={12} strokeWidth={1.5} />}
             iconLead="left"
+            onClick={onCopyLink}
           />
         }
       />
 
-      {/* ── Body ────────────────────────────────────────────────────────── */}
+      {/* ── Body ───────────────────────────────────────────────────────────── */}
       <ModalBody scrollable>
-
-        {/* Invite row — input with inline dropdown pill, matching 24px height */}
-        <div className="flex items-center gap-[8px] px-[12px] py-[10px]">
-          <div className="flex-1 min-w-0">
-            <InputField
-              placeholder="Invite by name, email, or team…"
-              value={inviteEmail}
-              onChange={setInviteEmail}
-              inlineDropdown={{ value: inviteRole }}
+        <div className="flex flex-col px-[16px] py-[8px]">
+          {/* Invite form */}
+          <div className="flex items-center gap-[8px] py-[8px]">
+            <div className="flex-1 min-w-0">
+              <InputField
+                autoFocus
+                size="large"
+                placeholder="Add emails, names, or user groups"
+                value={invite}
+                onChange={setInvite}
+              />
+            </div>
+            <Button
+              variant="Primary"
+              size="large"
+              label="Invite"
+              disabled={!invite.trim()}
+              onClick={handleInvite}
             />
           </div>
-          <Button variant="Primary" label="Invite" />
+
+          {/* Who has access */}
+          <div className="flex flex-col pt-[4px]">
+            <div className="flex items-center h-[28px] pl-[6px]">
+              <span className={clsx(LABEL, "text-c-text-secondary")}>Who has access</span>
+            </div>
+
+            {/* Access-scope row — menu trigger */}
+            <PopoverMenu
+              directTrigger
+              align="left"
+              trigger={
+                <ShareRow
+                  interactive
+                  ariaLabel="Change who can access"
+                  leading={<Users size={16} strokeWidth={1.5} />}
+                  trailing={
+                    <span className="flex items-center gap-[2px] text-c-text">
+                      <span className={LABEL}>can access</span>
+                      <ChevronRight size={12} strokeWidth={2} className="text-c-icon-secondary" />
+                    </span>
+                  }
+                >
+                  <span className={clsx(LABEL, "text-c-text truncate")}>{scopeLabel}</span>
+                </ShareRow>
+              }
+            >
+              {close => (
+                <Menu>
+                  {scopeOptions.map(option => (
+                    <MenuRow
+                      key={option.value}
+                      type="checkmark"
+                      label={option.label}
+                      checked={scopeValue === option.value}
+                      onClick={() => { onScopeChange?.(option.value); close(); }}
+                    />
+                  ))}
+                </Menu>
+              )}
+            </PopoverMenu>
+
+            {/* People */}
+            {roster.map(person => (
+              <ShareRow
+                key={person.id}
+                leading={
+                  <Avatar
+                    src={person.src}
+                    color={person.color ?? "blue"}
+                    initial={person.initial ?? person.name.charAt(0)}
+                    size="default"
+                    shape="circle"
+                  />
+                }
+                trailing={
+                  person.owner ? (
+                    <span className={clsx(LABEL, "text-c-text pr-[8px]")}>owner</span>
+                  ) : (
+                    <RoleMenu
+                      access={person.access ?? "can edit"}
+                      onChangeAccess={access => handleChangeAccess(person.id, access)}
+                      onRemove={() => handleRemove(person.id)}
+                    />
+                  )
+                }
+              >
+                <span className={clsx(LABEL, "text-c-text truncate")}>{person.name}</span>
+                {person.you && <span className={clsx(LABEL, "text-c-text-secondary")}>(you)</span>}
+              </ShareRow>
+            ))}
+          </div>
         </div>
-
-        <ModalDivider />
-
-        {/* Access type — px-[12px] aligns visually with ListCell content (4px group + 8px cell = 12px) */}
-        <ModalSection className="px-[12px] py-[8px] gap-[6px]">
-          <label className="flex items-center gap-[8px] cursor-pointer h-[28px]">
-            <RadioButton
-              checked={accessType === "anyone"}
-              onChange={() => setAccessType("anyone")}
-            />
-            <span className={clsx(LABEL, "text-c-text")}>Anyone can view this file</span>
-          </label>
-          <label className="flex items-center gap-[8px] cursor-pointer h-[28px]">
-            <RadioButton
-              checked={accessType === "invited"}
-              onChange={() => setAccessType("invited")}
-            />
-            <span className={clsx(LABEL, "text-c-text")}>Only invited people can access</span>
-          </label>
-        </ModalSection>
-
-        <ModalDivider />
-
-        {/* People list — ListCell + Avatar (24px default) + RoleMenu */}
-        <ListCellGroup className="py-[4px]">
-          {visiblePeople.map(person => (
-            <PersonRow
-              key={person.id}
-              person={person}
-              onChangeAccess={handleChangeAccess}
-              onRemove={handleRemove}
-            />
-          ))}
-        </ListCellGroup>
-
-        {hasMore && (
-          <button
-            onClick={() => setExpanded(v => !v)}
-            className={clsx(
-              "flex items-center gap-[4px] px-[12px] py-[6px] w-full",
-              LABEL, "text-c-text-secondary hover:bg-c-bg-hover",
-            )}
-          >
-            <MoreHorizontal size={12} strokeWidth={1.5} />
-            {expanded ? "Less" : `${people.length - 4} more`}
-          </button>
-        )}
-
-        <ModalDivider />
-
-        {/* Action rows */}
-        <ListCellGroup className="py-[4px]">
-          <ListCell
-            size="large"
-            label="Start open session"
-            leading={<Play size={16} strokeWidth={1.5} />}
-            onClick={() => {}}
-          />
-          <ListCell
-            size="large"
-            label="Publish template"
-            leading={<BookOpen size={16} strokeWidth={1.5} />}
-            onClick={() => {}}
-          />
-        </ListCellGroup>
-
       </ModalBody>
-
-      {/* ── Footer ──────────────────────────────────────────────────────── */}
-      <ModalFooter align="between">
-        <div className="flex items-center gap-[8px]">
-          <Button
-            variant="Link"
-            label="Copy link"
-            icon={<Link size={12} strokeWidth={1.5} />}
-            iconLead="left"
-          />
-          <Button variant="Ghost" label="Get Embed" />
-        </div>
-        <Button variant="Primary" label="Done" onClick={onClose} />
-      </ModalFooter>
     </Modal>
   );
 }
