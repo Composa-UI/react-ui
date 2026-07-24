@@ -337,24 +337,62 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
   </>;
 }
 
+// ─── Inspector keyframe affordance ────────────────────────────────────────────
+// Per-property keyframe diamond shown in the Design tab, matching the timeline's
+// own keyframe stepper (Timeline.tsx). Present ONLY when the host supplies a
+// control (the host gates this on the slide-local timeline being active). Filled
+// = a keyframe exists at the current playhead; hollow = none. Click toggles.
+
+export interface InspectorKeyframeControl { active: boolean; onToggle: () => void; }
+export interface InspectorKeyframeControls {
+  position?: InspectorKeyframeControl;
+  scale?: InspectorKeyframeControl;
+  rotation?: InspectorKeyframeControl;
+  opacity?: InspectorKeyframeControl;
+}
+
+function KeyframeDot({ control, label }: { control?: InspectorKeyframeControl; label: string }) {
+  if (!control) return null;
+  return (
+    <button
+      type="button"
+      aria-label={`${label} keyframe`}
+      aria-pressed={control.active}
+      onClick={control.onToggle}
+      className="shrink-0 flex items-center justify-center size-[24px] rounded-c-sm hover:bg-c-bg-hover"
+    >
+      <Diamond size={12} strokeWidth={1.5} className={clsx(control.active ? "fill-current text-c-icon" : "text-c-icon-secondary")} />
+    </button>
+  );
+}
+
 // ─── Section: Position ────────────────────────────────────────────────────────
 
 interface PositionSectionProps {
   x?: number; y?: number; rotation?: number;
+  scaleX?: number; scaleY?: number;
   onXChange?: (v: number) => void;
   onYChange?: (v: number) => void;
   onRotationChange?: (v: number) => void;
+  onScaleXChange?: (v: number) => void;
+  onScaleYChange?: (v: number) => void;
   positioning?: "auto" | "absolute";
   positioningApplicable?: boolean;
   onPositioningChange?: (value: "auto" | "absolute") => void;
   multiSelect?: boolean;
+  positionKeyframe?: InspectorKeyframeControl;
+  scaleKeyframe?: InspectorKeyframeControl;
+  rotationKeyframe?: InspectorKeyframeControl;
+  scaleApplicable?: boolean;
 }
 
 function PositionSection({
   x = 0, y = 0, rotation = 0,
-  onXChange, onYChange, onRotationChange,
+  scaleX = 100, scaleY = 100,
+  onXChange, onYChange, onRotationChange, onScaleXChange, onScaleYChange,
   positioning, positioningApplicable, onPositioningChange,
   multiSelect = false,
+  positionKeyframe, scaleKeyframe, rotationKeyframe, scaleApplicable = false,
 }: PositionSectionProps) {
   const hAlignBtns: IconBtn[] = [
     { icon: <AlignLeft       size={S} strokeWidth={1.5} />, label: "Align left",   value: "left" },
@@ -409,7 +447,30 @@ function PositionSection({
             value={y} onChange={onYChange} defaultValue={0}
           />
         }
+        rightAction={positionKeyframe ? <KeyframeDot control={positionKeyframe} label="Position" /> : undefined}
       />
+
+      {/* Scale — % of the object's base size. Present when the host marks it applicable. */}
+      {scaleApplicable && (
+        <PanelFieldRow
+          label="Scale"
+          left={
+            <NumericInput
+              ariaLabel="Scale X"
+              iconLead={<MoveHorizontal size={16} strokeWidth={1.5} />}
+              value={scaleX} onChange={onScaleXChange} min={0} suffix="%" defaultValue={100}
+            />
+          }
+          right={
+            <NumericInput
+              ariaLabel="Scale Y"
+              iconLead={<MoveVertical size={16} strokeWidth={1.5} />}
+              value={scaleY} onChange={onScaleYChange} min={0} suffix="%" defaultValue={100}
+            />
+          }
+          rightAction={scaleKeyframe ? <KeyframeDot control={scaleKeyframe} label="Scale" /> : undefined}
+        />
+      )}
 
       {/* Rotation */}
       <PanelFieldRow
@@ -422,6 +483,7 @@ function PositionSection({
           />
         }
         right={<IconButtonRow buttons={rotateBtns} fill />}
+        rightAction={rotationKeyframe ? <KeyframeDot control={rotationKeyframe} label="Rotation" /> : undefined}
       />
 
     </PanelSection>
@@ -739,10 +801,12 @@ interface AppearanceSectionProps {
   onCornerRadiusChange?: (value: AppearanceSectionProps["cornerRadius"]) => void;
   blendControlled?: boolean;
   cornerControlled?: boolean;
+  opacityKeyframe?: InspectorKeyframeControl;
 }
 
 function AppearanceSection({
   opacity = 100, blendMode = "Pass through", cornerRadius = 0, onOpacityChange, onBlendModeChange, onCornerRadiusChange, blendControlled = false, cornerControlled = false,
+  opacityKeyframe,
 }: AppearanceSectionProps) {
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
   const [indivCorners, setIndivCorners] = useState(typeof cornerRadius === "object");
@@ -775,7 +839,10 @@ function AppearanceSection({
       <div className="flex items-end gap-[8px] pl-[16px] pr-[16px] pt-[3px]">
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Opacity</div>
-          <NumericInput ariaLabel="Opacity" value={opacity} onChange={onOpacityChange} min={0} max={100} suffix="%" />
+          <div className="flex items-center gap-[4px]">
+            <div className="flex-1 min-w-0"><NumericInput ariaLabel="Opacity" value={opacity} onChange={onOpacityChange} min={0} max={100} suffix="%" /></div>
+            {opacityKeyframe && <KeyframeDot control={opacityKeyframe} label="Opacity" />}
+          </div>
         </div>
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Corner radius</div>
@@ -1789,9 +1856,17 @@ export interface PropertyPanelProps {
   elementType?: ElementType;
   multiSelect?: boolean;
   x?: number; y?: number; rotation?: number;
+  scaleX?: number; scaleY?: number;
   onXChange?: (value: number) => void;
   onYChange?: (value: number) => void;
   onRotationChange?: (value: number) => void;
+  onScaleXChange?: (value: number) => void;
+  onScaleYChange?: (value: number) => void;
+  /** Scale row is shown when applicable (host decides — text/shape support it). */
+  scaleApplicable?: boolean;
+  /** Per-property keyframe diamonds in the Design tab. Host supplies these ONLY
+   *  when the slide-local timeline is active; absent = no diamonds. */
+  keyframeControls?: InspectorKeyframeControls;
   /** Host-owned history boundary shared by every nested NumericInput. */
   onNumericEditStart?: () => void;
   onNumericEditCommit?: () => void;
@@ -1946,7 +2021,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
   elementType = "text",
   multiSelect = false,
   x = 0, y = 0, rotation = 0,
-  onXChange, onYChange, onRotationChange,
+  scaleX = 100, scaleY = 100,
+  onXChange, onYChange, onRotationChange, onScaleXChange, onScaleYChange,
+  scaleApplicable = false, keyframeControls,
   onNumericEditStart, onNumericEditCommit, onNumericEditCancel,
   easing, easingContext = "keyframe", easingApplyScope, onEasingChange, onEasingApplyScopeChange,
   onEasingCurveEditStart, onEasingCurveEditCommit, onEasingCurveEditCancel,
@@ -2285,11 +2362,17 @@ export function PropertyPanel(props: PropertyPanelProps) {
           {/* Position — always present */}
           <PositionSection
             x={x} y={y} rotation={rotation}
+            scaleX={scaleX} scaleY={scaleY}
             onXChange={onXChange} onYChange={onYChange} onRotationChange={onRotationChange}
+            onScaleXChange={onScaleXChange} onScaleYChange={onScaleYChange}
+            scaleApplicable={scaleApplicable}
             positioning={layout?.positioning}
             positioningApplicable={layout?.positioningApplicable}
             onPositioningChange={onLayoutChange ? positioning => onLayoutChange({ positioning }) : undefined}
             multiSelect={multiSelect}
+            positionKeyframe={keyframeControls?.position}
+            scaleKeyframe={keyframeControls?.scale}
+            rotationKeyframe={keyframeControls?.rotation}
           />
 
           {/* Layout — polymorphic */}
@@ -2314,7 +2397,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           )}
 
           {/* Appearance — always present */}
-          <AppearanceSection opacity={opacity} blendMode={blendMode} cornerRadius={cornerRadius} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} />
+          <AppearanceSection opacity={opacity} blendMode={blendMode} cornerRadius={cornerRadius} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} />
 
           {/* Typography — text only */}
           {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} />}
