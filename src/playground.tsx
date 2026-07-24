@@ -22,6 +22,15 @@ import { AnchoredInspectorOverlay } from "./components/ui3/AnchoredInspectorOver
 import { InspectorDialog } from "./components/ui3/InspectorDialog";
 import { Menu, MenuRow, PopoverMenu } from "./components/ui3/Menu";
 import { AgentPanel, type AgentConversation, type AgentConversationSummary } from "./components/ui3/AgentPanel";
+import { UserBubble } from "./components/ui3/UserBubble";
+import { AiResponse } from "./components/ui3/AiResponse";
+import { WorkedLabel } from "./components/ui3/WorkedLabel";
+import { RatingBar } from "./components/ui3/RatingBar";
+import { ModelPicker } from "./components/ui3/ModelPicker";
+import { UndoCard } from "./components/ui3/UndoCard";
+import { MultiChoiceCard } from "./components/ui3/MultiChoiceCard";
+import { GitHubToolResultCard } from "./components/ui3/GitHubToolResultCard";
+import { GitHubPermissionCard } from "./components/ui3/GitHubPermissionCard";
 import thumb0 from "./imports/SlidesTemplate/9bf3285fa6c14222923aa8fcd4bf31f6e40807d9.png";
 import thumb1 from "./imports/SlidesTemplate/201951eb24dd285dd0794f4e790b8175c012bf20.png";
 import thumb2 from "./imports/SlidesTemplate/4f36d4cb9f77c2e380641dd47deb24943efa0b8a.png";
@@ -378,6 +387,72 @@ function Issue75AgentPanelFixture({ mode, thread }: { mode: "light" | "dark"; th
   );
 }
 
+const CHAT_LEAF_CHOICES = [
+  { letter: "A", label: "Message bubbles & layout" },
+  { letter: "B", label: "Input area & suggestions" },
+  { letter: "C", label: "Typography & spacing" },
+  { letter: "D", label: "Add a custom response" },
+];
+
+// Fidelity harness for the "Stateful left chat panel" import — every leaf
+// component rendered in a 280px chat-width column so the DS build can be
+// gh-imaged against the raw Figma Make export side by side.
+function ChatLeafFixture({ mode }: { mode: "light" | "dark" }) {
+  return (
+    <section data-composa-mode={mode === "dark" ? "dark" : undefined} className="min-w-0">
+      <div className="w-[280px] mx-auto rounded-c-lg bg-c-bg ring-1 ring-inset ring-c-border-translucent shadow-c-200 overflow-hidden">
+        <div className="h-[40px] px-[16px] flex items-center border-b border-c-border">
+          <h2 className="text-[11px] font-[550] text-c-text font-[family-name:var(--composa-font-family)]">{mode === "dark" ? "Dark" : "Light"} · chat leaf components</h2>
+        </div>
+        <div className="p-[16px] flex flex-col gap-[16px]">
+          <UserBubble text="Hola friend" />
+          <UserBubble text="What easing should I use for this element?" chip={{ type: "element", label: "Container (Editor Study)", kind: "frame" }} />
+          <UserBubble text="Are you connected to my github?" chip={{ type: "github" }} />
+
+          <div className="flex flex-col gap-[8px]">
+            <WorkedLabel seconds="2s" />
+            <AiResponse>
+              {"Hola! How can I help you today? Whether it's designing something new or tweaking a layout — just let me know!"}
+            </AiResponse>
+          </div>
+
+          <div className="flex flex-col gap-[8px]">
+            <WorkedLabel seconds="16s" steps={["Checking GitHub connection...", "Fetching authenticated user via get_me...", "Verifying token scopes..."]} />
+            <GitHubToolResultCard toolName="get_me" />
+            <AiResponse>
+              {"Yes, I'm connected to your GitHub! You're authenticated as "}
+              <strong className="font-[650]">Samuel Alake</strong>
+              {" (@samuelalake)."}
+            </AiResponse>
+          </div>
+
+          <div className="flex flex-col gap-[8px]">
+            <WorkedLabel seconds="3s" />
+            <GitHubPermissionCard toolName="list_issues" />
+          </div>
+
+          <div className="flex flex-col gap-[8px]">
+            <AiResponse>{"Just showing you what one of these interactive cards looks like!"}</AiResponse>
+            <MultiChoiceCard question="What part of the chat design system are you most interested in studying?" choices={CHAT_LEAF_CHOICES} />
+          </div>
+
+          <div className="flex flex-col gap-[8px]">
+            <AiResponse>{"Here's your reference card. How does that look?"}</AiResponse>
+            <UndoCard />
+          </div>
+
+          <WorkedLabel thinking />
+
+          <div className="flex items-center justify-between rounded-c-lg bg-c-bg-secondary px-[8px] py-[6px]">
+            <ModelPicker />
+            <RatingBar className="mt-0 w-auto" />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function Playground() {
   // ?view=slides = componentized SlidesPanel; ?view=slides-raw = the raw Figma export
   // (side-by-side fidelity check); default = property-panel fidelity set.
@@ -534,6 +609,15 @@ export default function Playground() {
       <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px]">
         <Issue75AgentPanelFixture mode="light" thread={false} />
         <Issue75AgentPanelFixture mode="dark" thread />
+      </main>
+    );
+  }
+
+  if (view === "chat-leaf") {
+    return (
+      <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px] items-start">
+        <ChatLeafFixture mode="light" />
+        <ChatLeafFixture mode="dark" />
       </main>
     );
   }

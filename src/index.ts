@@ -2,6 +2,16 @@
 // Consumed by composa-editor. Panels/dialogs from ours land here as they're recomposed.
 export * from "./components/ui3/AnimatePanel";
 export * from "./components/ui3/AgentPanel";
+// Chat leaf components (import: "Stateful left chat panel") — message pieces + cards.
+export * from "./components/ui3/AiResponse";
+export * from "./components/ui3/GitHubPermissionCard";
+export * from "./components/ui3/GitHubToolResultCard";
+export * from "./components/ui3/ModelPicker";
+export * from "./components/ui3/MultiChoiceCard";
+export * from "./components/ui3/RatingBar";
+export * from "./components/ui3/UndoCard";
+export * from "./components/ui3/UserBubble";
+export * from "./components/ui3/WorkedLabel";
 export * from "./components/ui3/AnchoredInspectorOverlay";
 export * from "./components/ui3/AssetsPanel";
 export * from "./components/ui3/Avatar";
