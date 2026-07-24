@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
 import { clsx } from "clsx";
-import { Play, Pause, Square, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film, Volume2 } from "lucide-react";
+import { Play, Pause, Square, Circle, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film, Volume2 } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { collectAggregateKeyframes, createTimelineEdgeDragController, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineDragDeltaMs, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
@@ -823,9 +823,10 @@ function TransportIconButton({ children, label, onClick, active }: { children: R
   return <button aria-label={label} aria-pressed={active} onClick={onClick} className={clsx("size-[24px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover", active && "bg-c-bg-selected")}>{children}</button>;
 }
 
-function Transport({ current, duration, mode, playing, loop, onPlayingChange, onStop, onLoopChange }: {
-  current: number; duration: number; mode: TimelineMode; playing: boolean; loop: boolean;
+function Transport({ current, duration, mode, playing, loop, autoKeyframe = false, onPlayingChange, onStop, onLoopChange, onAutoKeyframeChange }: {
+  current: number; duration: number; mode: TimelineMode; playing: boolean; loop: boolean; autoKeyframe?: boolean;
   onPlayingChange: (playing: boolean) => void; onStop?: () => void; onLoopChange: (loop: boolean) => void;
+  onAutoKeyframeChange?: (value: boolean) => void;
 }) {
   const slide = mode === "slide";
   const fmt = slide
@@ -837,6 +838,15 @@ function Transport({ current, duration, mode, playing, loop, onPlayingChange, on
       {/* shared transport controls */}
       <TransportIconButton label={playing ? "Pause" : "Play"} active={playing} onClick={() => onPlayingChange(!playing)}>{playing ? <Pause size={16} strokeWidth={1.5} /> : <Play size={16} strokeWidth={1.5} />}</TransportIconButton>
       <TransportIconButton label="Stop" onClick={onStop}><Square size={14} strokeWidth={1.5} /></TransportIconButton>
+      {/* Auto-keyframe / record toggle (Composa#330) — sits ALONGSIDE Stop, does not
+          replace it. When armed, edits record keyframes and the timeline shows the red
+          record affordances (top-stroke + red playhead). */}
+      {onAutoKeyframeChange && slide && (
+        <button aria-label="Auto-keyframe" aria-pressed={autoKeyframe} onClick={() => onAutoKeyframeChange(!autoKeyframe)}
+          className={clsx("size-[24px] rounded-c-md flex items-center justify-center hover:bg-c-bg-hover", autoKeyframe ? "text-[#ff3b30]" : "text-c-icon")}>
+          <Circle size={14} strokeWidth={1.5} className={clsx(autoKeyframe && "fill-current")} />
+        </button>
+      )}
       <div className="w-[8px]" />
       {/* time group */}
       <div className="flex items-center h-[24px] rounded-c-md overflow-hidden">
@@ -1105,6 +1115,8 @@ export function Timeline({
   defaultLoop = false,
   onLoopChange,
   onStop,
+  autoKeyframe = false,
+  onAutoKeyframeChange,
   onAddKeyframe,
   onPropertyAddKeyframe,
   onPropertyStepKeyframe,
@@ -1154,6 +1166,9 @@ export function Timeline({
   defaultLoop?: boolean;
   onLoopChange?: (loop: boolean) => void;
   onStop?: () => void;
+  /** Auto-keyframe / record armed state + toggle (Composa#330). */
+  autoKeyframe?: boolean;
+  onAutoKeyframeChange?: (value: boolean) => void;
   onAddKeyframe?: (timeMs: number) => void;
   onPropertyAddKeyframe?: (trackId: string, propertyId: string, timeMs: number) => void;
   /** Step the playhead to the previous/next keyframe of a specific property track. */
@@ -1289,10 +1304,12 @@ export function Timeline({
   const zoomPercent = Math.round(viewportZoomValue(viewport, duration) * 100);
   const [drag, setDrag] = useState(false);
   return (
-    <div ref={timelineRef} data-timeline-viewport-start-ms={viewport.startMs} data-timeline-viewport-end-ms={viewport.endMs} className="flex flex-col bg-c-bg border-t border-c-border overflow-hidden" style={{ height }}>
+    <div ref={timelineRef} data-timeline-viewport-start-ms={viewport.startMs} data-timeline-viewport-end-ms={viewport.endMs} data-timeline-autokeyframe={autoKeyframe || undefined}
+      className={clsx("flex flex-col bg-c-bg border-t overflow-hidden", autoKeyframe ? "border-[#ff3b30]" : "border-c-border")} style={{ height }}>
       {/* header: transport | ruler | zoom */}
       <div className="relative flex h-[40px] shrink-0 border-b border-c-border">
         <Transport current={playhead} duration={duration} mode={mode} playing={playing} loop={loop} onPlayingChange={setPlaying} onLoopChange={setLoop}
+          autoKeyframe={autoKeyframe} onAutoKeyframeChange={onAutoKeyframeChange}
           onStop={() => { setPlaying(false); onStop?.(); }} />
         <div
           className="flex-1 relative cursor-ew-resize overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-border-selected-strong"
@@ -1323,9 +1340,9 @@ export function Timeline({
           }}
         >
           {master ? <SecondRuler viewport={viewport} width={plotWidth} /> : <Ruler viewport={viewport} width={plotWidth} />}
-          {/* playhead handle */}
+          {/* playhead handle — recolors red when auto-keyframe/record is armed (Composa#330) */}
           <div className="absolute top-[4px] -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport) }}>
-            <svg width="12" height="10" viewBox="0 0 12 10"><path d="M0 0h12v4l-6 6-6-6V0Z" fill={BLUE} /></svg>
+            <svg width="12" height="10" viewBox="0 0 12 10"><path d="M0 0h12v4l-6 6-6-6V0Z" fill={autoKeyframe ? "#ff3b30" : BLUE} /></svg>
           </div>
         </div>
         <div className="absolute z-10 right-0 top-0 bottom-0 flex items-center gap-[8px] px-[12px] border-l border-c-border bg-c-bg">
@@ -1391,7 +1408,7 @@ export function Timeline({
         )}
         {/* shared playhead line spanning the body */}
         <div className="absolute top-0 bottom-0 right-0 overflow-hidden pointer-events-none" style={{ left: LEFT_W }}>
-          <div className="absolute top-0 bottom-0 w-px" style={{ left: percent(playhead, viewport), backgroundColor: BLUE }} />
+          <div className="absolute top-0 bottom-0 w-px" style={{ left: percent(playhead, viewport), backgroundColor: autoKeyframe ? "#ff3b30" : BLUE }} />
         </div>
       </ScrollArea>
     </div>
