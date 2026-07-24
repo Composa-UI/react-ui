@@ -7,6 +7,7 @@ import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./L
 import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSelectionState";
 import { ScrollArea } from "./Panel";
 import { Menu, MenuRow } from "./Menu";
+import { NumericInput } from "./Input";
 import { useComposaMode } from "./useComposaMode";
 import { EASING_PRESETS, easingControlPoints, easingPresetLabel, easingSvgPath, type EasingPreset, type NamedEasingPreset } from "./easing";
 
@@ -88,6 +89,8 @@ export type TimelineKeyframeValue = number | TimelineKeyframe;
 export interface PropTrack {
   id?: string;
   name: string;
+  value?: number;              // interpolated value at the playhead (inline value entry — #343b)
+  valueEditable?: boolean;     // false for read-only compiled/preset tracks
   keyframes: TimelineKeyframeValue[]; // numbers preserve the demo/legacy contract
   bar?: [number, number];      // duration bar [start,end] ms
   hidden?: boolean;            // greyed + eye-off
@@ -703,7 +706,7 @@ function Lane({ prop, trackId, propertyId, active = false, height, viewport, plo
 }
 
 // ── one track (layer row + its property rows) ─────────────────────────────────────
-function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
+function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onPropertyValueChange, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
   track: Track; trackIndex: number;
   focusable: boolean;
   viewport: TimelineViewport; plotWidth: number; duration: number;
@@ -718,6 +721,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
   onPropertyStepKeyframe?: (trackId: string, propertyId: string, direction: "prev" | "next") => void;
   selectedTimelineRowId?: string | null;
   onPropertyRowSelect?: (propertyId: string) => void;
+  onPropertyValueChange?: (trackId: string, propertyId: string, value: number) => void;
   onEasingSegmentSelect?: (target: TimelineEasingSegmentTarget) => void;
   onEasingPresetChange?: (target: TimelineEasingSegmentTarget, easing: NamedEasingPreset) => void;
   onDurationBarChange?: (change: TimelineDurationBarChange) => void;
@@ -827,6 +831,13 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
               <span key={`guide-${level}`} aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-c-border" style={{ left: 16 + level * 16 }} />
             ))}
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate", p.accent ? "text-[#8638e5]" : "text-c-text-secondary")}>{p.name}</span>
+            {/* inline value at the playhead — revealed on hover/selection (Composa#343b) */}
+            {p.value !== undefined && (
+              <div className={clsx("shrink-0 w-[56px]", !(propSelected || rowGraySelected) && "opacity-0 group-hover/prop:opacity-100 focus-within:opacity-100")}>
+                <NumericInput ariaLabel={`${p.name} value`} value={p.value} size="small" disabled={p.valueEditable === false}
+                  onChange={value => onPropertyValueChange?.(trackId, propertyId, value)} />
+              </div>
+            )}
             {/* keyframe stepper: ◀ prev-keyframe · ◇ toggle-at-playhead · ▶ next-keyframe */}
             <button type="button" aria-label={`Previous ${p.name} keyframe`} onClick={() => onPropertyStepKeyframe?.(trackId, p.id ?? `property-${i}`, "prev")} className="shrink-0 flex items-center justify-center opacity-0 group-hover/prop:opacity-100 disabled:opacity-0" disabled={!onPropertyStepKeyframe}>
               <ChevronLeft size={14} strokeWidth={1.5} className="text-c-icon-secondary" />
@@ -1154,6 +1165,7 @@ export function Timeline({
   onPropertyStepKeyframe,
   selectedTimelineRowId,
   onPropertyRowSelect,
+  onPropertyValueChange,
   onTrackExpandedChange,
   onTrackSelect,
   onAggregateKeyframeSelect,
@@ -1210,6 +1222,8 @@ export function Timeline({
   /** Gray row-selection (Composa#323): the property row whose row body was clicked. */
   selectedTimelineRowId?: string | null;
   onPropertyRowSelect?: (propertyId: string) => void;
+  /** Edit a property's value at the playhead from its inline timeline field (#343b). */
+  onPropertyValueChange?: (trackId: string, propertyId: string, value: number) => void;
   onTrackExpandedChange?: (trackId: string, expanded: boolean) => void;
   onTrackSelect?: (trackId: string, modifiers: TimelineTrackSelectionModifiers) => void;
   onAggregateKeyframeSelect?: (target: AggregateKeyframeTarget, additive: boolean) => void;
@@ -1443,7 +1457,7 @@ export function Timeline({
               onGestureStart={onGestureStart} onGestureEnd={onGestureEnd}
               onPropertyAddKeyframe={onPropertyAddKeyframe ? (trackId, propertyId, timeMs = playhead) => onPropertyAddKeyframe(trackId, propertyId, timeMs) : undefined}
               onPropertyStepKeyframe={onPropertyStepKeyframe}
-              selectedTimelineRowId={selectedTimelineRowId} onPropertyRowSelect={onPropertyRowSelect} />)}
+              selectedTimelineRowId={selectedTimelineRowId} onPropertyRowSelect={onPropertyRowSelect} onPropertyValueChange={onPropertyValueChange} />)}
             </div>
           </>
         )}
