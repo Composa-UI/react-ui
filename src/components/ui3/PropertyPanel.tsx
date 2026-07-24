@@ -29,7 +29,7 @@ import { Checkbox } from "./Checkbox";
 import { ColorDialog } from "./ColorDialog";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { AnimatePanel } from "./AnimatePanel";
-import { Avatar } from "./Avatar";
+import { Avatar, type AvatarColor } from "./Avatar";
 import { SplitButton } from "./SplitButton";
 import { Button } from "./Button";
 import { Tooltip } from "./Tooltip";
@@ -1856,6 +1856,10 @@ export interface PropertyPanelProps {
   previewPlaying?: boolean;
   onPreviewToggle?: () => void;
   onPreviewMenu?: () => void;
+  /** Multiplayer account avatar identity for the top bar. Defaults to the
+   *  historical hardcoded initial "S" / color "purple" when omitted. */
+  accountInitial?: string;
+  accountColor?: AvatarColor;
   /** Shared element/selection/slide still-image export contract. */
   exportSettings?: InspectorExportSetting[];
   exportTargetName?: string;
@@ -1914,12 +1918,12 @@ export interface PropertyPanelProps {
 // ─── Multiplayer bar ──────────────────────────────────────────────────────────
 // Sits above the tab strip: avatar split-button (leading), then a play/present
 // split-button + Share button trailing.
-function MultiplayerBar({ previewPlaying = false, onPreviewToggle, onPreviewMenu }: { previewPlaying?: boolean; onPreviewToggle?: () => void; onPreviewMenu?: () => void }) {
+function MultiplayerBar({ previewPlaying = false, onPreviewToggle, onPreviewMenu, accountInitial = "S", accountColor = "purple" }: { previewPlaying?: boolean; onPreviewToggle?: () => void; onPreviewMenu?: () => void; accountInitial?: string; accountColor?: AvatarColor }) {
   return (
     <div className="flex items-center gap-[8px] px-[8px] py-[6px]">
       <SplitButton
         size="large"
-        icon={<Avatar initial="S" size="default" color="purple" />}
+        icon={<Avatar initial={accountInitial} size="default" color={accountColor} />}
         actionLabel="Account"
         menuLabel="Account menu"
         onIconClick={() => {}}
@@ -1976,6 +1980,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
   previewPlaying = false,
   onPreviewToggle,
   onPreviewMenu,
+  accountInitial,
+  accountColor,
   exportSettings,
   exportTargetName,
   onAddExportSetting,
@@ -2118,7 +2124,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
         border-l against the canvas (Composa#250, analogous to #33). */}
     <div className={clsx("relative w-[240px] shrink-0 h-full flex flex-col bg-c-bg border-l border-c-border overflow-hidden", className)}>
       {/* Multiplayer tools — above the tabs; shared across all modes */}
-      <MultiplayerBar previewPlaying={previewPlaying} onPreviewToggle={onPreviewToggle} onPreviewMenu={onPreviewMenu} />
+      <MultiplayerBar previewPlaying={previewPlaying} onPreviewToggle={onPreviewToggle} onPreviewMenu={onPreviewMenu} accountInitial={accountInitial} accountColor={accountColor} />
 
       {/* ── PROJECT mode (inspector-project-mode.md) ─────────────────────────
           Active when nothing is selected. Static "Project" header, no tabs. */}
