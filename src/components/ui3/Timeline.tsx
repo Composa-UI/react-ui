@@ -28,6 +28,10 @@ const ROW_PROP = 28;      // raised from 24 → contains the 20px bar with 4px a
 const ROW_BLOCK = 32;     // master-view slide/video block-track row height (compact — contains 20px bar)
 const RIGHT_OVERLAY_W = 148; // zoom slider + collapse control + padding/border
 const BLUE = "#0d99ff";
+// Playhead treatment (Composa#344): false = the original DISCONNECTED look (pentagon
+// handle in the header, separate body line — Samuel's preference); true = the
+// continuous stroke through the header ruler (#342). Flip this one constant to switch.
+const PLAYHEAD_CONNECTED = false;
 
 export type TimelineMode = "master" | "slide";
 export type TimelineFrameRate = 24 | 25 | 30 | 60;
@@ -1366,8 +1370,8 @@ export function Timeline({
         >
           {master ? <SecondRuler viewport={viewport} width={plotWidth} /> : <Ruler viewport={viewport} width={plotWidth} />}
           {/* continuous playhead stroke through the header ruler, joining the body line
-              below so the playhead reads unbroken (Composa#342) */}
-          <div className="absolute top-[10px] bottom-0 w-px z-[15] -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport), backgroundColor: autoKeyframe ? "#ff3b30" : BLUE }} />
+              below so the playhead reads unbroken (Composa#342, gated by #344) */}
+          {PLAYHEAD_CONNECTED && <div className="absolute top-[10px] bottom-0 w-px z-[15] -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport), backgroundColor: autoKeyframe ? "#ff3b30" : BLUE }} />}
           {/* playhead handle — recolors red when auto-keyframe/record is armed (Composa#330) */}
           <div className="absolute top-[4px] z-20 -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport) }}>
             <svg width="12" height="10" viewBox="0 0 12 10"><path d="M0 0h12v4l-6 6-6-6V0Z" fill={autoKeyframe ? "#ff3b30" : BLUE} /></svg>
