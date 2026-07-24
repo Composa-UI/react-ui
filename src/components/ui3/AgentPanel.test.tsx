@@ -225,6 +225,53 @@ describe("AgentPanel controlled contracts", () => {
     act(() => renderer!.unmount());
   });
 
+  it("renders the export new-chat suggestions and routes selection to the host", () => {
+    const calls: string[] = [];
+    const emptyThread: AgentConversation = { id: "new", title: "New chat", visibility: "private", messages: [] };
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = renderAgent(props({ activeConversation: emptyThread, onSuggestionSelect: suggestion => calls.push(suggestion.id) }));
+    });
+    const suggestionButton = (label: string) => renderer!.root.findAll(node =>
+      node.type === "button" && node.findAll(child => child.children[0] === label).length > 0)
+      .find(node => node.findAll(child => child.children[0] === label).length > 0);
+    expect(suggestionButton("Animate this page")).toBeTruthy();
+    expect(suggestionButton("Find what needs motion")).toBeTruthy();
+    expect(suggestionButton("Learn motion")).toBeTruthy();
+    act(() => suggestionButton("Animate this page")!.props.onClick());
+    expect(calls).toEqual(["animate"]);
+    act(() => renderer!.unmount());
+  });
+
+  it("draws context chip icons from the layer-list mapping, not a wrench (Composa#218)", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = renderAgent(props({ activeConversation })); });
+    // The user message's frame context resolves to the layer-list frame icon.
+    expect(renderer!.root.findAll(node => node.props["data-layer-icon-type"] === "frame").length).toBeGreaterThan(0);
+    act(() => renderer!.unmount());
+  });
+
+  it("exposes a composer model picker and routes clicks", () => {
+    const calls: string[] = [];
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = renderAgent(props({ activeConversation, model: "Sonnet", onModelClick: () => calls.push("model") })); });
+    const picker = renderer!.root.findByProps({ "aria-label": "Model: Sonnet" });
+    act(() => picker.props.onClick());
+    expect(calls).toEqual(["model"]);
+    act(() => renderer!.unmount());
+  });
+
+  it("reveals reasoning steps for an expanded work message", () => {
+    const withSteps: AgentConversation = {
+      ...activeConversation,
+      messages: [{ id: "work", type: "work", content: "Inspecting", status: "complete", durationMs: 2_000, steps: ["Step alpha", "Step beta"] }],
+    };
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = renderAgent(props({ activeConversation: withSteps, expandedWorkMessageIds: ["work"] })); });
+    expect(renderer!.root.findAll(node => node.children[0] === "Step alpha")).toHaveLength(1);
+    act(() => renderer!.unmount());
+  });
+
   it("uses near-bottom policy for appended messages and exposes browser-friendly scroll state", () => {
     const viewport = { scrollTop: 0, scrollHeight: 300, clientHeight: 200, dataset: {} as Record<string, string> };
     let renderer: ReturnType<typeof create>;

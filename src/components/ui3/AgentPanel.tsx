@@ -6,6 +6,8 @@ import {
   ChevronDown,
   ChevronRight,
   CircleUserRound,
+  Diamond,
+  FileText,
   Image,
   Mic,
   MoreHorizontal,
@@ -13,10 +15,14 @@ import {
   Search,
   Send,
   Sparkles,
+  SquarePen,
   Wrench,
   X,
 } from "lucide-react";
 import { Button } from "./Button";
+import { LayerTypeIcon, type LayerIconType } from "./LayerTypeIcon";
+import { ModelPicker } from "./ModelPicker";
+import { RatingBar } from "./RatingBar";
 import { ScrollArea } from "./Panel";
 import { Tooltip } from "./Tooltip";
 
@@ -67,6 +73,8 @@ export type AgentPanelMessage =
       content: string;
       status: "running" | "complete" | "stopped";
       durationMs?: number;
+      /** Reasoning steps revealed when the work item is expanded (import parity). */
+      steps?: readonly string[];
     }
   | {
       id: string;
@@ -90,6 +98,12 @@ export interface AgentConversation {
   title: string;
   visibility: "private";
   messages: readonly AgentPanelMessage[];
+}
+
+export interface AgentSuggestion {
+  id: string;
+  label: string;
+  icon?: ReactNode;
 }
 
 export interface AgentPanelProps {
@@ -117,8 +131,20 @@ export interface AgentPanelProps {
   onToggleWorkMessage?: (messageId: string) => void;
   onAttachmentRequest?: () => void;
   onImageRequest?: () => void;
+  /** New-chat suggestion prompts (import parity). Defaults provided when omitted. */
+  suggestions?: readonly AgentSuggestion[];
+  onSuggestionSelect?: (suggestion: AgentSuggestion) => void;
+  /** Active model shown in the composer's ModelPicker. */
+  model?: string;
+  onModelClick?: () => void;
   className?: string;
 }
+
+const DEFAULT_SUGGESTIONS: readonly AgentSuggestion[] = [
+  { id: "animate", label: "Animate this page", icon: <FileText size={15} strokeWidth={1.5} /> },
+  { id: "find-motion", label: "Find what needs motion", icon: <Search size={15} strokeWidth={1.5} /> },
+  { id: "learn", label: "Learn motion", icon: <Diamond size={15} strokeWidth={1.5} /> },
+];
 
 const FONT = "font-[family-name:var(--composa-font-family)]";
 const GROUP_LABELS: Record<AgentConversationTimeGroup, string> = {
@@ -311,11 +337,21 @@ function relativeTime(updatedAt: number, now = Date.now()) {
   return `${days}d ago`;
 }
 
+// Composa#218: a context chip's icon must match the icon the layer list uses for
+// that object type — so a frame reads as a frame, not a wrench. Route every kind
+// through the shared LayerTypeIcon mapping.
+const CONTEXT_KIND_TO_LAYER: Record<AgentContextKind, LayerIconType> = {
+  frame: "frame",
+  text: "text",
+  shape: "shape",
+  image: "image",
+  clip: "image",
+  composition: "frame",
+  selection: "frame",
+};
+
 function ContextIcon({ kind }: { kind: AgentContextKind }) {
-  if (kind === "text") return <span aria-hidden className={clsx(FONT, "text-[11px] font-[550]")}>T</span>;
-  if (kind === "image") return <Image size={13} strokeWidth={1.5} />;
-  if (kind === "composition") return <Sparkles size={13} strokeWidth={1.5} />;
-  return <Wrench size={13} strokeWidth={1.5} />;
+  return <LayerTypeIcon type={CONTEXT_KIND_TO_LAYER[kind]} size={13} strokeWidth={1.5} />;
 }
 
 function ContextChip({
@@ -410,14 +446,19 @@ function ConversationCard({
 
 function UserMessage({ message, onSelectContext }: { message: Extract<AgentPanelMessage, { type: "user" }>; onSelectContext?: AgentPanelProps["onSelectContext"] }) {
   return (
-    <div className="flex flex-col items-end gap-[4px]">
-      {message.context && <ContextChip
-        context={message.context}
-        onSelect={message.context.selectable !== false && onSelectContext ? () => onSelectContext(message.context!) : undefined}
-      />}
-      <div className={clsx(FONT, "max-w-[196px] rounded-c-lg bg-c-bg-selected px-[8px] py-[6px] text-[11px] leading-[16px] text-c-text whitespace-pre-wrap break-words")}>
-        {message.content}
+    <div className="flex items-end justify-end gap-[8px]">
+      <div className="min-w-0 flex flex-col items-end gap-[4px]">
+        {message.context && <ContextChip
+          context={message.context}
+          onSelect={message.context.selectable !== false && onSelectContext ? () => onSelectContext(message.context!) : undefined}
+        />}
+        <div className={clsx(FONT, "max-w-[196px] rounded-c-lg bg-c-bg-selected px-[8px] py-[6px] text-[11px] leading-[16px] text-c-text whitespace-pre-wrap break-words")}>
+          {message.content}
+        </div>
       </div>
+      <span aria-hidden className="size-[24px] shrink-0 overflow-hidden rounded-full bg-c-bg-secondary flex items-center justify-center text-c-icon">
+        <CircleUserRound size={15} strokeWidth={1.5} />
+      </span>
     </div>
   );
 }
@@ -444,6 +485,13 @@ function WorkMessage({
           )}
         </div>
         <div className="mt-[4px]">{message.content}</div>
+        {!!message.steps?.length && (
+          <div className="mt-[6px] ml-[1px] pl-[2px] border-l-2 border-c-border flex flex-col gap-[2px]">
+            {message.steps.map((step, index) => (
+              <p key={index} className="pl-[8px] text-[9px] leading-[14px] text-c-text-tertiary">{step}</p>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -500,6 +548,45 @@ function ErrorMessage({ message }: { message: Extract<AgentPanelMessage, { type:
   );
 }
 
+// Composa-App/Composa#221 (superseded): the owner chose the export's new-chat
+// design — a brand-tinted glyph, a prompt, and tappable suggestion cards —
+// instead of matching the assets empty-state.
+function NewChatEmptyState({
+  suggestions,
+  onSelect,
+}: {
+  suggestions: readonly AgentSuggestion[];
+  onSelect: (suggestion: AgentSuggestion) => void;
+}) {
+  return (
+    <div className="my-auto flex flex-col items-center gap-[16px] px-[12px] py-[8px]">
+      <div className="flex flex-col items-center gap-[10px]">
+        <span className="flex items-center justify-center rounded-full bg-c-bg-selected p-[8px] text-c-text-brand">
+          <SquarePen size={18} strokeWidth={1.5} />
+        </span>
+        <p className={clsx(FONT, "m-0 text-[13px] font-[550] leading-[18px] text-c-text text-center")}>What do you want to do?</p>
+      </div>
+      <div className="w-full flex flex-col gap-[8px]">
+        {suggestions.map(suggestion => (
+          <button
+            key={suggestion.id}
+            type="button"
+            onClick={() => onSelect(suggestion)}
+            className={clsx(
+              FONT,
+              "w-full flex items-center gap-[8px] p-[8px] rounded-c-lg text-left outline-none",
+              "ring-1 ring-inset ring-c-border hover:bg-c-bg-hover focus-visible:ring-c-focus-ring",
+            )}
+          >
+            <span className="size-[24px] shrink-0 flex items-center justify-center text-c-icon">{suggestion.icon ?? <Sparkles size={15} strokeWidth={1.5} />}</span>
+            <span className="min-w-0 flex-1 truncate text-[11px] leading-[16px] font-[450] text-c-text">{suggestion.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Message({
   message,
   expanded,
@@ -520,6 +607,7 @@ function Message({
       <AgentMarkdown content={message.content} />
       {message.status === "streaming" && <span aria-hidden className="ml-[2px] inline-block h-[12px] w-px animate-pulse bg-c-text" />}
       {message.status === "stopped" && <span className="block mt-[2px] text-[9px] text-c-text-secondary">Stopped</span>}
+      {(message.status === "complete" || message.status === undefined) && <RatingBar />}
     </div>
   );
 }
@@ -549,8 +637,17 @@ export function AgentPanel({
   onToggleWorkMessage,
   onAttachmentRequest,
   onImageRequest,
+  suggestions,
+  onSuggestionSelect,
+  model = "Default",
+  onModelClick,
   className,
 }: AgentPanelProps) {
+  const resolvedSuggestions = suggestions ?? DEFAULT_SUGGESTIONS;
+  const handleSuggestion = (suggestion: AgentSuggestion) => {
+    if (onSuggestionSelect) onSuggestionSelect(suggestion);
+    else onComposerChange(suggestion.label);
+  };
   const panelRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
@@ -632,15 +729,13 @@ export function AgentPanel({
       >
         {activeConversation ? (
           <>
-            <header className="h-[52px] shrink-0 px-[8px] border-b border-c-border flex items-center gap-[6px]">
+            {/* Composa-App/Composa#220: chat header shares the 40px standard fixed
+                header height (matches the history header + PropertyPanel sections)
+                and lays out on a single line — no stacked "Private" descriptor. */}
+            <header className="h-[40px] shrink-0 px-[8px] border-b border-c-border flex items-center gap-[6px]">
               <IconButton label="Back to chats" onClick={onBack}><ArrowLeft size={16} strokeWidth={1.5} /></IconButton>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-[4px]">
-                  <h2 className={clsx(FONT, "m-0 truncate text-[11px] font-[550] leading-[16px] text-c-text")}>{activeConversation.title}</h2>
-                  <BetaBadge />
-                </div>
-                <PrivateBadge />
-              </div>
+              <h2 className={clsx(FONT, "min-w-0 flex-1 m-0 truncate text-[11px] font-[550] leading-[16px] text-c-text")}>{activeConversation.title}</h2>
+              <BetaBadge />
               {onConversationOptions && <IconButton label="Conversation options" onClick={() => onConversationOptions(activeConversation.id)}><MoreHorizontal size={16} strokeWidth={1.5} /></IconButton>}
             </header>
             <ScrollArea viewportRef={threadViewportRef as MutableRefObject<HTMLDivElement | null>}
@@ -654,11 +749,7 @@ export function AgentPanel({
               <div role="log" aria-label="Conversation messages" aria-live="polite" data-agent-message-signature={messageSignature}
                 className="min-h-full flex flex-col justify-end gap-[12px]">
                 {!activeConversation.messages.length && (
-                  <div className="my-auto px-[12px] text-center">
-                    <Sparkles size={20} strokeWidth={1.5} className="mx-auto text-c-icon" />
-                    <p className={clsx(FONT, "mt-[8px] mb-0 text-[11px] leading-[16px] text-c-text")}>What would you like help with?</p>
-                    <p className={clsx(FONT, "mt-[2px] mb-0 text-[9px] leading-[14px] text-c-text-secondary")}>Your editor context can be attached when you send.</p>
-                  </div>
+                  <NewChatEmptyState suggestions={resolvedSuggestions} onSelect={handleSuggestion} />
                 )}
                 {activeConversation.messages.map(message => (
                   <Message
@@ -697,6 +788,7 @@ export function AgentPanel({
                 />
                 <div className="h-[28px] px-[4px] pb-[4px] flex items-center gap-[2px]">
                   <IconButton label="Add attachment" disabled={!onAttachmentRequest} onClick={onAttachmentRequest}><Plus size={15} strokeWidth={1.5} /></IconButton>
+                  <ModelPicker value={model} disabled={!onModelClick} onClick={onModelClick} />
                   <IconButton label="Add image" disabled={!onImageRequest} onClick={onImageRequest}><Image size={15} strokeWidth={1.5} /></IconButton>
                   <Tooltip label="Coming soon" direction="Top">
                     <span tabIndex={0} aria-label="Voice input unavailable: Coming soon"><IconButton label="Voice input coming soon" disabled><Mic size={15} strokeWidth={1.5} /></IconButton></span>

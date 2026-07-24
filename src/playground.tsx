@@ -453,6 +453,69 @@ function ChatLeafFixture({ mode }: { mode: "light" | "dark" }) {
   );
 }
 
+const INTEGRATION_THREAD: AgentConversation = {
+  id: "chat",
+  title: "Continue conversation",
+  visibility: "private",
+  messages: [
+    { id: "u1", type: "user", content: "Are you connected to my github?" },
+    { id: "w1", type: "work", content: "Checked the GitHub connection and token scopes.", status: "complete", durationMs: 16_000, steps: ["Checking GitHub connection...", "Fetching authenticated user via get_me...", "Verifying token scopes..."] },
+    { id: "a1", type: "agent", content: "Yes, I'm connected to your GitHub! You're authenticated as **Samuel Alake** (@samuelalake).", status: "complete" },
+    { id: "u2", type: "user", content: "What easing should I use for this element?", context: { id: "c", label: "Container (Editor Study)", kind: "frame" } },
+    { id: "a2", type: "agent", content: "For the **Ellipse**, I'd go with **Ease in & out** — a natural acceleration then a smooth stop.", status: "complete" },
+    { id: "act", type: "action", title: "Reference card", description: "Here's your reference card. How does it look?", status: "ready" },
+  ],
+};
+
+function ChatIntegrationColumn({ initial }: { initial: "history" | "new" | "chat" }) {
+  const [search, setSearch] = useState("");
+  const [composer, setComposer] = useState("");
+  const [active, setActive] = useState<AgentConversation | null>(
+    initial === "chat" ? INTEGRATION_THREAD
+      : initial === "new" ? { id: "new", title: "New chat", visibility: "private", messages: [] }
+      : null,
+  );
+  const [expanded, setExpanded] = useState<string[]>(["w1"]);
+  const filtered = ISSUE_75_CONVERSATIONS.filter(item => `${item.title} ${item.preview}`.toLowerCase().includes(search.toLowerCase()));
+  return (
+    <AgentPanel
+      conversations={filtered}
+      activeConversation={active}
+      search={search}
+      composerValue={composer}
+      context={active?.id === "chat" ? { id: "c", label: "Container (Editor Study)", kind: "frame" } : null}
+      expandedWorkMessageIds={expanded}
+      onSearchChange={setSearch}
+      onNewConversation={() => setActive({ id: "new", title: "New chat", visibility: "private", messages: [] })}
+      onOpenConversation={() => setActive(INTEGRATION_THREAD)}
+      onBack={() => setActive(null)}
+      onComposerChange={setComposer}
+      onSubmit={() => setComposer("")}
+      onEscape={() => undefined}
+      onToggleWorkMessage={id => setExpanded(v => v.includes(id) ? v.filter(x => x !== id) : [...v, id])}
+      onSelectContext={() => undefined}
+      onDismissContext={() => undefined}
+      onConversationOptions={() => undefined}
+      onModelClick={() => undefined}
+      onAttachmentRequest={() => undefined}
+      onImageRequest={() => undefined}
+    />
+  );
+}
+
+function ChatIntegrationFixture({ mode }: { mode: "light" | "dark" }) {
+  const states: Array<"history" | "new" | "chat"> = ["history", "new", "chat"];
+  return (
+    <section data-composa-mode={mode === "dark" ? "dark" : undefined} className="grid grid-cols-3 gap-[16px]">
+      {states.map(initial => (
+        <div key={initial} className="h-[620px] flex justify-center overflow-hidden rounded-c-lg bg-c-bg-secondary shadow-c-200">
+          <ChatIntegrationColumn initial={initial} />
+        </div>
+      ))}
+    </section>
+  );
+}
+
 export default function Playground() {
   // ?view=slides = componentized SlidesPanel; ?view=slides-raw = the raw Figma export
   // (side-by-side fidelity check); default = property-panel fidelity set.
@@ -618,6 +681,15 @@ export default function Playground() {
       <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px] items-start">
         <ChatLeafFixture mode="light" />
         <ChatLeafFixture mode="dark" />
+      </main>
+    );
+  }
+
+  if (view === "chat-integration") {
+    return (
+      <main className="min-h-screen bg-c-bg-secondary p-[24px] flex flex-col gap-[24px]">
+        <ChatIntegrationFixture mode="light" />
+        <ChatIntegrationFixture mode="dark" />
       </main>
     );
   }
