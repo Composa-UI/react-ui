@@ -3,6 +3,7 @@ import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { clsx } from "clsx";
 import { type ReactNode } from "react";
 import { useComposaMode } from "./useComposaMode";
+import { ScrollArea } from "./Panel";
 
 // ─── Modal width presets ───────────────────────────────────────────────────────
 // From Figma UI3 Modal Attributes guidelines:
@@ -212,6 +213,12 @@ export function ModalHeader({
 // ─── ModalBody ────────────────────────────────────────────────────────────────
 // Scrollable content area. flex-1 so it fills space between header and footer.
 // When content overflows the modal's max-height, footer stays pinned.
+//
+// The scrollable path uses the DS `ScrollArea` (Panel.tsx): the native scrollbar
+// is fully hidden and a thin overlay thumb sits on the surface, matching the
+// editor/Home panels. A short dialog (no overflow) shows no thumb and is
+// unchanged; a tall dialog scrolls with the overlay thumb. `ScrollArea`'s root is
+// already `flex-1 min-h-0`, so it slots in exactly where the old scroll div sat.
 
 interface ModalBodyProps {
   children: ReactNode;
@@ -226,11 +233,20 @@ export function ModalBody({
   padding = false,
   className,
 }: ModalBodyProps) {
+  if (scrollable) {
+    // padding + caller className style the scroll content (viewport), preserving
+    // the previous behaviour where they sat on the scrollable element itself.
+    return (
+      <ScrollArea className={clsx(padding && "p-[16px]", className)}>
+        {children}
+      </ScrollArea>
+    );
+  }
+
   return (
     <div
       className={clsx(
         "flex-1 min-h-0",
-        scrollable && "overflow-y-auto",
         padding && "p-[16px]",
         className,
       )}
