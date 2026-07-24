@@ -750,6 +750,10 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
         />
         <div className="relative shrink-0 flex items-center gap-[8px] pr-[8px] border-r border-c-border"
           style={{ width: LEFT_W, paddingLeft: 8 + depth * 16 }}>
+          {/* tree guides: a vertical line at each ancestor indent level (Composa#343) */}
+          {Array.from({ length: depth }).map((_, level) => (
+            <span key={`guide-${level}`} aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-c-border" style={{ left: 16 + level * 16 }} />
+          ))}
           {track.props.length ? onExpandedChange ? <button type="button" aria-label={`${expanded ? "Collapse" : "Expand"} ${track.name}`} aria-expanded={expanded}
             tabIndex={onTrackSelect ? -1 : undefined}
             onClick={event => { event.stopPropagation(); onExpandedChange(trackId, !expanded); }} className="size-[16px] shrink-0 rounded-c-sm flex items-center justify-center text-c-icon-secondary hover:bg-c-bg-hover focus-visible:ring-2 focus-visible:ring-c-border-selected-strong outline-none">
@@ -817,7 +821,11 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
           className={clsx("flex", p.hidden && "opacity-40", propSelected ? "bg-c-bg-selected" : rowGraySelected && "bg-c-bg-secondary")}
           style={{ height: ROW_PROP }}
           onClick={event => { if (!(event.target as Element).closest?.("button,[data-keyframe-id],[data-easing-segment]")) onPropertyRowSelect?.(propertyId); }}>
-          <div className="group/prop shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
+          <div className="group/prop relative shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
+            {/* tree guides continue down through the property rows, incl. the layer level (Composa#343) */}
+            {Array.from({ length: depth + 1 }).map((_, level) => (
+              <span key={`guide-${level}`} aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-c-border" style={{ left: 16 + level * 16 }} />
+            ))}
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate", p.accent ? "text-[#8638e5]" : "text-c-text-secondary")}>{p.name}</span>
             {/* keyframe stepper: ◀ prev-keyframe · ◇ toggle-at-playhead · ▶ next-keyframe */}
             <button type="button" aria-label={`Previous ${p.name} keyframe`} onClick={() => onPropertyStepKeyframe?.(trackId, p.id ?? `property-${i}`, "prev")} className="shrink-0 flex items-center justify-center opacity-0 group-hover/prop:opacity-100 disabled:opacity-0" disabled={!onPropertyStepKeyframe}>
