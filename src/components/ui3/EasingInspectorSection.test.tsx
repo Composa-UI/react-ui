@@ -67,6 +67,25 @@ describe("EasingInspectorSection contracts", () => {
     expect(html).toContain('aria-label="Easing X1"');
   });
 
+  it("adds the Curve/Spring tabs and a copyable cubic readout (export parity)", () => {
+    const html = renderToStaticMarkup(<EasingInspectorSection
+      value={{ preset: "linear", editable: true }}
+      onChange={() => undefined}
+    />);
+    expect(html).toContain('aria-label="Easing type"');
+    expect(html).toContain(">Curve<");
+    expect(html).toContain(">Spring<");
+    expect(html).toContain("data-easing-cubic-readout");
+    expect(html).toContain(">0, 0, 1, 1<");
+    expect(html).toContain('aria-label="Copy cubic bézier"');
+  });
+
+  it("marks the Spring tab pressed when the spring preset is active", () => {
+    const html = renderToStaticMarkup(<EasingInspectorSection value={{ preset: "spring", editable: true }} onChange={() => undefined} />);
+    // The segmented Spring item is pressed; its cubic readout reflects the spring curve.
+    expect(html).toContain(">0.175, 0.885, 0.32, 1.275<");
+  });
+
   it("renders locked easing as disabled presentation", () => {
     const html = renderToStaticMarkup(<EasingInspectorSection value={{ preset: "spring", editable: false }} onChange={() => undefined} />);
     expect(html).toContain('aria-label="Easing preset"');
