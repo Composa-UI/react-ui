@@ -20,7 +20,7 @@ import {
   IconButtonRow, PanelActionBtn, PanelEntry, ScrollArea, type IconBtn,
 } from "./Panel";
 import { Tabs } from "./Tabs";
-import { NumericEditSessionProvider, NumericInput, NumericComboInput, InputField, ColorInput, ComboInput, formatNumericDisplay } from "./Input";
+import { NumericEditSessionProvider, NumericInput, NumericComboInput, NumericPairInput, InputField, ColorInput, ComboInput, formatNumericDisplay } from "./Input";
 import { Dropdown } from "./Dropdown";
 import { SegmentedControl } from "./SegmentedControl";
 import { AlignmentControl, type AlignmentValue } from "./AlignmentControl";
@@ -409,6 +409,11 @@ function PositionSection({
     { icon: <FlipHorizontal size={S} strokeWidth={1.5} />, label: "Flip horizontal" },
     { icon: <FlipVertical   size={S} strokeWidth={1.5} />, label: "Flip vertical" },
   ];
+  // Scale aspect-lock (Figma Motion scale row's trailing ⊡). When locked, the two
+  // axes scale uniformly. Kept in one edit session by NumericEditSessionProvider.
+  const [scaleLocked, setScaleLocked] = useState(true);
+  const emitScaleX = (value: number) => { onScaleXChange?.(value); if (scaleLocked) onScaleYChange?.(value); };
+  const emitScaleY = (value: number) => { onScaleYChange?.(value); if (scaleLocked) onScaleXChange?.(value); };
 
   return (
     <PanelSection
@@ -430,45 +435,31 @@ function PositionSection({
           ? <PanelActionBtn icon={<MoreHorizontal size={16} strokeWidth={1.5} />} label="More alignment" />
           : undefined}
       />
-      {/* X / Y */}
+      {/* Position — combined [X | Y | ◇] field (Figma Motion position row). */}
       <PanelFieldRow
         label="Position"
         left={
-          <NumericInput
-            ariaLabel="Position X"
-            iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>X</span>}
-            value={x} onChange={onXChange} defaultValue={0}
-          />
-        }
-        right={
-          <NumericInput
-            ariaLabel="Position Y"
-            iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>}
-            value={y} onChange={onYChange} defaultValue={0}
+          <NumericPairInput
+            a={{ ariaLabel: "Position X", iconLead: <span className={clsx(FONT, "text-[11px] font-normal")}>X</span>, value: x, onChange: onXChange, defaultValue: 0 }}
+            b={{ ariaLabel: "Position Y", iconLead: <span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>, value: y, onChange: onYChange, defaultValue: 0 }}
             keyframe={positionKeyframe}
           />
         }
       />
 
-      {/* Scale — % of the object's base size. Present when the host marks it applicable. */}
+      {/* Scale — combined [X | Y | ◇] field + aspect-lock (Figma Motion scale row).
+          % of the object's base size. Present when the host marks it applicable. */}
       {scaleApplicable && (
         <PanelFieldRow
           label="Scale"
           left={
-            <NumericInput
-              ariaLabel="Scale X"
-              iconLead={<MoveHorizontal size={16} strokeWidth={1.5} />}
-              value={scaleX} onChange={onScaleXChange} min={0} suffix="%" defaultValue={100}
-            />
-          }
-          right={
-            <NumericInput
-              ariaLabel="Scale Y"
-              iconLead={<MoveVertical size={16} strokeWidth={1.5} />}
-              value={scaleY} onChange={onScaleYChange} min={0} suffix="%" defaultValue={100}
+            <NumericPairInput
+              a={{ ariaLabel: "Scale X", iconLead: <MoveHorizontal size={16} strokeWidth={1.5} />, value: scaleX, onChange: emitScaleX, min: 0, suffix: "%", defaultValue: 100 }}
+              b={{ ariaLabel: "Scale Y", iconLead: <MoveVertical size={16} strokeWidth={1.5} />, value: scaleY, onChange: emitScaleY, min: 0, suffix: "%", defaultValue: 100 }}
               keyframe={scaleKeyframe}
             />
           }
+          rightAction={<PanelActionBtn icon={scaleLocked ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />} label="Lock scale aspect ratio" active={scaleLocked} onClick={() => setScaleLocked(value => !value)} />}
         />
       )}
 
