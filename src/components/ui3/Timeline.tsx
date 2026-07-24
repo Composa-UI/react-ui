@@ -495,12 +495,14 @@ function DurationBar({ trackId, name, range, projection, selectionState, viewpor
     onGestureEnd?.(target, { cancelled: false });
   };
   const barClassName = clsx(
-    "absolute top-1/2 h-[12px] -translate-y-1/2 border",
+    // Fill most of the lane height (Composa#324) — was a thin 12px bar.
+    "absolute top-1/2 h-[20px] -translate-y-1/2 border",
     projection.clippedStart ? "rounded-l-none border-l-0" : "rounded-l-[4px]",
     projection.clippedEnd ? "rounded-r-none border-r-0" : "rounded-r-[4px]",
     selectionState === "selected"
       ? "border-c-border-selected-strong bg-c-bg-brand"
-      : "border-c-border-strong bg-c-bg-secondary",
+      // Unselected: de-emphasized (lighter) stroke, not the strong border.
+      : "border-c-border bg-c-bg-secondary",
   );
   const data = {
     "data-timeline-duration-bar": trackId,
@@ -521,16 +523,19 @@ function DurationBar({ trackId, name, range, projection, selectionState, viewpor
         onKeyDown={event => step("move", event)}
         onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
         className="absolute inset-0 cursor-grab rounded-[inherit] bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring active:cursor-grabbing" />
+      {/* Visible L/R drag indicators (Composa#324) — grip pips inset at each edge. */}
+      {!projection.clippedStart && <span className="pointer-events-none absolute left-[3px] top-1/2 z-[1] h-[10px] w-[2px] -translate-y-1/2 rounded-full bg-c-icon-secondary" />}
+      {!projection.clippedEnd && <span className="pointer-events-none absolute right-[3px] top-1/2 z-[1] h-[10px] w-[2px] -translate-y-1/2 rounded-full bg-c-icon-secondary" />}
       {!projection.clippedStart && <button type="button" aria-label={`Scale ${name} duration from start`} aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight" data-duration-bar-action="trim-start"
         onPointerDown={event => begin("trim-start", event)} onPointerMove={move}
         onKeyDown={event => step("trim-start", event)}
         onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
-        className="absolute -left-[3px] top-1/2 z-[1] h-[18px] w-[7px] -translate-y-1/2 cursor-ew-resize rounded-c-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />}
+        className="absolute -left-[3px] top-1/2 z-[2] h-[20px] w-[7px] -translate-y-1/2 cursor-ew-resize rounded-c-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />}
       {!projection.clippedEnd && <button type="button" aria-label={`Scale ${name} duration from end`} aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight" data-duration-bar-action="trim-end"
         onPointerDown={event => begin("trim-end", event)} onPointerMove={move}
         onKeyDown={event => step("trim-end", event)}
         onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
-        className="absolute -right-[3px] top-1/2 z-[1] h-[18px] w-[7px] -translate-y-1/2 cursor-ew-resize rounded-c-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />}
+        className="absolute -right-[3px] top-1/2 z-[2] h-[20px] w-[7px] -translate-y-1/2 cursor-ew-resize rounded-c-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />}
     </div>
   );
 }
@@ -839,12 +844,17 @@ function Transport({ current, duration, mode, playing, loop, onPlayingChange, on
 }
 
 // ── ruler (slide-local view — milliseconds) ────────────────────────────────────────
+// Each tick renders a short mark AT the time position with its label to the right
+// (Figma parity — Composa#326: the ticks row was previously labels-only).
 function Ruler({ viewport, width }: { viewport: TimelineViewport; width: number }) {
   const ticks = tickTimes(viewport, width);
   return (
     <div className="absolute inset-0 overflow-hidden">
       {ticks.map(t => (
-        <span key={t} className={clsx(FONT, "absolute top-1/2 -translate-y-1/2 text-[11px] text-c-text-secondary tabular-nums")} style={{ left: percent(t, viewport) }}>{Math.round(t)}</span>
+        <div key={t} className="absolute top-0 bottom-0" style={{ left: percent(t, viewport) }}>
+          <span className="absolute bottom-0 left-0 w-px h-[5px] bg-c-border-strong" />
+          <span className={clsx(FONT, "absolute top-1/2 -translate-y-1/2 left-[4px] text-[11px] text-c-text-secondary tabular-nums whitespace-nowrap")}>{Math.round(t)}</span>
+        </div>
       ))}
     </div>
   );
@@ -856,7 +866,10 @@ function SecondRuler({ viewport, width }: { viewport: TimelineViewport; width: n
   return (
     <div className="absolute inset-0 overflow-hidden">
       {ticks.map(timeMs => (
-        <span key={timeMs} className={clsx(FONT, "absolute top-1/2 -translate-y-1/2 text-[11px] text-c-text-secondary tabular-nums")} style={{ left: percent(timeMs, viewport) }}>{Number((timeMs / 1000).toFixed(2))}s</span>
+        <div key={timeMs} className="absolute top-0 bottom-0" style={{ left: percent(timeMs, viewport) }}>
+          <span className="absolute bottom-0 left-0 w-px h-[5px] bg-c-border-strong" />
+          <span className={clsx(FONT, "absolute top-1/2 -translate-y-1/2 left-[4px] text-[11px] text-c-text-secondary tabular-nums whitespace-nowrap")}>{Number((timeMs / 1000).toFixed(2))}s</span>
+        </div>
       ))}
     </div>
   );
