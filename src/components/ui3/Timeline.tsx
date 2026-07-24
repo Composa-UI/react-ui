@@ -579,6 +579,9 @@ function Lane({ prop, trackId, propertyId, active = false, height, viewport, plo
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
 }) {
+  const laneMode = useComposaMode();
+  // Right-click keyframe context menu (Composa#345) — the id of the keyframe whose menu is open.
+  const [menuKeyframeId, setMenuKeyframeId] = useState<string | null>(null);
   const kfs = prop.keyframes;
   const times = kfs.map(keyframeTime);
   const first = times.length ? Math.min(...times) : 0;
@@ -659,12 +662,14 @@ function Lane({ prop, trackId, propertyId, active = false, height, viewport, plo
         const target = { trackId, propertyId, keyframeId: id, timeMs };
         const selected = typeof keyframe !== "number" && keyframe.selected;
         return (
+        <PopoverPrimitive.Root key={id} open={menuKeyframeId === id} onOpenChange={open => { if (!open) setMenuKeyframeId(null); }}>
+        <PopoverPrimitive.Anchor asChild>
         <button
           type="button"
-          key={id}
           data-keyframe-id={id}
           aria-label={`${prop.name} keyframe at ${timeMs}ms`}
           aria-pressed={selected}
+          onContextMenu={event => { event.preventDefault(); event.stopPropagation(); onSelect?.(target, false); setMenuKeyframeId(id); }}
           onClick={event => { event.stopPropagation(); onSelect?.(target, event.shiftKey); }}
           onKeyDown={event => {
             if (event.key === "Delete" || event.key === "Backspace") { event.preventDefault(); event.stopPropagation(); onDelete?.(target); }
@@ -700,6 +705,15 @@ function Lane({ prop, trackId, propertyId, active = false, height, viewport, plo
           )}
           style={{ left: percent(timeMs, viewport), backgroundColor: selected ? (prop.accent ? "#8638e5" : BLUE) : undefined }}
         />
+        </PopoverPrimitive.Anchor>
+        <PopoverPrimitive.Portal>
+          <PopoverPrimitive.Content data-composa-mode={laneMode} side="bottom" align="start" sideOffset={6} collisionPadding={8} aria-label={`${prop.name} keyframe actions`} className="z-50 outline-none">
+            <Menu minWidth={168}>
+              <MenuRow type="simple" label="Delete keyframe" onClick={() => { onDelete?.(target); setMenuKeyframeId(null); }} />
+            </Menu>
+          </PopoverPrimitive.Content>
+        </PopoverPrimitive.Portal>
+        </PopoverPrimitive.Root>
       );})}
     </div>
   );
