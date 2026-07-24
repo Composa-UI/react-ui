@@ -1,0 +1,107 @@
+import { renderToStaticMarkup } from "react-dom/server";
+import { act, create, type ReactTestInstance } from "react-test-renderer";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import type { ReactNode } from "react";
+
+// Mock the dialog wrapper so the component renders without the Radix Dialog
+// portal (jsdom-free, same approach as the other dialog tests).
+vi.mock("./Dialog", () => ({
+  MODAL_WIDTHS: { compact: 240, dialog: 320, standard: 480 },
+  Modal: ({ children }: { children: ReactNode }) => <div data-modal>{children}</div>,
+  ModalHeader: ({ title, actions }: { title?: string; actions?: ReactNode }) => (
+    <div data-modal-header><span data-title>{title}</span>{actions}</div>
+  ),
+  ModalBody: ({ children }: { children: ReactNode }) => <div data-modal-body>{children}</div>,
+}));
+
+import { ShareModal, type SharePerson } from "./ShareModal";
+
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+const OWNER: SharePerson[] = [{ id: "you", name: "Samuel", you: true, owner: true, color: "purple", initial: "S" }];
+
+function text(node: ReactTestInstance | string): string {
+  if (typeof node === "string") return node;
+  return (node.children ?? []).map(text).join("");
+}
+
+function labelledButton(root: ReactTestInstance, label: string) {
+  return root.findAll(node => node.type === "button").find(btn => text(btn).includes(label))!;
+}
+
+describe("ShareModal (Composa#289)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("titles the header per variant", () => {
+    const project = renderToStaticMarkup(<ShareModal open onClose={() => undefined} variant="project" people={OWNER} />);
+    const team    = renderToStaticMarkup(<ShareModal open onClose={() => undefined} variant="team" people={OWNER} />);
+    expect(project).toContain("Share this project");
+    expect(project).not.toContain("Invite to team");
+    expect(team).toContain("Invite to team");
+    expect(team).not.toContain("Share this project");
+  });
+
+  it("keeps the body identical across variants (only the header differs)", () => {
+    const project = renderToStaticMarkup(<ShareModal open onClose={() => undefined} variant="project" people={OWNER} />);
+    const team    = renderToStaticMarkup(<ShareModal open onClose={() => undefined} variant="team" people={OWNER} />);
+    for (const html of [project, team]) {
+      expect(html).toContain("Add emails, names, or user groups");
+      expect(html).toContain("Who has access");
+      expect(html).toContain("Anyone in Just me");
+      expect(html).toContain("can access");
+    }
+  });
+
+  it("renders the owner as static text and a non-owner with an editable role", () => {
+    const html = renderToStaticMarkup(
+      <ShareModal open onClose={() => undefined} people={[
+        ...OWNER,
+        { id: "a", name: "Alan Anabelle", access: "can view", color: "blue", initial: "A" },
+      ]} />,
+    );
+    expect(html).toContain("owner");
+    expect(html).toContain("Alan Anabelle");
+    expect(html).toContain("can view"); // role-menu trigger for the invited person
+  });
+
+  it("gates Invite on input and emits the trimmed value", () => {
+    const onInvite = vi.fn();
+    let renderer!: ReturnType<typeof create>;
+    act(() => { renderer = create(<ShareModal open onClose={() => undefined} people={OWNER} onInvite={onInvite} />); });
+    const root = renderer.root;
+
+    // Disabled while empty.
+    expect(labelledButton(root, "Invite").props.disabled).toBe(true);
+
+    // Type into the field, then it enables and emits.
+    act(() => { root.findByType("input").props.onChange({ target: { value: "  a@b.com  " } }); });
+    const invite = labelledButton(root, "Invite");
+    expect(invite.props.disabled).toBe(false);
+    act(() => { invite.props.onClick(); });
+    expect(onInvite).toHaveBeenCalledWith("a@b.com");
+  });
+
+  it("routes role changes and removals through callbacks", () => {
+    const onChangeAccess = vi.fn();
+    const onRemovePerson = vi.fn();
+    let renderer!: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(
+        <ShareModal open onClose={() => undefined}
+          people={[...OWNER, { id: "a", name: "Alan", access: "can edit", color: "blue", initial: "A" }]}
+          onChangeAccess={onChangeAccess} onRemovePerson={onRemovePerson} />,
+      );
+    });
+    const root = renderer.root;
+    // The last PopoverMenu is the invited person's RoleMenu; its render fn yields the menu rows.
+    const popovers = root.findAll(node => typeof node.props.children === "function" && "align" in node.props);
+    const roleMenu = popovers[popovers.length - 1];
+    const menu = roleMenu.props.children(() => undefined);
+    const rows: { props: { label?: string; onClick?: () => void } }[] = menu.props.children;
+    const byLabel = (label: string) => rows.find(r => r.props.label === label)!;
+    act(() => { byLabel("Can view").props.onClick!(); });
+    expect(onChangeAccess).toHaveBeenCalledWith("a", "can view");
+    act(() => { byLabel("Remove").props.onClick!(); });
+    expect(onRemovePerson).toHaveBeenCalledWith("a");
+  });
+});
