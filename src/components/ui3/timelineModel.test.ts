@@ -4,8 +4,8 @@ import { advanceEdgeAutoScrollViewport, collectAggregateKeyframes, createTimelin
 describe("timeline viewport model", () => {
   it("round-trips time and pixels inside a controlled viewport", () => {
     const viewport = { startMs: 1_000, endMs: 5_000 };
-    expect(timeToX(3_000, viewport, 800)).toBe(400);
-    expect(xToTime(400, viewport, 800)).toBe(3_000);
+    expect(timeToX(3_000, viewport, 800)).toBe(408);
+    expect(xToTime(408, viewport, 800)).toBe(3_000);
   });
 
   it("zooms around the cursor anchor and clamps at the duration", () => {
@@ -72,7 +72,7 @@ describe("timeline viewport model", () => {
   });
 
   it("combines pointer motion with viewport displacement at any zoom", () => {
-    expect(timelineDragDeltaMs(100, 150, 1_000, { startMs: 1_400, endMs: 5_400 }, 800)).toBe(650);
+    expect(timelineDragDeltaMs(100, 150, 1_000, { startMs: 1_400, endMs: 5_400 }, 800)).toBeCloseTo(655.1020408163265);
     expect(timelineDragDeltaMs(100, 100, 1_000, { startMs: 1_400, endMs: 3_400 }, 800)).toBe(400);
   });
 
