@@ -54,6 +54,8 @@ export interface ObjectAnimationCallbacks {
   onPlayAllObjectAnimations?: () => void;
 }
 
+export const ACTION_STYLE_OPTIONS = ["move", "opacity", "rotate", "scale", "pulse", "jiggle", "bounce", "shake"] as const;
+
 export type CompTransitionStyle = "none" | "fade" | "push" | "slide" | "wipe";
 export type CompTransitionDirection = "left" | "right" | "up" | "down";
 export type CompTransitionEasing = "linear" | "ease-in" | "ease-out" | "ease-in-out";
@@ -257,8 +259,8 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
             const id = a.id ?? String(i);
             const phase = a.kind === "In" ? "build-in" : a.kind === "Out" ? "build-out" : "action";
             const phaseLabel = phase === "build-in" ? "Build in" : phase === "build-out" ? "Build out" : "Action";
-            const styleOptions = phase === "build-in" ? ["fade-in", "move-in", "slide-in", "wipe-in"] : phase === "build-out" ? ["fade-out", "move-out", "slide-out", "wipe-out"] : ["pulse", "jiggle", "bounce", "shake"];
-            const directional = !!a.style && /^(move|slide|wipe)-/.test(a.style);
+            const styleOptions = phase === "build-in" ? ["fade-in", "move-in", "slide-in", "wipe-in"] : phase === "build-out" ? ["fade-out", "move-out", "slide-out", "wipe-out"] : ACTION_STYLE_OPTIONS;
+            const directional = !!a.style && (/^(move|slide|wipe)-/.test(a.style) || (phase === "action" && a.style === "move"));
             const styleLabels = Object.fromEntries(styleOptions.map(style => [style, style.split("-").map(word => word[0].toUpperCase() + word.slice(1)).join(" ")])) as Record<string, string>;
             const deliveryLabels = { "all-at-once": "All at once", "by-object": "By object", "by-word": "By word", "by-character": "By character" };
             const deliveryValue = Object.entries(deliveryLabels).find(([, label]) => label === a.delivery)?.[0] as keyof typeof deliveryLabels | undefined;
@@ -321,6 +323,21 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
           )}
         </div>
       )}
+      {/* Composa#365: actions are repeatable sequence entries, so they get a
+          dedicated Keynote-style authoring affordance instead of feeling
+          constrained by the one-per-phase "+" menu. */}
+      <div className="px-[16px] pb-[8px]">
+        <Button
+          label="Add Action"
+          variant="Secondary"
+          size="wide"
+          iconLead="left"
+          icon={<Plus size={14} strokeWidth={1.5} />}
+          disabled={!addablePhases.includes("action")}
+          onClick={() => callbacks?.onAdd?.("action")}
+          className="w-full"
+        />
+      </div>
     </PanelSection>
   );
 }
