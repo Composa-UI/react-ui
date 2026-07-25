@@ -1,6 +1,10 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { act, create } from "react-test-renderer";
 import { describe, expect, it } from "vitest";
 import { ACTION_STYLE_OPTIONS, AnimatePanel, type ObjectAnimationItem } from "./AnimatePanel";
+import { Button } from "./Button";
+
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const ANIMS: ObjectAnimationItem[] = [
   { id: "a1", n: 1, name: "Title", kind: "In", duration: "0.6s", style: "fade-in", buildDuration: "600ms" },
@@ -98,6 +102,20 @@ describe("AnimatePanel — repeatable Add Action authoring", () => {
       <AnimatePanel selectionType="slide" anims={ANIMS} addablePhases={[]} />,
     );
     expect(addActionButton(html)).toContain("disabled");
+  });
+
+  it("routes the dedicated affordance to the shared action callback", () => {
+    const phases: string[] = [];
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<AnimatePanel selectionType="element" anims={ANIMS} addablePhases={["action"]}
+        objectAnimationCallbacks={{ onAdd: phase => phases.push(phase) }} />);
+    });
+    const button = renderer!.root.findAllByType(Button).find(item => item.props.label === "Add Action");
+    expect(button).toBeDefined();
+    act(() => button!.props.onClick());
+    expect(phases).toEqual(["action"]);
+    act(() => renderer!.unmount());
   });
 
   it("offers the canvas action families in the Action style picker", () => {
