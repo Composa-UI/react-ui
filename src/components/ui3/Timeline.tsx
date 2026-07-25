@@ -103,6 +103,10 @@ export interface TimelinePresetBar {
   timeRange: [number, number];
   phase?: "build-in" | "action" | "build-out";
   hidden?: boolean;
+  /** The app owns exact authored-animation selection; selected bars are solid blue. */
+  selected?: boolean;
+  /** Locked ancestry remains readable and selectable, but cannot expose timing affordances. */
+  editable?: boolean;
 }
 export interface Track {
   id?: string;
@@ -186,6 +190,7 @@ export interface TimelineEasingSegmentTarget {
 export type TimelineGestureTarget =
   | { kind: "keyframe"; id: string; action: "move"; keyframe: KeyframeTarget }
   | { kind: "duration-bar"; id: string; action: TimelineDurationBarAction }
+  | { kind: "preset-bar"; id: string; action: TimelineDurationBarAction }
   | { kind: "slide-block" | "base-clip"; id: string; action: "move" | "trim-start" | "trim-end" };
 
 export function shouldClaimTimelineGestureEscape(key: string, gestureActive: boolean): boolean {
@@ -423,6 +428,11 @@ export interface TimelineDurationBarChange {
   endMs: number;
 }
 
+/** A direct manipulation request for one first-class Animate preset bar. */
+export interface TimelinePresetBarChange extends TimelineDurationBarChange {
+  presetId: string;
+}
+
 export function timelineDurationBarTargetRange(
   range: readonly [number, number],
   action: TimelineDurationBarAction,
@@ -571,6 +581,125 @@ function DurationBar({ trackId, name, range, projection, selectionState, viewpor
       {!projection.clippedEnd && <button type="button" aria-label={`Scale ${name} duration from end`} aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight" data-duration-bar-action="trim-end"
         onPointerDown={event => begin("trim-end", event)} onPointerMove={move}
         onKeyDown={event => step("trim-end", event)}
+        onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
+        className="absolute -right-[3px] top-1/2 z-[2] h-[20px] w-[7px] -translate-y-1/2 cursor-ew-resize rounded-c-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />}
+    </div>
+  );
+}
+
+/**
+ * A first-class Animate preset window. It deliberately shares the parent duration
+ * bar's pointer/keyboard and Escape semantics, while leaving scheduling and
+ * persistence to the controlled host. Presets are not keyframes.
+ */
+function PresetBar({ trackId, preset, projection, viewport, plotWidth, duration, laneRef, edgeDrag, onSelect, onChange, onGestureStart, onGestureEnd }: {
+  trackId: string;
+  preset: TimelinePresetBar;
+  projection: TimelineDurationBarProjection;
+  viewport: TimelineViewport;
+  plotWidth: number;
+  duration: number;
+  laneRef: { current: HTMLDivElement | null };
+  edgeDrag: TimelineEdgeDragController;
+  onSelect?: (trackId: string, presetId: string) => void;
+  onChange?: (change: TimelinePresetBarChange) => void;
+  onGestureStart?: (target: TimelineGestureTarget) => void;
+  onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
+}) {
+  const drag = useRef<{
+    action: TimelineDurationBarAction;
+    initialRange: [number, number];
+    startX: number;
+    startViewportStartMs: number;
+  } | null>(null);
+  const selected = !!preset.selected;
+  const name = `${preset.label} animation`;
+  const updateAtViewport = (clientX: number, currentViewport: TimelineViewport) => {
+    const active = drag.current;
+    if (!active) return;
+    const deltaMs = timelineDragDeltaMs(active.startX, clientX, active.startViewportStartMs, currentViewport, plotWidth);
+    const [startMs, endMs] = timelineDurationBarTargetRange(active.initialRange, active.action, deltaMs, duration);
+    onChange?.({ trackId, presetId: preset.id, action: active.action, startMs, endMs });
+  };
+  const finish = (cancelled: boolean) => {
+    const active = drag.current;
+    if (!active) return;
+    drag.current = null;
+    edgeDrag.stop();
+    escapeOwnership.release();
+    onGestureEnd?.({ kind: "preset-bar", id: preset.id, action: active.action }, { cancelled });
+  };
+  const escapeOwnership = useGestureEscapeOwnership(() => finish(true));
+  const finishRef = useRef(finish);
+  finishRef.current = finish;
+  useEffect(() => () => finishRef.current(true), []);
+  const select = () => onSelect?.(trackId, preset.id);
+  const begin = (action: TimelineDurationBarAction, event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!shouldBeginTimelinePointer(event.button, event.isPrimary)) return;
+    event.stopPropagation();
+    select();
+    edgeDrag.start(() => finish(true));
+    drag.current = { action, initialRange: preset.timeRange, startX: event.clientX, startViewportStartMs: viewport.startMs };
+    escapeOwnership.claim();
+    onGestureStart?.({ kind: "preset-bar", id: preset.id, action });
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const move = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!drag.current) return;
+    const rect = laneRef.current?.getBoundingClientRect();
+    if (!rect) { updateAtViewport(event.clientX, viewport); return; }
+    edgeDrag.update(event.clientX, { left: rect.left, width: rect.width }, next => updateAtViewport(event.clientX, next));
+  };
+  const step = (action: TimelineDurationBarAction, event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    event.stopPropagation();
+    select();
+    const target = { kind: "preset-bar", id: preset.id, action } as const;
+    const deltaMs = (event.shiftKey ? 1_000 : 100) * (event.key === "ArrowLeft" ? -1 : 1);
+    const [startMs, endMs] = timelineDurationBarTargetRange(preset.timeRange, action, deltaMs, duration);
+    onGestureStart?.(target);
+    onChange?.({ trackId, presetId: preset.id, action, startMs, endMs });
+    onGestureEnd?.(target, { cancelled: false });
+  };
+  const data = {
+    "data-timeline-preset-bar": preset.id,
+    "data-preset-track-id": trackId,
+    "data-preset-start-ms": projection.authoredStartMs,
+    "data-preset-end-ms": projection.authoredEndMs,
+    "data-preset-bar-state": selected ? "selected" : "neutral",
+  } as const;
+  const style = { left: `${projection.leftPercent}%`, width: `${projection.widthPercent}%` };
+  const barClassName = clsx(
+    "absolute top-1/2 h-[20px] -translate-y-1/2 border overflow-hidden",
+    projection.clippedStart ? "rounded-l-none border-l-0" : "rounded-l-[4px]",
+    projection.clippedEnd ? "rounded-r-none border-r-0" : "rounded-r-[4px]",
+    selected ? "border-c-border-selected-strong bg-c-bg-brand" : "border-[#0d99ff] bg-[#0d99ff]/10",
+  );
+  const labelClassName = clsx(FONT, "text-[11px] truncate", selected ? "text-white" : "text-[#0d99ff]");
+  const staticButton = (
+    <button type="button" aria-label={`Select ${name}`} aria-pressed={selected} onClick={select}
+      className="absolute inset-0 cursor-pointer bg-transparent text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring">
+      <span className={clsx("absolute inset-y-0 left-[10px] right-[10px] flex items-center", labelClassName)}>{preset.label}</span>
+    </button>
+  );
+  if (!onChange) return <div role="group" aria-label={`${name} ${projection.authoredStartMs}ms to ${projection.authoredEndMs}ms`} {...data} className={barClassName} style={style}>{staticButton}</div>;
+  return (
+    <div role="group" aria-label={`${name} ${projection.authoredStartMs}ms to ${projection.authoredEndMs}ms`} {...data} className={barClassName} style={style}>
+      <button type="button" aria-label={`Move ${name}`} aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight" data-preset-bar-action="move"
+        onPointerDown={event => begin("move", event)} onPointerMove={move} onKeyDown={event => step("move", event)}
+        onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
+        className="absolute inset-0 cursor-grab bg-transparent text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring active:cursor-grabbing">
+        <span className={clsx("absolute inset-y-0 left-[10px] right-[10px] flex items-center", labelClassName)}>{preset.label}</span>
+      </button>
+      {selected && !projection.clippedStart && <span aria-hidden className="pointer-events-none absolute left-[3px] top-1/2 z-[1] h-[10px] w-[2px] -translate-y-1/2 rounded-full bg-white" />}
+      {selected && !projection.clippedEnd && <span aria-hidden className="pointer-events-none absolute right-[3px] top-1/2 z-[1] h-[10px] w-[2px] -translate-y-1/2 rounded-full bg-white" />}
+      {selected && !projection.clippedStart && <button type="button" aria-label={`Trim ${name} from start`} aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight" data-preset-bar-action="trim-start"
+        onPointerDown={event => begin("trim-start", event)} onPointerMove={move} onKeyDown={event => step("trim-start", event)}
+        onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
+        className="absolute -left-[3px] top-1/2 z-[2] h-[20px] w-[7px] -translate-y-1/2 cursor-ew-resize rounded-c-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />}
+      {selected && !projection.clippedEnd && <button type="button" aria-label={`Trim ${name} from end`} aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight" data-preset-bar-action="trim-end"
+        onPointerDown={event => begin("trim-end", event)} onPointerMove={move} onKeyDown={event => step("trim-end", event)}
         onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
         className="absolute -right-[3px] top-1/2 z-[2] h-[20px] w-[7px] -translate-y-1/2 cursor-ew-resize rounded-c-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />}
     </div>
@@ -733,7 +862,7 @@ function Lane({ prop, trackId, propertyId, active = false, height, viewport, plo
 }
 
 // ── one track (layer row + its property rows) ─────────────────────────────────────
-function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onPropertyValueChange, onPropertyToggleHidden, onPresetToggleHidden, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
+function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onPropertyValueChange, onPropertyToggleHidden, onPresetToggleHidden, onPresetSelect, onPresetBarChange, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
   track: Track; trackIndex: number;
   focusable: boolean;
   viewport: TimelineViewport; plotWidth: number; duration: number;
@@ -751,6 +880,8 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
   onPropertyValueChange?: (trackId: string, propertyId: string, value: number) => void;
   onPropertyToggleHidden?: (trackId: string, propertyId: string) => void;
   onPresetToggleHidden?: (trackId: string, presetId: string) => void;
+  onPresetSelect?: (trackId: string, presetId: string) => void;
+  onPresetBarChange?: (change: TimelinePresetBarChange) => void;
   onEasingSegmentSelect?: (target: TimelineEasingSegmentTarget) => void;
   onEasingPresetChange?: (target: TimelineEasingSegmentTarget, easing: NamedEasingPreset) => void;
   onDurationBarChange?: (change: TimelineDurationBarChange) => void;
@@ -844,31 +975,34 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
           'applied': all its lines + unselected diamonds go blue (Composa#320). */}
       {/* Animate-preset bars (Composa#362) — a labeled bar per preset at its resolved
           window, ABOVE the authored keyframe rows. Presets are NOT keyframes. */}
-      {expanded && track.bars?.map(preset => (
+      {expanded && track.bars?.map(preset => {
+        const presetProjection = timelineDurationBarProjection(preset.timeRange, viewport);
+        return (
         <div key={preset.id} className={clsx("group/preset flex", preset.hidden && "opacity-40")} style={{ height: ROW_PROP }}>
           <div className="relative shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
             {Array.from({ length: depth + 1 }).map((_, level) => (
               <span key={level} aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-c-border" style={{ left: 16 + level * 16 }} />
             ))}
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate text-c-text-secondary")}>{preset.label}</span>
-            <button type="button"
+            {preset.editable !== false && <button type="button"
               aria-label={preset.hidden ? `Show ${preset.label} animation` : `Hide ${preset.label} animation`}
               aria-pressed={preset.hidden}
               onClick={() => onPresetToggleHidden?.(trackId, preset.id)}
               disabled={!onPresetToggleHidden}
               className={clsx("shrink-0 flex items-center justify-center disabled:opacity-0", !preset.hidden && "opacity-0 group-hover/preset:opacity-100 focus-visible:opacity-100")}>
               {preset.hidden ? <EyeOff size={14} strokeWidth={1.5} className="text-c-icon-secondary" /> : <Eye size={14} strokeWidth={1.5} className="text-c-icon-secondary" />}
-            </button>
+            </button>}
           </div>
-          <div data-timeline-pan-surface className="flex-1 relative overflow-hidden">
-            <div role="img" aria-label={`${preset.label} preset`}
-              className="absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-[#0d99ff]/10 border-[#0d99ff]"
-              style={{ left: percent(preset.timeRange[0], viewport), width: percentWidth(preset.timeRange[0], preset.timeRange[1], viewport) }}>
-              <span className={clsx(FONT, "text-[11px] truncate text-[#0d99ff]")}>{preset.label}</span>
-            </div>
+          <div data-timeline-pan-surface className="flex-1 relative overflow-hidden" ref={presetProjection ? laneRef : undefined}>
+            {presetProjection && <PresetBar trackId={trackId} preset={preset} projection={presetProjection}
+              viewport={viewport} plotWidth={plotWidth} duration={duration} laneRef={laneRef} edgeDrag={edgeDrag}
+              onSelect={onPresetSelect}
+              onChange={preset.editable !== false ? onPresetBarChange : undefined}
+              onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />}
           </div>
         </div>
-      ))}
+        );
+      })}
       {/* property rows — a row goes blue when one of its keyframes or easing
           segments is selected (Composa#323: prop-row selection, was parent-only). */}
       {expanded && track.props.map((p, i) => {
@@ -1228,6 +1362,8 @@ export function Timeline({
   onPropertyValueChange,
   onPropertyToggleHidden,
   onPresetToggleHidden,
+  onPresetSelect,
+  onPresetBarChange,
   onTrackExpandedChange,
   onTrackSelect,
   onAggregateKeyframeSelect,
@@ -1290,6 +1426,10 @@ export function Timeline({
   onPropertyToggleHidden?: (trackId: string, propertyId: string) => void;
   /** Toggle an Animate preset bar without changing its scheduled range (#349). */
   onPresetToggleHidden?: (trackId: string, presetId: string) => void;
+  /** Select one first-class Animate preset and mirror it to the inspector. */
+  onPresetSelect?: (trackId: string, presetId: string) => void;
+  /** Move or trim one selected editable Animate preset without compiling keyframes. */
+  onPresetBarChange?: (change: TimelinePresetBarChange) => void;
   onTrackExpandedChange?: (trackId: string, expanded: boolean) => void;
   onTrackSelect?: (trackId: string, modifiers: TimelineTrackSelectionModifiers) => void;
   onAggregateKeyframeSelect?: (target: AggregateKeyframeTarget, additive: boolean) => void;
@@ -1569,6 +1709,7 @@ export function Timeline({
               onKeyframeSelect={(target, additive) => { revealTime(target.timeMs); onKeyframeSelect?.(target, additive); }} onKeyframeMove={onKeyframeMove} onKeyframeDelete={onKeyframeDelete}
               onEasingSegmentSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange}
               onDurationBarChange={onDurationBarChange}
+              onPresetSelect={onPresetSelect} onPresetBarChange={onPresetBarChange}
               onGestureStart={onGestureStart} onGestureEnd={onGestureEnd}
               onPropertyAddKeyframe={onPropertyAddKeyframe ? (trackId, propertyId, timeMs = playhead) => onPropertyAddKeyframe(trackId, propertyId, timeMs) : undefined}
               onPropertyStepKeyframe={onPropertyStepKeyframe}

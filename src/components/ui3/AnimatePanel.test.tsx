@@ -54,6 +54,17 @@ describe("AnimatePanel — default card expansion follows selection type (issue 
     expect(html).toContain(">None<");
     expect(html).not.toContain(">Fade<");
   });
+
+  it("gives an exact timeline-focused preset precedence over the element-default card", () => {
+    const html = renderToStaticMarkup(
+      <AnimatePanel selectionType="element" compTransition={{ style: "none", direction: "right", durationMs: 300, easing: "ease-out" }}
+        anims={ANIMS.map(animation => ({ ...animation, focused: animation.id === "a3" }))} />,
+    );
+    // a3 is an Action while the element-default a2 is Build in. The focused
+    // timeline bar must reveal its own card, not merely the first selected one.
+    expect(html).toContain(">Action<");
+    expect(html).not.toContain(">Build in<");
+  });
 });
 
 // Composa-App/Composa#179
