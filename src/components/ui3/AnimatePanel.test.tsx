@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { AnimatePanel, type ObjectAnimationItem } from "./AnimatePanel";
+import { ACTION_STYLE_OPTIONS, AnimatePanel, type ObjectAnimationItem } from "./AnimatePanel";
 
 const ANIMS: ObjectAnimationItem[] = [
   { id: "a1", n: 1, name: "Title", kind: "In", duration: "0.6s", style: "fade-in", buildDuration: "600ms" },
@@ -72,6 +72,36 @@ describe("AnimatePanel — object-animations lead action is Play, gated like '+'
   it("disables Play when there are no animations / no real selection (mirrors the '+' gate)", () => {
     const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={[]} />);
     expect(playButton(html)).toContain("disabled");
+  });
+});
+
+// Composa-App/Composa#365
+describe("AnimatePanel — repeatable Add Action authoring", () => {
+  const addActionButton = (html: string) => {
+    const labelIndex = html.indexOf(">Add Action<");
+    if (labelIndex < 0) return "";
+    const start = html.lastIndexOf("<button", labelIndex);
+    const end = html.indexOf("</button>", labelIndex);
+    return start < 0 || end < 0 ? "" : html.slice(start, end + "</button>".length);
+  };
+
+  it("renders a dedicated Add Action affordance even when actions already exist", () => {
+    const html = renderToStaticMarkup(
+      <AnimatePanel selectionType="element" anims={ANIMS} addablePhases={["action"]} />,
+    );
+    expect(html).toContain(">Add Action<");
+    expect(addActionButton(html)).not.toContain("disabled");
+  });
+
+  it("disables Add Action when the host has no selected element", () => {
+    const html = renderToStaticMarkup(
+      <AnimatePanel selectionType="slide" anims={ANIMS} addablePhases={[]} />,
+    );
+    expect(addActionButton(html)).toContain("disabled");
+  });
+
+  it("offers the canvas action families in the Action style picker", () => {
+    expect(ACTION_STYLE_OPTIONS.slice(0, 4)).toEqual(["move", "opacity", "rotate", "scale"]);
   });
 });
 
