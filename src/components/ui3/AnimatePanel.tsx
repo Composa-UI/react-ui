@@ -237,24 +237,43 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
       rightActions={
         <>
           {/* #179: plays back all object animations on the current selection. Gated the
-              same way as "+" (Add animation) — disabled when there are no animations to
+              same way as Add Action — disabled when there are no animations to
               play. Host wires `onPlayAllObjectAnimations` to real playback. */}
           <PanelActionBtn icon={<Play size={16} strokeWidth={1.5} />} label="Play all animations" disabled={anims.length === 0} onClick={callbacks?.onPlayAllObjectAnimations} />
-          <PopoverMenu align="right" trigger={<PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add animation" disabled={addablePhases.length === 0} />}>
-            {addMenu}
-          </PopoverMenu>
           {/* #222: settings ("starts automatically" + delay) gated behind the
               `animationDelay` capability (default OFF) — not rendered when off. */}
           {animationDelay && <PanelActionBtn icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />} label="Object animation settings" />}
         </>
       }
     >
+      {/* Composa#387: one persistent, topmost authoring control. It opens the
+          existing phase menu so Build In / Action / Build Out semantics remain
+          unchanged, while every authored card stacks beneath the same control. */}
+      <div className="px-[16px] pt-[3px] pb-[8px]">
+        <PopoverMenu
+          align="right"
+          className="w-full"
+          trigger={
+            <Button
+              label="Add Action"
+              variant="Secondary"
+              size="wide"
+              iconLead="left"
+              icon={<Plus size={14} strokeWidth={1.5} />}
+              disabled={addablePhases.length === 0}
+              className="w-full"
+            />
+          }
+        >
+          {addMenu}
+        </PopoverMenu>
+      </div>
       {anims.length === 0 ? (
-        <p className={clsx(FONT, "px-[16px] pt-[3px] pb-[8px] text-[11px] leading-[16px] text-c-text-secondary")}>
+        <p className={clsx(FONT, "px-[16px] pb-[8px] text-[11px] leading-[16px] text-c-text-secondary")}>
           Select an object on the slide, then click the add button to animate it.
         </p>
       ) : (
-        <div className="px-[16px] pt-[3px] pb-[8px] flex flex-col gap-[8px]">
+        <div className="px-[16px] pb-[8px] flex flex-col gap-[8px]">
           {anims.map((a, i) => {
             const id = a.id ?? String(i);
             const phase = a.kind === "In" ? "build-in" : a.kind === "Out" ? "build-out" : "action";
@@ -323,21 +342,6 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
           )}
         </div>
       )}
-      {/* Composa#365: actions are repeatable sequence entries, so they get a
-          dedicated Keynote-style authoring affordance instead of feeling
-          constrained by the one-per-phase "+" menu. */}
-      <div className="px-[16px] pb-[8px]">
-        <Button
-          label="Add Action"
-          variant="Secondary"
-          size="wide"
-          iconLead="left"
-          icon={<Plus size={14} strokeWidth={1.5} />}
-          disabled={!addablePhases.includes("action")}
-          onClick={() => callbacks?.onAdd?.("action")}
-          className="w-full"
-        />
-      </div>
     </PanelSection>
   );
 }
