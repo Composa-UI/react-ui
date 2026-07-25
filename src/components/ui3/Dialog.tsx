@@ -74,8 +74,12 @@ export function Modal({
           className={clsx(
             // Positioning
             "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50",
-            // Surface
-            "bg-c-bg rounded-c-lg shadow-c-500",
+            // Surface — overflow-hidden clips children (header border, body bg)
+            // to the rounded-c-lg radius so square corners don't poke past it.
+            // Safe for in-modal menus/tooltips: the DS Menu/Tooltip/inspector
+            // overlays all render through a Radix Portal at document.body, so
+            // they're never clipped by this container.
+            "bg-c-bg rounded-c-lg shadow-c-500 overflow-hidden",
             // Layout
             "flex flex-col outline-none",
             // Height constraint — footer pins, body scrolls
