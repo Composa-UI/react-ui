@@ -37,7 +37,22 @@ const LABEL = "w-[72px] shrink-0 text-[11px] leading-[16px] font-[450] text-c-te
 function NumberRow({ label, value, icon, onChange }: { label: string; value: number; icon: string; onChange: (value: number) => void }) {
   return <div className="flex items-center gap-[8px] min-h-[32px]">
     <span className={LABEL}>{label}</span>
-    <div className="flex-1"><NumericInput ariaLabel={label} iconLead={<span className="text-[10px]">{icon}</span>} value={value} onChange={onChange} /></div>
+    <div className="min-w-0 flex-1"><NumericInput ariaLabel={label} iconLead={<span className="text-[10px]">{icon}</span>} value={value} onChange={onChange} /></div>
+  </div>;
+}
+
+function PositionRow({ x, y, onXChange, onYChange }: {
+  x: number;
+  y: number;
+  onXChange: (value: number) => void;
+  onYChange: (value: number) => void;
+}) {
+  return <div className="flex items-center gap-[8px] min-h-[32px]">
+    <span className={LABEL}>Position</span>
+    <div className="flex min-w-0 flex-1 gap-[4px]">
+      <NumericInput ariaLabel="Position X" iconLead={<span className="text-[10px]">X</span>} value={x} onChange={onXChange} />
+      <NumericInput ariaLabel="Position Y" iconLead={<span className="text-[10px]">Y</span>} value={y} onChange={onYChange} />
+    </div>
   </div>;
 }
 
@@ -58,13 +73,12 @@ export function EffectDetailsDialog({ open, value, trigger, capabilities, onChan
     </div>
     <div className="flex flex-col gap-[4px] p-[12px]">
       {shadow ? <>
-        <NumberRow label="Position X" icon="X" value={value.x ?? 0} onChange={x => onChange?.({ x })} />
-        <NumberRow label="Position Y" icon="Y" value={value.y ?? 4} onChange={y => onChange?.({ y })} />
+        <PositionRow x={value.x ?? 0} y={value.y ?? 4} onXChange={x => onChange?.({ x })} onYChange={y => onChange?.({ y })} />
         <NumberRow label="Blur" icon="⊞" value={value.blur ?? 8} onChange={blur => onChange?.({ blur })} />
         <NumberRow label="Spread" icon="☼" value={value.spread ?? 0} onChange={spread => onChange?.({ spread })} />
         <div className="flex items-center gap-[8px] min-h-[32px]">
           <span className={LABEL}>Color</span>
-          <div className="flex-1"><ColorInput ariaLabel="Effect color" fullWidth color={value.color ?? "#000000"} opacity={value.opacity ?? 25}
+          <div className="min-w-0 flex-1"><ColorInput ariaLabel="Effect color" fullWidth color={value.color ?? "#000000"} opacity={value.opacity ?? 25}
             onSwatchClick={() => setColorOpen(true)} onColorChange={color => onChange?.({ color })} onOpacityChange={opacity => onChange?.({ opacity })} /></div>
         </div>
         {value.type === "Drop shadow" && <div className="pt-[8px]"><Checkbox checked={value.showBehindTransparent ?? false}
