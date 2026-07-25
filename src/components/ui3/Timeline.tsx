@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent a
 import { clsx } from "clsx";
 import { Play, Pause, Square, Circle, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film, Volume2 } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { collectAggregateKeyframes, createTimelineEdgeDragController, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineDragDeltaMs, timelinePointerPanDelta, timelineScrollTop, timelineViewportChanged, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
+import { collectAggregateKeyframes, createTimelineEdgeDragController, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineAnchorRatioAtX, timelineDragDeltaMs, timelinePointerPanDelta, timelineScrollTop, timelineViewportChanged, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
 import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSelectionState";
 import { ScrollArea } from "./Panel";
@@ -1364,7 +1364,11 @@ export function Timeline({
 
   useEffect(() => {
     edgeDrag.cancel();
+    const activeMiddlePan = middlePan.current;
     middlePan.current = null;
+    if (activeMiddlePan) {
+      try { timelineRef.current?.releasePointerCapture(activeMiddlePan.pointerId); } catch {}
+    }
   }, [mode, duration, interactionContextKey]);
 
   useEffect(() => {
@@ -1394,7 +1398,7 @@ export function Timeline({
       if (event.ctrlKey || event.metaKey) {
         if (event.deltaY === 0) return;
         const rect = element.getBoundingClientRect();
-        const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left - LEFT_W) / plotWidth));
+        const ratio = timelineAnchorRatioAtX(event.clientX - rect.left - LEFT_W, plotWidth);
         const deltaY = wheelDeltaPixels(event.deltaY, event.deltaMode, pageSize);
         const next = zoomViewport(viewport, ratio, Math.exp(deltaY * .002), duration);
         if (!timelineViewportChanged(viewport, next)) return;

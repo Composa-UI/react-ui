@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advanceEdgeAutoScrollViewport, collectAggregateKeyframes, createTimelineEdgeDragController, edgeAutoScrollVelocity, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineDragDeltaMs, timelinePointerPanDelta, timelineScrollTop, timelineViewportChanged, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport } from "./timelineModel";
+import { advanceEdgeAutoScrollViewport, collectAggregateKeyframes, createTimelineEdgeDragController, edgeAutoScrollVelocity, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineAnchorRatioAtX, timelineDragDeltaMs, timelinePointerPanDelta, timelineScrollTop, timelineViewportChanged, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport } from "./timelineModel";
 
 describe("timeline viewport model", () => {
   it("round-trips time and pixels inside a controlled viewport", () => {
@@ -47,9 +47,12 @@ describe("timeline viewport model", () => {
     expect(timelineScrollTop(20, 60, 180, 200)).toBe(0);
   });
 
-  it("maps middle drag in the opposite direction and detects viewport boundaries", () => {
-    expect(timelinePointerPanDelta(400, 460)).toBe(-60);
-    expect(timelinePointerPanDelta(400, 340)).toBe(60);
+  it("maps wheel anchors and middle drags through the canonical plot inset", () => {
+    expect(timelineAnchorRatioAtX(16, 800)).toBe(0);
+    expect(timelineAnchorRatioAtX(408, 800)).toBe(.5);
+    expect(timelineAnchorRatioAtX(800, 800)).toBe(1);
+    expect(timelinePointerPanDelta(400, 460)).toBeCloseTo(-61.224489795918366);
+    expect(timelinePointerPanDelta(400, 340)).toBeCloseTo(61.224489795918366);
     expect(timelineViewportChanged({ startMs: 0, endMs: 4_000 }, { startMs: 0, endMs: 4_000 })).toBe(false);
     expect(timelineViewportChanged({ startMs: 0, endMs: 4_000 }, { startMs: 100, endMs: 4_100 })).toBe(true);
   });
