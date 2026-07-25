@@ -873,6 +873,26 @@ export default function Playground() {
     </div>;
   }
 
+  // Composa#411 — compact light/dark visual contract for object → preset/property
+  // hierarchy. `?view=timeline-hierarchy&theme=dark` exercises the dark tokens.
+  if (view === "timeline-hierarchy") {
+    const dark = new URLSearchParams(window.location.search).get("theme") === "dark";
+    const hierarchyTracks: Track[] = [{
+      id: "hero", name: "Quarterly review", type: "text", selectionState: "selected", expanded: contractTimelineExpanded, props: [
+        { id: "position", name: "Position", keyframes: [{ id: "position-0", timeMs: 500 }] },
+        { id: "opacity", name: "Opacity", value: 86, keyframes: [{ id: "opacity-0", timeMs: 1_200, selected: true }] },
+      ], bars: [
+        { id: "pulse", label: "Pulse", timeRange: [200, 900], selected: true },
+        { id: "rotate", label: "Rotate", timeRange: [1_100, 1_800] },
+      ],
+    }];
+    return <div data-composa-mode={dark ? "dark" : undefined} className="h-screen w-screen flex flex-col justify-end bg-c-bg text-c-text">
+      <Timeline height={240} duration={2_000} tracks={hierarchyTracks} playhead={contractPlayhead}
+        onPlayheadChange={setContractPlayhead} onTrackExpandedChange={(_id, expanded) => setContractTimelineExpanded(expanded)}
+        onPresetSelect={() => undefined} onPresetBarChange={() => undefined} />
+    </div>;
+  }
+
   if (view === "slide-contract") {
     return (
       <div style={{ height: "100vh", width: "100vw", display: "flex", justifyContent: "flex-end", background: "#e6e6e6" }}>

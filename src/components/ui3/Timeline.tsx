@@ -862,6 +862,29 @@ function Lane({ prop, trackId, propertyId, active = false, height, viewport, plo
 }
 
 // ── one track (layer row + its property rows) ─────────────────────────────────────
+//
+// Timeline children use a deliberately small, Figma-style tree: the parent stem
+// leaves the object row and every child owns the elbow that terminates at its own
+// name. Keeping the final stem to half a row is important — a collapsed list, or
+// the last child in a list, must never leave an orphaned rule below itself.
+function TimelineChildConnector({ index, count, depth }: { index: number; count: number; depth: number }) {
+  const left = 28 + depth * 16;
+  const last = index === count - 1;
+  return (
+    <span
+      aria-hidden
+      data-timeline-child-connector="elbow"
+      data-timeline-child-index={index}
+      data-timeline-child-count={count}
+      className="pointer-events-none absolute inset-y-0"
+      style={{ left, width: 12 }}
+    >
+      <span className="absolute left-0 top-0 w-px bg-c-border" style={{ height: last ? "50%" : "100%" }} />
+      <span className="absolute left-0 top-1/2 h-px w-[12px] -translate-y-1/2 bg-c-border" />
+    </span>
+  );
+}
+
 function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onPropertyValueChange, onPropertyToggleHidden, onPresetToggleHidden, onPresetSelect, onPresetBarChange, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
   track: Track; trackIndex: number;
   focusable: boolean;
@@ -892,6 +915,9 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
   const laneRef = useRef<HTMLDivElement>(null);
   const depth = Math.max(0, track.depth ?? 0);
   const expanded = track.expanded !== false;
+  const presetCount = track.bars?.length ?? 0;
+  const childCount = presetCount + track.props.length;
+  const hasChildren = childCount > 0;
   const selectionState = track.selectionState ?? (track.selected ? "selected" : "none");
   const durationBar = track.bar ? timelineDurationBarProjection(track.bar, viewport) : null;
   const aggregateKeys = onAggregateKeyframeSelect ? collectAggregateKeyframes(track.props.flatMap((prop, propertyIndex) => {
@@ -918,6 +944,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
           {Array.from({ length: depth }).map((_, level) => (
             <span key={`guide-${level}`} aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-c-border" style={{ left: 16 + level * 16 }} />
           ))}
+          {expanded && hasChildren && <span aria-hidden data-timeline-child-trunk className="pointer-events-none absolute bottom-0 top-1/2 w-px bg-c-border" style={{ left: 28 + depth * 16 }} />}
           {track.props.length ? onExpandedChange ? <button type="button" aria-label={`${expanded ? "Collapse" : "Expand"} ${track.name}`} aria-expanded={expanded}
             tabIndex={onTrackSelect ? -1 : undefined}
             onClick={event => { event.stopPropagation(); onExpandedChange(trackId, !expanded); }} className="size-[16px] shrink-0 rounded-c-sm flex items-center justify-center text-c-icon-secondary hover:bg-c-bg-hover focus-visible:ring-2 focus-visible:ring-c-border-selected-strong outline-none">
@@ -975,14 +1002,12 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
           'applied': all its lines + unselected diamonds go blue (Composa#320). */}
       {/* Animate-preset bars (Composa#362) — a labeled bar per preset at its resolved
           window, ABOVE the authored keyframe rows. Presets are NOT keyframes. */}
-      {expanded && track.bars?.map(preset => {
+      {expanded && track.bars?.map((preset, childIndex) => {
         const presetProjection = timelineDurationBarProjection(preset.timeRange, viewport);
         return (
         <div key={preset.id} className={clsx("group/preset flex", preset.hidden && "opacity-40")} style={{ height: ROW_PROP }}>
           <div className="relative shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
-            {Array.from({ length: depth + 1 }).map((_, level) => (
-              <span key={level} aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-c-border" style={{ left: 16 + level * 16 }} />
-            ))}
+            <TimelineChildConnector index={childIndex} count={childCount} depth={depth} />
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate text-c-text-secondary")}>{preset.label}</span>
             {preset.editable !== false && <button type="button"
               aria-label={preset.hidden ? `Show ${preset.label} animation` : `Hide ${preset.label} animation`}
@@ -1016,10 +1041,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
           style={{ height: ROW_PROP }}
           onClick={event => { if (!(event.target as Element).closest?.("button,[data-keyframe-id],[data-easing-segment]")) onPropertyRowSelect?.(propertyId); }}>
           <div className="group/prop relative shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
-            {/* tree guides continue down through the property rows, incl. the layer level (Composa#343) */}
-            {Array.from({ length: depth + 1 }).map((_, level) => (
-              <span key={`guide-${level}`} aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-c-border" style={{ left: 16 + level * 16 }} />
-            ))}
+            <TimelineChildConnector index={presetCount + i} count={childCount} depth={depth} />
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate", p.accent ? "text-[#8638e5]" : "text-c-text-secondary")}>{p.name}</span>
             {/* keyframe stepper: ◀ prev-keyframe · ◇ toggle-at-playhead · ▶ next-keyframe */}
             <button type="button" aria-label={`Previous ${p.name} keyframe`} onClick={() => onPropertyStepKeyframe?.(trackId, p.id ?? `property-${i}`, "prev")} className="shrink-0 flex items-center justify-center opacity-0 group-hover/prop:opacity-100 disabled:opacity-0" disabled={!onPropertyStepKeyframe}>
