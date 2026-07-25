@@ -8,19 +8,21 @@ export interface InspectorDialogProps {
   children: ReactNode;
   ariaLabel: string;
   width?: number;
+  sideOffset?: number;
   blockOutsideDismiss?: boolean;
   triggerClassName?: string;
   className?: string;
 }
 
 /** Non-modal inspector dialog anchored to the captured trigger and portalled above the canvas. */
-export function InspectorDialog({ open, onClose, trigger, children, ariaLabel, width = 320, blockOutsideDismiss = false, triggerClassName = "block w-full", className }: InspectorDialogProps) {
+export function InspectorDialog({ open, onClose, trigger, children, ariaLabel, width = 320, sideOffset, blockOutsideDismiss = false, triggerClassName = "block w-full", className }: InspectorDialogProps) {
   return <AnchoredInspectorOverlay
     open={open}
     onClose={onClose}
     trigger={trigger}
     ariaLabel={ariaLabel}
     width={width}
+    sideOffset={sideOffset}
     trapFocus={false}
     blockOutsideDismiss={blockOutsideDismiss}
     triggerClassName={triggerClassName}

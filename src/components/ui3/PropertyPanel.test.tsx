@@ -22,6 +22,17 @@ describe("Timeline easing inspector composition", () => {
   });
 });
 
+describe("Motion inspector rows", () => {
+  it("renders a shared Dimensions keyframe control on both width and height", () => {
+    const html = renderToStaticMarkup(<PropertyPanel elementType="text"
+      keyframeControls={{ dimensions: { active: true, onToggle: () => undefined } }} />);
+
+    expect(html).toContain('aria-label="Width keyframe"');
+    expect(html).toContain('aria-label="Height keyframe"');
+    expect(html.match(/aria-pressed="true"/g)?.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
 describe("Video Clip inspector semantics", () => {
   it("exposes opt-in landmarks and precisely named controls", () => {
     const html = renderToStaticMarkup(<PropertyPanel mode="video-clip" clipStart={2} clipDuration={3}

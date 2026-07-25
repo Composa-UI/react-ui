@@ -44,7 +44,8 @@ function NumberRow({ label, value, icon, onChange }: { label: string; value: num
 export function EffectDetailsDialog({ open, value, trigger, capabilities, onChange, onClose }: EffectDetailsDialogProps) {
   const shadow = value.type === "Drop shadow" || value.type === "Inner shadow";
   const [colorOpen, setColorOpen] = useState(false);
-  return <InspectorDialog open={open} onClose={onClose} trigger={trigger} ariaLabel="Effect details" blockOutsideDismiss={colorOpen}>
+  return <InspectorDialog open={open} onClose={onClose} trigger={trigger} ariaLabel="Effect details"
+    width={240} sideOffset={48} className="shadow-c-400" blockOutsideDismiss={colorOpen}>
     <div className="flex h-[40px] items-center gap-[4px] border-b border-c-border px-[8px]">
       <div className="flex-1"><PopoverMenu align="left" trigger={<Dropdown value={value.type} fullWidth />}>
         {close => <Menu minWidth={200}>{TYPES.map(type => <MenuRow key={type} type="checkmark" checked={type === value.type} label={type} onClick={() => { onChange?.({ type }); close(); }} />)}</Menu>}
