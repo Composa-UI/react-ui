@@ -1841,6 +1841,9 @@ function ClipPlaybackSection({ speed = 1, onSpeedChange, controlled = false }: {
 export interface PropertyPanelProps {
   /** Host-owned feature availability; UI only hides unsupported entry points. */
   capabilities?: InspectorCapabilities;
+  /** Controlled Design/Animate tab seam. A timeline preset can reveal its matching Animate card. */
+  activeTab?: "design" | "animate";
+  onActiveTabChange?: (tab: "design" | "animate") => void;
   /** Inspector mode. Defaults to "element" — the current selection inspector. */
   mode?: PanelMode;
   elementType?: ElementType;
@@ -2113,7 +2116,14 @@ export function PropertyPanel(props: PropertyPanelProps) {
     // other capabilities) so the delay is removed from the default path until re-enabled.
     animationDelay: capabilityOverrides?.animationDelay ?? false,
   };
-  const [tab, setTab] = useState("design");
+  const [uncontrolledTab, setUncontrolledTab] = useState<"design" | "animate" | "prototype">("design");
+  const tab = props.activeTab ?? uncontrolledTab;
+  const setTab = (next: string) => {
+    if (next !== "design" && next !== "animate" && next !== "prototype") return;
+    const value = next;
+    if (props.activeTab === undefined) setUncontrolledTab(value);
+    if (value !== "prototype") props.onActiveTabChange?.(value);
+  };
   const [demoSlideName, setDemoSlideName] = useState(slideName);
   const [demoSkipped, setDemoSkipped] = useState(slideSkipped);
   const [demoTransitionType, setDemoTransitionType] = useState<SlideTransitionType>(slideTransitionType ?? "none");

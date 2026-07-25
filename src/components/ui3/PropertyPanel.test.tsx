@@ -31,6 +31,14 @@ describe("Motion inspector rows", () => {
     expect(html).toContain('aria-label="Height keyframe"');
     expect(html.match(/aria-pressed="true"/g)?.length).toBeGreaterThanOrEqual(2);
   });
+
+  it("accepts a host-controlled Animate tab so timeline selection can reveal its matching card", () => {
+    const html = renderToStaticMarkup(<PropertyPanel elementType="text" activeTab="animate" objectAnimations={[
+      { id: "pulse", n: 1, name: "Title", kind: "Action", duration: "0.6s", style: "pulse", focused: true },
+    ]} />);
+    expect(html).toContain('aria-selected="true"');
+    expect(html).toContain(">Action<");
+  });
 });
 
 describe("Video Clip inspector semantics", () => {

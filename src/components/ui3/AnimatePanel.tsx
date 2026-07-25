@@ -34,6 +34,8 @@ export interface ObjectAnimationItem {
   direction?: "left" | "right" | "up" | "down";
   delivery?: string;
   intensity?: "small" | "medium" | "large";
+  /** Exact timeline-selected Animate unit. Takes precedence over element selection when opening cards. */
+  focused?: boolean;
   selected?: boolean;
 }
 export type ObjectAnimationPhase = "build-in" | "action" | "build-out";
@@ -216,9 +218,11 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
   // When an element is selected, default-expand that element's own animation card
   // (the one flagged `selected`). For a slide selection nothing is auto-expanded —
   // the Comp transition card is the focus there.
+  const focusedIndex = anims.findIndex(a => a.focused);
   const selectedIndex = anims.findIndex(a => a.selected);
-  const defaultExpandedId = selectionType === "element" && selectedIndex >= 0
-    ? (anims[selectedIndex].id ?? String(selectedIndex))
+  const defaultIndex = focusedIndex >= 0 ? focusedIndex : selectedIndex;
+  const defaultExpandedId = selectionType === "element" && defaultIndex >= 0
+    ? (anims[defaultIndex].id ?? String(defaultIndex))
     : null;
   const [expanded, setExpanded] = useState<string | null>(defaultExpandedId);
   useEffect(() => { setExpanded(defaultExpandedId); }, [contextKey, selectionType, defaultExpandedId]);

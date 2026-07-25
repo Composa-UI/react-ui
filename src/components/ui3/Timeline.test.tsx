@@ -56,8 +56,41 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain('aria-label="Show Pulse animation"');
     expect(html).toContain('aria-pressed="true"');
     expect(html).toContain("opacity-40");
-    expect(html).toContain('aria-label="Fade In preset"');
-    expect(html).toContain('aria-label="Pulse preset"');
+    expect(html).toContain('aria-label="Fade In animation 100ms to 500ms"');
+    expect(html).toContain('aria-label="Pulse animation 700ms to 1200ms"');
+  });
+
+  it("lets an editable neutral bar select-and-move while reserving trim handles for the selected bar", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[{
+      id: "hero", name: "Hero", type: "frame", props: [], bars: [
+        { id: "fade", label: "Fade In", timeRange: [100, 500] },
+        { id: "rotate", label: "Rotate", timeRange: [700, 1_200], selected: true },
+      ],
+    }]} onPresetSelect={() => undefined} onPresetBarChange={() => undefined} onPresetToggleHidden={() => undefined} />);
+    expect(html).toContain('data-timeline-preset-bar="fade"');
+    expect(html).toContain('data-preset-bar-state="neutral"');
+    expect(html).toContain('aria-label="Move Fade In animation"');
+    expect(html).not.toContain('aria-label="Trim Fade In animation from start"');
+    expect(html).toContain('data-timeline-preset-bar="rotate"');
+    expect(html).toContain('data-preset-bar-state="selected"');
+    expect(html).toContain('border-c-border-selected-strong bg-c-bg-brand');
+    expect(html).toContain('aria-label="Move Rotate animation"');
+    expect(html).toContain('aria-label="Trim Rotate animation from start"');
+    expect(html).toContain('aria-label="Trim Rotate animation from end"');
+  });
+
+  it("keeps selected locked Animate bars visible and selectable without mutation affordances", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[{
+      id: "locked", name: "Locked", type: "frame", props: [], bars: [
+        { id: "pulse", label: "Pulse", timeRange: [100, 500], selected: true, editable: false },
+      ],
+    }]} onPresetSelect={() => undefined} onPresetBarChange={() => undefined} />);
+    expect(html).toContain('data-timeline-preset-bar="pulse"');
+    expect(html).toContain('aria-label="Select Pulse animation"');
+    expect(html).not.toContain('aria-label="Move Pulse animation"');
+    expect(html).not.toContain('aria-label="Trim Pulse animation from start"');
+    expect(html).not.toContain('aria-label="Trim Pulse animation from end"');
+    expect(html).not.toContain('aria-label="Hide Pulse animation"');
   });
 
   it("renders disclosures without enabling aggregate product behavior when callbacks are absent", () => {
