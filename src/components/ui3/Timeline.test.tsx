@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { shouldActivateTimelineTrackKey, shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, timelineDurationBarProjection, timelineDurationBarTargetRange, timelineTimeAtClientX, timelineTrackExpansionForKey, timelineTrackNavigationIndex, Timeline, type Track } from "./Timeline";
+import { shouldActivateTimelineTrackKey, shouldBeginTimelineMiddlePan, shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, timelineDurationBarProjection, timelineDurationBarTargetRange, timelineTimeAtClientX, timelineTrackExpansionForKey, timelineTrackNavigationIndex, Timeline, type Track } from "./Timeline";
 
 const numericTrack: Track = { id: "hero", name: "Hero", type: "frame", props: [
   { id: "opacity", name: "Opacity", keyframes: [500, 900] },
@@ -356,6 +356,13 @@ describe("Timeline gesture keyboard ownership", () => {
     expect(shouldBeginTimelinePointer(0, false)).toBe(false);
   });
 
+  it("reserves middle-button navigation for ruler and time-lane surfaces", () => {
+    expect(shouldBeginTimelineMiddlePan(1, true, true)).toBe(true);
+    expect(shouldBeginTimelineMiddlePan(0, true, true)).toBe(false);
+    expect(shouldBeginTimelineMiddlePan(1, false, true)).toBe(false);
+    expect(shouldBeginTimelineMiddlePan(1, true, false)).toBe(false);
+  });
+
   it("claims Escape only while a local drag or trim gesture is active", () => {
     expect(shouldClaimTimelineGestureEscape("Escape", true)).toBe(true);
     expect(shouldClaimTimelineGestureEscape("Escape", false)).toBe(false);
@@ -401,5 +408,12 @@ describe("Timeline shared scrollbar anatomy", () => {
     expect(html).toContain("[scrollbar-width:none]");
     expect(html).toContain("[&amp;::-webkit-scrollbar]:hidden");
     expect(html).not.toContain("flex-1 overflow-y-auto relative");
+  });
+
+  it("marks the ruler and time lanes as pan surfaces while leaving row labels outside", () => {
+    const html = renderToStaticMarkup(<Timeline height={120} duration={2_000} tracks={[numericTrack]} />);
+    expect(html.match(/data-timeline-pan-surface/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(html).toContain("data-composa-scroll-viewport");
+    expect(html).not.toMatch(/data-timeline-pan-surface[^>]*>[^<]*Hero/);
   });
 });

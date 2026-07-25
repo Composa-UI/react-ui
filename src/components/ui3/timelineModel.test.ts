@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advanceEdgeAutoScrollViewport, collectAggregateKeyframes, createTimelineEdgeDragController, edgeAutoScrollVelocity, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineDragDeltaMs, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport } from "./timelineModel";
+import { advanceEdgeAutoScrollViewport, collectAggregateKeyframes, createTimelineEdgeDragController, edgeAutoScrollVelocity, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineAnchorRatioAtX, timelineDragDeltaMs, timelinePointerPanDelta, timelineScrollTop, timelineViewportChanged, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport } from "./timelineModel";
 
 describe("timeline viewport model", () => {
   it("round-trips time and pixels inside a controlled viewport", () => {
@@ -38,6 +38,23 @@ describe("timeline viewport model", () => {
     expect(wheelPanDelta(24, 90, false)).toBe(24);
     expect(wheelPanDelta(0, 90, true)).toBe(90);
     expect(wheelPanDelta(0, 90, false)).toBe(0);
+  });
+
+  it("routes row scrolling within bounds and reports unclaimed boundary gestures", () => {
+    expect(timelineScrollTop(40, 60, 500, 200)).toBe(100);
+    expect(timelineScrollTop(0, -60, 500, 200)).toBe(0);
+    expect(timelineScrollTop(300, 60, 500, 200)).toBe(300);
+    expect(timelineScrollTop(20, 60, 180, 200)).toBe(0);
+  });
+
+  it("maps wheel anchors and middle drags through the canonical plot inset", () => {
+    expect(timelineAnchorRatioAtX(16, 800)).toBe(0);
+    expect(timelineAnchorRatioAtX(408, 800)).toBe(.5);
+    expect(timelineAnchorRatioAtX(800, 800)).toBe(1);
+    expect(timelinePointerPanDelta(400, 460)).toBeCloseTo(-61.224489795918366);
+    expect(timelinePointerPanDelta(400, 340)).toBeCloseTo(61.224489795918366);
+    expect(timelineViewportChanged({ startMs: 0, endMs: 4_000 }, { startMs: 0, endMs: 4_000 })).toBe(false);
+    expect(timelineViewportChanged({ startMs: 0, endMs: 4_000 }, { startMs: 100, endMs: 4_100 })).toBe(true);
   });
 
   it("maps the accessible zoom control to viewport span while preserving center", () => {

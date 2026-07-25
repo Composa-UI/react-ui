@@ -231,6 +231,32 @@ export function wheelPanDelta(deltaX: number, deltaY: number, shiftKey: boolean)
   return deltaX !== 0 ? deltaX : shiftKey ? deltaY : 0;
 }
 
+/** Maps screen-space x onto the authored-time fraction after the 2% origin inset. */
+export function timelineAnchorRatioAtX(xPx: number, widthPx: number): number {
+  const screenRatio = xPx / Math.max(1, widthPx);
+  return Math.max(0, Math.min(1, (screenRatio - PLOT_INSET_FRACTION) / (1 - PLOT_INSET_FRACTION)));
+}
+
+/** Returns the next native row-scroll offset, clamped to the visible content. */
+export function timelineScrollTop(
+  scrollTop: number,
+  deltaPx: number,
+  scrollHeight: number,
+  clientHeight: number,
+): number {
+  const maximum = Math.max(0, scrollHeight - clientHeight);
+  return Math.max(0, Math.min(maximum, scrollTop + deltaPx));
+}
+
+/** Middle-drag moves the time surface with the pointer, opposite viewport travel. */
+export function timelinePointerPanDelta(startClientX: number, clientX: number): number {
+  return (startClientX - clientX) / (1 - PLOT_INSET_FRACTION);
+}
+
+export function timelineViewportChanged(previous: TimelineViewport, next: TimelineViewport): boolean {
+  return previous.startMs !== next.startMs || previous.endMs !== next.endMs;
+}
+
 export function viewportZoomValue(viewport: TimelineViewport, durationMs: number): number {
   const current = normalizeViewport(viewport, durationMs);
   const duration = Math.max(1, durationMs);
