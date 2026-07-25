@@ -1,6 +1,7 @@
 import { useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { PropertyPanel, type ClipSpeed, type ElementEffectSetting, type ElementFillSetting, type ElementLayoutGuideSetting, type ElementLayoutSettings, type ElementSelectionColorSetting, type ElementStrokeSetting, type ElementTypographySettings, type InspectorExportSetting, type ProjectFrameRate, type SlideBackgroundType, type SlideTransitionDirection, type SlideTransitionEasing, type SlideTransitionType } from "./components/ui3/PropertyPanel";
+import { AnimatePanel } from "./components/ui3/AnimatePanel";
 import SlidesTemplate from "./imports/SlidesTemplate";
 import { SlidesPanel, type SlideData } from "./components/ui3/SlidesPanel";
 import { SlideInspector } from "./components/ui3/SlideInspector";
@@ -311,6 +312,25 @@ function Issue72EasingInspectorFixture({ mode }: { mode: "light" | "dark" }) {
         easingApplyScope={scope}
         onEasingChange={next => { setPreset(next.preset); setControlPoints(next.controlPoints); }}
         onEasingApplyScopeChange={setScope}
+      />
+    </section>
+  );
+}
+
+// Composa-App/Composa#410: the narrowest inspector surface that previously made
+// the Small / Medium / Large segmented control unreadable. The action remains
+// controlled so selecting a dropdown item must round-trip into the trigger.
+function Issue410IntensityDropdownFixture({ mode }: { mode: "light" | "dark" }) {
+  const [intensity, setIntensity] = useState<"small" | "medium" | "large">("medium");
+  return (
+    <section data-composa-mode={mode === "dark" ? "dark" : undefined} className="w-[240px] overflow-visible rounded-c-lg bg-c-bg text-c-text shadow-c-200" data-issue-410-narrow-inspector>
+      <header className="h-[40px] px-[16px] flex items-center border-b border-c-border">
+        <h2 className="text-[11px] font-[550]">{mode === "dark" ? "Dark" : "Light"} 240px inspector</h2>
+      </header>
+      <AnimatePanel
+        selectionType="element"
+        anims={[{ id: `issue-410-${mode}`, n: 1, name: "Quarterly review", kind: "Action", duration: "0.6s", style: "pulse", intensity, selected: true }]}
+        objectAnimationCallbacks={{ onIntensityChange: (_id, value) => setIntensity(value) }}
       />
     </section>
   );
@@ -802,6 +822,15 @@ export default function Playground() {
       <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px]">
         <Issue72EasingInspectorFixture mode="light" />
         <Issue72EasingInspectorFixture mode="dark" />
+      </main>
+    );
+  }
+
+  if (view === "issue-410-intensity-dropdown") {
+    return (
+      <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px] items-start">
+        <Issue410IntensityDropdownFixture mode="light" />
+        <Issue410IntensityDropdownFixture mode="dark" />
       </main>
     );
   }
