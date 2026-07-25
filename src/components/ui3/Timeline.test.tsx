@@ -60,6 +60,44 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain('aria-label="Pulse animation 700ms to 1200ms"');
   });
 
+  it("branches every preset and property lane directly from its parent object", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[{
+      id: "hero", name: "Hero", type: "frame", selectionState: "selected", props: [
+        { id: "position", name: "Position", keyframes: [] },
+        { id: "opacity", name: "Opacity", keyframes: [{ id: "opacity-0", timeMs: 500, selected: true }] },
+      ], bars: [
+        { id: "pulse", label: "Pulse", timeRange: [100, 700], selected: true },
+      ],
+    }]} onTrackExpandedChange={() => undefined} onPresetSelect={() => undefined} />);
+    expect(html).toContain("data-timeline-child-trunk");
+    expect(html.match(/data-timeline-child-connector="elbow"/g)).toHaveLength(3);
+    expect(html).toContain('data-timeline-child-index="0" data-timeline-child-count="3"');
+    expect(html).toContain('data-timeline-child-index="2" data-timeline-child-count="3"');
+    expect(html).toContain('data-composa-row-highlight="timeline-full-lane"');
+    expect(html).toContain('data-timeline-preset-bar="pulse"');
+    expect(html).toContain('data-keyframe-id="opacity-0"');
+  });
+
+  it("removes all child connector fragments when a preset-only track is collapsed", () => {
+    const expanded = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[{
+      id: "hero", name: "Hero", type: "frame", expanded: true, props: [], bars: [
+        { id: "pulse", label: "A deliberately long animation preset name", timeRange: [100, 700] },
+      ],
+    }]} onTrackExpandedChange={() => undefined} />);
+    const collapsed = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[{
+      id: "hero", name: "Hero", type: "frame", expanded: false, props: [], bars: [
+        { id: "pulse", label: "A deliberately long animation preset name", timeRange: [100, 700] },
+      ],
+    }]} onTrackExpandedChange={() => undefined} />);
+    expect(expanded).toContain('aria-label="Collapse Hero"');
+    expect(expanded).toContain('data-timeline-child-connector="elbow"');
+    expect(expanded).toContain("truncate");
+    expect(collapsed).toContain('aria-label="Expand Hero"');
+    expect(collapsed).not.toContain("data-timeline-child-trunk");
+    expect(collapsed).not.toContain("data-timeline-child-connector");
+    expect(collapsed).not.toContain("A deliberately long animation preset name");
+  });
+
   it("lets an editable neutral bar select-and-move while reserving trim handles for the selected bar", () => {
     const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[{
       id: "hero", name: "Hero", type: "frame", props: [], bars: [
