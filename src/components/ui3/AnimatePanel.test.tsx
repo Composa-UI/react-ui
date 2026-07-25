@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, create } from "react-test-renderer";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ACTION_STYLE_OPTIONS, AnimatePanel, type ObjectAnimationItem } from "./AnimatePanel";
 import { PopoverMenu } from "./Menu";
 
@@ -140,6 +140,62 @@ describe("AnimatePanel — stable topmost Add Action authoring", () => {
 
   it("offers the canvas action families in the Action style picker", () => {
     expect(ACTION_STYLE_OPTIONS.slice(0, 4)).toEqual(["move", "opacity", "rotate", "scale"]);
+  });
+});
+
+// Composa-App/Composa#410
+describe("AnimatePanel — action intensity uses the canonical dropdown", () => {
+  const ACTION: ObjectAnimationItem = {
+    id: "action-1", n: 1, name: "Title", kind: "Action", duration: "0.6s", style: "pulse", intensity: "medium", selected: true,
+  };
+
+  const intensityPopover = (renderer: ReturnType<typeof create>) =>
+    renderer.root.findAllByType(PopoverMenu).find(item => item.props.trigger?.props?.ariaLabel === "Intensity");
+
+  it("keeps the constrained action row to one accessible Dropdown trigger, not three segments", () => {
+    const html = renderToStaticMarkup(
+      <div className="w-[240px]" data-issue-410-narrow-inspector>
+        <AnimatePanel selectionType="element" anims={[ACTION]} />
+      </div>,
+    );
+    expect(html).toContain('data-issue-410-narrow-inspector="true"');
+    expect(html).toContain('aria-label="Intensity"');
+    expect(html).toContain(">Medium<");
+    expect(html).not.toContain("data-composa-segmented-surface");
+  });
+
+  it("renders all intensities as a radio menu, dismisses after selection, and round-trips the controlled value", () => {
+    const changes: string[] = [];
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(
+        <AnimatePanel selectionType="element" anims={[ACTION]}
+          objectAnimationCallbacks={{ onIntensityChange: (_id, intensity) => changes.push(intensity) }} />,
+      );
+    });
+
+    const popover = intensityPopover(renderer!);
+    expect(popover).toBeDefined();
+    expect(popover!.props.trigger.props.value).toBe("Medium");
+    const close = vi.fn();
+    const menu = popover!.props.children(close);
+    const options = menu.props.children as Array<{ props: { label: string; checked: boolean; selectionRole: string; onClick: () => void } }>;
+    expect(options.map(option => option.props.label)).toEqual(["Small", "Medium", "Large"]);
+    expect(options.map(option => option.props.selectionRole)).toEqual(["radio", "radio", "radio"]);
+    expect(options.map(option => option.props.checked)).toEqual([false, true, false]);
+
+    act(() => options[2]!.props.onClick());
+    expect(changes).toEqual(["large"]);
+    expect(close).toHaveBeenCalledOnce();
+
+    act(() => {
+      renderer!.update(
+        <AnimatePanel selectionType="element" anims={[{ ...ACTION, intensity: "large" }]}
+          objectAnimationCallbacks={{ onIntensityChange: (_id, intensity) => changes.push(intensity) }} />,
+      );
+    });
+    expect(intensityPopover(renderer!)!.props.trigger.props.value).toBe("Large");
+    act(() => renderer!.unmount());
   });
 });
 

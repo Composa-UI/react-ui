@@ -6,7 +6,6 @@ import { Dropdown } from "./Dropdown";
 import { ComboInput, NumericInput } from "./Input";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { Button } from "./Button";
-import { SegmentedControl } from "./SegmentedControl";
 import { AnimationStylesPicker } from "./AnimationStylesPicker";
 import { iconForSemantic } from "./IconSemantics";
 
@@ -138,9 +137,9 @@ const STYLE_LABELS: Record<CompTransitionStyle, string> = { none: "None", fade: 
 const DIRECTION_LABELS: Record<CompTransitionDirection, string> = { left: "Left", right: "Right", up: "Up", down: "Down" };
 const EASING_LABELS: Record<CompTransitionEasing, string> = { linear: "Linear", "ease-in": "Ease in", "ease-out": "Ease out", "ease-in-out": "Ease in out" };
 
-function ChoiceDropdown<T extends string>({ value, options, labels, onChange }: { value: T; options: readonly T[]; labels: Record<T, string>; onChange?: (value: T) => void }) {
-  return <PopoverMenu align="right" className="w-full" trigger={<Dropdown value={labels[value]} fullWidth />}>
-    {close => <Menu minWidth={160}>{options.map(option => <MenuRow key={option} type="checkmark" checked={option === value} label={labels[option]} onClick={() => { onChange?.(option); close(); }} />)}</Menu>}
+function ChoiceDropdown<T extends string>({ ariaLabel, value, options, labels, onChange }: { ariaLabel?: string; value: T; options: readonly T[]; labels: Record<T, string>; onChange?: (value: T) => void }) {
+  return <PopoverMenu align="right" className="w-full" trigger={<Dropdown ariaLabel={ariaLabel} value={labels[value]} fullWidth />}>
+    {close => <Menu minWidth={160}>{options.map(option => <MenuRow key={option} type="checkmark" selectionRole="radio" checked={option === value} label={labels[option]} onClick={() => { onChange?.(option); close(); }} />)}</Menu>}
   </PopoverMenu>;
 }
 
@@ -331,7 +330,7 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                   <LabeledRow label="Duration"><NumericInput value={Number.parseFloat(a.buildDuration ?? a.duration) * (a.buildDuration?.includes("ms") ? 1 : 1000)} min={0} suffix="ms" commitOnBlur className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} onChange={durationMs => callbacks?.onDurationChange?.(id, durationMs)} /></LabeledRow>
                   {directional && <LabeledRow label="Direction"><ChoiceDropdown value={a.direction ?? "left"} options={["left", "right", "up", "down"]} labels={{ left: phase === "build-out" ? "To left" : "From left", right: phase === "build-out" ? "To right" : "From right", up: phase === "build-out" ? "To top" : "From top", down: phase === "build-out" ? "To bottom" : "From bottom" }} onChange={direction => callbacks?.onDirectionChange?.(id, direction)} /></LabeledRow>}
                   {deliveryValue && <LabeledRow label="Delivery"><ChoiceDropdown value={deliveryValue} options={["all-at-once", "by-object", "by-word", "by-character"]} labels={deliveryLabels} onChange={delivery => callbacks?.onDeliveryChange?.(id, delivery)} /></LabeledRow>}
-                  {phase === "action" && <LabeledRow label="Intensity"><SegmentedControl className="w-full" value={a.intensity ?? "medium"} segments={[{ value: "small", label: "Small" }, { value: "medium", label: "Medium" }, { value: "large", label: "Large" }]} onChange={value => callbacks?.onIntensityChange?.(id, value as "small" | "medium" | "large")} /></LabeledRow>}
+                  {phase === "action" && <LabeledRow label="Intensity"><ChoiceDropdown ariaLabel="Intensity" value={a.intensity ?? "medium"} options={["small", "medium", "large"]} labels={{ small: "Small", medium: "Medium", large: "Large" }} onChange={intensity => callbacks?.onIntensityChange?.(id, intensity)} /></LabeledRow>}
                 </AnimationCard>
             </div>;
           })}
