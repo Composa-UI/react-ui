@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useId, useRef, useCallback, useEffect, type ReactNode } from "react";
 import { clsx } from "clsx";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Diamond } from "lucide-react";
 import { Chit, type ChitType } from "./Chit";
 import { ChipVariable } from "./ChipVariable";
 import { PopoverMenu } from "./Menu";
@@ -264,6 +264,9 @@ export interface NumericInputProps extends NumericEditSessionCallbacks {
   size?: InputSize;
   disabled?: boolean;
   dropdown?: boolean;         // show chevron on right
+  /** Motion-mode keyframe affordance: a trailing diamond segment (in place of the
+   *  combo chevron). Filled = keyframe at the current playhead; click toggles. */
+  keyframe?: { active: boolean; onToggle: () => void };
   mixed?: boolean;            // multi-select with differing values — shows "Mixed", edits commit to all (v5 §7)
   variableValue?: string;     // if set, shows ChipVariable instead of raw number
   onVariableDetach?: () => void;
@@ -285,6 +288,7 @@ export function NumericInput({
   size = "medium",
   disabled = false,
   dropdown = false,
+  keyframe,
   mixed = false,
   variableValue,
   onVariableDetach,
@@ -499,7 +503,7 @@ export function NumericInput({
             !focused && "truncate",
             "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
             iconLead ? "pl-[26px]" : "pl-[8px]",
-            (suffix || dropdown) ? "pr-[2px]" : "pr-[8px]",
+            (suffix || dropdown || keyframe) ? "pr-[2px]" : "pr-[8px]",
             disabled && "cursor-not-allowed",
           )}
         />
@@ -511,11 +515,139 @@ export function NumericInput({
         </span>
       )}
 
-      {dropdown && (
+      {dropdown && !keyframe && (
         <span className="shrink-0 flex items-center justify-center size-[24px] text-c-icon-secondary">
           <ChevronDown size={10} strokeWidth={2} />
         </span>
       )}
+
+      {/* Motion-mode keyframe diamond — trailing combo segment (replaces the chevron). */}
+      {keyframe && (
+        <button
+          type="button"
+          aria-label={ariaLabel ? `${ariaLabel} keyframe` : "Toggle keyframe"}
+          aria-pressed={keyframe.active}
+          onClick={event => { event.stopPropagation(); keyframe.onToggle(); }}
+          className="shrink-0 flex items-center justify-center size-[24px] rounded-c-sm hover:bg-c-bg-hover"
+        >
+          <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active ? "fill-current text-[#0d99ff]" : "text-c-icon-secondary")} />
+        </button>
+      )}
+    </FieldShell>
+  );
+}
+
+// ─── NumericPairInput ───────────────────────────────────────────────────────
+// One combo field holding two numeric segments (e.g. X | Y) separated by a
+// hairline, with an optional trailing keyframe diamond and/or trailing action
+// (e.g. aspect-lock). Matches Figma's Motion Position/Scale rows: [X | Y | ◇ (| ⊡)].
+
+export interface NumericPairSegment {
+  ariaLabel: string;
+  iconLead: ReactNode;
+  value: number;
+  onChange?: (value: number) => void;
+  min?: number;
+  max?: number;
+  suffix?: string;
+  defaultValue?: number;
+  step?: number;
+}
+
+interface NumericPairInputProps {
+  a: NumericPairSegment;
+  b: NumericPairSegment;
+  /** Trailing keyframe diamond cell (motion mode). */
+  keyframe?: { active: boolean; onToggle: () => void };
+  /** Trailing action cell, e.g. an aspect-ratio lock button. */
+  trailing?: ReactNode;
+  ariaLabel?: string;
+  size?: InputSize;
+  disabled?: boolean;
+  className?: string;
+}
+
+function PairSegment({ seg, size, isLast, onFocusChange }: {
+  seg: NumericPairSegment; size: InputSize; isLast: boolean; onFocusChange: (focused: boolean) => void;
+}) {
+  const { min, max, step = 1, defaultValue = 0 } = seg;
+  const session = useContext(NumericEditSessionContext);
+  const [focused, setFocused] = useState(false);
+  const [scrubbing, setScrubbing] = useState(false);
+  const [internal, setInternal] = useState(defaultValue);
+  const current = seg.value !== undefined ? seg.value : internal;
+  const [draft, setDraft] = useState(String(current));
+  const scrubStart = useRef<{ x: number; value: number } | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const sessionOpen = useRef(false);
+
+  useEffect(() => { if (!focused && !scrubbing) setDraft(formatNumericDisplay(current)); }, [current, focused, scrubbing]);
+  useEffect(() => () => { if (sessionOpen.current) { sessionOpen.current = false; session.onEditCancel?.(); } }, [session]);
+
+  const clampVal = (n: number) => {
+    let v = n;
+    if (min !== undefined) v = Math.max(min, v);
+    if (max !== undefined) v = Math.min(max, v);
+    return v;
+  };
+  const set = (n: number) => { const f = clampVal(n); if (seg.value === undefined) setInternal(f); seg.onChange?.(f); };
+  const begin = () => { if (!sessionOpen.current) { sessionOpen.current = true; session.onEditStart?.(); } };
+  const finish = (cancelled: boolean) => { if (!sessionOpen.current) return; sessionOpen.current = false; cancelled ? session.onEditCancel?.() : session.onEditCommit?.(); };
+  const setFocus = (value: boolean) => { setFocused(value); onFocusChange(value); };
+
+  return (
+    <div className={clsx("relative flex-1 min-w-0 h-full flex items-center", !isLast && "border-r border-c-bg")}>
+      <span
+        onPointerDown={e => { begin(); e.currentTarget.setPointerCapture(e.pointerId); scrubStart.current = { x: e.clientX, value: current }; setScrubbing(true); }}
+        onPointerMove={e => { if (!scrubStart.current) return; const mult = e.shiftKey ? 10 : 1; set(scrubStart.current.value + Math.round((e.clientX - scrubStart.current.x) / 2) * step * mult); }}
+        onPointerUp={e => { if (!scrubStart.current) return; const moved = Math.abs(e.clientX - scrubStart.current.x) > 2; scrubStart.current = null; setScrubbing(false); moved ? finish(false) : inputRef.current?.focus(); }}
+        onPointerCancel={() => { if (!scrubStart.current) return; scrubStart.current = null; setScrubbing(false); finish(true); }}
+        className={clsx("absolute left-0 flex items-center justify-center size-[24px] shrink-0 select-none cursor-ew-resize text-c-text-secondary hover:text-c-text", FONT, T[size])}
+      >
+        {seg.iconLead}
+      </span>
+      <input
+        ref={inputRef}
+        aria-label={seg.ariaLabel}
+        type="text"
+        role="spinbutton"
+        inputMode="decimal"
+        value={focused || scrubbing ? draft : formatNumericDisplay(current)}
+        onChange={e => { const nd = e.target.value; setDraft(nd); const p = Number(nd); if (nd.trim() !== "" && Number.isFinite(p)) { begin(); const c = clampVal(p); if (c !== p) setDraft(String(c)); set(c); } }}
+        onKeyDown={e => {
+          const mult = e.shiftKey ? 10 : 1;
+          if (e.key === "Enter") { e.currentTarget.blur(); }
+          else if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); begin(); const n = clampVal(current + (e.key === "ArrowUp" ? step : -step) * mult); setDraft(String(n)); set(n); }
+        }}
+        onFocus={e => { setDraft(String(current)); begin(); setFocus(true); e.target.select(); }}
+        onBlur={() => { finish(false); setFocus(false); }}
+        className={clsx("w-full h-full bg-transparent outline-none text-left pl-[26px]", seg.suffix ? "pr-[2px]" : "pr-[6px]", FONT, T[size], "text-c-text [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none")}
+      />
+      {seg.suffix && <span className={clsx("shrink-0 pr-[6px] text-c-text-secondary", T[size], FONT)}>{seg.suffix}</span>}
+    </div>
+  );
+}
+
+export function NumericPairInput({ a, b, keyframe, trailing, size = "medium", disabled = false, className }: NumericPairInputProps) {
+  const [focusCount, setFocusCount] = useState(0);
+  const onFocusChange = (value: boolean) => setFocusCount(count => Math.max(0, count + (value ? 1 : -1)));
+  const bHasTrailing = !!keyframe || !!trailing;
+  return (
+    <FieldShell focused={focusCount > 0} disabled={disabled} size={size} className={className} numeric>
+      <PairSegment seg={a} size={size} isLast={false} onFocusChange={onFocusChange} />
+      <PairSegment seg={b} size={size} isLast={!bHasTrailing} onFocusChange={onFocusChange} />
+      {keyframe && (
+        <button
+          type="button"
+          aria-label={`${a.ariaLabel}/${b.ariaLabel} keyframe`}
+          aria-pressed={keyframe.active}
+          onClick={event => { event.stopPropagation(); keyframe.onToggle(); }}
+          className={clsx("shrink-0 flex items-center justify-center size-[24px] hover:bg-c-bg-hover", trailing && "border-r border-c-bg")}
+        >
+          <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active ? "fill-current text-[#0d99ff]" : "text-c-icon-secondary")} />
+        </button>
+      )}
+      {trailing && <span className="shrink-0 flex items-center justify-center size-[24px]">{trailing}</span>}
     </FieldShell>
   );
 }

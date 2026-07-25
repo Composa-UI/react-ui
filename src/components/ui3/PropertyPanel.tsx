@@ -8,7 +8,7 @@ import {
   AlignHorizontalJustifyCenter,
   Maximize2, Minimize2, Plus, Eye, Square,
   Rows2, Columns, WrapText,
-  BookOpen, Diamond,
+  BookOpen,
   Crosshair, Grid3x3, ExternalLink, Unlink,
   Minus, EyeOff, AlignJustify, Maximize, ChevronDown,
   MoveHorizontal, MoveVertical, Play, Pause,
@@ -20,7 +20,7 @@ import {
   IconButtonRow, PanelActionBtn, PanelEntry, ScrollArea, type IconBtn,
 } from "./Panel";
 import { Tabs } from "./Tabs";
-import { NumericEditSessionProvider, NumericInput, NumericComboInput, InputField, ColorInput, ComboInput, formatNumericDisplay } from "./Input";
+import { NumericEditSessionProvider, NumericInput, NumericComboInput, NumericPairInput, InputField, ColorInput, ComboInput, formatNumericDisplay } from "./Input";
 import { Dropdown } from "./Dropdown";
 import { SegmentedControl } from "./SegmentedControl";
 import { AlignmentControl, type AlignmentValue } from "./AlignmentControl";
@@ -194,6 +194,8 @@ export interface SizingComboFieldProps {
   onValueChange?: (value: number) => void;
   onSizingChange?: (change: ElementSizingChange) => void;
   onConstraintChange?: (constraint: ElementSizingConstraint, value: number | undefined) => void;
+  /** Motion mode: drop the sizing-mode combo and show the value + keyframe diamond. */
+  keyframe?: { active: boolean; onToggle: () => void };
 }
 
 export function getSizingMenuLabels({
@@ -212,7 +214,7 @@ export function getSizingMenuLabels({
 
 export function SizingComboField({
   axis, value, mode, mixed = false, availableModes = ["fixed", "hug", "fill"],
-  minValue, maxValue, variablesEnabled = false, onValueChange, onSizingChange, onConstraintChange, onApplyVariable,
+  minValue, maxValue, variablesEnabled = false, onValueChange, onSizingChange, onConstraintChange, onApplyVariable, keyframe,
 }: SizingComboFieldProps) {
   const axisLabel = axis === "width" ? "Width" : "Height";
   const modeLabel = mixed ? "Mixed" : mode === "hug" ? "Hug" : mode === "fill" ? "Fill" : undefined;
@@ -234,6 +236,16 @@ export function SizingComboField({
       {variablesEnabled && <><MenuRow type="divider" /><MenuRow type="simple" label="Apply variable" disabled={!onApplyVariable} onClick={onApplyVariable ? () => { onApplyVariable(); close(); } : undefined} /></>}
     </Menu>
   );
+  if (keyframe) {
+    // Motion mode: value + keyframe diamond (the sizing-mode combo is dropped —
+    // a keyframed dimension is fixed, matching Figma's motion inspector).
+    return <NumericInput
+      ariaLabel={axisLabel}
+      iconLead={<span className={FONT}>{axis === "width" ? "W" : "H"}</span>}
+      value={value} onChange={emitValue} min={1}
+      keyframe={keyframe}
+    />;
+  }
   return <NumericComboInput
     dataMode={mixed ? "mixed" : mode}
     ariaLabel={axisLabel}
@@ -260,6 +272,8 @@ export interface DimensionSizingFieldsProps {
   onSizingChange?: (axis: ElementSizingAxis, change: ElementSizingChange) => void;
   onConstraintChange?: (axis: ElementSizingAxis, constraint: ElementSizingConstraint, value: number | undefined) => void;
   onApplySizingVariable?: (axis: ElementSizingAxis) => void;
+  /** Motion mode: width/height become value + keyframe diamond (diamond on the H field). */
+  dimensionsKeyframe?: { active: boolean; onToggle: () => void };
 }
 
 export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
@@ -301,7 +315,7 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
     <PanelFieldRow
       label="Dimensions"
       left={<SizingComboField axis="width" value={props.width} mode={controlledSizing ? props.widthMode ?? "fixed" : localWidthMode} mixed={props.widthMixed} availableModes={props.availableWidthModes} minValue={values.minWidth} maxValue={values.maxWidth} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("width", change)} onConstraintChange={(constraint, value) => changeConstraint("width", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("width") : undefined} />}
-      right={<SizingComboField axis="height" value={props.height} mode={controlledSizing ? props.heightMode ?? "fixed" : localHeightMode} mixed={props.heightMixed} availableModes={props.availableHeightModes} minValue={values.minHeight} maxValue={values.maxHeight} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("height", change)} onConstraintChange={(constraint, value) => changeConstraint("height", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("height") : undefined} />}
+      right={<SizingComboField axis="height" value={props.height} mode={controlledSizing ? props.heightMode ?? "fixed" : localHeightMode} mixed={props.heightMixed} availableModes={props.availableHeightModes} minValue={values.minHeight} maxValue={values.maxHeight} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("height", change)} onConstraintChange={(constraint, value) => changeConstraint("height", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("height") : undefined} keyframe={props.dimensionsKeyframe} />}
       rightAction={<PanelActionBtn icon={lockAspect ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />} label="Lock aspect ratio" active={lockAspect} onClick={() => setLockAspect(value => !value)} />}
     />
     {hasConstraints && <div className="flex flex-col gap-y-[6px] px-[16px] pb-[8px]">
@@ -337,24 +351,48 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
   </>;
 }
 
+// ─── Inspector keyframe affordance ────────────────────────────────────────────
+// Per-property keyframe diamond shown in the Design tab, matching the timeline's
+// own keyframe stepper (Timeline.tsx). Present ONLY when the host supplies a
+// control (the host gates this on the slide-local timeline being active). Filled
+// = a keyframe exists at the current playhead; hollow = none. Click toggles.
+
+export interface InspectorKeyframeControl { active: boolean; onToggle: () => void; }
+export interface InspectorKeyframeControls {
+  position?: InspectorKeyframeControl;
+  scale?: InspectorKeyframeControl;
+  rotation?: InspectorKeyframeControl;
+  opacity?: InspectorKeyframeControl;
+  dimensions?: InspectorKeyframeControl;
+}
+
 // ─── Section: Position ────────────────────────────────────────────────────────
 
 interface PositionSectionProps {
   x?: number; y?: number; rotation?: number;
+  scaleX?: number; scaleY?: number;
   onXChange?: (v: number) => void;
   onYChange?: (v: number) => void;
   onRotationChange?: (v: number) => void;
+  onScaleXChange?: (v: number) => void;
+  onScaleYChange?: (v: number) => void;
   positioning?: "auto" | "absolute";
   positioningApplicable?: boolean;
   onPositioningChange?: (value: "auto" | "absolute") => void;
   multiSelect?: boolean;
+  positionKeyframe?: InspectorKeyframeControl;
+  scaleKeyframe?: InspectorKeyframeControl;
+  rotationKeyframe?: InspectorKeyframeControl;
+  scaleApplicable?: boolean;
 }
 
 function PositionSection({
   x = 0, y = 0, rotation = 0,
-  onXChange, onYChange, onRotationChange,
+  scaleX = 100, scaleY = 100,
+  onXChange, onYChange, onRotationChange, onScaleXChange, onScaleYChange,
   positioning, positioningApplicable, onPositioningChange,
   multiSelect = false,
+  positionKeyframe, scaleKeyframe, rotationKeyframe, scaleApplicable = false,
 }: PositionSectionProps) {
   const hAlignBtns: IconBtn[] = [
     { icon: <AlignLeft       size={S} strokeWidth={1.5} />, label: "Align left",   value: "left" },
@@ -371,6 +409,11 @@ function PositionSection({
     { icon: <FlipHorizontal size={S} strokeWidth={1.5} />, label: "Flip horizontal" },
     { icon: <FlipVertical   size={S} strokeWidth={1.5} />, label: "Flip vertical" },
   ];
+  // Scale aspect-lock (Figma Motion scale row's trailing ⊡). When locked, the two
+  // axes scale uniformly. Kept in one edit session by NumericEditSessionProvider.
+  const [scaleLocked, setScaleLocked] = useState(true);
+  const emitScaleX = (value: number) => { onScaleXChange?.(value); if (scaleLocked) onScaleYChange?.(value); };
+  const emitScaleY = (value: number) => { onScaleYChange?.(value); if (scaleLocked) onScaleXChange?.(value); };
 
   return (
     <PanelSection
@@ -392,26 +435,37 @@ function PositionSection({
           ? <PanelActionBtn icon={<MoreHorizontal size={16} strokeWidth={1.5} />} label="More alignment" />
           : undefined}
       />
-      {/* X / Y */}
+      {/* Position — combined [X | Y | ◇] field (Figma Motion position row). */}
       <PanelFieldRow
         label="Position"
         left={
-          <NumericInput
-            ariaLabel="Position X"
-            iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>X</span>}
-            value={x} onChange={onXChange} defaultValue={0}
-          />
-        }
-        right={
-          <NumericInput
-            ariaLabel="Position Y"
-            iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>}
-            value={y} onChange={onYChange} defaultValue={0}
+          <NumericPairInput
+            a={{ ariaLabel: "Position X", iconLead: <span className={clsx(FONT, "text-[11px] font-normal")}>X</span>, value: x, onChange: onXChange, defaultValue: 0 }}
+            b={{ ariaLabel: "Position Y", iconLead: <span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>, value: y, onChange: onYChange, defaultValue: 0 }}
+            keyframe={positionKeyframe}
           />
         }
       />
 
-      {/* Rotation */}
+      {/* Scale — combined [X | Y | ◇] field + aspect-lock (Figma Motion scale row).
+          % of the object's base size. Present when the host marks it applicable. */}
+      {scaleApplicable && (
+        <PanelFieldRow
+          label="Scale"
+          left={
+            <NumericPairInput
+              a={{ ariaLabel: "Scale X", iconLead: <MoveHorizontal size={16} strokeWidth={1.5} />, value: scaleX, onChange: emitScaleX, min: 0, suffix: "%", defaultValue: 100 }}
+              b={{ ariaLabel: "Scale Y", iconLead: <MoveVertical size={16} strokeWidth={1.5} />, value: scaleY, onChange: emitScaleY, min: 0, suffix: "%", defaultValue: 100 }}
+              keyframe={scaleKeyframe}
+            />
+          }
+          rightAction={<PanelActionBtn icon={scaleLocked ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />} label="Lock scale aspect ratio" active={scaleLocked} onClick={() => setScaleLocked(value => !value)} />}
+        />
+      )}
+
+      {/* Rotation — single-column value (with its keyframe diamond) in the left column;
+          the flip/rotate segmented control is PRESERVED in the right column (Composa#319:
+          Figma keeps rotation half-width; we keep our flip actions beside it). */}
       <PanelFieldRow
         label="Rotation"
         left={
@@ -419,6 +473,7 @@ function PositionSection({
             ariaLabel="Rotation"
             iconLead={<RotateCw size={16} strokeWidth={1.5} />}
             value={rotation} onChange={onRotationChange} min={-360} max={360} suffix="°"
+            keyframe={rotationKeyframe}
           />
         }
         right={<IconButtonRow buttons={rotateBtns} fill />}
@@ -739,10 +794,12 @@ interface AppearanceSectionProps {
   onCornerRadiusChange?: (value: AppearanceSectionProps["cornerRadius"]) => void;
   blendControlled?: boolean;
   cornerControlled?: boolean;
+  opacityKeyframe?: InspectorKeyframeControl;
 }
 
 function AppearanceSection({
   opacity = 100, blendMode = "Pass through", cornerRadius = 0, onOpacityChange, onBlendModeChange, onCornerRadiusChange, blendControlled = false, cornerControlled = false,
+  opacityKeyframe,
 }: AppearanceSectionProps) {
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
   const [indivCorners, setIndivCorners] = useState(typeof cornerRadius === "object");
@@ -775,7 +832,7 @@ function AppearanceSection({
       <div className="flex items-end gap-[8px] pl-[16px] pr-[16px] pt-[3px]">
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Opacity</div>
-          <NumericInput ariaLabel="Opacity" value={opacity} onChange={onOpacityChange} min={0} max={100} suffix="%" />
+          <NumericInput ariaLabel="Opacity" value={opacity} onChange={onOpacityChange} min={0} max={100} suffix="%" keyframe={opacityKeyframe} />
         </div>
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Corner radius</div>
@@ -1789,9 +1846,17 @@ export interface PropertyPanelProps {
   elementType?: ElementType;
   multiSelect?: boolean;
   x?: number; y?: number; rotation?: number;
+  scaleX?: number; scaleY?: number;
   onXChange?: (value: number) => void;
   onYChange?: (value: number) => void;
   onRotationChange?: (value: number) => void;
+  onScaleXChange?: (value: number) => void;
+  onScaleYChange?: (value: number) => void;
+  /** Scale row is shown when applicable (host decides — text/shape support it). */
+  scaleApplicable?: boolean;
+  /** Per-property keyframe diamonds in the Design tab. Host supplies these ONLY
+   *  when the slide-local timeline is active; absent = no diamonds. */
+  keyframeControls?: InspectorKeyframeControls;
   /** Host-owned history boundary shared by every nested NumericInput. */
   onNumericEditStart?: () => void;
   onNumericEditCommit?: () => void;
@@ -1950,7 +2015,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
   elementType = "text",
   multiSelect = false,
   x = 0, y = 0, rotation = 0,
-  onXChange, onYChange, onRotationChange,
+  scaleX = 100, scaleY = 100,
+  onXChange, onYChange, onRotationChange, onScaleXChange, onScaleYChange,
+  scaleApplicable = false, keyframeControls,
   onNumericEditStart, onNumericEditCommit, onNumericEditCancel,
   easing, easingContext = "keyframe", easingApplyScope, onEasingChange, onEasingApplyScopeChange,
   onEasingCurveEditStart, onEasingCurveEditCommit, onEasingCurveEditCancel,
@@ -2291,11 +2358,17 @@ export function PropertyPanel(props: PropertyPanelProps) {
           {/* Position — always present */}
           <PositionSection
             x={x} y={y} rotation={rotation}
+            scaleX={scaleX} scaleY={scaleY}
             onXChange={onXChange} onYChange={onYChange} onRotationChange={onRotationChange}
+            onScaleXChange={onScaleXChange} onScaleYChange={onScaleYChange}
+            scaleApplicable={scaleApplicable}
             positioning={layout?.positioning}
             positioningApplicable={layout?.positioningApplicable}
             onPositioningChange={onLayoutChange ? positioning => onLayoutChange({ positioning }) : undefined}
             multiSelect={multiSelect}
+            positionKeyframe={keyframeControls?.position}
+            scaleKeyframe={keyframeControls?.scale}
+            rotationKeyframe={keyframeControls?.rotation}
           />
 
           {/* Layout — polymorphic */}
@@ -2314,13 +2387,13 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onAutoLayoutSettingsRequest={onAutoLayoutSettingsRequest} />}
           {(isShape || isText) && (
             <PanelSection title="Layout">
-              <DimensionSizingFields {...sizingContract} width={width} height={height} />
+              <DimensionSizingFields {...sizingContract} width={width} height={height} dimensionsKeyframe={keyframeControls?.dimensions} />
               {/* Corner radius moved to Appearance */}
             </PanelSection>
           )}
 
           {/* Appearance — always present */}
-          <AppearanceSection opacity={opacity} blendMode={blendMode} cornerRadius={cornerRadius} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} />
+          <AppearanceSection opacity={opacity} blendMode={blendMode} cornerRadius={cornerRadius} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} />
 
           {/* Typography — text only */}
           {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} />}

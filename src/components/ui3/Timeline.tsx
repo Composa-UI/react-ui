@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
 import { clsx } from "clsx";
-import { Play, Pause, Square, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film, Volume2 } from "lucide-react";
+import { Play, Pause, Square, Circle, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film, Volume2 } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { collectAggregateKeyframes, createTimelineEdgeDragController, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineDragDeltaMs, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
 import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSelectionState";
 import { ScrollArea } from "./Panel";
 import { Menu, MenuRow } from "./Menu";
+import { NumericInput } from "./Input";
 import { useComposaMode } from "./useComposaMode";
 import { EASING_PRESETS, easingControlPoints, easingPresetLabel, easingSvgPath, type EasingPreset, type NamedEasingPreset } from "./easing";
 
@@ -28,6 +29,10 @@ const ROW_PROP = 28;      // raised from 24 → contains the 20px bar with 4px a
 const ROW_BLOCK = 32;     // master-view slide/video block-track row height (compact — contains 20px bar)
 const RIGHT_OVERLAY_W = 148; // zoom slider + collapse control + padding/border
 const BLUE = "#0d99ff";
+// Playhead treatment (Composa#344): false = the original DISCONNECTED look (pentagon
+// handle in the header, separate body line — Samuel's preference); true = the
+// continuous stroke through the header ruler (#342). Flip this one constant to switch.
+const PLAYHEAD_CONNECTED = false;
 
 export type TimelineMode = "master" | "slide";
 export type TimelineFrameRate = 24 | 25 | 30 | 60;
@@ -84,10 +89,19 @@ export type TimelineKeyframeValue = number | TimelineKeyframe;
 export interface PropTrack {
   id?: string;
   name: string;
+  value?: number;              // interpolated value at the playhead (inline value entry — #343b)
+  valueEditable?: boolean;     // false for read-only compiled/preset tracks
   keyframes: TimelineKeyframeValue[]; // numbers preserve the demo/legacy contract
   bar?: [number, number];      // duration bar [start,end] ms
   hidden?: boolean;            // greyed + eye-off
   accent?: boolean;            // purple-selected track
+}
+/** An Animate preset shown as a labeled bar (its resolved window) — Composa#362. */
+export interface TimelinePresetBar {
+  id: string;
+  label: string;
+  timeRange: [number, number];
+  phase?: "build-in" | "action" | "build-out";
 }
 export interface Track {
   id?: string;
@@ -95,6 +109,8 @@ export interface Track {
   type: TrackType;
   bar?: [number, number];
   props: PropTrack[];
+  /** Animate-preset bars, rendered as labeled bar rows above the property rows (#362). */
+  bars?: TimelinePresetBar[];
   /** Visual nesting only. Product hierarchy remains host-owned. */
   depth?: number;
   /** Controlled property-row visibility. Undefined preserves the legacy expanded state. */
@@ -236,8 +252,8 @@ const keyframeId = (keyframe: TimelineKeyframeValue, index: number) => typeof ke
 const aggregateKeyframeId = (keyframe: TimelineKeyframeValue, index: number, propertyId: string) => typeof keyframe === "number" ? `${propertyId}:aggregate-keyframe-${index}-${keyframe}` : keyframe.id;
 
 export function timelineTimeAtClientX(clientX: number, left: number, width: number, viewport: TimelineViewport): number {
-  const ratio = Math.max(0, Math.min(1, (clientX - left) / Math.max(1, width)));
-  return Math.round(viewport.startMs + ratio * (viewport.endMs - viewport.startMs));
+  // Route through xToTime so the origin inset (PLOT_INSET_FRACTION) is respected.
+  return Math.round(Math.max(viewport.startMs, Math.min(viewport.endMs, xToTime(clientX - left, viewport, width))));
 }
 const percent = (timeMs: number, viewport: TimelineViewport) => `${timeToX(timeMs, viewport, 100)}%`;
 const percentWidth = (startMs: number, endMs: number, viewport: TimelineViewport) => `${timeToX(endMs, viewport, 100) - timeToX(startMs, viewport, 100)}%`;
@@ -249,6 +265,7 @@ function EasingSegment({
   target,
   propertyName,
   selected,
+  lineActive = false,
   accent,
   viewport,
   onSelect,
@@ -257,6 +274,8 @@ function EasingSegment({
   target: TimelineEasingSegmentTarget;
   propertyName: string;
   selected: boolean;
+  /** The property has a selected keyframe — its connecting line reads blue (Composa#320). */
+  lineActive?: boolean;
   accent: boolean;
   viewport: TimelineViewport;
   onSelect?: (target: TimelineEasingSegmentTarget) => void;
@@ -274,16 +293,30 @@ function EasingSegment({
   } as const;
   const segmentLeft = timeToX(target.startMs, viewport, 100);
   const segmentWidth = timeToX(target.endMs, viewport, 100) - segmentLeft;
+  // Figma easing handle (Composa#321): a small SQUARE blue box holding the curve,
+  // hidden by default and revealed on hover (or keyboard focus). No selected-state
+  // representation — Figma has none, so we match first.
   const className = clsx(
-    "absolute top-1/2 z-[1] h-[20px] w-[28px] -translate-x-1/2 -translate-y-1/2 text-c-icon-secondary outline-none",
-    interactive && "cursor-pointer hover:text-c-icon",
-    selected && "text-c-icon ring-1 ring-inset ring-c-border-selected-strong bg-c-bg-selected/50",
+    "group/easing absolute top-1/2 z-[1] h-[20px] w-[28px] -translate-x-1/2 -translate-y-1/2 rounded-c-sm outline-none",
+    interactive && "cursor-pointer",
     "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring",
   );
   const content = (
-      <svg aria-hidden viewBox="0 0 28 10" className="absolute left-1/2 top-1/2 h-[10px] w-[28px] -translate-x-1/2 -translate-y-1/2 rounded-c-sm bg-c-bg px-[2px]">
-        <path d={easingSvgPath(easingControlPoints(target.easing))} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
+      <span
+        className={clsx(
+          // Opaque bg fill so the connecting line is occluded ('cut-through'), not seen
+          // passing behind the box (Composa#321).
+          "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center size-[16px] rounded-[4px] border bg-c-bg",
+          // Hidden until hover/focus — but a SELECTED segment (its easing is open in the
+          // inspector) stays in view (Composa#321).
+          interactive && !selected && "opacity-0 transition-opacity group-hover/easing:opacity-100 group-focus-visible/easing:opacity-100",
+        )}
+        style={{ borderColor: "#0d99ff" }}
+      >
+        <svg aria-hidden viewBox="0 0 28 10" preserveAspectRatio="xMidYMid meet" className="h-[8px] w-[12px]">
+          <path d={easingSvgPath(easingControlPoints(target.easing))} fill="none" stroke="#0d99ff" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      </span>
   );
   const segment = interactive ? (
     <button
@@ -360,7 +393,7 @@ function EasingSegment({
     <>
       <span
         aria-hidden
-        className={clsx("pointer-events-none absolute top-1/2 h-px -translate-y-1/2", accent ? "bg-c-bg-brand" : "bg-c-border-strong")}
+        className={clsx("pointer-events-none absolute top-1/2 h-px -translate-y-1/2", lineActive ? "bg-[#0d99ff]" : accent ? "bg-c-bg-brand" : "bg-c-text-secondary")}
         style={{ left: `${segmentLeft}%`, width: `${segmentWidth}%` }}
       />
       {control}
@@ -495,12 +528,15 @@ function DurationBar({ trackId, name, range, projection, selectionState, viewpor
     onGestureEnd?.(target, { cancelled: false });
   };
   const barClassName = clsx(
-    "absolute top-1/2 h-[12px] -translate-y-1/2 border",
+    // Fill most of the lane height (Composa#324) — was a thin 12px bar.
+    "absolute top-1/2 h-[20px] -translate-y-1/2 border",
     projection.clippedStart ? "rounded-l-none border-l-0" : "rounded-l-[4px]",
     projection.clippedEnd ? "rounded-r-none border-r-0" : "rounded-r-[4px]",
     selectionState === "selected"
       ? "border-c-border-selected-strong bg-c-bg-brand"
-      : "border-c-border-strong bg-c-bg-secondary",
+      // Unselected: de-emphasized light-secondary stroke (matches the timeline line /
+      // diamond stroke and the secondary property-name text) — Composa#324/#320.
+      : "border-c-text-secondary bg-c-bg-secondary",
   );
   const data = {
     "data-timeline-duration-bar": trackId,
@@ -521,33 +557,40 @@ function DurationBar({ trackId, name, range, projection, selectionState, viewpor
         onKeyDown={event => step("move", event)}
         onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
         className="absolute inset-0 cursor-grab rounded-[inherit] bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring active:cursor-grabbing" />
+      {/* Visible L/R drag indicators (Composa#324) — grip pips inset at each edge. */}
+      {!projection.clippedStart && <span className={clsx("pointer-events-none absolute left-[3px] top-1/2 z-[1] h-[10px] w-[2px] -translate-y-1/2 rounded-full", selectionState === "selected" ? "bg-white" : "bg-c-icon-secondary")} />}
+      {!projection.clippedEnd && <span className={clsx("pointer-events-none absolute right-[3px] top-1/2 z-[1] h-[10px] w-[2px] -translate-y-1/2 rounded-full", selectionState === "selected" ? "bg-white" : "bg-c-icon-secondary")} />}
       {!projection.clippedStart && <button type="button" aria-label={`Scale ${name} duration from start`} aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight" data-duration-bar-action="trim-start"
         onPointerDown={event => begin("trim-start", event)} onPointerMove={move}
         onKeyDown={event => step("trim-start", event)}
         onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
-        className="absolute -left-[3px] top-1/2 z-[1] h-[18px] w-[7px] -translate-y-1/2 cursor-ew-resize rounded-c-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />}
+        className="absolute -left-[3px] top-1/2 z-[2] h-[20px] w-[7px] -translate-y-1/2 cursor-ew-resize rounded-c-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />}
       {!projection.clippedEnd && <button type="button" aria-label={`Scale ${name} duration from end`} aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight" data-duration-bar-action="trim-end"
         onPointerDown={event => begin("trim-end", event)} onPointerMove={move}
         onKeyDown={event => step("trim-end", event)}
         onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
-        className="absolute -right-[3px] top-1/2 z-[1] h-[18px] w-[7px] -translate-y-1/2 cursor-ew-resize rounded-c-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />}
+        className="absolute -right-[3px] top-1/2 z-[2] h-[20px] w-[7px] -translate-y-1/2 cursor-ew-resize rounded-c-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />}
     </div>
   );
 }
 
-function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag, onSelect, onMove, onDelete, onAdd, onEasingSelect, onEasingPresetChange, onGestureStart, onGestureEnd }: {
-  prop: PropTrack; trackId: string; propertyId: string; height: number;
+function Lane({ prop, trackId, propertyId, active = false, height, viewport, plotWidth, edgeDrag, onSelect, onMove, onDelete, onEasingSelect, onEasingPresetChange, onGestureStart, onGestureEnd }: {
+  prop: PropTrack; trackId: string; propertyId: string;
+  /** Parent object has a selected keyframe — lines + unselected diamonds go blue (Composa#320). */
+  active?: boolean; height: number;
   viewport: TimelineViewport; plotWidth: number;
   edgeDrag: TimelineEdgeDragController;
   onSelect?: (target: KeyframeTarget, additive: boolean) => void;
   onMove?: (target: KeyframeTarget, timeMs: number) => void;
   onDelete?: (target: KeyframeTarget) => void;
-  onAdd?: (timeMs: number) => void;
   onEasingSelect?: (target: TimelineEasingSegmentTarget) => void;
   onEasingPresetChange?: (target: TimelineEasingSegmentTarget, easing: NamedEasingPreset) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
 }) {
+  const laneMode = useComposaMode();
+  // Right-click keyframe context menu (Composa#345) — the id of the keyframe whose menu is open.
+  const [menuKeyframeId, setMenuKeyframeId] = useState<string | null>(null);
   const kfs = prop.keyframes;
   const times = kfs.map(keyframeTime);
   const first = times.length ? Math.min(...times) : 0;
@@ -575,15 +618,11 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
   return (
     <div
       ref={laneRef}
-      className={clsx("flex-1 relative overflow-hidden", onAdd && "cursor-crosshair")}
+      // Keyframes are added through the inspector diamond only — the timeline lane is
+      // NOT an add surface: no crosshair cursor and no click-to-add (Composa#325).
+      className="flex-1 relative overflow-hidden"
       style={{ height }}
       data-timeline-property-lane={`${trackId}:${propertyId}`}
-      onClick={event => {
-        if (!(event.target instanceof Node) || !event.currentTarget.contains(event.target)) return;
-        if (!onAdd || (event.target as Element).closest?.("[data-keyframe-id],[data-easing-segment]")) return;
-        const rect = event.currentTarget.getBoundingClientRect();
-        onAdd(timelineTimeAtClientX(event.clientX, rect.left, rect.width, viewport));
-      }}
     >
       {prop.bar && (
         <div
@@ -618,6 +657,7 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
             target={target}
             propertyName={prop.name}
             selected={typeof keyframe !== "number" && !!keyframe.easingSelected}
+            lineActive={active}
             accent={!!prop.accent}
             viewport={viewport}
             onSelect={onEasingSelect}
@@ -631,12 +671,14 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
         const target = { trackId, propertyId, keyframeId: id, timeMs };
         const selected = typeof keyframe !== "number" && keyframe.selected;
         return (
+        <PopoverPrimitive.Root key={id} open={menuKeyframeId === id} onOpenChange={open => { if (!open) setMenuKeyframeId(null); }}>
+        <PopoverPrimitive.Anchor asChild>
         <button
           type="button"
-          key={id}
           data-keyframe-id={id}
           aria-label={`${prop.name} keyframe at ${timeMs}ms`}
           aria-pressed={selected}
+          onContextMenu={event => { event.preventDefault(); event.stopPropagation(); onSelect?.(target, false); setMenuKeyframeId(id); }}
           onClick={event => { event.stopPropagation(); onSelect?.(target, event.shiftKey); }}
           onKeyDown={event => {
             if (event.key === "Delete" || event.key === "Backspace") { event.preventDefault(); event.stopPropagation(); onDelete?.(target); }
@@ -661,16 +703,33 @@ function Lane({ prop, trackId, propertyId, height, viewport, plotWidth, edgeDrag
             edgeDrag.update(event.clientX, { left: rect.left, width: rect.width }, next => updateAtViewport(event.clientX, next));
           }}
           onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
-          className={clsx("absolute top-1/2 z-[2] size-[7px] p-0 border-0 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-c-bg", selected && "ring-2 ring-c-border-selected-strong")}
-          style={{ left: percent(timeMs, viewport), backgroundColor: prop.accent ? "#8638e5" : BLUE }}
+          // Figma keyframe-diamond states (Composa#320): unselected = no fill + secondary
+          // outline; selected = solid blue fill (no ring/scale). accent = the parent's
+          // "animation applied" tint (purple), used when the parent is being animated.
+          className={clsx(
+            "absolute top-1/2 z-[2] size-[7px] p-0 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-c-bg",
+            // selected = solid blue fill; parent-active but unselected = blue stroke with
+            // the highlight-bg inner fill; otherwise = light secondary stroke, lane-bg fill.
+            selected ? "border-0" : active ? "border border-[#0d99ff] bg-c-bg-selected" : "border border-c-text-secondary bg-c-bg",
+          )}
+          style={{ left: percent(timeMs, viewport), backgroundColor: selected ? (prop.accent ? "#8638e5" : BLUE) : undefined }}
         />
+        </PopoverPrimitive.Anchor>
+        <PopoverPrimitive.Portal>
+          <PopoverPrimitive.Content data-composa-mode={laneMode} side="bottom" align="start" sideOffset={6} collisionPadding={8} aria-label={`${prop.name} keyframe actions`} className="z-50 outline-none">
+            <Menu minWidth={168}>
+              <MenuRow type="simple" label="Delete keyframe" onClick={() => { onDelete?.(target); setMenuKeyframeId(null); }} />
+            </Menu>
+          </PopoverPrimitive.Content>
+        </PopoverPrimitive.Portal>
+        </PopoverPrimitive.Root>
       );})}
     </div>
   );
 }
 
 // ── one track (layer row + its property rows) ─────────────────────────────────────
-function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
+function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onPropertyValueChange, onPropertyToggleHidden, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
   track: Track; trackIndex: number;
   focusable: boolean;
   viewport: TimelineViewport; plotWidth: number; duration: number;
@@ -682,6 +741,11 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
   onKeyframeMove?: (target: KeyframeTarget, timeMs: number) => void;
   onKeyframeDelete?: (target: KeyframeTarget) => void;
   onPropertyAddKeyframe?: (trackId: string, propertyId: string, timeMs?: number) => void;
+  onPropertyStepKeyframe?: (trackId: string, propertyId: string, direction: "prev" | "next") => void;
+  selectedTimelineRowId?: string | null;
+  onPropertyRowSelect?: (propertyId: string) => void;
+  onPropertyValueChange?: (trackId: string, propertyId: string, value: number) => void;
+  onPropertyToggleHidden?: (trackId: string, propertyId: string) => void;
   onEasingSegmentSelect?: (target: TimelineEasingSegmentTarget) => void;
   onEasingPresetChange?: (target: TimelineEasingSegmentTarget, easing: NamedEasingPreset) => void;
   onDurationBarChange?: (change: TimelineDurationBarChange) => void;
@@ -714,6 +778,10 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
         />
         <div className="relative shrink-0 flex items-center gap-[8px] pr-[8px] border-r border-c-border"
           style={{ width: LEFT_W, paddingLeft: 8 + depth * 16 }}>
+          {/* tree guides: a vertical line at each ancestor indent level (Composa#343) */}
+          {Array.from({ length: depth }).map((_, level) => (
+            <span key={`guide-${level}`} aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-c-border" style={{ left: 16 + level * 16 }} />
+          ))}
           {track.props.length ? onExpandedChange ? <button type="button" aria-label={`${expanded ? "Collapse" : "Expand"} ${track.name}`} aria-expanded={expanded}
             tabIndex={onTrackSelect ? -1 : undefined}
             onClick={event => { event.stopPropagation(); onExpandedChange(trackId, !expanded); }} className="size-[16px] shrink-0 rounded-c-sm flex items-center justify-center text-c-icon-secondary hover:bg-c-bg-hover focus-visible:ring-2 focus-visible:ring-c-border-selected-strong outline-none">
@@ -767,22 +835,72 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
           })}
         </div>
       </div>
-      {/* property rows */}
-      {expanded && track.props.map((p, i) => (
-        <div key={i} className={clsx("flex", p.hidden && "opacity-40")} style={{ height: ROW_PROP }}>
-          <div className="group/prop shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
-            <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate", p.accent ? "text-[#8638e5]" : "text-c-text-secondary")}>{p.name}</span>
-            {/* keyframe stepper */}
-            <ChevronLeft size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />
-            <button aria-label={`Add ${p.name} keyframe`} onClick={() => onPropertyAddKeyframe?.(trackId, p.id ?? `property-${i}`)} className="shrink-0 flex items-center justify-center">
-              <Diamond size={12} strokeWidth={1.5} className="text-c-icon-secondary" />
-            </button>
-            <ChevronRight size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />
-            {p.hidden ? <EyeOff size={14} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" /> : <Eye size={14} strokeWidth={1.5} className="text-c-icon-secondary opacity-0 group-hover/prop:opacity-100 shrink-0" />}
+      {/* When any keyframe on this object (parent) is selected, its animation reads as
+          'applied': all its lines + unselected diamonds go blue (Composa#320). */}
+      {/* Animate-preset bars (Composa#362) — a labeled bar per preset at its resolved
+          window, ABOVE the authored keyframe rows. Presets are NOT keyframes. */}
+      {expanded && track.bars?.map(preset => (
+        <div key={preset.id} className="flex" style={{ height: ROW_PROP }}>
+          <div className="relative shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
+            {Array.from({ length: depth + 1 }).map((_, level) => (
+              <span key={level} aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-c-border" style={{ left: 16 + level * 16 }} />
+            ))}
+            <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate text-c-text-secondary")}>{preset.label}</span>
           </div>
-          <Lane prop={p} trackId={trackId} propertyId={p.id ?? `property-${i}`} height={ROW_PROP} viewport={viewport} plotWidth={plotWidth} edgeDrag={edgeDrag} onSelect={onKeyframeSelect} onMove={onKeyframeMove} onDelete={onKeyframeDelete} onAdd={onPropertyAddKeyframe ? timeMs => onPropertyAddKeyframe(trackId, p.id ?? `property-${i}`, timeMs) : undefined} onEasingSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+          <div className="flex-1 relative overflow-hidden">
+            <div role="img" aria-label={`${preset.label} preset`}
+              className="absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-[#0d99ff]/10 border-[#0d99ff]"
+              style={{ left: percent(preset.timeRange[0], viewport), width: percentWidth(preset.timeRange[0], preset.timeRange[1], viewport) }}>
+              <span className={clsx(FONT, "text-[11px] truncate text-[#0d99ff]")}>{preset.label}</span>
+            </div>
+          </div>
         </div>
       ))}
+      {/* property rows — a row goes blue when one of its keyframes or easing
+          segments is selected (Composa#323: prop-row selection, was parent-only). */}
+      {expanded && track.props.map((p, i) => {
+        const propSelected = p.keyframes.some(keyframe => typeof keyframe !== "number" && (keyframe.selected || keyframe.easingSelected));
+        const propertyId = p.id ?? `property-${i}`;
+        const rowGraySelected = !propSelected && selectedTimelineRowId === propertyId;
+        const trackActive = track.props.some(property => property.keyframes.some(keyframe => typeof keyframe !== "number" && keyframe.selected));
+        return (
+        <div key={i}
+          className={clsx("flex", p.hidden && "opacity-40", propSelected ? "bg-c-bg-selected" : rowGraySelected && "bg-c-bg-secondary")}
+          style={{ height: ROW_PROP }}
+          onClick={event => { if (!(event.target as Element).closest?.("button,[data-keyframe-id],[data-easing-segment]")) onPropertyRowSelect?.(propertyId); }}>
+          <div className="group/prop relative shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
+            {/* tree guides continue down through the property rows, incl. the layer level (Composa#343) */}
+            {Array.from({ length: depth + 1 }).map((_, level) => (
+              <span key={`guide-${level}`} aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-c-border" style={{ left: 16 + level * 16 }} />
+            ))}
+            <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate", p.accent ? "text-[#8638e5]" : "text-c-text-secondary")}>{p.name}</span>
+            {/* keyframe stepper: ◀ prev-keyframe · ◇ toggle-at-playhead · ▶ next-keyframe */}
+            <button type="button" aria-label={`Previous ${p.name} keyframe`} onClick={() => onPropertyStepKeyframe?.(trackId, p.id ?? `property-${i}`, "prev")} className="shrink-0 flex items-center justify-center opacity-0 group-hover/prop:opacity-100 disabled:opacity-0" disabled={!onPropertyStepKeyframe}>
+              <ChevronLeft size={14} strokeWidth={1.5} className="text-c-icon-secondary" />
+            </button>
+            <button type="button" aria-label={`Add ${p.name} keyframe`} onClick={() => onPropertyAddKeyframe?.(trackId, p.id ?? `property-${i}`)} className="shrink-0 flex items-center justify-center">
+              <Diamond size={12} strokeWidth={1.5} className="text-c-icon-secondary" />
+            </button>
+            <button type="button" aria-label={`Next ${p.name} keyframe`} onClick={() => onPropertyStepKeyframe?.(trackId, p.id ?? `property-${i}`, "next")} className="shrink-0 flex items-center justify-center opacity-0 group-hover/prop:opacity-100 disabled:opacity-0" disabled={!onPropertyStepKeyframe}>
+              <ChevronRight size={14} strokeWidth={1.5} className="text-c-icon-secondary" />
+            </button>
+            {/* inline value at the playhead — between the stepper and the eye, revealed on hover/selection (Composa#343b) */}
+            {p.value !== undefined && (
+              <div className={clsx("shrink-0 w-[56px]", !(propSelected || rowGraySelected) && "opacity-0 group-hover/prop:opacity-100 focus-within:opacity-100")}>
+                <NumericInput ariaLabel={`${p.name} value`} value={p.value} size="small" disabled={p.valueEditable === false}
+                  onChange={value => onPropertyValueChange?.(trackId, propertyId, value)} />
+              </div>
+            )}
+            <button type="button" aria-label={p.hidden ? `Show ${p.name}` : `Hide ${p.name}`} aria-pressed={p.hidden}
+              onClick={() => onPropertyToggleHidden?.(trackId, propertyId)}
+              className={clsx("shrink-0 flex items-center justify-center", !p.hidden && "opacity-0 group-hover/prop:opacity-100")}>
+              {p.hidden ? <EyeOff size={14} strokeWidth={1.5} className="text-c-icon-secondary" /> : <Eye size={14} strokeWidth={1.5} className="text-c-icon-secondary" />}
+            </button>
+          </div>
+          <Lane prop={p} trackId={trackId} propertyId={p.id ?? `property-${i}`} active={trackActive} height={ROW_PROP} viewport={viewport} plotWidth={plotWidth} edgeDrag={edgeDrag} onSelect={onKeyframeSelect} onMove={onKeyframeMove} onDelete={onKeyframeDelete} onEasingSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+        </div>
+        );
+      })}
     </>
   );
 }
@@ -795,9 +913,10 @@ function TransportIconButton({ children, label, onClick, active }: { children: R
   return <button aria-label={label} aria-pressed={active} onClick={onClick} className={clsx("size-[24px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover", active && "bg-c-bg-selected")}>{children}</button>;
 }
 
-function Transport({ current, duration, mode, playing, loop, onPlayingChange, onStop, onLoopChange }: {
-  current: number; duration: number; mode: TimelineMode; playing: boolean; loop: boolean;
+function Transport({ current, duration, mode, playing, loop, autoKeyframe = false, onPlayingChange, onStop, onLoopChange, onAutoKeyframeChange }: {
+  current: number; duration: number; mode: TimelineMode; playing: boolean; loop: boolean; autoKeyframe?: boolean;
   onPlayingChange: (playing: boolean) => void; onStop?: () => void; onLoopChange: (loop: boolean) => void;
+  onAutoKeyframeChange?: (value: boolean) => void;
 }) {
   const slide = mode === "slide";
   const fmt = slide
@@ -809,6 +928,15 @@ function Transport({ current, duration, mode, playing, loop, onPlayingChange, on
       {/* shared transport controls */}
       <TransportIconButton label={playing ? "Pause" : "Play"} active={playing} onClick={() => onPlayingChange(!playing)}>{playing ? <Pause size={16} strokeWidth={1.5} /> : <Play size={16} strokeWidth={1.5} />}</TransportIconButton>
       <TransportIconButton label="Stop" onClick={onStop}><Square size={14} strokeWidth={1.5} /></TransportIconButton>
+      {/* Auto-keyframe / record toggle (Composa#330) — sits ALONGSIDE Stop, does not
+          replace it. When armed, edits record keyframes and the timeline shows the red
+          record affordances (top-stroke + red playhead). */}
+      {onAutoKeyframeChange && slide && (
+        <button aria-label="Auto-keyframe" aria-pressed={autoKeyframe} onClick={() => onAutoKeyframeChange(!autoKeyframe)}
+          className={clsx("size-[24px] rounded-c-md flex items-center justify-center hover:bg-c-bg-hover", autoKeyframe ? "text-[#ff3b30]" : "text-c-icon")}>
+          <Circle size={14} strokeWidth={1.5} className={clsx(autoKeyframe && "fill-current")} />
+        </button>
+      )}
       <div className="w-[8px]" />
       {/* time group */}
       <div className="flex items-center h-[24px] rounded-c-md overflow-hidden">
@@ -836,12 +964,18 @@ function Transport({ current, duration, mode, playing, loop, onPlayingChange, on
 }
 
 // ── ruler (slide-local view — milliseconds) ────────────────────────────────────────
+// Each tick renders a short mark AT the time position with its label to the right
+// (Figma parity — Composa#326: the ticks row was previously labels-only).
 function Ruler({ viewport, width }: { viewport: TimelineViewport; width: number }) {
   const ticks = tickTimes(viewport, width);
   return (
     <div className="absolute inset-0 overflow-hidden">
       {ticks.map(t => (
-        <span key={t} className={clsx(FONT, "absolute top-1/2 -translate-y-1/2 text-[11px] text-c-text-secondary tabular-nums")} style={{ left: percent(t, viewport) }}>{Math.round(t)}</span>
+        <div key={t} className="absolute top-0 bottom-0 pointer-events-none" style={{ left: percent(t, viewport) }}>
+          {/* number + tick both CENTERED on the time position; tick below the number */}
+          <span className={clsx(FONT, "absolute bottom-[6px] left-0 -translate-x-1/2 text-[11px] text-c-text-secondary tabular-nums leading-none whitespace-nowrap")}>{Math.round(t)}</span>
+          <span className="absolute bottom-0 left-0 -translate-x-1/2 w-px h-[4px] bg-c-text-secondary" />
+        </div>
       ))}
     </div>
   );
@@ -853,7 +987,10 @@ function SecondRuler({ viewport, width }: { viewport: TimelineViewport; width: n
   return (
     <div className="absolute inset-0 overflow-hidden">
       {ticks.map(timeMs => (
-        <span key={timeMs} className={clsx(FONT, "absolute top-1/2 -translate-y-1/2 text-[11px] text-c-text-secondary tabular-nums")} style={{ left: percent(timeMs, viewport) }}>{Number((timeMs / 1000).toFixed(2))}s</span>
+        <div key={timeMs} className="absolute top-0 bottom-0 pointer-events-none" style={{ left: percent(timeMs, viewport) }}>
+          <span className={clsx(FONT, "absolute bottom-[6px] left-0 -translate-x-1/2 text-[11px] text-c-text-secondary tabular-nums leading-none whitespace-nowrap")}>{Number((timeMs / 1000).toFixed(2))}s</span>
+          <span className="absolute bottom-0 left-0 -translate-x-1/2 w-px h-[4px] bg-c-text-secondary" />
+        </div>
       ))}
     </div>
   );
@@ -1068,8 +1205,15 @@ export function Timeline({
   defaultLoop = false,
   onLoopChange,
   onStop,
+  autoKeyframe = false,
+  onAutoKeyframeChange,
   onAddKeyframe,
   onPropertyAddKeyframe,
+  onPropertyStepKeyframe,
+  selectedTimelineRowId,
+  onPropertyRowSelect,
+  onPropertyValueChange,
+  onPropertyToggleHidden,
   onTrackExpandedChange,
   onTrackSelect,
   onAggregateKeyframeSelect,
@@ -1116,8 +1260,20 @@ export function Timeline({
   defaultLoop?: boolean;
   onLoopChange?: (loop: boolean) => void;
   onStop?: () => void;
+  /** Auto-keyframe / record armed state + toggle (Composa#330). */
+  autoKeyframe?: boolean;
+  onAutoKeyframeChange?: (value: boolean) => void;
   onAddKeyframe?: (timeMs: number) => void;
   onPropertyAddKeyframe?: (trackId: string, propertyId: string, timeMs: number) => void;
+  /** Step the playhead to the previous/next keyframe of a specific property track. */
+  onPropertyStepKeyframe?: (trackId: string, propertyId: string, direction: "prev" | "next") => void;
+  /** Gray row-selection (Composa#323): the property row whose row body was clicked. */
+  selectedTimelineRowId?: string | null;
+  onPropertyRowSelect?: (propertyId: string) => void;
+  /** Edit a property's value at the playhead from its inline timeline field (#343b). */
+  onPropertyValueChange?: (trackId: string, propertyId: string, value: number) => void;
+  /** Toggle a property track's visibility (eye) — muted when hidden (#322). */
+  onPropertyToggleHidden?: (trackId: string, propertyId: string) => void;
   onTrackExpandedChange?: (trackId: string, expanded: boolean) => void;
   onTrackSelect?: (trackId: string, modifiers: TimelineTrackSelectionModifiers) => void;
   onAggregateKeyframeSelect?: (target: AggregateKeyframeTarget, additive: boolean) => void;
@@ -1249,10 +1405,12 @@ export function Timeline({
   const zoomPercent = Math.round(viewportZoomValue(viewport, duration) * 100);
   const [drag, setDrag] = useState(false);
   return (
-    <div ref={timelineRef} data-timeline-viewport-start-ms={viewport.startMs} data-timeline-viewport-end-ms={viewport.endMs} className="flex flex-col bg-c-bg border-t border-c-border overflow-hidden" style={{ height }}>
+    <div ref={timelineRef} data-timeline-viewport-start-ms={viewport.startMs} data-timeline-viewport-end-ms={viewport.endMs} data-timeline-autokeyframe={autoKeyframe || undefined}
+      className={clsx("flex flex-col bg-c-bg border-t overflow-hidden", autoKeyframe ? "border-[#ff3b30]" : "border-c-border")} style={{ height }}>
       {/* header: transport | ruler | zoom */}
       <div className="relative flex h-[40px] shrink-0 border-b border-c-border">
         <Transport current={playhead} duration={duration} mode={mode} playing={playing} loop={loop} onPlayingChange={setPlaying} onLoopChange={setLoop}
+          autoKeyframe={autoKeyframe} onAutoKeyframeChange={onAutoKeyframeChange}
           onStop={() => { setPlaying(false); onStop?.(); }} />
         <div
           className="flex-1 relative cursor-ew-resize overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-border-selected-strong"
@@ -1283,9 +1441,12 @@ export function Timeline({
           }}
         >
           {master ? <SecondRuler viewport={viewport} width={plotWidth} /> : <Ruler viewport={viewport} width={plotWidth} />}
-          {/* playhead handle */}
-          <div className="absolute top-[4px] -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport) }}>
-            <svg width="12" height="10" viewBox="0 0 12 10"><path d="M0 0h12v4l-6 6-6-6V0Z" fill={BLUE} /></svg>
+          {/* continuous playhead stroke through the header ruler, joining the body line
+              below so the playhead reads unbroken (Composa#342, gated by #344) */}
+          {PLAYHEAD_CONNECTED && <div className="absolute top-[10px] bottom-0 w-px z-[15] -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport), backgroundColor: autoKeyframe ? "#ff3b30" : BLUE }} />}
+          {/* playhead handle — recolors red when auto-keyframe/record is armed (Composa#330) */}
+          <div className="absolute top-[4px] z-20 -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport) }}>
+            <svg width="12" height="10" viewBox="0 0 12 10"><path d="M0 0h12v4l-6 6-6-6V0Z" fill={autoKeyframe ? "#ff3b30" : BLUE} /></svg>
           </div>
         </div>
         <div className="absolute z-10 right-0 top-0 bottom-0 flex items-center gap-[8px] px-[12px] border-l border-c-border bg-c-bg">
@@ -1344,13 +1505,15 @@ export function Timeline({
               onEasingSegmentSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange}
               onDurationBarChange={onDurationBarChange}
               onGestureStart={onGestureStart} onGestureEnd={onGestureEnd}
-              onPropertyAddKeyframe={onPropertyAddKeyframe ? (trackId, propertyId, timeMs = playhead) => onPropertyAddKeyframe(trackId, propertyId, timeMs) : undefined} />)}
+              onPropertyAddKeyframe={onPropertyAddKeyframe ? (trackId, propertyId, timeMs = playhead) => onPropertyAddKeyframe(trackId, propertyId, timeMs) : undefined}
+              onPropertyStepKeyframe={onPropertyStepKeyframe}
+              selectedTimelineRowId={selectedTimelineRowId} onPropertyRowSelect={onPropertyRowSelect} onPropertyValueChange={onPropertyValueChange} onPropertyToggleHidden={onPropertyToggleHidden} />)}
             </div>
           </>
         )}
-        {/* shared playhead line spanning the body */}
-        <div className="absolute top-0 bottom-0 right-0 overflow-hidden pointer-events-none" style={{ left: LEFT_W }}>
-          <div className="absolute top-0 bottom-0 w-px" style={{ left: percent(playhead, viewport), backgroundColor: BLUE }} />
+        {/* shared playhead line spanning the body — above the keyframe diamonds (Composa#320) */}
+        <div className="absolute top-0 bottom-0 right-0 z-20 overflow-hidden pointer-events-none" style={{ left: LEFT_W }}>
+          <div className="absolute top-0 bottom-0 w-px" style={{ left: percent(playhead, viewport), backgroundColor: autoKeyframe ? "#ff3b30" : BLUE }} />
         </div>
       </ScrollArea>
     </div>

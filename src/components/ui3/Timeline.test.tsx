@@ -101,7 +101,7 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain('data-duration-bar-state="selected"');
     expect(html).toContain("border-c-border-selected-strong bg-c-bg-brand");
     expect(html).toContain('data-duration-bar-state="neutral"');
-    expect(html).toContain("border-c-border-strong bg-c-bg-secondary");
+    expect(html).toContain("border-c-text-secondary bg-c-bg-secondary");
   });
 
   it("clips parent duration bars to the viewport and omits fully hidden or invalid ranges", () => {
@@ -194,12 +194,12 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain('aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Space"');
   });
 
-  it("exposes empty property lanes only when the host can add at a clicked time", () => {
+  it("keeps property lanes non-insertable when a legacy host add callback is supplied", () => {
     const inert = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]} />);
     const interactive = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]} onPropertyAddKeyframe={() => undefined} />);
     expect(inert).not.toContain("cursor-crosshair");
     expect(interactive).toContain('data-timeline-property-lane="hero:opacity"');
-    expect(interactive).toContain("cursor-crosshair");
+    expect(interactive).not.toContain("cursor-crosshair");
   });
 
   it("renders one accessible easing indicator per authored keyframe pair", () => {
@@ -231,7 +231,7 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain('aria-haspopup="menu"');
     expect(html).toContain('aria-keyshortcuts="Enter Shift+Enter"');
     expect(html).toContain('w-[28px]');
-    expect(html).toContain('style="left:25%"');
+    expect(html).toContain('style="left:26.5%"');
     expect(startingMarker).toContain('z-[2]');
     expect(html).not.toContain('data-easing-segment="hero:opacity:end"');
   });
@@ -268,7 +268,7 @@ describe("Timeline empty-lane time mapping", () => {
   it("maps and clamps client positions through the shared viewport", () => {
     const viewport = { startMs: 2_000, endMs: 6_000 };
     expect(timelineTimeAtClientX(100, 100, 400, viewport)).toBe(2_000);
-    expect(timelineTimeAtClientX(300, 100, 400, viewport)).toBe(4_000);
+    expect(timelineTimeAtClientX(304, 100, 400, viewport)).toBe(4_000);
     expect(timelineTimeAtClientX(900, 100, 400, viewport)).toBe(6_000);
   });
 });
@@ -282,8 +282,8 @@ describe("Timeline parent duration projection", () => {
       visibleEndMs: 6_000,
       clippedStart: true,
       clippedEnd: true,
-      leftPercent: 0,
-      widthPercent: 100,
+      leftPercent: 2,
+      widthPercent: 98,
     });
   });
 
