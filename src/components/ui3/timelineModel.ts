@@ -231,6 +231,26 @@ export function wheelPanDelta(deltaX: number, deltaY: number, shiftKey: boolean)
   return deltaX !== 0 ? deltaX : shiftKey ? deltaY : 0;
 }
 
+/** Returns the next native row-scroll offset, clamped to the visible content. */
+export function timelineScrollTop(
+  scrollTop: number,
+  deltaPx: number,
+  scrollHeight: number,
+  clientHeight: number,
+): number {
+  const maximum = Math.max(0, scrollHeight - clientHeight);
+  return Math.max(0, Math.min(maximum, scrollTop + deltaPx));
+}
+
+/** Middle-drag moves the time surface with the pointer, opposite viewport travel. */
+export function timelinePointerPanDelta(startClientX: number, clientX: number): number {
+  return startClientX - clientX;
+}
+
+export function timelineViewportChanged(previous: TimelineViewport, next: TimelineViewport): boolean {
+  return previous.startMs !== next.startMs || previous.endMs !== next.endMs;
+}
+
 export function viewportZoomValue(viewport: TimelineViewport, durationMs: number): number {
   const current = normalizeViewport(viewport, durationMs);
   const duration = Math.max(1, durationMs);

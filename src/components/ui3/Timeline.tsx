@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent a
 import { clsx } from "clsx";
 import { Play, Pause, Square, Circle, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film, Volume2 } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { collectAggregateKeyframes, createTimelineEdgeDragController, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineDragDeltaMs, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
+import { collectAggregateKeyframes, createTimelineEdgeDragController, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineDragDeltaMs, timelinePointerPanDelta, timelineScrollTop, timelineViewportChanged, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
 import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSelectionState";
 import { ScrollArea } from "./Panel";
@@ -37,7 +37,7 @@ const PLAYHEAD_CONNECTED = false;
 export type TimelineMode = "master" | "slide";
 export type TimelineFrameRate = 24 | 25 | 30 | 60;
 export type { TimelineViewport } from "./timelineModel";
-export type TimelineViewportChangeSource = "wheel-zoom" | "wheel-pan" | "zoom-control" | "keyframe-reveal" | "edge-drag";
+export type TimelineViewportChangeSource = "wheel-zoom" | "wheel-pan" | "pointer-pan" | "zoom-control" | "keyframe-reveal" | "edge-drag";
 export type TimelinePlayheadChangeSource = "pointer" | "keyboard";
 export interface TimelinePlayheadChangeDetail {
   source: TimelinePlayheadChangeSource;
@@ -197,6 +197,8 @@ export function stepTimelinePlayhead(timeMs: number, frameDelta: number, frameRa
 }
 
 export const shouldBeginTimelinePointer = (button: number, isPrimary: boolean): boolean => button === 0 && isPrimary;
+export const shouldBeginTimelineMiddlePan = (button: number, isPrimary: boolean, ownsPanSurface: boolean): boolean =>
+  button === 1 && isPrimary && ownsPanSurface;
 
 export function shouldHandleTimelineReveal(master: boolean, requestKey: string | number | undefined, handledKey: string | number | null, timelineWidth: number): boolean {
   return !master && requestKey !== undefined && requestKey !== handledKey && timelineWidth > LEFT_W + 1;
@@ -624,6 +626,7 @@ function Lane({ prop, trackId, propertyId, active = false, height, viewport, plo
       className="flex-1 relative overflow-hidden"
       style={{ height }}
       data-timeline-property-lane={`${trackId}:${propertyId}`}
+      data-timeline-pan-surface
     >
       {prop.bar && (
         <div
@@ -818,7 +821,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
             <span className={clsx(FONT, "text-[11px] text-c-text truncate", selectionState === "selected" ? "font-[550]" : "font-[450]")}>{track.name}</span>
           </div>
         </div>
-        <div ref={laneRef} className="flex-1 relative overflow-hidden" style={{ height: ROW_LAYER }}>
+        <div ref={laneRef} data-timeline-pan-surface className="flex-1 relative overflow-hidden" style={{ height: ROW_LAYER }}>
           {durationBar && (
             <DurationBar trackId={trackId} name={track.name} range={track.bar!} projection={durationBar} selectionState={selectionState}
               viewport={viewport} plotWidth={plotWidth} duration={duration} laneRef={laneRef} edgeDrag={edgeDrag}
@@ -857,7 +860,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
               {preset.hidden ? <EyeOff size={14} strokeWidth={1.5} className="text-c-icon-secondary" /> : <Eye size={14} strokeWidth={1.5} className="text-c-icon-secondary" />}
             </button>
           </div>
-          <div className="flex-1 relative overflow-hidden">
+          <div data-timeline-pan-surface className="flex-1 relative overflow-hidden">
             <div role="img" aria-label={`${preset.label} preset`}
               className="absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-[#0d99ff]/10 border-[#0d99ff]"
               style={{ left: percent(preset.timeRange[0], viewport), width: percentWidth(preset.timeRange[0], preset.timeRange[1], viewport) }}>
@@ -1053,7 +1056,7 @@ function BlockTrack({ blocks, viewport, plotWidth, onSelect, onOpen, onContextMe
         <span className={clsx(FONT, "text-[11px] font-[450] text-c-text truncate")}>Compositions</span>
       </div>
       {/* block lane */}
-      <div className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }}>
+      <div data-timeline-pan-surface className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }}>
         {blocks.map((b, i) => {
           const id = slideBlockId(b, i);
           const stableId = b.id;
@@ -1148,7 +1151,7 @@ function BaseVideoTrack({ clips, viewport, plotWidth, onSelect, onOpen, onMove, 
         <Film size={16} strokeWidth={1.5} className="text-c-icon-secondary shrink-0 opacity-60" />
         <span className={clsx(FONT, "text-[11px] font-[450] text-c-text-secondary truncate")}>Base video</span>
       </div>
-      <div className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Base video track" : "Base video track (empty)"}>
+      <div data-timeline-pan-surface className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Base video track" : "Base video track (empty)"}>
         {clips.map(clip => {
           const left = percent(clip.range[0], viewport);
           const width = percentWidth(clip.range[0], clip.range[1], viewport);
@@ -1189,7 +1192,7 @@ function DeferredAudioTrack() {
         <Volume2 size={16} strokeWidth={1.5} className="text-c-icon-secondary shrink-0 opacity-60" />
         <span className={clsx(FONT, "text-[11px] font-[450] text-c-text-secondary truncate")}>Audio</span>
       </div>
-      <div className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} />
+      <div data-timeline-pan-surface className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} />
     </div>
   );
 }
@@ -1323,6 +1326,8 @@ export function Timeline({
   const [internalViewport, setInternalViewport] = useState(() => normalizeViewport(defaultViewport ?? { startMs: 0, endMs: duration }, duration));
   const [timelineWidth, setTimelineWidth] = useState(LEFT_W + 1);
   const timelineRef = useRef<HTMLDivElement>(null);
+  const scrollViewportRef = useRef<HTMLDivElement>(null);
+  const middlePan = useRef<{ pointerId: number; startClientX: number; startViewport: TimelineViewport } | null>(null);
   const viewportTouched = useRef(false);
   const previousDuration = useRef(duration);
   const previousMode = useRef(mode);
@@ -1359,6 +1364,7 @@ export function Timeline({
 
   useEffect(() => {
     edgeDrag.cancel();
+    middlePan.current = null;
   }, [mode, duration, interactionContextKey]);
 
   useEffect(() => {
@@ -1386,17 +1392,31 @@ export function Timeline({
     const handleWheel = (event: WheelEvent) => {
       const pageSize = Math.max(1, plotWidth);
       if (event.ctrlKey || event.metaKey) {
-        event.preventDefault();
+        if (event.deltaY === 0) return;
         const rect = element.getBoundingClientRect();
         const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left - LEFT_W) / plotWidth));
         const deltaY = wheelDeltaPixels(event.deltaY, event.deltaMode, pageSize);
-        setViewport(zoomViewport(viewport, ratio, Math.exp(deltaY * .002), duration), "wheel-zoom");
+        const next = zoomViewport(viewport, ratio, Math.exp(deltaY * .002), duration);
+        if (!timelineViewportChanged(viewport, next)) return;
+        event.preventDefault();
+        setViewport(next, "wheel-zoom");
         return;
       }
       const rawPan = wheelPanDelta(event.deltaX, event.deltaY, event.shiftKey);
-      if (rawPan === 0) return;
+      if (rawPan !== 0) {
+        const next = panViewport(viewport, wheelDeltaPixels(rawPan, event.deltaMode, pageSize), plotWidth, duration);
+        if (!timelineViewportChanged(viewport, next)) return;
+        event.preventDefault();
+        setViewport(next, "wheel-pan");
+        return;
+      }
+      const scrollViewport = scrollViewportRef.current;
+      if (!scrollViewport || event.deltaY === 0 || !(event.target instanceof Node) || !scrollViewport.contains(event.target)) return;
+      const deltaY = wheelDeltaPixels(event.deltaY, event.deltaMode, Math.max(1, scrollViewport.clientHeight));
+      const nextScrollTop = timelineScrollTop(scrollViewport.scrollTop, deltaY, scrollViewport.scrollHeight, scrollViewport.clientHeight);
+      if (nextScrollTop === scrollViewport.scrollTop) return;
       event.preventDefault();
-      setViewport(panViewport(viewport, wheelDeltaPixels(rawPan, event.deltaMode, pageSize), plotWidth, duration), "wheel-pan");
+      scrollViewport.scrollTop = nextScrollTop;
     };
     element.addEventListener("wheel", handleWheel, { passive: false });
     return () => element.removeEventListener("wheel", handleWheel);
@@ -1417,8 +1437,35 @@ export function Timeline({
   };
   const zoomPercent = Math.round(viewportZoomValue(viewport, duration) * 100);
   const [drag, setDrag] = useState(false);
+  const beginMiddlePan = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const target = event.target;
+    const ownsPanSurface = target instanceof Element && !!target.closest("[data-timeline-pan-surface]");
+    if (!shouldBeginTimelineMiddlePan(event.button, event.isPrimary, ownsPanSurface)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    middlePan.current = { pointerId: event.pointerId, startClientX: event.clientX, startViewport: viewport };
+    try { event.currentTarget.setPointerCapture(event.pointerId); } catch {}
+  };
+  const moveMiddlePan = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const active = middlePan.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const next = panViewport(active.startViewport, timelinePointerPanDelta(active.startClientX, event.clientX), plotWidth, duration);
+    if (timelineViewportChanged(viewportRef.current, next)) setViewport(next, "pointer-pan");
+  };
+  const endMiddlePan = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const active = middlePan.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    middlePan.current = null;
+    try { event.currentTarget.releasePointerCapture(event.pointerId); } catch {}
+  };
   return (
     <div ref={timelineRef} data-timeline-viewport-start-ms={viewport.startMs} data-timeline-viewport-end-ms={viewport.endMs} data-timeline-autokeyframe={autoKeyframe || undefined}
+      onPointerDownCapture={beginMiddlePan} onPointerMoveCapture={moveMiddlePan}
+      onPointerUpCapture={endMiddlePan} onPointerCancelCapture={endMiddlePan} onLostPointerCapture={endMiddlePan}
       className={clsx("flex flex-col bg-c-bg border-t overflow-hidden", autoKeyframe ? "border-[#ff3b30]" : "border-c-border")} style={{ height }}>
       {/* header: transport | ruler | zoom */}
       <div className="relative flex h-[40px] shrink-0 border-b border-c-border">
@@ -1426,6 +1473,7 @@ export function Timeline({
           autoKeyframe={autoKeyframe} onAutoKeyframeChange={onAutoKeyframeChange}
           onStop={() => { setPlaying(false); onStop?.(); }} />
         <div
+          data-timeline-pan-surface
           className="flex-1 relative cursor-ew-resize overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-border-selected-strong"
           role="slider"
           tabIndex={0}
@@ -1489,7 +1537,7 @@ export function Timeline({
       </div>
 
       {/* body */}
-      <ScrollArea className="relative">
+      <ScrollArea className="relative" viewportRef={scrollViewportRef}>
         {master ? (
           <>
             <BlockTrack blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
