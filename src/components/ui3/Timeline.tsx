@@ -945,7 +945,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
             <span key={`guide-${level}`} aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-c-border" style={{ left: 16 + level * 16 }} />
           ))}
           {expanded && hasChildren && <span aria-hidden data-timeline-child-trunk className="pointer-events-none absolute bottom-0 top-1/2 w-px bg-c-border" style={{ left: 28 + depth * 16 }} />}
-          {hasChildren ? onExpandedChange ? <button type="button" aria-label={`${expanded ? "Collapse" : "Expand"} ${track.name}`} aria-expanded={expanded}
+          {track.props.length ? onExpandedChange ? <button type="button" aria-label={`${expanded ? "Collapse" : "Expand"} ${track.name}`} aria-expanded={expanded}
             tabIndex={onTrackSelect ? -1 : undefined}
             onClick={event => { event.stopPropagation(); onExpandedChange(trackId, !expanded); }} className="size-[16px] shrink-0 rounded-c-sm flex items-center justify-center text-c-icon-secondary hover:bg-c-bg-hover focus-visible:ring-2 focus-visible:ring-c-border-selected-strong outline-none">
             {expanded ? <ChevronDown size={12} strokeWidth={1.5} /> : <DisclosureRight size={12} strokeWidth={1.5} />}
@@ -953,11 +953,11 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
             {expanded ? <ChevronDown size={12} strokeWidth={1.5} /> : <DisclosureRight size={12} strokeWidth={1.5} />}
           </span> : <span className="size-[16px] shrink-0" />}
           <div role={onTrackSelect ? "option" : undefined} aria-selected={onTrackSelect ? selectionState === "selected" : undefined}
-            aria-expanded={onTrackSelect && onExpandedChange && hasChildren ? expanded : undefined} tabIndex={onTrackSelect ? focusable ? 0 : -1 : undefined}
+            aria-expanded={onTrackSelect && onExpandedChange && track.props.length ? expanded : undefined} tabIndex={onTrackSelect ? focusable ? 0 : -1 : undefined}
             onClick={onTrackSelect ? event => onTrackSelect(trackId, { toggle: event.metaKey || event.ctrlKey, range: event.shiftKey }) : undefined}
             onKeyDown={onTrackSelect ? event => {
               const expansion = timelineTrackExpansionForKey(event.key);
-              if (event.currentTarget === event.target && expansion !== null && onExpandedChange && hasChildren) {
+              if (event.currentTarget === event.target && expansion !== null && onExpandedChange && track.props.length) {
                 event.preventDefault(); event.stopPropagation();
                 if (expansion !== expanded) onExpandedChange(trackId, expansion);
                 return;

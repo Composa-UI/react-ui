@@ -78,7 +78,7 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain('data-keyframe-id="opacity-0"');
   });
 
-  it("removes all child connector fragments when a preset-only track is collapsed", () => {
+  it("keeps preset-only disclosure semantics unchanged while respecting controlled collapse", () => {
     const expanded = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[{
       id: "hero", name: "Hero", type: "frame", expanded: true, props: [], bars: [
         { id: "pulse", label: "A deliberately long animation preset name", timeRange: [100, 700] },
@@ -89,10 +89,12 @@ describe("Timeline DOM contracts", () => {
         { id: "pulse", label: "A deliberately long animation preset name", timeRange: [100, 700] },
       ],
     }]} onTrackExpandedChange={() => undefined} />);
-    expect(expanded).toContain('aria-label="Collapse Hero"');
     expect(expanded).toContain('data-timeline-child-connector="elbow"');
     expect(expanded).toContain("truncate");
-    expect(collapsed).toContain('aria-label="Expand Hero"');
+    expect(expanded).not.toContain('aria-label="Collapse Hero"');
+    expect(expanded).not.toContain('aria-expanded="true"');
+    expect(collapsed).not.toContain('aria-label="Expand Hero"');
+    expect(collapsed).not.toContain('aria-expanded="false"');
     expect(collapsed).not.toContain("data-timeline-child-trunk");
     expect(collapsed).not.toContain("data-timeline-child-connector");
     expect(collapsed).not.toContain("A deliberately long animation preset name");
