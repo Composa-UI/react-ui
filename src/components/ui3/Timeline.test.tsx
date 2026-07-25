@@ -41,6 +41,25 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain('data-keyframe-id="keyframe-0-500"');
   });
 
+  it("projects controlled visibility for Animate preset bars without removing their range", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[{
+      id: "hero",
+      name: "Hero",
+      type: "frame",
+      props: [],
+      bars: [
+        { id: "fade", label: "Fade In", timeRange: [100, 500] },
+        { id: "pulse", label: "Pulse", timeRange: [700, 1_200], hidden: true },
+      ],
+    }]} onPresetToggleHidden={() => undefined} />);
+    expect(html).toContain('aria-label="Hide Fade In animation"');
+    expect(html).toContain('aria-label="Show Pulse animation"');
+    expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain("opacity-40");
+    expect(html).toContain('aria-label="Fade In preset"');
+    expect(html).toContain('aria-label="Pulse preset"');
+  });
+
   it("renders disclosures without enabling aggregate product behavior when callbacks are absent", () => {
     const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]} />);
     expect(html).not.toContain('aria-label="Add keyframe"');

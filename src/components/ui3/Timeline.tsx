@@ -102,6 +102,7 @@ export interface TimelinePresetBar {
   label: string;
   timeRange: [number, number];
   phase?: "build-in" | "action" | "build-out";
+  hidden?: boolean;
 }
 export interface Track {
   id?: string;
@@ -729,7 +730,7 @@ function Lane({ prop, trackId, propertyId, active = false, height, viewport, plo
 }
 
 // ── one track (layer row + its property rows) ─────────────────────────────────────
-function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onPropertyValueChange, onPropertyToggleHidden, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
+function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onPropertyValueChange, onPropertyToggleHidden, onPresetToggleHidden, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
   track: Track; trackIndex: number;
   focusable: boolean;
   viewport: TimelineViewport; plotWidth: number; duration: number;
@@ -746,6 +747,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
   onPropertyRowSelect?: (propertyId: string) => void;
   onPropertyValueChange?: (trackId: string, propertyId: string, value: number) => void;
   onPropertyToggleHidden?: (trackId: string, propertyId: string) => void;
+  onPresetToggleHidden?: (trackId: string, presetId: string) => void;
   onEasingSegmentSelect?: (target: TimelineEasingSegmentTarget) => void;
   onEasingPresetChange?: (target: TimelineEasingSegmentTarget, easing: NamedEasingPreset) => void;
   onDurationBarChange?: (change: TimelineDurationBarChange) => void;
@@ -840,12 +842,20 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
       {/* Animate-preset bars (Composa#362) — a labeled bar per preset at its resolved
           window, ABOVE the authored keyframe rows. Presets are NOT keyframes. */}
       {expanded && track.bars?.map(preset => (
-        <div key={preset.id} className="flex" style={{ height: ROW_PROP }}>
+        <div key={preset.id} className={clsx("group/preset flex", preset.hidden && "opacity-40")} style={{ height: ROW_PROP }}>
           <div className="relative shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
             {Array.from({ length: depth + 1 }).map((_, level) => (
               <span key={level} aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-c-border" style={{ left: 16 + level * 16 }} />
             ))}
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate text-c-text-secondary")}>{preset.label}</span>
+            <button type="button"
+              aria-label={preset.hidden ? `Show ${preset.label} animation` : `Hide ${preset.label} animation`}
+              aria-pressed={preset.hidden}
+              onClick={() => onPresetToggleHidden?.(trackId, preset.id)}
+              disabled={!onPresetToggleHidden}
+              className={clsx("shrink-0 flex items-center justify-center disabled:opacity-0", !preset.hidden && "opacity-0 group-hover/preset:opacity-100 focus-visible:opacity-100")}>
+              {preset.hidden ? <EyeOff size={14} strokeWidth={1.5} className="text-c-icon-secondary" /> : <Eye size={14} strokeWidth={1.5} className="text-c-icon-secondary" />}
+            </button>
           </div>
           <div className="flex-1 relative overflow-hidden">
             <div role="img" aria-label={`${preset.label} preset`}
@@ -1214,6 +1224,7 @@ export function Timeline({
   onPropertyRowSelect,
   onPropertyValueChange,
   onPropertyToggleHidden,
+  onPresetToggleHidden,
   onTrackExpandedChange,
   onTrackSelect,
   onAggregateKeyframeSelect,
@@ -1274,6 +1285,8 @@ export function Timeline({
   onPropertyValueChange?: (trackId: string, propertyId: string, value: number) => void;
   /** Toggle a property track's visibility (eye) — muted when hidden (#322). */
   onPropertyToggleHidden?: (trackId: string, propertyId: string) => void;
+  /** Toggle an Animate preset bar without changing its scheduled range (#349). */
+  onPresetToggleHidden?: (trackId: string, presetId: string) => void;
   onTrackExpandedChange?: (trackId: string, expanded: boolean) => void;
   onTrackSelect?: (trackId: string, modifiers: TimelineTrackSelectionModifiers) => void;
   onAggregateKeyframeSelect?: (target: AggregateKeyframeTarget, additive: boolean) => void;
@@ -1507,7 +1520,8 @@ export function Timeline({
               onGestureStart={onGestureStart} onGestureEnd={onGestureEnd}
               onPropertyAddKeyframe={onPropertyAddKeyframe ? (trackId, propertyId, timeMs = playhead) => onPropertyAddKeyframe(trackId, propertyId, timeMs) : undefined}
               onPropertyStepKeyframe={onPropertyStepKeyframe}
-              selectedTimelineRowId={selectedTimelineRowId} onPropertyRowSelect={onPropertyRowSelect} onPropertyValueChange={onPropertyValueChange} onPropertyToggleHidden={onPropertyToggleHidden} />)}
+              selectedTimelineRowId={selectedTimelineRowId} onPropertyRowSelect={onPropertyRowSelect} onPropertyValueChange={onPropertyValueChange}
+              onPropertyToggleHidden={onPropertyToggleHidden} onPresetToggleHidden={onPresetToggleHidden} />)}
             </div>
           </>
         )}
