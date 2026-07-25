@@ -870,17 +870,22 @@ function Lane({ prop, trackId, propertyId, active = false, height, viewport, plo
 function TimelineChildConnector({ index, count, depth }: { index: number; count: number; depth: number }) {
   const left = 28 + depth * 16;
   const last = index === count - 1;
+  // Child labels begin at x=48 (+ depth). Carry the elbow to x=44 so the
+  // remaining 4px reads as label breathing room, rather than as a detached
+  // vertical guide. This mirrors Figma's compact "└─ Property" row anatomy.
+  const elbowWidth = 16;
   return (
     <span
       aria-hidden
       data-timeline-child-connector="elbow"
       data-timeline-child-index={index}
       data-timeline-child-count={count}
+      data-timeline-child-connector-gap="4"
       className="pointer-events-none absolute inset-y-0"
-      style={{ left, width: 12 }}
+      style={{ left, width: elbowWidth }}
     >
       <span className="absolute left-0 top-0 w-px bg-c-border" style={{ height: last ? "50%" : "100%" }} />
-      <span className="absolute left-0 top-1/2 h-px w-[12px] -translate-y-1/2 bg-c-border" />
+      <span className="absolute left-0 top-1/2 h-px -translate-y-1/2 bg-c-border" style={{ width: elbowWidth }} />
     </span>
   );
 }

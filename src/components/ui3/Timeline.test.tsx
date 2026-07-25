@@ -73,6 +73,8 @@ describe("Timeline DOM contracts", () => {
     expect(html.match(/data-timeline-child-connector="elbow"/g)).toHaveLength(3);
     expect(html).toContain('data-timeline-child-index="0" data-timeline-child-count="3"');
     expect(html).toContain('data-timeline-child-index="2" data-timeline-child-count="3"');
+    expect(html.match(/data-timeline-child-connector-gap="4"/g)).toHaveLength(3);
+    expect(html.match(/left:28px;width:16px/g)).toHaveLength(3);
     expect(html).toContain('data-composa-row-highlight="timeline-full-lane"');
     expect(html).toContain('data-timeline-preset-bar="pulse"');
     expect(html).toContain('data-keyframe-id="opacity-0"');
