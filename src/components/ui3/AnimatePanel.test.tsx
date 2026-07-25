@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { act, create } from "react-test-renderer";
 import { describe, expect, it } from "vitest";
 import { ACTION_STYLE_OPTIONS, AnimatePanel, type ObjectAnimationItem } from "./AnimatePanel";
-import { Button } from "./Button";
+import { PopoverMenu } from "./Menu";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -79,8 +79,8 @@ describe("AnimatePanel — object-animations lead action is Play, gated like '+'
   });
 });
 
-// Composa-App/Composa#365
-describe("AnimatePanel — repeatable Add Action authoring", () => {
+// Composa-App/Composa#387
+describe("AnimatePanel — stable topmost Add Action authoring", () => {
   const addActionButton = (html: string) => {
     const labelIndex = html.indexOf(">Add Action<");
     if (labelIndex < 0) return "";
@@ -89,31 +89,40 @@ describe("AnimatePanel — repeatable Add Action authoring", () => {
     return start < 0 || end < 0 ? "" : html.slice(start, end + "</button>".length);
   };
 
-  it("renders a dedicated Add Action affordance even when actions already exist", () => {
+  it("renders exactly one Add Action affordance above existing actions", () => {
     const html = renderToStaticMarkup(
       <AnimatePanel selectionType="element" anims={ANIMS} addablePhases={["action"]} />,
     );
-    expect(html).toContain(">Add Action<");
+    expect(html.match(/>Add Action</g)).toHaveLength(1);
+    expect(html.indexOf(">Add Action<")).toBeLessThan(html.indexOf(">Title<"));
+    expect(html).not.toContain('aria-label="Add animation"');
     expect(addActionButton(html)).not.toContain("disabled");
   });
 
-  it("disables Add Action when the host has no selected element", () => {
+  it("keeps the same top control in the empty state and disables it without a selection", () => {
     const html = renderToStaticMarkup(
-      <AnimatePanel selectionType="slide" anims={ANIMS} addablePhases={[]} />,
+      <AnimatePanel selectionType="slide" anims={[]} addablePhases={[]} />,
     );
+    expect(html.match(/>Add Action</g)).toHaveLength(1);
+    expect(html.indexOf(">Add Action<")).toBeLessThan(html.indexOf("Select an object on the slide"));
     expect(addActionButton(html)).toContain("disabled");
   });
 
-  it("routes the dedicated affordance to the shared action callback", () => {
+  it("routes the Action menu item to the unchanged shared phase callback", () => {
     const phases: string[] = [];
     let renderer: ReturnType<typeof create>;
     act(() => {
       renderer = create(<AnimatePanel selectionType="element" anims={ANIMS} addablePhases={["action"]}
         objectAnimationCallbacks={{ onAdd: phase => phases.push(phase) }} />);
     });
-    const button = renderer!.root.findAllByType(Button).find(item => item.props.label === "Add Action");
-    expect(button).toBeDefined();
-    act(() => button!.props.onClick());
+    const popover = renderer!.root.findAllByType(PopoverMenu).find(item =>
+      item.props.trigger?.props?.label === "Add Action",
+    );
+    expect(popover).toBeDefined();
+    const menu = popover!.props.children(() => undefined);
+    const action = menu.props.children.find((item: { props: { label?: string } }) => item.props.label === "Action");
+    expect(action).toBeDefined();
+    act(() => action.props.onClick());
     expect(phases).toEqual(["action"]);
     act(() => renderer!.unmount());
   });
