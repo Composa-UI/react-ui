@@ -172,6 +172,38 @@ describe("Inspector capability controls", () => {
     act(() => renderer!.unmount());
   });
 
+  it("authors a custom canvas size directly when the host exposes the atomic size mutation", () => {
+    const sizes: unknown[] = [];
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel
+      elementType="shape"
+      projectWidth={1920}
+      projectHeight={1080}
+      onProjectCanvasSizeChange={size => sizes.push(size)}
+    />); });
+    const getMenu = () => {
+      const popover = renderer!.root.findAllByType(PopoverMenu)
+        .find(item => item.props.trigger.props.ariaLabel?.startsWith("Project canvas size:"))!;
+      return popover.props.children(() => undefined);
+    };
+    const initialRows = getMenu().props.children.flat(Infinity);
+    const custom = initialRows.find((row: { props?: { label?: string } }) => row?.props?.label === "Custom project canvas size…");
+    act(() => custom.props.onClick());
+
+    let form = getMenu().props.children.flat(Infinity)
+      .find((child: { props?: { "aria-label"?: string } }) => child?.props?.["aria-label"] === "Custom project canvas size");
+    let fields = form.props.children[0].props.children;
+    act(() => fields[0].props.onChange(1440));
+    act(() => fields[1].props.onChange(900));
+
+    form = getMenu().props.children.flat(Infinity)
+      .find((child: { props?: { "aria-label"?: string } }) => child?.props?.["aria-label"] === "Custom project canvas size");
+    const apply = form.props.children[1].props.children[1];
+    act(() => apply.props.onClick());
+    expect(sizes).toEqual([{ width: 1440, height: 900 }]);
+    act(() => renderer!.unmount());
+  });
+
   it("routes Share only when the host supplies an access surface", () => {
     let shares = 0;
     let renderer: ReturnType<typeof create>;
@@ -179,6 +211,37 @@ describe("Inspector capability controls", () => {
     const share = renderer!.root.findAllByType(Button).find(button => button.props.label === "Share")!;
     act(() => share.props.onClick());
     expect(shares).toBe(1);
+    act(() => renderer!.unmount());
+  });
+
+  it("keeps the durable account action when live presence is disabled", () => {
+    let accountOpens = 0;
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel elementType="shape" presenceControlsEnabled={false}
+      onAccountMenu={() => { accountOpens += 1; }} />); });
+    const account = renderer!.root.findAllByType("button").find(button => button.props["aria-label"] === "Account menu")!;
+    act(() => account.props.onClick());
+    expect(accountOpens).toBe(1);
+    expect(renderer!.root.findAllByType("button").some(button => button.props["aria-label"] === "Presence and spotlight")).toBe(false);
+    act(() => renderer!.unmount());
+  });
+
+  it("routes rotate and flip actions through explicit host callbacks", () => {
+    const actions: string[] = [];
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel elementType="shape"
+      onRotate90Clockwise={() => actions.push("rotate")}
+      onFlipHorizontal={() => actions.push("flip-x")}
+      onFlipVertical={() => actions.push("flip-y")} />); });
+    for (const [label, expected] of [
+      ["Rotate 90° CW", "rotate"],
+      ["Flip horizontal", "flip-x"],
+      ["Flip vertical", "flip-y"],
+    ] as const) {
+      const button = renderer!.root.findAllByType("button").find(item => item.props["aria-label"] === label)!;
+      act(() => button.props.onClick());
+      expect(actions[actions.length - 1]).toBe(expected);
+    }
     act(() => renderer!.unmount());
   });
 });

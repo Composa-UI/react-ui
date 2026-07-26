@@ -43,6 +43,7 @@ import { EasingInspectorSection, type EasingInspectorSectionProps, type EasingIn
 import type { EasingApplyScope } from "./easing";
 import { iconForSemantic } from "./IconSemantics";
 import { AutoLayoutSpacingIcon } from "./AutoLayoutSpacingIcon";
+import { TypeSettingsDialog } from "./TypeSettingsDialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -72,7 +73,7 @@ export interface ElementStrokeSetting extends ElementFillSetting {
 export interface ElementEffectSetting extends EffectDetailsValue { id: string; }
 export interface ElementLayoutGuideSetting { id: string; type: "Grid" | "Columns" | "Rows"; visible: boolean; size: number; }
 export interface ElementSelectionColorSetting { id: string; color: string; opacity: number; usageCount?: number; }
-export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; animationDelay?: boolean; }
+export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; animationDelay?: boolean; }
 export interface ElementTypographySettings {
   fontFamily: string; fontWeight: string; fontSize: number; lineHeight: number; letterSpacing: number;
   align: "left" | "center" | "right"; verticalAlign: "top" | "middle" | "bottom"; styleName?: string;
@@ -133,6 +134,7 @@ const SettingsIcon = iconForSemantic("settings");
 const BlendModeIcon = iconForSemantic("blend-mode");
 const AbsolutePositionIcon = iconForSemantic("absolute-position");
 const RotationIcon = iconForSemantic("rotation");
+const OpacityIcon = iconForSemantic("opacity");
 const LayoutFreeformIcon = iconForSemantic("layout-freeform");
 const LayoutHorizontalIcon = iconForSemantic("layout-horizontal");
 const LayoutVerticalIcon = iconForSemantic("layout-vertical");
@@ -142,6 +144,9 @@ const AlignRightIcon = iconForSemantic("align-right");
 const AlignTopIcon = iconForSemantic("align-top");
 const AlignCenterYIcon = iconForSemantic("align-center-y");
 const AlignBottomIcon = iconForSemantic("align-bottom");
+const TextAlignTopIcon = iconForSemantic("text-align-top");
+const TextAlignCenterIcon = iconForSemantic("text-align-center");
+const TextAlignBottomIcon = iconForSemantic("text-align-bottom");
 const SizingFixedIcon = iconForSemantic("sizing-fixed");
 const SizingHugIcon = iconForSemantic("sizing-hug");
 const SizingFillIcon = iconForSemantic("sizing-fill");
@@ -485,6 +490,9 @@ interface PositionSectionProps {
   onXChange?: (v: number) => void;
   onYChange?: (v: number) => void;
   onRotationChange?: (v: number) => void;
+  onRotate90Clockwise?: () => void;
+  onFlipHorizontal?: () => void;
+  onFlipVertical?: () => void;
   onScaleXChange?: (v: number) => void;
   onScaleYChange?: (v: number) => void;
   positioning?: "auto" | "absolute";
@@ -503,7 +511,7 @@ interface PositionSectionProps {
 function PositionSection({
   x = 0, y = 0, rotation = 0,
   scaleX = 100, scaleY = 100,
-  onXChange, onYChange, onRotationChange, onScaleXChange, onScaleYChange,
+  onXChange, onYChange, onRotationChange, onRotate90Clockwise, onFlipHorizontal, onFlipVertical, onScaleXChange, onScaleYChange,
   positioning, positioningApplicable, onPositioningChange, onAlignmentAction,
   multiSelect = false,
   positionKeyframe, scaleKeyframe, rotationKeyframe, scaleApplicable = false,
@@ -520,9 +528,9 @@ function PositionSection({
     { icon: <AlignBottomIcon data-icon-semantic="align-bottom" size={S} strokeWidth={1.5} />, label: "Align bottom", onClick: () => onAlignmentAction?.("bottom") },
   ];
   const rotateBtns: IconBtn[] = [
-    { icon: <RotateCw       size={S} strokeWidth={1.5} />, label: "Rotate 90° CW" },
-    { icon: <FlipHorizontal2 size={S} strokeWidth={1.5} />, label: "Flip horizontal" },
-    { icon: <FlipVertical2   size={S} strokeWidth={1.5} />, label: "Flip vertical" },
+    { icon: <RotateCw       size={S} strokeWidth={1.5} />, label: "Rotate 90° CW", onClick: onRotate90Clockwise ?? (onRotationChange ? () => onRotationChange(rotation + 90) : undefined) },
+    { icon: <FlipHorizontal2 size={S} strokeWidth={1.5} />, label: "Flip horizontal", onClick: onFlipHorizontal },
+    { icon: <FlipVertical2   size={S} strokeWidth={1.5} />, label: "Flip vertical", onClick: onFlipVertical },
   ];
   // Scale aspect-lock (Figma Motion scale row's trailing ⊡). When locked, the two
   // axes scale uniformly. Kept in one edit session by NumericEditSessionProvider.
@@ -606,7 +614,7 @@ function PositionSection({
           <NumericInput
             ariaLabel="Rotation"
             iconLead={<RotationIcon data-icon-semantic="rotation" size={16} strokeWidth={1.5} />}
-            value={rotation} onChange={onRotationChange} min={-360} max={360} suffix="°"
+            value={rotation} onChange={onRotationChange} min={-360} max={360}
             keyframe={rotationKeyframe}
           />
         }
@@ -982,7 +990,7 @@ function AppearanceSection({
       <div className="flex items-end gap-[8px] pl-[16px] pr-[16px] pt-[3px]">
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Opacity</div>
-          <NumericInput ariaLabel="Opacity" reserveLeadingSlot value={opacity} onChange={onOpacityChange} min={0} max={100} suffix="%" keyframe={opacityKeyframe} />
+          <NumericInput ariaLabel="Opacity" iconLead={<OpacityIcon data-icon-semantic="opacity" size={16} strokeWidth={1.5} />} value={opacity} onChange={onOpacityChange} min={0} max={100} suffix="%" keyframe={opacityKeyframe} />
         </div>
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Corner radius</div>
@@ -1051,10 +1059,19 @@ function TypographySection({ value, onChange, stylesAvailable }: { value?: Eleme
     { icon: <AlignRightIcon data-icon-semantic="align-right" size={S} strokeWidth={1.5} />, label: "Align right", onClick: () => update({ align: "right" }) },
   ];
   const vAlignBtns: IconBtn[] = [
-    { icon: <AlignTopIcon data-icon-semantic="align-top" size={S} strokeWidth={1.5} />, label: "Top", onClick: () => update({ verticalAlign: "top" }) },
-    { icon: <AlignCenterYIcon data-icon-semantic="align-center-y" size={S} strokeWidth={1.5} />, label: "Middle", onClick: () => update({ verticalAlign: "middle" }) },
-    { icon: <AlignBottomIcon data-icon-semantic="align-bottom" size={S} strokeWidth={1.5} />, label: "Bottom", onClick: () => update({ verticalAlign: "bottom" }) },
+    { icon: <TextAlignTopIcon data-icon-semantic="text-align-top" size={S} strokeWidth={1.5} />, label: "Top", onClick: () => update({ verticalAlign: "top" }) },
+    { icon: <TextAlignCenterIcon data-icon-semantic="text-align-center" size={S} strokeWidth={1.5} />, label: "Middle", onClick: () => update({ verticalAlign: "middle" }) },
+    { icon: <TextAlignBottomIcon data-icon-semantic="text-align-bottom" size={S} strokeWidth={1.5} />, label: "Bottom", onClick: () => update({ verticalAlign: "bottom" }) },
   ];
+  const [typeSettingsOpen, setTypeSettingsOpen] = useState(false);
+  const typeSettingsTrigger = (
+    <PanelActionBtn
+      icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />}
+      label="Type settings"
+      active={typeSettingsOpen}
+      onClick={() => setTypeSettingsOpen(true)}
+    />
+  );
 
   return (
     <PanelSection
@@ -1106,7 +1123,15 @@ function TypographySection({ value, onChange, stylesAvailable }: { value?: Eleme
         label="Alignment"
         left={<IconButtonRow buttons={textAlignBtns} fill />}
         right={<IconButtonRow buttons={vAlignBtns} fill />}
-        rightAction={<PanelActionBtn icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />} label="Type settings" />}
+        rightAction={
+          <TypeSettingsDialog
+            open={typeSettingsOpen}
+            onClose={() => setTypeSettingsOpen(false)}
+            trigger={typeSettingsTrigger}
+            value={settings}
+            onChange={update}
+          />
+        }
       />
     </PanelSection>
   );
@@ -1476,7 +1501,7 @@ const DEMO_SELECTION_COLORS: ElementSelectionColorSetting[] = [
   { id: "demo-selection-6", color: "#9747FF", opacity: 100 },
 ];
 
-function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = { templates: true, styles: true, variables: true, libraries: true, animationDelay: false } }: {
+function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = { templates: true, styles: true, variables: true, libraries: true, videoFill: false, animationDelay: false } }: {
   colors?: ElementSelectionColorSetting[];
   onUpdate?: (id: string, patch: Partial<Omit<ElementSelectionColorSetting, "id">>) => void;
   onSelectAll?: (id: string) => void;
@@ -2055,6 +2080,9 @@ export interface PropertyPanelProps {
   onXChange?: (value: number) => void;
   onYChange?: (value: number) => void;
   onRotationChange?: (value: number) => void;
+  onRotate90Clockwise?: () => void;
+  onFlipHorizontal?: () => void;
+  onFlipVertical?: () => void;
   onScaleXChange?: (value: number) => void;
   onScaleYChange?: (value: number) => void;
   /** Stateless alignment commands; hosts own the document mutation and history. */
@@ -2150,6 +2178,10 @@ export interface PropertyPanelProps {
   onPreviewMenu?: () => void;
   /** Access/invite action. Omit until a truthful share surface exists. */
   onShare?: () => void;
+  /** Durable account/profile menu, independent of live multiplayer presence. */
+  onAccountMenu?: () => void;
+  /** Live presence/spotlight menu action. Only used when presence is enabled. */
+  onPresenceMenu?: () => void;
   /** Live presence/spotlight capability, independent of durable sharing. */
   presenceControlsEnabled?: boolean;
   /** Multiplayer account avatar identity for the top bar. Defaults to the
@@ -2234,6 +2266,9 @@ function ProjectCanvasSizeControl({
 }) {
   const currentPreset = PROJECT_CANVAS_PRESETS.find(preset => preset.width === width && preset.height === height);
   const currentLabel = currentPreset?.label ?? `${formatNumericDisplay(width)} × ${formatNumericDisplay(height)}`;
+  const [customEditing, setCustomEditing] = useState(false);
+  const [customWidth, setCustomWidth] = useState(width);
+  const [customHeight, setCustomHeight] = useState(height);
   return (
     <PopoverMenu
       align="right"
@@ -2258,7 +2293,55 @@ function ProjectCanvasSizeControl({
           />
         ))}
         <MenuRow type="divider" />
-        <MenuRow type="simple" label="Custom project canvas size…" disabled={!onCustomRequest} onClick={onCustomRequest ? () => { onCustomRequest(); close(); } : undefined} />
+        {!customEditing ? (
+          <MenuRow
+            type="simple"
+            label="Custom project canvas size…"
+            disabled={!onChange && !onCustomRequest}
+            onClick={() => {
+              if (onCustomRequest) {
+                onCustomRequest();
+                close();
+              } else {
+                setCustomWidth(width);
+                setCustomHeight(height);
+                setCustomEditing(true);
+              }
+            }}
+          />
+        ) : (
+          <div className="flex flex-col gap-[8px] px-[8px] py-[6px]" aria-label="Custom project canvas size">
+            <div className="flex items-center gap-[4px]">
+              <NumericInput
+                ariaLabel="Custom canvas width"
+                iconLead={<span className={FONT}>W</span>}
+                value={customWidth}
+                min={1}
+                onChange={setCustomWidth}
+              />
+              <NumericInput
+                ariaLabel="Custom canvas height"
+                iconLead={<span className={FONT}>H</span>}
+                value={customHeight}
+                min={1}
+                onChange={setCustomHeight}
+              />
+            </div>
+            <div className="flex justify-end gap-[4px]">
+              <Button variant="Ghost" size="small" label="Cancel" onClick={() => setCustomEditing(false)} />
+              <Button
+                variant="Primary"
+                size="small"
+                label="Apply"
+                onClick={() => {
+                  onChange?.({ width: Math.max(1, customWidth), height: Math.max(1, customHeight) });
+                  setCustomEditing(false);
+                  close();
+                }}
+              />
+            </div>
+          </div>
+        )}
       </Menu>}
     </PopoverMenu>
   );
@@ -2310,6 +2393,8 @@ function MultiplayerBar({
   onPreviewToggle,
   onPreviewMenu,
   onShare,
+  onAccountMenu,
+  onPresenceMenu,
   presenceControlsEnabled = false,
   accountInitial = "S",
   accountColor = "purple",
@@ -2319,6 +2404,8 @@ function MultiplayerBar({
   onPreviewToggle?: () => void;
   onPreviewMenu?: () => void;
   onShare?: () => void;
+  onAccountMenu?: () => void;
+  onPresenceMenu?: () => void;
   presenceControlsEnabled?: boolean;
   accountInitial?: string;
   accountColor?: AvatarColor;
@@ -2327,13 +2414,33 @@ function MultiplayerBar({
   const accountAvatar = <Avatar initial={accountInitial} src={accountPhotoUrl} size="default" color={accountColor} />;
   return (
     <div className="flex items-center gap-[8px] px-[8px] py-[6px]">
-      {presenceControlsEnabled ? (
+      {presenceControlsEnabled && onAccountMenu && onPresenceMenu ? (
         <SplitButton
           size="large"
           icon={accountAvatar}
           actionLabel="Account"
           menuLabel="Presence and spotlight"
+          onIconClick={onAccountMenu}
+          onChevronClick={onPresenceMenu}
         />
+      ) : onAccountMenu ? (
+        <button
+          type="button"
+          aria-label="Account menu"
+          onClick={onAccountMenu}
+          className="flex h-[32px] items-center rounded-c-md px-[4px] hover:bg-c-bg-hover"
+        >
+          {accountAvatar}
+        </button>
+      ) : presenceControlsEnabled && onPresenceMenu ? (
+        <button
+          type="button"
+          aria-label="Presence and spotlight"
+          onClick={onPresenceMenu}
+          className="flex h-[32px] items-center rounded-c-md px-[4px] hover:bg-c-bg-hover"
+        >
+          {accountAvatar}
+        </button>
       ) : (
         <div aria-label="Account" className="h-[32px] flex items-center px-[4px]">{accountAvatar}</div>
       )}
@@ -2371,7 +2478,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   multiSelect = false,
   x = 0, y = 0, rotation = 0,
   scaleX = 100, scaleY = 100,
-  onXChange, onYChange, onRotationChange, onScaleXChange, onScaleYChange, onAlignmentAction,
+  onXChange, onYChange, onRotationChange, onRotate90Clockwise, onFlipHorizontal, onFlipVertical, onScaleXChange, onScaleYChange, onAlignmentAction,
   scaleApplicable = false, keyframeControls,
   onNumericEditStart, onNumericEditCommit, onNumericEditCancel,
   easing, easingContext = "keyframe", easingApplyScope, onEasingChange, onEasingApplyScopeChange,
@@ -2408,6 +2515,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onPreviewToggle,
   onPreviewMenu,
   onShare,
+  onAccountMenu,
+  onPresenceMenu,
   presenceControlsEnabled = false,
   accountInitial,
   accountColor,
@@ -2468,6 +2577,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
     styles: capabilityOverrides?.styles ?? true,
     variables: capabilityOverrides?.variables ?? true,
     libraries: capabilityOverrides?.libraries ?? true,
+    videoFill: capabilityOverrides?.videoFill ?? false,
     // #222: animation "starts automatically" + delay authoring — default OFF (unlike the
     // other capabilities) so the delay is removed from the default path until re-enabled.
     animationDelay: capabilityOverrides?.animationDelay ?? false,
@@ -2574,6 +2684,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
         onPreviewToggle={onPreviewToggle}
         onPreviewMenu={onPreviewMenu}
         onShare={onShare}
+        onAccountMenu={onAccountMenu}
+        onPresenceMenu={onPresenceMenu}
         presenceControlsEnabled={presenceControlsEnabled}
         accountInitial={accountInitial}
         accountColor={accountColor}
@@ -2749,6 +2861,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             x={x} y={y} rotation={rotation}
             scaleX={scaleX} scaleY={scaleY}
             onXChange={onXChange} onYChange={onYChange} onRotationChange={onRotationChange}
+            onRotate90Clockwise={onRotate90Clockwise} onFlipHorizontal={onFlipHorizontal} onFlipVertical={onFlipVertical}
             onScaleXChange={onScaleXChange} onScaleYChange={onScaleYChange}
             scaleApplicable={scaleApplicable}
             positioning={layout?.positioning}

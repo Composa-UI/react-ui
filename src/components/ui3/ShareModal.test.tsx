@@ -61,7 +61,25 @@ describe("ShareModal (Composa#289)", () => {
     );
     expect(html).toContain("owner");
     expect(html).toContain("Alan Anabelle");
-    expect(html).toContain("can view"); // role-menu trigger for the invited person
+    expect(html).toContain("can view");
+    expect(html).not.toContain('aria-haspopup="menu"'); // no host mutation = no inert menus
+  });
+
+  it("renders pending invitations truthfully and only offers revoke when wired", () => {
+    const staticHtml = renderToStaticMarkup(
+      <ShareModal open onClose={() => undefined} people={OWNER}
+        pendingInvitations={[{ id: "invite-1", email: "pending@example.com" }]} />,
+    );
+    expect(staticHtml).toContain("pending@example.com");
+    expect(staticHtml).toContain("(pending)");
+    expect(staticHtml).not.toContain(">Revoke<");
+
+    const actionable = renderToStaticMarkup(
+      <ShareModal open onClose={() => undefined} people={OWNER}
+        pendingInvitations={[{ id: "invite-1", email: "pending@example.com" }]}
+        onRevokeInvitation={() => undefined} />,
+    );
+    expect(actionable).toContain(">Revoke<");
   });
 
   it("gates Invite on input and emits the trimmed value", () => {

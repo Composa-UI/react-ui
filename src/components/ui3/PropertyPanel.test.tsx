@@ -99,6 +99,8 @@ describe("Project shell seams", () => {
       onPreviewMenu={() => undefined}
       onShare={() => undefined}
       presenceControlsEnabled
+      onAccountMenu={() => undefined}
+      onPresenceMenu={() => undefined}
     /></TooltipProvider>);
     expect(enabled).toContain('aria-label="Preview options"');
     expect(enabled).toContain('aria-label="Presence and spotlight"');

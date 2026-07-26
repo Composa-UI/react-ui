@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useId, type MutableRefObject, type ReactNode } from "react";
 import { clsx } from "clsx";
 import { ChevronDown } from "lucide-react";
+import { Tooltip } from "./Tooltip";
 
 // ─── ScrollArea ───────────────────────────────────────────────────────────────
 // Native scrollbar is fully hidden (takes NO width — content is full-bleed); a thin
@@ -311,10 +312,9 @@ interface PanelActionBtnProps {
 }
 
 export function PanelActionBtn({ icon, label, active, selected, disabled = false, onClick, tooltip }: PanelActionBtnProps) {
-  return (
+  const button = (
     <button
       aria-label={label}
-      title={tooltip}
       aria-pressed={selected === undefined ? undefined : selected}
       disabled={disabled}
       onClick={onClick}
@@ -329,6 +329,7 @@ export function PanelActionBtn({ icon, label, active, selected, disabled = false
       {icon}
     </button>
   );
+  return tooltip ? <Tooltip label={tooltip} disabled={disabled}>{button}</Tooltip> : button;
 }
 
 // ─── Panel drag-handle entry anatomy ─────────────────────────────────────────

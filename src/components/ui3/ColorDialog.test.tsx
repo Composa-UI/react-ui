@@ -85,4 +85,22 @@ describe("ColorDialog anchored inspector contract", () => {
     expect(html).not.toContain('aria-label="Gradient"');
     expect(html).not.toContain('aria-label="Image"');
   });
+
+  it("offers the typed SquarePlay video fill only with a host-backed picker", () => {
+    const unavailable = renderToStaticMarkup(
+      <ColorDialog open onClose={() => undefined} trigger={<button>Color</button>}
+        capabilities={{ videoFill: true }} />,
+    );
+    expect(unavailable).not.toContain('aria-label="Video"');
+
+    const available = renderToStaticMarkup(
+      <ColorDialog open onClose={() => undefined} trigger={<button>Color</button>}
+        capabilities={{ videoFill: true }} fillType="video"
+        videoSourceLabel="intro.mp4" onChooseVideo={() => undefined} />,
+    );
+    expect(available).toContain('aria-label="Video"');
+    expect(available).toContain("lucide-square-play");
+    expect(available).toContain("intro.mp4");
+    expect(available).toContain(">Replace video<");
+  });
 });

@@ -673,7 +673,8 @@ export interface NumericComboInputProps extends Omit<NumericInputProps, "dropdow
   readOnlyLabel?: string;
   /**
    * Covers the resolved numeric value while idle, then reveals that value on
-   * hover/focus so typing can atomically convert a relative sizing mode.
+   * focus so typing can atomically convert a relative sizing mode. Mere hover
+   * must never replace the authored Hug/Fill label with a resolved number.
    */
   idleLabel?: string;
   /** Optional visible state in the menu segment (for example Hug, Fill or Mixed). */
@@ -717,7 +718,7 @@ export function NumericComboInput({
             disabled={disabled}
             className={clsx(
               "!rounded-r-none",
-              idleLabel && "[&_input]:text-transparent group-hover:[&_input]:text-c-text group-focus-within:[&_input]:text-c-text",
+              idleLabel && "[&_input]:text-transparent group-focus-within:[&_input]:text-c-text",
             )}
           />
         )}
@@ -730,7 +731,7 @@ export function NumericComboInput({
               FONT,
               T[size],
               iconLead ? "left-[26px]" : "left-[8px]",
-              "group-hover:hidden group-focus-within:hidden",
+              "group-focus-within:hidden",
             )}
           >
             {idleLabel}
@@ -885,7 +886,7 @@ export function NumericInputMulti({ iconLead, values, step = 1, size = "medium",
 
 // ─── ColorInput ───────────────────────────────────────────────────────────────
 
-export type ColorFillType = "Fill" | "Opacity" | "Gradient" | "Image" | "Variable";
+export type ColorFillType = "Fill" | "Opacity" | "Gradient" | "Image" | "Video" | "Variable";
 
 interface ColorInputProps {
   ariaLabel?: string;
@@ -927,15 +928,15 @@ export function ColorInput({
 
   const hex = color.replace("#", "").toUpperCase();
   const isVariable = fillType === "Variable";
-  const isTextLabel = fillType === "Gradient" || fillType === "Image" || isVariable;
+  const isTextLabel = fillType === "Gradient" || fillType === "Image" || fillType === "Video" || isVariable;
 
   // chit type mapping
-  const chitType = fillType === "Variable" ? "Fill" : fillType as ChitType;
+  const chitType = fillType === "Variable" || fillType === "Video" ? "Fill" : fillType as ChitType;
 
   const midText = isVariable
     ? variableValue ?? "bg-assistive"
     : isTextLabel
-      ? fillLabel ?? (fillType === "Gradient" ? "Angular" : "Image")
+      ? fillLabel ?? (fillType === "Gradient" ? "Angular" : fillType)
       : hex;
 
   return (

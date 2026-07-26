@@ -40,6 +40,9 @@ import {
   ProposedLayoutVerticalCenter,
   ProposedLayoutVerticalLeft,
   ProposedLayoutVerticalRight,
+  ProposedOpacity,
+  ProposedPanelLeftRightDashed,
+  ProposedPanelTopBottomDashed,
   ProposedScanSquare,
 } from "../../icons/proposed-lucide";
 
@@ -76,6 +79,7 @@ export type ComposaIconSemantic =
   | "resize-to-fit"
   | "absolute-position"
   | "rotation"
+  | "opacity"
   | "blend-mode"
   | "fill-video"
   | "sizing-fixed"
@@ -108,8 +112,8 @@ export const composaIconSemantics = {
   "padding-right": PanelRightDashed,
   "padding-bottom": PanelBottomDashed,
   "padding-left": PanelLeftDashed,
-  "padding-horizontal": PanelLeftDashed,
-  "padding-vertical": PanelTopDashed,
+  "padding-horizontal": ProposedPanelLeftRightDashed,
+  "padding-vertical": ProposedPanelTopBottomDashed,
   "align-left": AlignStartVertical,
   "align-center-x": AlignCenterVertical,
   "align-right": AlignEndVertical,
@@ -122,6 +126,7 @@ export const composaIconSemantics = {
   "resize-to-fit": Shrink,
   "absolute-position": ProposedScanSquare,
   rotation: ProposedAngle,
+  opacity: ProposedOpacity,
   "blend-mode": Blend,
   "fill-video": SquarePlay,
   "sizing-fixed": Square,

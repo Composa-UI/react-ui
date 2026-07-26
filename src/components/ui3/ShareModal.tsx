@@ -34,6 +34,11 @@ export interface SharePerson {
   src?: string;
 }
 
+export interface PendingShareInvitation {
+  id: string;
+  email: string;
+}
+
 export interface ShareScopeOption {
   value: string;
   label: string;
@@ -58,9 +63,12 @@ function RoleMenu({
   onRemove,
 }: {
   access: ShareAccess;
-  onChangeAccess: (access: ShareAccess) => void;
-  onRemove: () => void;
+  onChangeAccess?: (access: ShareAccess) => void;
+  onRemove?: () => void;
 }) {
+  if (!onChangeAccess && !onRemove) {
+    return <span className={clsx(LABEL, "text-c-text pr-[8px]")}>{access}</span>;
+  }
   return (
     <PopoverMenu
       directTrigger
@@ -81,21 +89,20 @@ function RoleMenu({
     >
       {close => (
         <Menu>
-          <MenuRow
+          {onChangeAccess && <MenuRow
             type="checkmark"
             label="Can edit"
             checked={access === "can edit"}
             onClick={() => { onChangeAccess("can edit"); close(); }}
-          />
-          <MenuRow
+          />}
+          {onChangeAccess && <MenuRow
             type="checkmark"
             label="Can view"
             checked={access === "can view"}
             onClick={() => { onChangeAccess("can view"); close(); }}
-          />
-          <MenuRow type="divider" />
-          <MenuRow label="Resend invite" onClick={() => close()} />
-          <MenuRow label="Remove" destructive onClick={() => { onRemove(); close(); }} />
+          />}
+          {onChangeAccess && onRemove && <MenuRow type="divider" />}
+          {onRemove && <MenuRow label="Remove" destructive onClick={() => { onRemove(); close(); }} />}
         </Menu>
       )}
     </PopoverMenu>
@@ -185,6 +192,10 @@ export interface ShareModalProps {
   inviteHint?: string;
   onChangeAccess?: (id: string, access: ShareAccess) => void;
   onRemovePerson?: (id: string) => void;
+  /** Durable invitations that have not been accepted yet. */
+  pendingInvitations?: PendingShareInvitation[];
+  /** When omitted pending invitations render as truthful, non-interactive rows. */
+  onRevokeInvitation?: (id: string) => void;
 }
 
 // Placeholder scope options — no real permissions model yet (owner: "we have no
@@ -211,6 +222,8 @@ export function ShareModal({
   inviteHint,
   onChangeAccess,
   onRemovePerson,
+  pendingInvitations = [],
+  onRevokeInvitation,
 }: ShareModalProps) {
   const [invite, setInvite] = useState("");
 
@@ -287,40 +300,49 @@ export function ShareModal({
               <span className={clsx(LABEL, "text-c-text-secondary")}>Who has access</span>
             </div>
 
-            {/* Access-scope row — menu trigger */}
-            <PopoverMenu
-              directTrigger
-              align="left"
-              trigger={
-                <ShareRow
-                  interactive
-                  ariaLabel="Change who can access"
-                  leading={<Users size={16} strokeWidth={1.5} />}
-                  trailing={
-                    <span className="flex items-center gap-[2px] text-c-text">
-                      <span className={LABEL}>can access</span>
-                      <ChevronRight size={12} strokeWidth={2} className="text-c-icon-secondary" />
-                    </span>
-                  }
-                >
-                  <span className={clsx(LABEL, "text-c-text truncate")}>{scopeLabel}</span>
-                </ShareRow>
-              }
-            >
-              {close => (
-                <Menu>
-                  {scopeOptions.map(option => (
-                    <MenuRow
-                      key={option.value}
-                      type="checkmark"
-                      label={option.label}
-                      checked={scopeValue === option.value}
-                      onClick={() => { onScopeChange?.(option.value); close(); }}
-                    />
-                  ))}
-                </Menu>
-              )}
-            </PopoverMenu>
+            {/* Scope is only a menu when the host owns a real permission mutation. */}
+            {onScopeChange ? (
+              <PopoverMenu
+                directTrigger
+                align="left"
+                trigger={
+                  <ShareRow
+                    interactive
+                    ariaLabel="Change who can access"
+                    leading={<Users size={16} strokeWidth={1.5} />}
+                    trailing={
+                      <span className="flex items-center gap-[2px] text-c-text">
+                        <span className={LABEL}>can access</span>
+                        <ChevronRight size={12} strokeWidth={2} className="text-c-icon-secondary" />
+                      </span>
+                    }
+                  >
+                    <span className={clsx(LABEL, "text-c-text truncate")}>{scopeLabel}</span>
+                  </ShareRow>
+                }
+              >
+                {close => (
+                  <Menu>
+                    {scopeOptions.map(option => (
+                      <MenuRow
+                        key={option.value}
+                        type="checkmark"
+                        label={option.label}
+                        checked={scopeValue === option.value}
+                        onClick={() => { onScopeChange(option.value); close(); }}
+                      />
+                    ))}
+                  </Menu>
+                )}
+              </PopoverMenu>
+            ) : (
+              <ShareRow
+                leading={<Users size={16} strokeWidth={1.5} />}
+                trailing={<span className={clsx(LABEL, "text-c-text pr-[8px]")}>can access</span>}
+              >
+                <span className={clsx(LABEL, "text-c-text truncate")}>{scopeLabel}</span>
+              </ShareRow>
+            )}
 
             {/* People */}
             {roster.map(person => (
@@ -341,14 +363,34 @@ export function ShareModal({
                   ) : (
                     <RoleMenu
                       access={person.access ?? "can edit"}
-                      onChangeAccess={access => handleChangeAccess(person.id, access)}
-                      onRemove={() => handleRemove(person.id)}
+                      onChangeAccess={onChangeAccess ? access => handleChangeAccess(person.id, access) : undefined}
+                      onRemove={onRemovePerson ? () => handleRemove(person.id) : undefined}
                     />
                   )
                 }
               >
                 <span className={clsx(LABEL, "text-c-text truncate")}>{person.name}</span>
                 {person.you && <span className={clsx(LABEL, "text-c-text-secondary")}>(you)</span>}
+              </ShareRow>
+            ))}
+
+            {pendingInvitations.map(invitation => (
+              <ShareRow
+                key={invitation.id}
+                leading={<Avatar color="grey" initial={invitation.email.charAt(0).toUpperCase()} size="default" shape="circle" />}
+                trailing={onRevokeInvitation ? (
+                  <Button
+                    variant="Link"
+                    size="small"
+                    label="Revoke"
+                    onClick={() => onRevokeInvitation(invitation.id)}
+                  />
+                ) : (
+                  <span className={clsx(LABEL, "text-c-text-secondary pr-[8px]")}>pending</span>
+                )}
+              >
+                <span className={clsx(LABEL, "text-c-text truncate")}>{invitation.email}</span>
+                <span className={clsx(LABEL, "text-c-text-secondary")}>(pending)</span>
               </ShareRow>
             ))}
           </div>

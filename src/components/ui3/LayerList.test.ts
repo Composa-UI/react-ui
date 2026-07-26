@@ -54,9 +54,13 @@ describe("LayerList drag root normalization", () => {
     ]);
   });
 
-  it.each(["horizontal", "vertical", "wrap"] as const)("uses one canonical auto-layout-frame glyph while retaining %s mode semantics", autoLayoutMode => {
+  it.each([
+    ["horizontal", "auto-layout-horizontal-center"],
+    ["vertical", "auto-layout-vertical-center"],
+    ["wrap", "auto-layout-frame"],
+  ] as const)("uses the stateful auto-layout glyph while retaining %s mode semantics", (autoLayoutMode, semantic) => {
     const html = renderToStaticMarkup(createElement(LayerTypeIcon, { type: "frame", autoLayoutMode }));
-    expect(html).toContain('data-icon-semantic="auto-layout-frame"');
+    expect(html).toContain(`data-icon-semantic="${semantic}"`);
     expect(html).toContain('data-layer-icon-type="frame"');
     expect(html).toContain(`data-auto-layout-mode="${autoLayoutMode}"`);
     expect(html).not.toMatch(/grid/i);

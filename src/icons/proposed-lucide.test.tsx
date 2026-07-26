@@ -16,6 +16,7 @@ import {
   ProposedLayoutVerticalCenter,
   ProposedLayoutVerticalLeft,
   ProposedLayoutVerticalRight,
+  ProposedOpacity,
   ProposedScanSquare,
   proposedLucideMetadata,
 } from "./proposed-lucide";
@@ -29,6 +30,7 @@ const icons = [
   ProposedGapHorizontal,
   ProposedGapVertical,
   ProposedAngle,
+  ProposedOpacity,
   ProposedArrowUpDownToLine,
   ProposedLayoutHorizontalBottom,
   ProposedLayoutHorizontalCenter,

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { composaIconSemantics, iconForSemantic } from "./IconSemantics";
 import { PropertyPanel } from "./PropertyPanel";
 import { AnimatePanel } from "./AnimatePanel";
+import { LayerTypeIcon } from "./LayerTypeIcon";
 
 function settingsTrigger(html: string, label: string) {
   return html.match(new RegExp(`<button[^>]*aria-label="${label}"[^>]*>[\\s\\S]*?<\\/button>`))?.[0];
@@ -53,6 +54,7 @@ describe("settings icon semantics", () => {
       "blend-mode",
       "absolute-position",
       "rotation",
+      "opacity",
       "fill-video",
       "align-left",
       "align-center-x",
@@ -64,9 +66,22 @@ describe("settings icon semantics", () => {
       "padding-right",
       "padding-bottom",
       "padding-left",
+      "padding-horizontal",
+      "padding-vertical",
+      "text-align-top",
+      "text-align-center",
+      "text-align-bottom",
     ] as const) {
       expect(iconForSemantic(semantic)).toBe(composaIconSemantics[semantic]);
     }
+  });
+
+  it("projects the authored auto-layout direction into the canonical layer icon", () => {
+    const horizontal = renderToStaticMarkup(<LayerTypeIcon type="frame" autoLayoutMode="horizontal" />);
+    const vertical = renderToStaticMarkup(<LayerTypeIcon type="frame" autoLayoutMode="vertical" />);
+    expect(horizontal).toContain('data-icon-semantic="auto-layout-horizontal-center"');
+    expect(vertical).toContain('data-icon-semantic="auto-layout-vertical-center"');
+    expect(horizontal).not.toBe(vertical);
   });
 
   it("uses the canonical semantic for current Animate settings entry points", () => {

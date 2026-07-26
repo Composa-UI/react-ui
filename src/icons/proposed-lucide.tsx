@@ -15,6 +15,7 @@ export const proposedLucideMetadata = {
   gapHorizontal: { pr: 4544, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4544", replacementImport: "GapHorizontal" },
   gapVertical: { pr: 4544, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4544", replacementImport: "GapVertical" },
   angle: { pr: 4545, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4545", replacementImport: "Angle" },
+  opacity: { pr: 4549, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4549", replacementImport: "Opacity" },
   arrowUpDownToLine: { pr: 4546, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4546", replacementImport: "ArrowUpDownToLine" },
   layoutHorizontalBottom: { pr: 4548, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4548", replacementImport: "LayoutHorizontalBottom" },
   layoutHorizontalCenter: { pr: 4548, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4548", replacementImport: "LayoutHorizontalCenter" },
@@ -87,6 +88,42 @@ export const ProposedGapVertical = createLucideIcon("ProposedGapVertical", [
 export const ProposedAngle = createLucideIcon("ProposedAngle", [
   ["path", { d: "M3 3v16a2 2 0 0 0 2 2h16", key: "corner" }],
   ["path", { d: "M3 11a10 10 0 0 1 10 10", key: "arc" }],
+]);
+
+// TODO(lucide-pr-4549): replace with lucide-react Opacity after upstream merge.
+export const ProposedOpacity = createLucideIcon("ProposedOpacity", [
+  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "frame" }],
+  ["path", { d: "M16 8h.01", key: "dot-1" }],
+  ["path", { d: "M12 12h.01", key: "dot-2" }],
+  ["path", { d: "M16 12h.01", key: "dot-3" }],
+  ["path", { d: "M8 16h.01", key: "dot-4" }],
+  ["path", { d: "M12 16h.01", key: "dot-5" }],
+  ["path", { d: "M16 16h.01", key: "dot-6" }],
+]);
+
+/** Combined-axis variants of Lucide's Panel*Dashed family. */
+export const ProposedPanelLeftRightDashed = createLucideIcon("ProposedPanelLeftRightDashed", [
+  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "frame" }],
+  ["path", { d: "M9 3v2", key: "left-1" }],
+  ["path", { d: "M9 9v1", key: "left-2" }],
+  ["path", { d: "M9 14v1", key: "left-3" }],
+  ["path", { d: "M9 19v2", key: "left-4" }],
+  ["path", { d: "M15 3v2", key: "right-1" }],
+  ["path", { d: "M15 9v1", key: "right-2" }],
+  ["path", { d: "M15 14v1", key: "right-3" }],
+  ["path", { d: "M15 19v2", key: "right-4" }],
+]);
+
+export const ProposedPanelTopBottomDashed = createLucideIcon("ProposedPanelTopBottomDashed", [
+  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "frame" }],
+  ["path", { d: "M3 9h2", key: "top-1" }],
+  ["path", { d: "M9 9h1", key: "top-2" }],
+  ["path", { d: "M14 9h1", key: "top-3" }],
+  ["path", { d: "M19 9h2", key: "top-4" }],
+  ["path", { d: "M3 15h2", key: "bottom-1" }],
+  ["path", { d: "M9 15h1", key: "bottom-2" }],
+  ["path", { d: "M14 15h1", key: "bottom-3" }],
+  ["path", { d: "M19 15h2", key: "bottom-4" }],
 ]);
 
 // TODO(lucide-pr-4546): replace with lucide-react ArrowUpDownToLine after upstream merge.

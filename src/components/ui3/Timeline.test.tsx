@@ -165,7 +165,7 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain('role="option" aria-selected="false" tabindex="-1"');
     expect(html).toContain('data-layer-icon-type="frame"');
     expect(html).toContain('data-auto-layout-mode="vertical"');
-    expect(html).toContain('data-icon-semantic="auto-layout-frame"');
+    expect(html).toContain('data-icon-semantic="auto-layout-vertical-center"');
     expect(html).not.toMatch(/grid/i);
   });
 

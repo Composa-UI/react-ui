@@ -40,6 +40,9 @@ describe("NumericInput presentation contract", () => {
     expect(html).toContain("data-composa-relative-mode-label");
     expect(html).toMatch(/data-composa-relative-mode-label[^>]*>Hug<\/span>/);
     expect(html).toContain("[&amp;_input]:text-transparent");
+    expect(html).not.toContain("group-hover:[&amp;_input]:text-c-text");
+    expect(html).not.toContain("group-hover:hidden");
+    expect(html).toContain("group-focus-within:[&amp;_input]:text-c-text");
     const trigger = html.match(/<button[^>]*aria-label="Width sizing mode: Hug"[^>]*>[\s\S]*?<\/button>/)?.[0];
     expect(trigger).toBeTruthy();
     expect(trigger).not.toContain("<span");

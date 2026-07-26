@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, type ReactElement } from "react";
 import { clsx } from "clsx";
-import { Image, Pipette, Blend, Contrast, Plus, Minus, RotateCcw, Disc, Diamond, Search, LayoutGrid, ChevronDown, X } from "lucide-react";
+import { Image, Pipette, Blend, Contrast, Plus, Minus, RotateCcw, Disc, Diamond, Search, LayoutGrid, ChevronDown, X, SquarePlay } from "lucide-react";
 import { ModalBody, ModalDivider } from "./Dialog";
 import { InspectorDialog } from "./InspectorDialog";
 import type { AnchoredInspectorOverlayAlign } from "./AnchoredInspectorOverlay";
@@ -14,7 +14,7 @@ import { Chit } from "./Chit";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type FillType = "solid" | "linear" | "radial" | "angular" | "diamond" | "image";
+export type FillType = "solid" | "linear" | "radial" | "angular" | "diamond" | "image" | "video";
 
 export interface GradientStop {
   id: string;
@@ -23,7 +23,7 @@ export interface GradientStop {
   opacity: number;  // 0–100
 }
 
-export interface ColorDialogCapabilities { styles?: boolean; variables?: boolean; libraries?: boolean; }
+export interface ColorDialogCapabilities { styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; }
 
 export const COLOR_DIALOG_WIDTH = 240;
 export const COLOR_DIALOG_INSPECTOR_SIDE_OFFSET = 24;
@@ -70,6 +70,10 @@ export interface ColorDialogProps {
   imageTint?: number;
   imageHighlights?: number;
   imageShadows?: number;
+  /** Label for the currently selected video fill source. */
+  videoSourceLabel?: string;
+  /** Host-backed media picker. When absent, Video is not offered. */
+  onChooseVideo?: () => void;
 }
 
 // ─── Library color data types ─────────────────────────────────────────────────
@@ -254,6 +258,7 @@ function FillTypeIcon({ type }: { type: FillType }) {
   if (type === "angular") return <RotateCcw size={12} strokeWidth={1.5} />;
   if (type === "diamond") return <Diamond  size={12} strokeWidth={1.5} />;
   if (type === "image")   return <Image    size={12} strokeWidth={1.5} />;
+  if (type === "video")   return <SquarePlay size={12} strokeWidth={1.5} />;
   return null;
 }
 
@@ -375,12 +380,15 @@ export function ColorDialog({
   imageTint = 0,
   imageHighlights = 0,
   imageShadows = 0,
+  videoSourceLabel,
+  onChooseVideo,
 }: ColorDialogProps) {
   const [fillType, setFillType] = useState<FillType>(fillTypeProp ?? "solid");
   const [activeTab, setActiveTab] = useState("custom");
   const stylesAvailable = capabilities?.styles ?? true;
   const variablesAvailable = capabilities?.variables ?? true;
   const librariesAvailable = capabilities?.libraries ?? true;
+  const videoAvailable = (capabilities?.videoFill ?? false) && !!onChooseVideo;
   useEffect(() => { if (!librariesAvailable && activeTab === "libraries") setActiveTab("custom"); }, [activeTab, librariesAvailable]);
   const [hue,     setHue]     = useState(hueProp);
   const [opacity, setOpacity] = useState(opacityProp);
@@ -514,6 +522,11 @@ export function ColorDialog({
               <Btn label="Image" active={fillType === "image"} onClick={() => handleFillType("image")}>
                 <FillTypeIcon type="image" />
               </Btn>
+              {videoAvailable && (
+                <Btn label="Video" active={fillType === "video"} onClick={() => handleFillType("video")}>
+                  <FillTypeIcon type="video" />
+                </Btn>
+              )}
             </div>
             <div className="flex items-center gap-[2px]">
               {isGradient && <Btn label="Swap gradient"><RotateCcw size={14} strokeWidth={1.5} /></Btn>}
@@ -705,6 +718,18 @@ export function ColorDialog({
               <AdjustRow label="Shadows"     value={imageShadows}     />
             </div>
           </>
+        )}
+
+        {fillType === "video" && videoAvailable && (
+          <div className="flex flex-col gap-[8px] p-[16px]">
+            <div className="flex h-[72px] items-center justify-center rounded-c-md bg-c-bg-secondary text-c-icon-secondary">
+              <SquarePlay size={24} strokeWidth={1.5} />
+            </div>
+            {videoSourceLabel && (
+              <span className={clsx(FONT, "truncate text-[11px] font-[450] text-c-text")}>{videoSourceLabel}</span>
+            )}
+            <Button variant="Secondary" label={videoSourceLabel ? "Replace video" : "Choose video"} onClick={onChooseVideo} />
+          </div>
         )}
           </ModalBody>
         </>
