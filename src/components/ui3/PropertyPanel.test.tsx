@@ -60,17 +60,69 @@ describe("Video Clip inspector semantics", () => {
 });
 
 describe("Project shell seams", () => {
-  it("keeps project video export disabled and names the existing preview controls", () => {
+  it("keeps project video export disabled and collapses Present to one truthful action", () => {
     const html = renderToStaticMarkup(<TooltipProvider><PropertyPanel mode="project" previewPlaying /></TooltipProvider>);
 
-    expect(html).toContain('aria-label="Pause preview"');
     expect(html).toContain('class="lucide lucide-pause"');
-    expect(html).toContain('aria-label="Preview options"');
+    expect(html).toContain(">Pause</span>");
+    expect(html).not.toContain('aria-label="Preview options"');
+    expect(html).not.toContain(">Share</span>");
     expect(html).toContain('tabindex="0" aria-label="Project video format unavailable: Video export coming soon"');
     expect(html).toContain('tabindex="0" aria-label="Export project unavailable: Video export coming soon"');
     expect(html).toContain('aria-label="Project video format"');
     expect(html).toMatch(/aria-label="Project video format"[^>]*disabled=""/);
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*><span>Export project<\/span>/);
+  });
+
+  it("reveals only host-backed Preview, Share, and presence affordances", () => {
+    const plain = renderToStaticMarkup(<TooltipProvider><PropertyPanel mode="project" onPreviewToggle={() => undefined} /></TooltipProvider>);
+    expect(plain).toContain(">Present</span>");
+    expect(plain).not.toContain('aria-label="Preview options"');
+    expect(plain).not.toContain('aria-label="Presence and spotlight"');
+
+    const enabled = renderToStaticMarkup(<TooltipProvider><PropertyPanel mode="project"
+      onPreviewToggle={() => undefined}
+      onPreviewMenu={() => undefined}
+      onShare={() => undefined}
+      presenceControlsEnabled
+    /></TooltipProvider>);
+    expect(enabled).toContain('aria-label="Preview options"');
+    expect(enabled).toContain('aria-label="Presence and spotlight"');
+    expect(enabled).toContain(">Share</span>");
+  });
+});
+
+describe("Inspector context projections", () => {
+  it("renders separate Position values by default and only offers separation from a host-backed combined row", () => {
+    const separate = renderToStaticMarkup(<PropertyPanel elementType="shape" />);
+    expect(separate).toContain('aria-label="Position X"');
+    expect(separate).toContain('aria-label="Position Y"');
+    expect(separate).not.toContain('aria-label="Separate dimensions"');
+
+    const inertCombined = renderToStaticMarkup(<PropertyPanel elementType="shape" positionPresentation="combined" />);
+    expect(inertCombined).not.toContain('aria-label="Separate dimensions"');
+
+    const authorableCombined = renderToStaticMarkup(<PropertyPanel elementType="shape"
+      positionPresentation="combined"
+      onPositionPresentationChange={() => undefined}
+    />);
+    expect(authorableCombined).toContain('aria-label="Separate dimensions"');
+  });
+
+  it("projects text resizing and the project-global canvas size beside the tabs", () => {
+    const html = renderToStaticMarkup(<PropertyPanel
+      elementType="text"
+      textSizingMode="auto-height"
+      availableTextSizingModes={["auto-width", "auto-height", "fixed-size"]}
+      onTextSizingModeChange={() => undefined}
+      projectWidth={1920}
+      projectHeight={1080}
+      onProjectCanvasSizeChange={() => undefined}
+      onCustomProjectCanvasSizeRequest={() => undefined}
+    />);
+    expect(html).toContain('aria-label="Text resizing: Auto height"');
+    expect(html).toContain('aria-label="Project canvas size: HD 16:9"');
+    expect(html).not.toContain("Composition canvas size");
   });
 });
 

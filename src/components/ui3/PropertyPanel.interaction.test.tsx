@@ -1,7 +1,9 @@
 import { act, create, type ReactTestInstance } from "react-test-renderer";
 import { describe, expect, it } from "vitest";
 import { AutoLayoutSettingsDialog } from "./AutoLayoutSettingsDialog";
+import { Button } from "./Button";
 import { NumericComboInput, NumericInput } from "./Input";
+import { PopoverMenu } from "./Menu";
 import { DimensionSizingFields, PropertyPanel, SizingComboField, type ElementSizingMode, type SizingComboFieldProps } from "./PropertyPanel";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -109,6 +111,74 @@ describe("Position alignment actions", () => {
       act(() => button.props.onClick());
     }
     expect(actions).toEqual(["left", "center-x", "right", "top", "center-y", "bottom"]);
+    act(() => renderer!.unmount());
+  });
+
+  it("changes only the UI-owned position presentation from the combined row", () => {
+    const presentations: string[] = [];
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel
+      elementType="shape"
+      positionPresentation="combined"
+      onPositionPresentationChange={value => presentations.push(value)}
+    />); });
+    const separate = renderer!.root.findAllByType("button").find(button => button.props["aria-label"] === "Separate dimensions")!;
+    act(() => separate.props.onClick());
+    expect(presentations).toEqual(["separate"]);
+    act(() => renderer!.unmount());
+  });
+});
+
+describe("Inspector capability controls", () => {
+  it("routes the controlled text resizing projection without changing dimensions locally", () => {
+    const modes: string[] = [];
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel
+      elementType="text"
+      textSizingMode="auto-height"
+      availableTextSizingModes={["auto-width", "fixed-size"]}
+      onTextSizingModeChange={mode => modes.push(mode)}
+    />); });
+    const popover = renderer!.root.findAllByType(PopoverMenu)
+      .find(item => item.props.trigger.props.ariaLabel?.startsWith("Text resizing:"))!;
+    const menu = popover.props.children(() => undefined);
+    const fixed = menu.props.children.find((row: { props?: { label?: string } }) => row?.props?.label === "Fixed size");
+    act(() => fixed.props.onClick());
+    expect(modes).toEqual(["fixed-size"]);
+    act(() => renderer!.unmount());
+  });
+
+  it("emits one atomic project canvas-size value and exposes the custom route", () => {
+    const sizes: unknown[] = [];
+    let customRequests = 0;
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel
+      elementType="shape"
+      projectWidth={1920}
+      projectHeight={1080}
+      onProjectCanvasSizeChange={size => sizes.push(size)}
+      onCustomProjectCanvasSizeRequest={() => { customRequests += 1; }}
+    />); });
+    const popover = renderer!.root.findAllByType(PopoverMenu)
+      .find(item => item.props.trigger.props.ariaLabel?.startsWith("Project canvas size:"))!;
+    const menu = popover.props.children(() => undefined);
+    const rows = menu.props.children.flat(Infinity);
+    const square = rows.find((row: { props?: { label?: string } }) => row?.props?.label === "Square (1080 × 1080)");
+    const custom = rows.find((row: { props?: { label?: string } }) => row?.props?.label === "Custom project canvas size…");
+    act(() => square.props.onClick());
+    act(() => custom.props.onClick());
+    expect(sizes).toEqual([{ width: 1080, height: 1080 }]);
+    expect(customRequests).toBe(1);
+    act(() => renderer!.unmount());
+  });
+
+  it("routes Share only when the host supplies an access surface", () => {
+    let shares = 0;
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel elementType="shape" onShare={() => { shares += 1; }} />); });
+    const share = renderer!.root.findAllByType(Button).find(button => button.props.label === "Share")!;
+    act(() => share.props.onClick());
+    expect(shares).toBe(1);
     act(() => renderer!.unmount());
   });
 });

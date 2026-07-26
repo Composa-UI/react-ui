@@ -106,6 +106,12 @@ export type ElementSizingAxis = "width" | "height";
 export type ElementSizingMode = "fixed" | "hug" | "fill";
 export interface ElementSizingChange { mode: ElementSizingMode; value?: number; }
 export type ElementSizingConstraint = "min" | "max";
+export type TextSizingMode = "auto-width" | "auto-height" | "fixed-size";
+export type PositionPresentation = "combined" | "separate";
+export interface ProjectCanvasSize {
+  width: number;
+  height: number;
+}
 
 type BlendMode = string;
 
@@ -403,6 +409,55 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
   </>;
 }
 
+const TEXT_SIZING_LABELS: Record<TextSizingMode, string> = {
+  "auto-width": "Auto width",
+  "auto-height": "Auto height",
+  "fixed-size": "Fixed size",
+};
+
+function TextSizingModeField({
+  value,
+  availableModes = ["auto-width", "auto-height", "fixed-size"],
+  disabled = false,
+  onChange,
+}: {
+  value?: TextSizingMode | "mixed";
+  availableModes?: readonly TextSizingMode[];
+  disabled?: boolean;
+  onChange?: (mode: TextSizingMode) => void;
+}) {
+  const renderedLabel = value === "mixed" ? "Mixed" : value ? TEXT_SIZING_LABELS[value] : "Text resizing";
+  return (
+    <PanelFieldRow
+      label="Text resizing"
+      reserveRightSlot={false}
+      left={
+        <PopoverMenu
+          directTrigger
+          trigger={<Dropdown
+            ariaLabel={`Text resizing: ${renderedLabel}`}
+            value={renderedLabel}
+            fullWidth
+            disabled={disabled || !onChange}
+          />}
+        >
+          {close => <Menu minWidth={190}>
+            {availableModes.map(mode => (
+              <MenuRow
+                key={mode}
+                type="checkmark"
+                label={TEXT_SIZING_LABELS[mode]}
+                checked={value === mode}
+                onClick={() => { onChange?.(mode); close(); }}
+              />
+            ))}
+          </Menu>}
+        </PopoverMenu>
+      }
+    />
+  );
+}
+
 // ─── Inspector keyframe affordance ────────────────────────────────────────────
 // Per-property keyframe diamond shown in the Design tab, matching the timeline's
 // own keyframe stepper (Timeline.tsx). Present ONLY when the host supplies a
@@ -439,6 +494,8 @@ interface PositionSectionProps {
   scaleKeyframe?: InspectorKeyframeControl;
   rotationKeyframe?: InspectorKeyframeControl;
   scaleApplicable?: boolean;
+  positionPresentation?: PositionPresentation;
+  onPositionPresentationChange?: (presentation: PositionPresentation) => void;
 }
 
 function PositionSection({
@@ -448,6 +505,7 @@ function PositionSection({
   positioning, positioningApplicable, onPositioningChange, onAlignmentAction,
   multiSelect = false,
   positionKeyframe, scaleKeyframe, rotationKeyframe, scaleApplicable = false,
+  positionPresentation = "separate", onPositionPresentationChange,
 }: PositionSectionProps) {
   const hAlignBtns: IconBtn[] = [
     { icon: <AlignLeftIcon data-icon-semantic="align-left" size={S} strokeWidth={1.5} />, label: "Align left", onClick: () => onAlignmentAction?.("left") },
@@ -491,17 +549,35 @@ function PositionSection({
           ? <PanelActionBtn icon={<MoreHorizontal size={16} strokeWidth={1.5} />} label="More alignment" />
           : undefined}
       />
-      {/* Position — combined [X | Y | ◇] field (Figma Motion position row). */}
-      <PanelFieldRow
-        label="Position"
-        left={
-          <NumericPairInput
-            a={{ ariaLabel: "Position X", iconLead: <span className={clsx(FONT, "text-[11px] font-normal")}>X</span>, value: x, onChange: onXChange, defaultValue: 0 }}
-            b={{ ariaLabel: "Position Y", iconLead: <span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>, value: y, onChange: onYChange, defaultValue: 0 }}
-            keyframe={positionKeyframe}
-          />
-        }
-      />
+      {/* Position topology is presentation-only. A combined row never implies
+          independent X/Y timing tracks; a separate row still owns one position
+          keyframe through the Y field's trailing diamond. */}
+      {positionPresentation === "combined" ? (
+        <PanelFieldRow
+          label="Position"
+          left={
+            <NumericPairInput
+              a={{ ariaLabel: "Position X", iconLead: <span className={clsx(FONT, "text-[11px] font-normal")}>X</span>, value: x, onChange: onXChange, defaultValue: 0 }}
+              b={{ ariaLabel: "Position Y", iconLead: <span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>, value: y, onChange: onYChange, defaultValue: 0 }}
+              keyframe={positionKeyframe}
+            />
+          }
+          rightAction={onPositionPresentationChange
+            ? <PanelActionBtn
+                icon={<Unlink size={16} strokeWidth={1.5} />}
+                label="Separate dimensions"
+                tooltip="Separate dimensions"
+                onClick={() => onPositionPresentationChange("separate")}
+              />
+            : undefined}
+        />
+      ) : (
+        <PanelFieldRow
+          label="Position"
+          left={<NumericInput ariaLabel="Position X" iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>X</span>} value={x} onChange={onXChange} defaultValue={0} />}
+          right={<NumericInput ariaLabel="Position Y" iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>} value={y} onChange={onYChange} defaultValue={0} keyframe={positionKeyframe} />}
+        />
+      )}
 
       {/* Scale — combined [X | Y | ◇] field + aspect-lock (Figma Motion scale row).
           % of the object's base size. Present when the host marks it applicable. */}
@@ -2017,6 +2093,14 @@ export interface PropertyPanelProps {
   onSizingChange?: (axis: ElementSizingAxis, change: ElementSizingChange) => void;
   onSizingConstraintChange?: (axis: ElementSizingAxis, constraint: ElementSizingConstraint, value: number | undefined) => void;
   onApplySizingVariable?: (axis: ElementSizingAxis) => void;
+  /** Text resizing is a controlled projection over width/height sizing modes. */
+  textSizingMode?: TextSizingMode | "mixed";
+  availableTextSizingModes?: readonly TextSizingMode[];
+  textSizingModeDisabled?: boolean;
+  onTextSizingModeChange?: (mode: TextSizingMode) => void;
+  /** Presentation-only topology for the canonical 2D position value. */
+  positionPresentation?: PositionPresentation;
+  onPositionPresentationChange?: (presentation: PositionPresentation) => void;
   /** Opens the one shared Auto Layout Settings surface from the Flow + Gap row. */
   onAutoLayoutSettingsRequest?: () => void;
   /** Host-owned equal-spacing projection. It renders in the existing Layout
@@ -2051,6 +2135,10 @@ export interface PropertyPanelProps {
   projectPlayhead?: number;
   onProjectWidthChange?: (value: number) => void;
   onProjectHeightChange?: (value: number) => void;
+  /** Atomic preset seam for the project-global canvas size. */
+  onProjectCanvasSizeChange?: (size: ProjectCanvasSize) => void;
+  /** Opens the host-owned custom project-size route. */
+  onCustomProjectCanvasSizeRequest?: () => void;
   onProjectFrameRateChange?: (value: ProjectFrameRate) => void;
   onProjectDurationChange?: (value: number) => void;
   onProjectPlayheadChange?: (value: number) => void;
@@ -2058,6 +2146,10 @@ export interface PropertyPanelProps {
   previewPlaying?: boolean;
   onPreviewToggle?: () => void;
   onPreviewMenu?: () => void;
+  /** Access/invite action. Omit until a truthful share surface exists. */
+  onShare?: () => void;
+  /** Live presence/spotlight capability, independent of durable sharing. */
+  presenceControlsEnabled?: boolean;
   /** Multiplayer account avatar identity for the top bar. Defaults to the
    *  historical hardcoded initial "S" / color "purple" when omitted. */
   accountInitial?: string;
@@ -2120,30 +2212,151 @@ export interface PropertyPanelProps {
   className?: string;
 }
 
+const PROJECT_CANVAS_PRESETS: ReadonlyArray<ProjectCanvasSize & { label: string }> = [
+  { label: "HD 16:9", width: 1920, height: 1080 },
+  { label: "HD 720p", width: 1280, height: 720 },
+  { label: "Square", width: 1080, height: 1080 },
+  { label: "Portrait 9:16", width: 1080, height: 1920 },
+];
+
+function ProjectCanvasSizeControl({
+  width,
+  height,
+  onChange,
+  onCustomRequest,
+}: {
+  width: number;
+  height: number;
+  onChange?: (size: ProjectCanvasSize) => void;
+  onCustomRequest?: () => void;
+}) {
+  const currentPreset = PROJECT_CANVAS_PRESETS.find(preset => preset.width === width && preset.height === height);
+  const currentLabel = currentPreset?.label ?? `${formatNumericDisplay(width)} × ${formatNumericDisplay(height)}`;
+  return (
+    <PopoverMenu
+      align="right"
+      directTrigger
+      trigger={<Dropdown
+        ariaLabel={`Project canvas size: ${currentLabel}`}
+        value={currentLabel}
+        className="!w-[100px]"
+        disabled={!onChange && !onCustomRequest}
+      />}
+    >
+      {close => <Menu minWidth={190}>
+        {!currentPreset && <MenuRow type="checkmark" label={`Current (${currentLabel})`} checked disabled />}
+        {PROJECT_CANVAS_PRESETS.map(preset => (
+          <MenuRow
+            key={`${preset.width}x${preset.height}`}
+            type="checkmark"
+            label={`${preset.label} (${preset.width} × ${preset.height})`}
+            checked={currentPreset === preset}
+            disabled={!onChange}
+            onClick={onChange ? () => { onChange({ width: preset.width, height: preset.height }); close(); } : undefined}
+          />
+        ))}
+        <MenuRow type="divider" />
+        <MenuRow type="simple" label="Custom project canvas size…" disabled={!onCustomRequest} onClick={onCustomRequest ? () => { onCustomRequest(); close(); } : undefined} />
+      </Menu>}
+    </PopoverMenu>
+  );
+}
+
+function InspectorTabs({
+  value,
+  onChange,
+  panelPrefix,
+  projectWidth,
+  projectHeight,
+  onProjectCanvasSizeChange,
+  onCustomProjectCanvasSizeRequest,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  panelPrefix: "slide" | "element";
+  projectWidth: number;
+  projectHeight: number;
+  onProjectCanvasSizeChange?: (size: ProjectCanvasSize) => void;
+  onCustomProjectCanvasSizeRequest?: () => void;
+}) {
+  return (
+    <div className="flex items-start gap-[4px]">
+      <Tabs
+        value={value}
+        onChange={onChange}
+        className="min-w-0 flex-1"
+        tabs={[
+          { value: "design", label: "Design", panelId: `${panelPrefix}-design-panel` },
+          { value: "animate", label: "Animate", panelId: `${panelPrefix}-animate-panel` },
+        ]}
+      />
+      <ProjectCanvasSizeControl
+        width={projectWidth}
+        height={projectHeight}
+        onChange={onProjectCanvasSizeChange}
+        onCustomRequest={onCustomProjectCanvasSizeRequest}
+      />
+    </div>
+  );
+}
+
 // ─── Multiplayer bar ──────────────────────────────────────────────────────────
-// Sits above the tab strip: avatar split-button (leading), then a play/present
-// split-button + Share button trailing.
-function MultiplayerBar({ previewPlaying = false, onPreviewToggle, onPreviewMenu, accountInitial = "S", accountColor = "purple", accountPhotoUrl }: { previewPlaying?: boolean; onPreviewToggle?: () => void; onPreviewMenu?: () => void; accountInitial?: string; accountColor?: AvatarColor; accountPhotoUrl?: string }) {
+// Sits above the tab strip. Durable Share and live presence are deliberately
+// separate capabilities: neither renders as inert chrome.
+function MultiplayerBar({
+  previewPlaying = false,
+  onPreviewToggle,
+  onPreviewMenu,
+  onShare,
+  presenceControlsEnabled = false,
+  accountInitial = "S",
+  accountColor = "purple",
+  accountPhotoUrl,
+}: {
+  previewPlaying?: boolean;
+  onPreviewToggle?: () => void;
+  onPreviewMenu?: () => void;
+  onShare?: () => void;
+  presenceControlsEnabled?: boolean;
+  accountInitial?: string;
+  accountColor?: AvatarColor;
+  accountPhotoUrl?: string;
+}) {
+  const accountAvatar = <Avatar initial={accountInitial} src={accountPhotoUrl} size="default" color={accountColor} />;
   return (
     <div className="flex items-center gap-[8px] px-[8px] py-[6px]">
-      <SplitButton
-        size="large"
-        icon={<Avatar initial={accountInitial} src={accountPhotoUrl} size="default" color={accountColor} />}
-        actionLabel="Account"
-        menuLabel="Account menu"
-        onIconClick={() => {}}
-        onChevronClick={() => {}}
-      />
+      {presenceControlsEnabled ? (
+        <SplitButton
+          size="large"
+          icon={accountAvatar}
+          actionLabel="Account"
+          menuLabel="Presence and spotlight"
+        />
+      ) : (
+        <div aria-label="Account" className="h-[32px] flex items-center px-[4px]">{accountAvatar}</div>
+      )}
       <div className="flex-1" />
-      <SplitButton
-        size="large"
-        icon={previewPlaying ? <Pause size={18} strokeWidth={1.5} /> : <Play size={18} strokeWidth={1.5} />}
-        actionLabel={previewPlaying ? "Pause preview" : "Play preview"}
-        menuLabel="Preview options"
-        onIconClick={onPreviewToggle}
-        onChevronClick={onPreviewMenu}
-      />
-      <Button label="Share" variant="Primary" size="large" />
+      {onPreviewMenu ? (
+        <SplitButton
+          size="large"
+          icon={previewPlaying ? <Pause size={18} strokeWidth={1.5} /> : <Play size={18} strokeWidth={1.5} />}
+          actionLabel={previewPlaying ? "Pause presentation" : "Present"}
+          menuLabel="Preview options"
+          onIconClick={onPreviewToggle}
+          onChevronClick={onPreviewMenu}
+        />
+      ) : (
+        <Button
+          label={previewPlaying ? "Pause" : "Present"}
+          variant="Ghost"
+          size="large"
+          iconLead="left"
+          icon={previewPlaying ? <Pause size={18} strokeWidth={1.5} /> : <Play size={18} strokeWidth={1.5} />}
+          disabled={!onPreviewToggle}
+          onClick={onPreviewToggle}
+        />
+      )}
+      {onShare && <Button label="Share" variant="Primary" size="large" onClick={onShare} />}
     </div>
   );
 }
@@ -2167,7 +2380,10 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onOpacityChange,
   blendMode = "Pass through",
   cornerRadius = 0, onBlendModeChange, onCornerRadiusChange,
-  layout, onLayoutChange, onSizingChange, onSizingConstraintChange, onApplySizingVariable, onAutoLayoutSettingsRequest, typography, onTypographyChange,
+  layout, onLayoutChange, onSizingChange, onSizingConstraintChange, onApplySizingVariable,
+  textSizingMode, availableTextSizingModes, textSizingModeDisabled = false, onTextSizingModeChange,
+  positionPresentation = "separate", onPositionPresentationChange,
+  onAutoLayoutSettingsRequest, typography, onTypographyChange,
   fills, onAddFill, onUpdateFill, onToggleFill, onReorderFill, onRemoveFill,
   strokes, strokeReadOnly = false, onAddStroke, onUpdateStroke, onToggleStroke, onReorderStroke, onRemoveStroke,
   effects, onAddEffect, onUpdateEffect, onToggleEffect, onReorderEffect, onRemoveEffect,
@@ -2181,12 +2397,16 @@ export function PropertyPanel(props: PropertyPanelProps) {
   projectPlayhead = 0,
   onProjectWidthChange,
   onProjectHeightChange,
+  onProjectCanvasSizeChange,
+  onCustomProjectCanvasSizeRequest,
   onProjectFrameRateChange,
   onProjectDurationChange,
   onProjectPlayheadChange,
   previewPlaying = false,
   onPreviewToggle,
   onPreviewMenu,
+  onShare,
+  presenceControlsEnabled = false,
   accountInitial,
   accountColor,
   accountPhotoUrl,
@@ -2259,6 +2479,13 @@ export function PropertyPanel(props: PropertyPanelProps) {
     if (props.activeTab === undefined) setUncontrolledTab(value);
     if (value !== "prototype") props.onActiveTabChange?.(value);
   };
+  const changeProjectCanvasSize = onProjectCanvasSizeChange
+    ?? ((onProjectWidthChange || onProjectHeightChange)
+      ? ({ width, height }: ProjectCanvasSize) => {
+          onProjectWidthChange?.(width);
+          onProjectHeightChange?.(height);
+        }
+      : undefined);
   const [demoSlideName, setDemoSlideName] = useState(slideName);
   const [demoSkipped, setDemoSkipped] = useState(slideSkipped);
   const [demoTransitionType, setDemoTransitionType] = useState<SlideTransitionType>(slideTransitionType ?? "none");
@@ -2340,7 +2567,16 @@ export function PropertyPanel(props: PropertyPanelProps) {
         border-l against the canvas (Composa#250, analogous to #33). */}
     <div className={clsx("relative w-[240px] shrink-0 h-full flex flex-col bg-c-bg border-l border-c-border overflow-hidden", className)}>
       {/* Multiplayer tools — above the tabs; shared across all modes */}
-      <MultiplayerBar previewPlaying={previewPlaying} onPreviewToggle={onPreviewToggle} onPreviewMenu={onPreviewMenu} accountInitial={accountInitial} accountColor={accountColor} accountPhotoUrl={accountPhotoUrl} />
+      <MultiplayerBar
+        previewPlaying={previewPlaying}
+        onPreviewToggle={onPreviewToggle}
+        onPreviewMenu={onPreviewMenu}
+        onShare={onShare}
+        presenceControlsEnabled={presenceControlsEnabled}
+        accountInitial={accountInitial}
+        accountColor={accountColor}
+        accountPhotoUrl={accountPhotoUrl}
+      />
 
       {/* ── PROJECT mode (inspector-project-mode.md) ─────────────────────────
           Active when nothing is selected. Static "Project" header, no tabs. */}
@@ -2367,13 +2603,14 @@ export function PropertyPanel(props: PropertyPanelProps) {
       {mode === "slide" && (
         <>
           <div className="border-b border-c-border px-[8px] pt-[6px] pb-[6px]">
-            <Tabs
+            <InspectorTabs
               value={tab}
               onChange={setTab}
-              tabs={[
-                { value: "design", label: "Design", panelId: "slide-design-panel" },
-                { value: "animate", label: "Animate", panelId: "slide-animate-panel" },
-              ]}
+              panelPrefix="slide"
+              projectWidth={projectWidth}
+              projectHeight={projectHeight}
+              onProjectCanvasSizeChange={changeProjectCanvasSize}
+              onCustomProjectCanvasSizeRequest={onCustomProjectCanvasSizeRequest}
             />
           </div>
 
@@ -2476,13 +2713,14 @@ export function PropertyPanel(props: PropertyPanelProps) {
       <>
       {/* Tab strip */}
       <div className="border-b border-c-border px-[8px] pt-[6px] pb-[6px]">
-        <Tabs
+        <InspectorTabs
           value={tab}
           onChange={setTab}
-          tabs={[
-            { value: "design",  label: "Design", panelId: "element-design-panel" },
-            { value: "animate", label: "Animate", panelId: "element-animate-panel" },
-          ]}
+          panelPrefix="element"
+          projectWidth={projectWidth}
+          projectHeight={projectHeight}
+          onProjectCanvasSizeChange={changeProjectCanvasSize}
+          onCustomProjectCanvasSizeRequest={onCustomProjectCanvasSizeRequest}
         />
       </div>
 
@@ -2519,6 +2757,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
             positionKeyframe={keyframeControls?.position}
             scaleKeyframe={keyframeControls?.scale}
             rotationKeyframe={keyframeControls?.rotation}
+            positionPresentation={positionPresentation}
+            onPositionPresentationChange={onPositionPresentationChange}
           />
 
           {/* Layout — polymorphic */}
@@ -2541,6 +2781,12 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onAutoLayoutSettingsRequest={onAutoLayoutSettingsRequest} />}
           {(isShape || isText) && (
             <PanelSection title="Layout">
+              {isText && <TextSizingModeField
+                value={textSizingMode}
+                availableModes={availableTextSizingModes}
+                disabled={textSizingModeDisabled}
+                onChange={onTextSizingModeChange}
+              />}
               <DimensionSizingFields {...sizingContract} width={width} height={height} dimensionsKeyframe={keyframeControls?.dimensions} />
               <SpatialSelectionLayoutFields value={props.spatialSelectionLayout} />
               {/* Corner radius moved to Appearance */}
