@@ -29,6 +29,7 @@ export interface AnchoredInspectorOverlayProps {
   /** Modal Popover mode traps focus and returns it to the captured trigger. */
   trapFocus?: boolean;
   blockOutsideDismiss?: boolean;
+  onInteractOutside?: () => void;
   triggerClassName?: string;
   className?: string;
   /** Applies a canonical Composa elevation token without relying on generated utility CSS. */
@@ -57,6 +58,7 @@ export function AnchoredInspectorOverlay({
   collisionPadding = ANCHORED_INSPECTOR_OVERLAY_COLLISION_PADDING,
   trapFocus = true,
   blockOutsideDismiss = false,
+  onInteractOutside,
   triggerClassName,
   className,
   elevation,
@@ -140,7 +142,10 @@ export function AnchoredInspectorOverlay({
           collisionPadding={collisionPadding}
           avoidCollisions
           sticky="always"
-          onInteractOutside={event => { if (blockOutsideDismiss) event.preventDefault(); }}
+          onInteractOutside={event => {
+            onInteractOutside?.();
+            if (blockOutsideDismiss) event.preventDefault();
+          }}
           onEscapeKeyDown={event => {
             event.preventDefault();
             openingGesture.current = false;

@@ -1,7 +1,7 @@
 import { act, create, type ReactTestInstance } from "react-test-renderer";
 import { describe, expect, it } from "vitest";
 import { AutoLayoutSettingsDialog } from "./AutoLayoutSettingsDialog";
-import { NumericComboInput } from "./Input";
+import { NumericComboInput, NumericInput } from "./Input";
 import { DimensionSizingFields, PropertyPanel, SizingComboField, type ElementSizingMode, type SizingComboFieldProps } from "./PropertyPanel";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -94,6 +94,46 @@ describe("DimensionSizingFields interactions", () => {
 });
 
 describe("Auto-layout settings interactions", () => {
+  it("expands controlled padding to four labelled physical sides when any side differs or is mixed", () => {
+    const patches: unknown[] = [];
+    const layout = {
+      mode: "horizontal" as const,
+      gap: 8,
+      padding: { top: 8, right: 8, bottom: 8, left: 8 },
+      align: "mc",
+      widthMode: "fixed" as const,
+      heightMode: "hug" as const,
+      clipsContent: false,
+    };
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel elementType="frame-auto" layout={layout} onLayoutChange={patch => patches.push(patch)} />); });
+
+    const labels = () => renderer!.root.findAllByType(NumericInput).map(input => input.props.ariaLabel).filter(Boolean);
+    expect(labels()).toContain("Vertical padding");
+    expect(labels()).toContain("Horizontal padding");
+    expect(labels()).not.toContain("Top padding");
+
+    act(() => { renderer!.update(<PropertyPanel
+      elementType="frame-auto"
+      layout={{ ...layout, padding: { ...layout.padding, left: 24 } }}
+      onLayoutChange={patch => patches.push(patch)}
+    />); });
+    expect(labels()).toEqual(expect.arrayContaining(["Top padding", "Right padding", "Bottom padding", "Left padding"]));
+    const left = renderer!.root.findAllByType(NumericInput).find(input => input.props.ariaLabel === "Left padding")!;
+    act(() => left.props.onChange(32));
+    expect(patches[patches.length - 1]).toEqual({ padding: { top: 8, right: 8, bottom: 8, left: 32 } });
+
+    act(() => { renderer!.update(<PropertyPanel
+      elementType="frame-auto"
+      layout={{ ...layout, paddingLeftMixed: true, paddingDisabled: true }}
+      onLayoutChange={patch => patches.push(patch)}
+    />); });
+    const mixedLeft = renderer!.root.findAllByType(NumericInput).find(input => input.props.ariaLabel === "Left padding")!;
+    expect(mixedLeft.props.mixed).toBe(true);
+    expect(mixedLeft.props.disabled).toBe(true);
+    act(() => renderer!.unmount());
+  });
+
   it("opens one anchored dialog from the section trigger and routes controlled patches", () => {
     let requests = 0;
     const patches: unknown[] = [];

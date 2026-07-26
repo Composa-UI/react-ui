@@ -90,6 +90,8 @@ export interface ElementLayoutSettings {
   widthModeMixed?: boolean;
   heightModeMixed?: boolean;
   minWidthMixed?: boolean; minHeightMixed?: boolean; maxWidthMixed?: boolean; maxHeightMixed?: boolean;
+  paddingTopMixed?: boolean; paddingRightMixed?: boolean; paddingBottomMixed?: boolean; paddingLeftMixed?: boolean;
+  paddingDisabled?: boolean;
   textBaseline?: boolean;
   strokeSizing?: "excluded" | "included";
   canvasStacking?: "first-on-top" | "last-on-top";
@@ -574,6 +576,9 @@ interface LayoutAutoProps {
   gap?: number | "auto";
   paddingTop?: number; paddingRight?: number;
   paddingBottom?: number; paddingLeft?: number;
+  paddingTopMixed?: boolean; paddingRightMixed?: boolean;
+  paddingBottomMixed?: boolean; paddingLeftMixed?: boolean;
+  paddingDisabled?: boolean;
   alignValue?: string;
   clipContent?: boolean;
   textBaseline?: boolean;
@@ -606,6 +611,8 @@ function LayoutAutoSection({
   widthMode = "hug", heightMode = "fill",
   gap: gapProp,
   paddingTop = 16, paddingRight = 0, paddingBottom = 8, paddingLeft = 0,
+  paddingTopMixed = false, paddingRightMixed = false, paddingBottomMixed = false, paddingLeftMixed = false,
+  paddingDisabled = false,
   alignValue = "mc",
   clipContent = false,
   textBaseline = false,
@@ -629,6 +636,9 @@ function LayoutAutoSection({
   const renderedGap = gapControlled ? gapProp : internalGap;
   const [lastFixedGap, setLastFixedGap] = useState(typeof renderedGap === "number" ? renderedGap : 0);
   const [indivPadding, setIndivPadding] = useState(false);
+  const paddingSidesDiffer = paddingTop !== paddingRight || paddingTop !== paddingBottom || paddingTop !== paddingLeft;
+  const paddingHasMixedSide = paddingTopMixed || paddingRightMixed || paddingBottomMixed || paddingLeftMixed;
+  const expandedPadding = indivPadding || paddingSidesDiffer || paddingHasMixedSide;
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
 
   // Freeform is the plain-frame state, not an active auto-layout direction.
@@ -752,36 +762,38 @@ function LayoutAutoSection({
         <div className="flex items-center justify-between mb-[3px]">
           <span className={subLabel}>Padding</span>
         </div>
-        {indivPadding ? (
+        {expandedPadding ? (
           // Same reserved icon column as the combined state below (shrink-0, right
           // edge) — the field grid is flex-1 so it shrinks to leave that room,
           // instead of the icon getting bumped to its own row underneath. Top-
           // aligned (not centered) since the field block is two rows tall here.
           <div className="flex items-start gap-[4px]">
             <div className="grid grid-cols-2 gap-[4px] flex-1 min-w-0">
-              <NumericInput iconLead={<span className={FONT}>↑</span>} value={controlled ? paddingTop : undefined} defaultValue={paddingTop} onChange={top => onPaddingChange?.({ top, right: paddingRight, bottom: paddingBottom, left: paddingLeft })} min={0} />
-              <NumericInput iconLead={<span className={FONT}>→</span>} value={controlled ? paddingRight : undefined} defaultValue={paddingRight} onChange={right => onPaddingChange?.({ top: paddingTop, right, bottom: paddingBottom, left: paddingLeft })} min={0} />
-              <NumericInput iconLead={<span className={FONT}>↓</span>} value={controlled ? paddingBottom : undefined} defaultValue={paddingBottom} onChange={bottom => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom, left: paddingLeft })} min={0} />
-              <NumericInput iconLead={<span className={FONT}>←</span>} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} onChange={left => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom: paddingBottom, left })} min={0} />
+              <NumericInput ariaLabel="Top padding" iconLead={<span className={FONT}>↑</span>} value={controlled ? paddingTop : undefined} defaultValue={paddingTop} mixed={paddingTopMixed} disabled={paddingDisabled} onChange={top => onPaddingChange?.({ top, right: paddingRight, bottom: paddingBottom, left: paddingLeft })} min={0} />
+              <NumericInput ariaLabel="Right padding" iconLead={<span className={FONT}>→</span>} value={controlled ? paddingRight : undefined} defaultValue={paddingRight} mixed={paddingRightMixed} disabled={paddingDisabled} onChange={right => onPaddingChange?.({ top: paddingTop, right, bottom: paddingBottom, left: paddingLeft })} min={0} />
+              <NumericInput ariaLabel="Bottom padding" iconLead={<span className={FONT}>↓</span>} value={controlled ? paddingBottom : undefined} defaultValue={paddingBottom} mixed={paddingBottomMixed} disabled={paddingDisabled} onChange={bottom => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom, left: paddingLeft })} min={0} />
+              <NumericInput ariaLabel="Left padding" iconLead={<span className={FONT}>←</span>} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} mixed={paddingLeftMixed} disabled={paddingDisabled} onChange={left => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom: paddingBottom, left })} min={0} />
             </div>
             <PanelActionBtn
               icon={<Maximize size={16} strokeWidth={1.5} />}
               label="Combine padding"
               active
+              disabled={paddingDisabled || paddingSidesDiffer || paddingHasMixedSide}
               onClick={() => setIndivPadding(false)}
             />
           </div>
         ) : (
           <div className="flex items-center gap-[4px]">
             <div className="flex-1 min-w-0">
-              <NumericInput iconLead={<span className={FONT}>↕</span>} value={controlled ? paddingTop : undefined} defaultValue={paddingTop} onChange={vertical => onPaddingChange?.({ top: vertical, right: paddingRight, bottom: vertical, left: paddingLeft })} min={0} />
+              <NumericInput ariaLabel="Vertical padding" iconLead={<span className={FONT}>↕</span>} value={controlled ? paddingTop : undefined} defaultValue={paddingTop} disabled={paddingDisabled} onChange={vertical => onPaddingChange?.({ top: vertical, right: paddingRight, bottom: vertical, left: paddingLeft })} min={0} />
             </div>
             <div className="flex-1 min-w-0">
-              <NumericInput iconLead={<span className={FONT}>↔</span>} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} onChange={horizontal => onPaddingChange?.({ top: paddingTop, right: horizontal, bottom: paddingBottom, left: horizontal })} min={0} />
+              <NumericInput ariaLabel="Horizontal padding" iconLead={<span className={FONT}>↔</span>} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} disabled={paddingDisabled} onChange={horizontal => onPaddingChange?.({ top: paddingTop, right: horizontal, bottom: paddingBottom, left: horizontal })} min={0} />
             </div>
             <PanelActionBtn
               icon={<Maximize size={16} strokeWidth={1.5} />}
               label="Independent padding"
+              disabled={paddingDisabled}
               onClick={() => setIndivPadding(true)}
             />
           </div>
@@ -2457,6 +2469,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
           {(isAutoLayout)  && <LayoutAutoSection width={width} height={height}
             flowMode={layout?.mode}
             gap={layout?.gap} paddingTop={layout?.padding.top} paddingRight={layout?.padding.right} paddingBottom={layout?.padding.bottom} paddingLeft={layout?.padding.left}
+            paddingTopMixed={layout?.paddingTopMixed} paddingRightMixed={layout?.paddingRightMixed}
+            paddingBottomMixed={layout?.paddingBottomMixed} paddingLeftMixed={layout?.paddingLeftMixed}
+            paddingDisabled={layout?.paddingDisabled}
             alignValue={layout?.align} clipContent={layout?.clipsContent}
             textBaseline={layout?.textBaseline} strokeSizing={layout?.strokeSizing} canvasStacking={layout?.canvasStacking}
             textBaselineMixed={layout?.textBaselineMixed} strokeSizingMixed={layout?.strokeSizingMixed} canvasStackingMixed={layout?.canvasStackingMixed}
