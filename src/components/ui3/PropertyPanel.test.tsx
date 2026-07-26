@@ -96,7 +96,7 @@ describe("Auto-layout gap control", () => {
     expect(html).toContain('data-icon-semantic="gap-horizontal"');
     expect(html).toContain('aria-label="Gap sizing mode: Fixed"');
     expect(html).toContain('aria-haspopup="menu"');
-    expect(html).toContain('class="lucide lucide-move-horizontal"');
+    expect(html).toContain("lucide-proposed-gap-horizontal");
     expect(html).not.toContain('aria-label="Gap settings"');
     const vertical = html.indexOf('aria-label="Vertical"');
     const horizontal = html.indexOf('aria-label="Horizontal"');
@@ -104,8 +104,11 @@ describe("Auto-layout gap control", () => {
     expect(vertical).toBeGreaterThan(-1);
     expect(vertical).toBeLessThan(horizontal);
     expect(horizontal).toBeLessThan(wrap);
-    expect(html).not.toContain('aria-label="Freeform"');
+    const freeform = html.indexOf('aria-label="Freeform"');
+    expect(freeform).toBeGreaterThan(-1);
+    expect(freeform).toBeLessThan(vertical);
     expect(html.match(/aria-label="Auto-layout settings"/g)).toHaveLength(1);
+    expect(html).toContain('data-icon-semantic="layout-freeform"');
   });
 
   it("renders menu-backed W/H modes and the shared min/max grid", () => {
@@ -133,7 +136,7 @@ describe("Auto-layout gap control", () => {
 
     expect(html).toContain('data-composa-numeric-combo="auto"');
     expect(html).toContain('aria-label="Gap sizing mode: Auto"');
-    expect(html).toContain('class="lucide lucide-move-vertical"');
+    expect(html).toContain("lucide-proposed-gap-vertical");
     expect(html).toContain('data-icon-semantic="gap-vertical"');
     expect(html).toMatch(/data-composa-numeric-combo="auto"[\s\S]*?>Auto<\/span>/);
   });
@@ -172,7 +175,72 @@ describe("Smart-selection spacing placement", () => {
     expect(html).not.toContain(">Selection layout</span>");
     expect(html.indexOf(">Dimensions</span>")).toBeLessThan(html.indexOf(">Spacing</span>"));
     expect(html).toContain('aria-label="Horizontal spacing gap"');
-    expect(html).toContain('class="lucide lucide-move-horizontal"');
+    expect(html).toContain("lucide-proposed-gap-horizontal");
     expect(html).toContain(">Add auto layout</span>");
+  });
+});
+
+describe("Inspector fidelity semantics", () => {
+  it("renders stateless axis-correct alignment actions and the exact positioning and rotation semantics", () => {
+    const html = renderToStaticMarkup(<PropertyPanel
+      elementType="text"
+      layout={{
+        mode: "none",
+        gap: 0,
+        padding: { top: 0, right: 0, bottom: 0, left: 0 },
+        align: "mc",
+        widthMode: "fixed",
+        heightMode: "fixed",
+        clipsContent: false,
+        positioning: "auto",
+        positioningApplicable: true,
+      }}
+      onLayoutChange={() => undefined}
+    />);
+
+    for (const semantic of ["align-left", "align-center-x", "align-right", "align-top", "align-center-y", "align-bottom"]) {
+      expect(html).toContain(`data-icon-semantic="${semantic}"`);
+    }
+    const alignment = html.match(/>Alignment<\/span>[\s\S]*?>Position<\/span>/)?.[0] ?? "";
+    expect(alignment).not.toContain("bg-c-bg-selected");
+    expect(html).toContain('aria-label="Ignore auto layout"');
+    expect(html).toContain('data-icon-semantic="absolute-position"');
+    expect(html).toContain('data-icon-semantic="rotation"');
+    expect(html).toContain("lucide-flip-horizontal-2");
+    expect(html).toContain("lucide-flip-vertical-2");
+  });
+
+  it("uses outlined blend, SquarePlay video, and semantic auto-layout spacing icons", () => {
+    const element = renderToStaticMarkup(<PropertyPanel elementType="shape" blendMode="Normal" />);
+    const blend = element.match(/<svg[^>]*data-icon-semantic="blend-mode"[^>]*>/)?.[0] ?? "";
+    expect(blend).toContain('fill="none"');
+    expect(element).not.toContain("BlendDroplet");
+
+    const slide = renderToStaticMarkup(<PropertyPanel mode="slide" slideBackgroundType="video" />);
+    expect(slide).toContain('data-icon-semantic="fill-video"');
+    expect(slide).toContain("lucide-square-play");
+
+    const auto = renderToStaticMarkup(<PropertyPanel elementType="frame-auto" layout={{
+      mode: "horizontal",
+      gap: 12,
+      padding: { top: 4, right: 8, bottom: 12, left: 16 },
+      align: "mc",
+      widthMode: "fixed",
+      heightMode: "fixed",
+      clipsContent: false,
+    }} />);
+    for (const semantic of ["gap-horizontal", "padding-top", "padding-right", "padding-bottom", "padding-left"]) {
+      expect(auto).toContain(`data-icon-semantic="${semantic}"`);
+    }
+    expect(auto).toContain("lucide-square-square");
+  });
+
+  it("orders effect content before visibility and removal actions", () => {
+    const html = renderToStaticMarkup(<PropertyPanel elementType="shape" effects={[{ id: "shadow", type: "Drop shadow", visible: true }]} />);
+    const content = html.indexOf("Drop shadow");
+    const eye = html.indexOf('aria-label="Hide effect"');
+    const remove = html.indexOf('aria-label="Remove effect"');
+    expect(content).toBeLessThan(eye);
+    expect(eye).toBeLessThan(remove);
   });
 });

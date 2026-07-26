@@ -1,7 +1,7 @@
 import { act, create } from "react-test-renderer";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { ComboInput, formatNumericDisplay, NumericComboInput, NumericEditSessionProvider, NumericInput, NumericInputMulti } from "./Input";
+import { ComboInput, formatNumericDisplay, NumericComboInput, NumericEditSessionProvider, NumericInput, NumericInputMulti, NumericPairInput } from "./Input";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -42,6 +42,24 @@ describe("NumericInput presentation contract", () => {
     const trigger = html.match(/<button[^>]*aria-label="Width sizing mode: Hug"[^>]*>[\s\S]*?<\/button>/)?.[0];
     expect(trigger).toBeTruthy();
     expect(trigger).not.toContain("<span");
+  });
+
+  it("reserves the leading anatomy for suffix fields and gives active keyframes the selected-blue surface", () => {
+    const opacity = renderToStaticMarkup(<NumericInput ariaLabel="Opacity" reserveLeadingSlot value={75} suffix="%" />);
+    expect(opacity).toContain("pl-[26px]");
+    expect(opacity).toContain('value="75"');
+    expect(opacity).toContain(">%<");
+
+    const single = renderToStaticMarkup(<NumericInput ariaLabel="Rotation" value={30} keyframe={{ active: true, onToggle: () => undefined }} />);
+    expect(single).toMatch(/aria-label="Rotation keyframe"[^>]*class="[^"]*bg-c-bg-selected/);
+    expect(single).toContain("text-c-text-brand");
+
+    const pair = renderToStaticMarkup(<NumericPairInput
+      a={{ ariaLabel: "Position X", iconLead: "X", value: 10 }}
+      b={{ ariaLabel: "Position Y", iconLead: "Y", value: 20 }}
+      keyframe={{ active: true, onToggle: () => undefined }}
+    />);
+    expect(pair).toMatch(/aria-label="Position X\/Position Y keyframe"[^>]*class="[^"]*bg-c-bg-selected/);
   });
 });
 

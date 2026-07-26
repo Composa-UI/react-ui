@@ -255,6 +255,8 @@ export function InputField({
 export interface NumericInputProps extends NumericEditSessionCallbacks {
   ariaLabel?: string;
   iconLead?: ReactNode;       // scrubber label (e.g. "W", "X", or an icon)
+  /** Keep the canonical 24px leading-icon column even when no glyph is shown. */
+  reserveLeadingSlot?: boolean;
   value?: number;
   defaultValue?: number;
   min?: number;
@@ -279,6 +281,7 @@ export interface NumericInputProps extends NumericEditSessionCallbacks {
 export function NumericInput({
   ariaLabel,
   iconLead,
+  reserveLeadingSlot = false,
   value,
   defaultValue = 0,
   min,
@@ -502,7 +505,7 @@ export function NumericInput({
             "placeholder:text-c-text-tertiary",
             !focused && "truncate",
             "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-            iconLead ? "pl-[26px]" : "pl-[8px]",
+            iconLead || reserveLeadingSlot ? "pl-[26px]" : "pl-[8px]",
             (suffix || dropdown || keyframe) ? "pr-[2px]" : "pr-[8px]",
             disabled && "cursor-not-allowed",
           )}
@@ -528,9 +531,12 @@ export function NumericInput({
           aria-label={ariaLabel ? `${ariaLabel} keyframe` : "Toggle keyframe"}
           aria-pressed={keyframe.active}
           onClick={event => { event.stopPropagation(); keyframe.onToggle(); }}
-          className="shrink-0 flex items-center justify-center size-[24px] rounded-c-sm hover:bg-c-bg-hover"
+          className={clsx(
+            "shrink-0 flex items-center justify-center size-[24px] rounded-c-sm hover:bg-c-bg-hover",
+            keyframe.active && "bg-c-bg-selected",
+          )}
         >
-          <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active ? "fill-current text-[#0d99ff]" : "text-c-icon-secondary")} />
+          <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active ? "fill-current text-c-text-brand" : "text-c-icon-secondary")} />
         </button>
       )}
     </FieldShell>
@@ -642,9 +648,13 @@ export function NumericPairInput({ a, b, keyframe, trailing, size = "medium", di
           aria-label={`${a.ariaLabel}/${b.ariaLabel} keyframe`}
           aria-pressed={keyframe.active}
           onClick={event => { event.stopPropagation(); keyframe.onToggle(); }}
-          className={clsx("shrink-0 flex items-center justify-center size-[24px] hover:bg-c-bg-hover", trailing && "border-r border-c-bg")}
+          className={clsx(
+            "shrink-0 flex items-center justify-center size-[24px] hover:bg-c-bg-hover",
+            keyframe.active && "bg-c-bg-selected",
+            trailing && "border-r border-c-bg",
+          )}
         >
-          <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active ? "fill-current text-[#0d99ff]" : "text-c-icon-secondary")} />
+          <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active ? "fill-current text-c-text-brand" : "text-c-icon-secondary")} />
         </button>
       )}
       {trailing && <span className="shrink-0 flex items-center justify-center size-[24px]">{trailing}</span>}

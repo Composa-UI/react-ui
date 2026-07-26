@@ -306,12 +306,15 @@ interface PanelActionBtnProps {
   selected?: boolean;   // toggle "on" — accent (selected) color variant
   disabled?: boolean;
   onClick?: () => void;
+  /** Optional explanatory hover label for unfamiliar icon-only actions. */
+  tooltip?: string;
 }
 
-export function PanelActionBtn({ icon, label, active, selected, disabled = false, onClick }: PanelActionBtnProps) {
+export function PanelActionBtn({ icon, label, active, selected, disabled = false, onClick, tooltip }: PanelActionBtnProps) {
   return (
     <button
       aria-label={label}
+      title={tooltip}
       aria-pressed={selected === undefined ? undefined : selected}
       disabled={disabled}
       onClick={onClick}
@@ -330,7 +333,7 @@ export function PanelActionBtn({ icon, label, active, selected, disabled = false
 
 // ─── Panel drag-handle entry anatomy ─────────────────────────────────────────
 // Used for stackable sections: Fill · Stroke · Effects · Export.
-// DragHandle · EyeToggle · [content] · RemoveButton
+// DragHandle · [content] · EyeToggle · RemoveButton
 
 interface PanelEntryProps {
   children: ReactNode;
@@ -339,6 +342,9 @@ interface PanelEntryProps {
   visible?: boolean;
   /** Whether to show the drag handle on the left */
   draggable?: boolean;
+  hideLabel?: string;
+  showLabel?: string;
+  removeLabel?: string;
 }
 
 export function PanelEntry({
@@ -347,6 +353,9 @@ export function PanelEntry({
   onToggleVisible,
   visible = true,
   draggable = true,
+  hideLabel = "Hide",
+  showLabel = "Show",
+  removeLabel = "Remove",
 }: PanelEntryProps) {
   return (
     <div className="flex items-center h-[32px] px-[8px] gap-[4px] group">
@@ -364,9 +373,12 @@ export function PanelEntry({
         </span>
       )}
 
-      {/* Eye toggle */}
+      {/* Content */}
+      <div className="flex-1 min-w-0">{children}</div>
+
+      {/* Eye toggle — adjacent to Remove, matching Fill/Stroke stack anatomy. */}
       <button
-        aria-label={visible ? "Hide" : "Show"}
+        aria-label={visible ? hideLabel : showLabel}
         onClick={onToggleVisible}
         className="shrink-0 flex items-center justify-center size-[24px] rounded-c-sm text-c-icon hover:bg-c-bg-hover"
       >
@@ -387,12 +399,9 @@ export function PanelEntry({
         </svg>
       </button>
 
-      {/* Content */}
-      <div className="flex-1 min-w-0">{children}</div>
-
       {/* Remove */}
       <button
-        aria-label="Remove"
+        aria-label={removeLabel}
         onClick={onRemove}
         className="shrink-0 flex items-center justify-center size-[24px] rounded-c-sm text-c-icon opacity-0 group-hover:opacity-100 hover:bg-c-bg-hover"
       >

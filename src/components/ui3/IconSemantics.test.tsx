@@ -15,7 +15,7 @@ describe("settings icon semantics", () => {
     expect(iconForSemantic("settings")).toBe(Settings2);
   });
 
-  it("uses the canonical semantic for Auto Layout, Type, Stroke, and Template settings", () => {
+  it("uses settings for Type, Stroke, and Template while Auto Layout stays a distinct layout action", () => {
     const autoLayout = renderToStaticMarkup(<PropertyPanel elementType="frame-auto" />);
     const text = renderToStaticMarkup(<PropertyPanel elementType="text" strokes={[{
       id: "stroke-1",
@@ -28,7 +28,6 @@ describe("settings icon semantics", () => {
     const slide = renderToStaticMarkup(<PropertyPanel mode="slide" capabilities={{ templates: true }} />);
 
     for (const [html, label] of [
-      [autoLayout, "Auto-layout settings"],
       [text, "Type settings"],
       [text, "Stroke settings"],
       [slide, "Template settings"],
@@ -40,6 +39,33 @@ describe("settings icon semantics", () => {
       expect(trigger).toContain('width="16"');
       expect(trigger).toContain('height="16"');
       expect(trigger).toContain('stroke-width="1.5"');
+    }
+
+    const autoTrigger = settingsTrigger(autoLayout, "Auto-layout settings");
+    expect(autoTrigger).toBeTruthy();
+    expect(autoTrigger).toContain("lucide-proposed-layout-freeform");
+    expect(autoTrigger).toContain('data-icon-semantic="layout-freeform"');
+    expect(autoTrigger).not.toContain('data-icon-semantic="settings"');
+  });
+
+  it("maps shared inspector semantics to outlined and proposed Lucide boundaries", () => {
+    for (const semantic of [
+      "blend-mode",
+      "absolute-position",
+      "rotation",
+      "fill-video",
+      "align-left",
+      "align-center-x",
+      "align-right",
+      "align-top",
+      "align-center-y",
+      "align-bottom",
+      "padding-top",
+      "padding-right",
+      "padding-bottom",
+      "padding-left",
+    ] as const) {
+      expect(iconForSemantic(semantic)).toBe(composaIconSemantics[semantic]);
     }
   });
 

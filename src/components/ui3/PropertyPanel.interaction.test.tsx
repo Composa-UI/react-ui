@@ -33,6 +33,11 @@ describe("DimensionSizingFields interactions", () => {
       const row = rows.find((child: { props?: { label?: string } }) => child?.props?.label === label);
       expect(row?.props?.leading).toBeTruthy();
     }
+    for (const label of ["Fixed width (320)", "Hug contents", "Fill container"]) {
+      const row = rows.find((child: { props?: { label?: string } }) => child?.props?.label === label);
+      expect(row?.props?.type).toBe("checkmark");
+      expect(row?.props?.leading).toBeTruthy();
+    }
   });
 
   it("keeps sizing mode local when only numeric dimensions are controlled", () => {
@@ -93,6 +98,21 @@ describe("DimensionSizingFields interactions", () => {
   });
 });
 
+describe("Position alignment actions", () => {
+  it("routes all six stateless commands through the host callback", () => {
+    const actions: string[] = [];
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel elementType="shape" onAlignmentAction={action => actions.push(action)} />); });
+    for (const label of ["Align left", "Align center", "Align right", "Align top", "Align middle", "Align bottom"]) {
+      const button = renderer!.root.findAllByType("button").find(candidate => candidate.props["aria-label"] === label)!;
+      expect(button.props["aria-pressed"]).toBeUndefined();
+      act(() => button.props.onClick());
+    }
+    expect(actions).toEqual(["left", "center-x", "right", "top", "center-y", "bottom"]);
+    act(() => renderer!.unmount());
+  });
+});
+
 describe("Smart-selection spacing interactions", () => {
   it("routes the Layout spacing field through the host-controlled callback", () => {
     const changes: number[] = [];
@@ -114,6 +134,28 @@ describe("Smart-selection spacing interactions", () => {
 });
 
 describe("Auto-layout settings interactions", () => {
+  it("uses Freeform as the controlled disable-auto-layout action", () => {
+    const patches: unknown[] = [];
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel
+      elementType="frame-auto"
+      layout={{
+        mode: "horizontal",
+        gap: 8,
+        padding: { top: 8, right: 8, bottom: 8, left: 8 },
+        align: "mc",
+        widthMode: "fixed",
+        heightMode: "hug",
+        clipsContent: false,
+      }}
+      onLayoutChange={patch => patches.push(patch)}
+    />); });
+    const freeform = renderer!.root.findAllByType("button").find(button => button.props["aria-label"] === "Freeform")!;
+    act(() => freeform.props.onClick());
+    expect(patches).toEqual([{ mode: "none" }]);
+    act(() => renderer!.unmount());
+  });
+
   it("expands controlled padding to four labelled physical sides when any side differs or is mixed", () => {
     const patches: unknown[] = [];
     const sideEdits: unknown[] = [];

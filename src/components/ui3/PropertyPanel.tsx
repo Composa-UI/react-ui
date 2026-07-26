@@ -1,9 +1,7 @@
 import { useEffect, useState, Fragment, type ReactNode } from "react";
 import { clsx } from "clsx";
 import {
-  AlignLeft, AlignCenter, AlignRight,
-  AlignStartVertical, AlignCenterVertical, AlignEndVertical,
-  RotateCw, FlipHorizontal, FlipVertical,
+  RotateCw, FlipHorizontal2, FlipVertical2,
   Link2, Link2Off, MoreHorizontal,
   AlignHorizontalJustifyCenter,
   Maximize2, Minimize2, Plus, Eye, Square,
@@ -12,7 +10,7 @@ import {
   Crosshair, Grid3x3, ExternalLink, Unlink,
   Minus, EyeOff, AlignJustify, Maximize, ChevronDown,
   MoveHorizontal, MoveVertical, Play, Pause,
-  Image as ImageIcon, Video, Clock,
+  Image as ImageIcon, Video, Clock, SquareSquare,
 } from "lucide-react";
 import { CirclesFour } from "@phosphor-icons/react";
 import {
@@ -126,6 +124,22 @@ const FONT = "font-[family-name:var(--composa-font-family)]";
 const BODY = clsx(FONT, "text-[11px] font-[450] leading-[16px] tracking-[0.055px] text-c-text");
 const SUBLABEL = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary");
 const SettingsIcon = iconForSemantic("settings");
+const BlendModeIcon = iconForSemantic("blend-mode");
+const AbsolutePositionIcon = iconForSemantic("absolute-position");
+const RotationIcon = iconForSemantic("rotation");
+const LayoutFreeformIcon = iconForSemantic("layout-freeform");
+const LayoutHorizontalIcon = iconForSemantic("layout-horizontal");
+const LayoutVerticalIcon = iconForSemantic("layout-vertical");
+const AlignLeftIcon = iconForSemantic("align-left");
+const AlignCenterXIcon = iconForSemantic("align-center-x");
+const AlignRightIcon = iconForSemantic("align-right");
+const AlignTopIcon = iconForSemantic("align-top");
+const AlignCenterYIcon = iconForSemantic("align-center-y");
+const AlignBottomIcon = iconForSemantic("align-bottom");
+const SizingFixedIcon = iconForSemantic("sizing-fixed");
+const SizingHugIcon = iconForSemantic("sizing-hug");
+const SizingFillIcon = iconForSemantic("sizing-fill");
+const VideoFillIcon = iconForSemantic("fill-video");
 
 // Two independently-labeled fields side by side. Used by the project/slide/clip
 // panels (not the element PropertyPanel) where two related controls read better as
@@ -158,22 +172,6 @@ function DualField({
 // ─── Small icon for panel use ─────────────────────────────────────────────────
 const S = 16; // icon size in panel (24px button frame, 16px glyph = Figma inset)
 const si = (n: number) => n; // alias for clarity
-
-// Dual-tone blend/droplet glyph — grey fill + current-colour stroke (an original
-// SVG in the UI3 style; not a lifted Figma asset).
-function BlendDroplet({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
-      <path
-        d="M8 2.2c0 0 4 4.1 4 7a4 4 0 0 1-8 0c0-2.9 4-7 4-7Z"
-        fill="var(--color-c-icon-secondary)"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 // Shared blend-mode menu (grouped + checkmark on current). Render fn → receives
 // `close` from PopoverMenu.
@@ -244,11 +242,16 @@ export function SizingComboField({
   };
   const initialMin = maxValue === undefined ? value : Math.min(value, maxValue);
   const initialMax = minValue === undefined ? value : Math.max(value, minValue);
+  const modeIcons: Record<ElementSizingMode, ReactNode> = {
+    fixed: <SizingFixedIcon data-icon-semantic="sizing-fixed" size={14} strokeWidth={1.5} />,
+    hug: <SizingHugIcon data-icon-semantic="sizing-hug" size={14} strokeWidth={1.5} />,
+    fill: <SizingFillIcon data-icon-semantic="sizing-fill" size={14} strokeWidth={1.5} />,
+  };
   const menu = (close: () => void) => (
     <Menu minWidth={190}>
-      {availableModes.includes("fixed") && <MenuRow type="checkmark" label={`Fixed ${axis} (${formatNumericDisplay(value)})`} checked={!mixed && mode === "fixed"} onClick={() => { emitMode("fixed"); close(); }} />}
-      {availableModes.includes("hug") && <MenuRow type="checkmark" label="Hug contents" checked={!mixed && mode === "hug"} onClick={() => { emitMode("hug"); close(); }} />}
-      {availableModes.includes("fill") && <MenuRow type="checkmark" label="Fill container" checked={!mixed && mode === "fill"} onClick={() => { emitMode("fill"); close(); }} />}
+      {availableModes.includes("fixed") && <MenuRow type="checkmark" leading={modeIcons.fixed} label={`Fixed ${axis} (${formatNumericDisplay(value)})`} checked={!mixed && mode === "fixed"} onClick={() => { emitMode("fixed"); close(); }} />}
+      {availableModes.includes("hug") && <MenuRow type="checkmark" leading={modeIcons.hug} label="Hug contents" checked={!mixed && mode === "hug"} onClick={() => { emitMode("hug"); close(); }} />}
+      {availableModes.includes("fill") && <MenuRow type="checkmark" leading={modeIcons.fill} label="Fill container" checked={!mixed && mode === "fill"} onClick={() => { emitMode("fill"); close(); }} />}
       <MenuRow type="divider" />
       {minValue === undefined && <MenuRow type="simple" leading={<Minimize2 size={14} strokeWidth={1.5} />} label={`Add min ${axis}`} onClick={() => { onConstraintChange?.("min", initialMin); close(); }} />}
       {maxValue === undefined && <MenuRow type="simple" leading={<Maximize2 size={14} strokeWidth={1.5} />} label={`Add max ${axis}`} onClick={() => { onConstraintChange?.("max", initialMax); close(); }} />}
@@ -310,7 +313,7 @@ function SpatialSelectionLayoutFields({ value }: { value?: SpatialSelectionLayou
       label="Spacing"
       left={<NumericInput
         ariaLabel={horizontal ? "Horizontal spacing gap" : "Vertical spacing gap"}
-        iconLead={horizontal ? <MoveHorizontal size={14} strokeWidth={1.5} /> : <MoveVertical size={14} strokeWidth={1.5} />}
+        iconLead={<AutoLayoutSpacingIcon kind="gap" axis={horizontal ? "horizontal" : "vertical"} />}
         value={value.gap}
         min={0}
         step={1}
@@ -417,6 +420,8 @@ export interface InspectorKeyframeControls {
 
 // ─── Section: Position ────────────────────────────────────────────────────────
 
+export type ElementAlignmentAction = "left" | "center-x" | "right" | "top" | "center-y" | "bottom";
+
 interface PositionSectionProps {
   x?: number; y?: number; rotation?: number;
   scaleX?: number; scaleY?: number;
@@ -428,6 +433,7 @@ interface PositionSectionProps {
   positioning?: "auto" | "absolute";
   positioningApplicable?: boolean;
   onPositioningChange?: (value: "auto" | "absolute") => void;
+  onAlignmentAction?: (action: ElementAlignmentAction) => void;
   multiSelect?: boolean;
   positionKeyframe?: InspectorKeyframeControl;
   scaleKeyframe?: InspectorKeyframeControl;
@@ -439,24 +445,24 @@ function PositionSection({
   x = 0, y = 0, rotation = 0,
   scaleX = 100, scaleY = 100,
   onXChange, onYChange, onRotationChange, onScaleXChange, onScaleYChange,
-  positioning, positioningApplicable, onPositioningChange,
+  positioning, positioningApplicable, onPositioningChange, onAlignmentAction,
   multiSelect = false,
   positionKeyframe, scaleKeyframe, rotationKeyframe, scaleApplicable = false,
 }: PositionSectionProps) {
   const hAlignBtns: IconBtn[] = [
-    { icon: <AlignLeft       size={S} strokeWidth={1.5} />, label: "Align left",   value: "left" },
-    { icon: <AlignCenter     size={S} strokeWidth={1.5} />, label: "Align center", value: "hcenter" },
-    { icon: <AlignRight      size={S} strokeWidth={1.5} />, label: "Align right",  value: "right" },
+    { icon: <AlignLeftIcon data-icon-semantic="align-left" size={S} strokeWidth={1.5} />, label: "Align left", onClick: () => onAlignmentAction?.("left") },
+    { icon: <AlignCenterXIcon data-icon-semantic="align-center-x" size={S} strokeWidth={1.5} />, label: "Align center", onClick: () => onAlignmentAction?.("center-x") },
+    { icon: <AlignRightIcon data-icon-semantic="align-right" size={S} strokeWidth={1.5} />, label: "Align right", onClick: () => onAlignmentAction?.("right") },
   ];
   const vAlignBtns: IconBtn[] = [
-    { icon: <AlignStartVertical size={S} strokeWidth={1.5} />, label: "Align top",    value: "top" },
-    { icon: <AlignCenterVertical size={S} strokeWidth={1.5} />, label: "Align middle", value: "vcenter" },
-    { icon: <AlignEndVertical   size={S} strokeWidth={1.5} />, label: "Align bottom", value: "bottom" },
+    { icon: <AlignTopIcon data-icon-semantic="align-top" size={S} strokeWidth={1.5} />, label: "Align top", onClick: () => onAlignmentAction?.("top") },
+    { icon: <AlignCenterYIcon data-icon-semantic="align-center-y" size={S} strokeWidth={1.5} />, label: "Align middle", onClick: () => onAlignmentAction?.("center-y") },
+    { icon: <AlignBottomIcon data-icon-semantic="align-bottom" size={S} strokeWidth={1.5} />, label: "Align bottom", onClick: () => onAlignmentAction?.("bottom") },
   ];
   const rotateBtns: IconBtn[] = [
     { icon: <RotateCw       size={S} strokeWidth={1.5} />, label: "Rotate 90° CW" },
-    { icon: <FlipHorizontal size={S} strokeWidth={1.5} />, label: "Flip horizontal" },
-    { icon: <FlipVertical   size={S} strokeWidth={1.5} />, label: "Flip vertical" },
+    { icon: <FlipHorizontal2 size={S} strokeWidth={1.5} />, label: "Flip horizontal" },
+    { icon: <FlipVertical2   size={S} strokeWidth={1.5} />, label: "Flip vertical" },
   ];
   // Scale aspect-lock (Figma Motion scale row's trailing ⊡). When locked, the two
   // axes scale uniformly. Kept in one edit session by NumericEditSessionProvider.
@@ -468,8 +474,9 @@ function PositionSection({
     <PanelSection
       title="Position"
       rightActions={positioningApplicable === false ? undefined :
-        <PanelActionBtn icon={<Maximize2 size={16} strokeWidth={1.5} />}
-          label={positioning === "absolute" ? "Return to auto-layout flow" : "Absolute position"}
+        <PanelActionBtn icon={<AbsolutePositionIcon data-icon-semantic="absolute-position" size={16} strokeWidth={1.5} />}
+          label={positioning === "absolute" ? "Use auto layout" : "Ignore auto layout"}
+          tooltip={positioning === "absolute" ? "Use auto layout" : "Ignore auto layout"}
           selected={positioning === undefined ? undefined : positioning === "absolute"}
           disabled={positioningApplicable === true && (positioning === undefined || !onPositioningChange)}
           onClick={onPositioningChange && positioning ? () => onPositioningChange(positioning === "absolute" ? "auto" : "absolute") : undefined} />
@@ -520,7 +527,7 @@ function PositionSection({
         left={
           <NumericInput
             ariaLabel="Rotation"
-            iconLead={<RotateCw size={16} strokeWidth={1.5} />}
+            iconLead={<RotationIcon data-icon-semantic="rotation" size={16} strokeWidth={1.5} />}
             value={rotation} onChange={onRotationChange} min={-360} max={360} suffix="°"
             keyframe={rotationKeyframe}
           />
@@ -561,9 +568,9 @@ function LayoutFrameSection({
   const [flow, setFlow] = useState("none");
 
   const flowBtns: IconBtn[] = [
-    { icon: <AlignHorizontalJustifyCenter size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
-    { icon: <Rows2 size={S} strokeWidth={1.5} />, label: "Vertical", value: "v" },
-    { icon: <Columns size={S} strokeWidth={1.5} />, label: "Horizontal", value: "h" },
+    { icon: <LayoutFreeformIcon data-icon-semantic="layout-freeform" size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
+    { icon: <LayoutVerticalIcon data-icon-semantic="layout-vertical" size={S} strokeWidth={1.5} />, label: "Vertical", value: "v" },
+    { icon: <LayoutHorizontalIcon data-icon-semantic="layout-horizontal" size={S} strokeWidth={1.5} />, label: "Horizontal", value: "h" },
     { icon: <WrapText size={S} strokeWidth={1.5} />, label: "Wrap", value: "wrap" },
   ];
 
@@ -677,10 +684,12 @@ function LayoutAutoSection({
   const expandedPadding = indivPadding || paddingSidesDiffer || paddingHasMixedSide;
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
 
-  // Freeform is the plain-frame state, not an active auto-layout direction.
+  // Freeform is the explicit "disable auto layout" action and remains distinct
+  // from the trailing Auto-layout Settings entry point.
   const flowBtns: IconBtn[] = [
-    { icon: <Rows2    size={S} strokeWidth={1.5} />, label: "Vertical",    value: "v" },
-    { icon: <Columns  size={S} strokeWidth={1.5} />, label: "Horizontal",  value: "h" },
+    { icon: <LayoutFreeformIcon data-icon-semantic="layout-freeform" size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
+    { icon: <LayoutVerticalIcon data-icon-semantic="layout-vertical" size={S} strokeWidth={1.5} />, label: "Vertical", value: "v" },
+    { icon: <LayoutHorizontalIcon data-icon-semantic="layout-horizontal" size={S} strokeWidth={1.5} />, label: "Horizontal", value: "h" },
     { icon: <WrapText size={S} strokeWidth={1.5} />, label: "Wrap",        value: "wrap" },
   ];
 
@@ -739,7 +748,7 @@ function LayoutAutoSection({
       value={settingsValue}
       disabled={settingsDisabled}
       trigger={<PanelActionBtn
-        icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />}
+        icon={<LayoutFreeformIcon data-icon-semantic="layout-freeform" size={16} strokeWidth={1.5} />}
         label="Auto-layout settings"
         disabled={settingsDisabled}
         onClick={settingsDisabled ? undefined : () => { setSettingsOpen(true); onAutoLayoutSettingsRequest?.(); }}
@@ -750,7 +759,7 @@ function LayoutAutoSection({
   );
 
   return (
-    <PanelSection title="Auto layout" rightActions={settingsTriggerButton}>
+    <PanelSection title="Auto layout">
       <div role="group" aria-label="Flow" className="px-[16px] pt-[8px]">
         <div className={subLabel}>Flow</div>
         <SegmentedControl
@@ -788,6 +797,7 @@ function LayoutAutoSection({
             className="w-full"
           />
         </div>
+        <div className="shrink-0 pt-[17px]">{settingsTriggerButton}</div>
       </div>
 
       {/* Padding — cross layout. Combined (default): Vertical + Horizontal, two
@@ -809,7 +819,7 @@ function LayoutAutoSection({
               <NumericInput ariaLabel="Left padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="left" />} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} mixed={paddingLeftMixed} disabled={paddingDisabled} onChange={left => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom: paddingBottom, left }, ["left"])} min={0} />
             </div>
             <PanelActionBtn
-              icon={<Maximize size={16} strokeWidth={1.5} />}
+              icon={<SquareSquare size={16} strokeWidth={1.5} />}
               label="Combine padding"
               active
               disabled={paddingDisabled || paddingSidesDiffer || paddingHasMixedSide}
@@ -825,7 +835,7 @@ function LayoutAutoSection({
               <NumericInput ariaLabel="Horizontal padding" iconLead={<AutoLayoutSpacingIcon kind="padding" axis="horizontal" />} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} disabled={paddingDisabled} onChange={horizontal => onPaddingChange?.({ top: paddingTop, right: horizontal, bottom: paddingBottom, left: horizontal }, ["right", "left"])} min={0} />
             </div>
             <PanelActionBtn
-              icon={<Maximize size={16} strokeWidth={1.5} />}
+              icon={<SquareSquare size={16} strokeWidth={1.5} />}
               label="Independent padding"
               disabled={paddingDisabled}
               onClick={() => setIndivPadding(true)}
@@ -880,10 +890,10 @@ function AppearanceSection({
       rightActions={
         <>
           <PanelActionBtn icon={<Eye size={16} strokeWidth={1.5} />} label="Visibility" />
-          {/* Blend mode — dual-tone droplet; opens the grouped blend menu */}
+          {/* Blend mode — outlined semantic glyph; opens the grouped blend menu. */}
           <PopoverMenu
             align="right"
-            trigger={<PanelActionBtn icon={<BlendDroplet size={16} />} label="Blend mode" active={renderedBlend !== "Pass through"} />}
+            trigger={<PanelActionBtn icon={<BlendModeIcon data-icon-semantic="blend-mode" size={16} strokeWidth={1.5} />} label="Blend mode" />}
           >
             {blendMenu(renderedBlend, setBlendValue)}
           </PopoverMenu>
@@ -894,7 +904,7 @@ function AppearanceSection({
       <div className="flex items-end gap-[8px] pl-[16px] pr-[16px] pt-[3px]">
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Opacity</div>
-          <NumericInput ariaLabel="Opacity" value={opacity} onChange={onOpacityChange} min={0} max={100} suffix="%" keyframe={opacityKeyframe} />
+          <NumericInput ariaLabel="Opacity" reserveLeadingSlot value={opacity} onChange={onOpacityChange} min={0} max={100} suffix="%" keyframe={opacityKeyframe} />
         </div>
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Corner radius</div>
@@ -924,7 +934,7 @@ function AppearanceSection({
       <div className="pl-[16px] pr-[16px] pt-[6px] pb-[8px]">
         <div className={subLabel}>Blend mode</div>
         <div className="flex items-center gap-[8px]">
-          <PopoverMenu className="flex-1 min-w-0" trigger={<Dropdown value={renderedBlend} fullWidth leadingIcon={<BlendDroplet size={16} />} />}>
+          <PopoverMenu className="flex-1 min-w-0" trigger={<Dropdown value={renderedBlend} fullWidth leadingIcon={<BlendModeIcon data-icon-semantic="blend-mode" size={16} strokeWidth={1.5} />} />}>
             {blendMenu(renderedBlend, setBlendValue)}
           </PopoverMenu>
           <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove blend mode" onClick={() => setBlendValue("Pass through")} />
@@ -958,14 +968,14 @@ function TypographySection({ value, onChange, stylesAvailable }: { value?: Eleme
   const hasStyle = stylesAvailable && !!settings.styleName;
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
   const textAlignBtns: IconBtn[] = [
-    { icon: <AlignLeft   size={S} strokeWidth={1.5} />, label: "Align left",   value: "left" },
-    { icon: <AlignCenter size={S} strokeWidth={1.5} />, label: "Align center", value: "center" },
-    { icon: <AlignRight  size={S} strokeWidth={1.5} />, label: "Align right",  value: "right" },
+    { icon: <AlignLeftIcon data-icon-semantic="align-left" size={S} strokeWidth={1.5} />, label: "Align left", onClick: () => update({ align: "left" }) },
+    { icon: <AlignCenterXIcon data-icon-semantic="align-center-x" size={S} strokeWidth={1.5} />, label: "Align center", onClick: () => update({ align: "center" }) },
+    { icon: <AlignRightIcon data-icon-semantic="align-right" size={S} strokeWidth={1.5} />, label: "Align right", onClick: () => update({ align: "right" }) },
   ];
   const vAlignBtns: IconBtn[] = [
-    { icon: <AlignStartVertical size={S} strokeWidth={1.5} />, label: "Top",    value: "top" },
-    { icon: <AlignCenterVertical size={S} strokeWidth={1.5} />, label: "Middle", value: "middle" },
-    { icon: <AlignEndVertical   size={S} strokeWidth={1.5} />, label: "Bottom", value: "bottom" },
+    { icon: <AlignTopIcon data-icon-semantic="align-top" size={S} strokeWidth={1.5} />, label: "Top", onClick: () => update({ verticalAlign: "top" }) },
+    { icon: <AlignCenterYIcon data-icon-semantic="align-center-y" size={S} strokeWidth={1.5} />, label: "Middle", onClick: () => update({ verticalAlign: "middle" }) },
+    { icon: <AlignBottomIcon data-icon-semantic="align-bottom" size={S} strokeWidth={1.5} />, label: "Bottom", onClick: () => update({ verticalAlign: "bottom" }) },
   ];
 
   return (
@@ -1016,8 +1026,8 @@ function TypographySection({ value, onChange, stylesAvailable }: { value?: Eleme
       {/* Alignment — always present, labeled */}
       <PanelFieldRow
         label="Alignment"
-        left={<IconButtonRow buttons={textAlignBtns} value={settings.align} onChange={align => update({ align: align as ElementTypographySettings["align"] })} fill />}
-        right={<IconButtonRow buttons={vAlignBtns} value={settings.verticalAlign} onChange={verticalAlign => update({ verticalAlign: verticalAlign as ElementTypographySettings["verticalAlign"] })} fill />}
+        left={<IconButtonRow buttons={textAlignBtns} fill />}
+        right={<IconButtonRow buttons={vAlignBtns} fill />}
         rightAction={<PanelActionBtn icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />} label="Type settings" />}
       />
     </PanelSection>
@@ -1225,18 +1235,21 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
       }
     >
       {effects.map(effect => (
-        <div key={effect.id} draggable={!!onReorder} onDragStart={event => event.dataTransfer.setData("text/plain", effect.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), effect.id); }} className="group/row flex items-center pr-[16px] h-[32px]">
-          <DragGutter />
-          <PanelActionBtn icon={effect.visible ? <Eye size={16} strokeWidth={1.5} /> : <EyeOff size={16} strokeWidth={1.5} />} label={effect.visible ? "Hide" : "Show"} onClick={() => toggle(effect.id)} />
-          <div className="flex-1 min-w-0">
+        <div key={effect.id} draggable={!!onReorder} onDragStart={event => event.dataTransfer.setData("text/plain", effect.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), effect.id); }}>
+          <PanelEntry
+            draggable={!!onReorder}
+            visible={effect.visible}
+            hideLabel="Hide effect"
+            showLabel="Show effect"
+            removeLabel="Remove effect"
+            onToggleVisible={() => toggle(effect.id)}
+            onRemove={() => remove(effect.id)}
+          >
             <EffectDetailsDialog open={activeStackDialog === `effect:${effect.id}`} value={effect}
               trigger={<Dropdown value={effect.type} fullWidth onClick={() => onActiveStackDialogChange(`effect:${effect.id}`)} />}
               capabilities={capabilities}
               onChange={patch => update(effect.id, patch)} onClose={() => onActiveStackDialogChange(null)} />
-          </div>
-          <div className="shrink-0 flex items-center gap-[4px] pl-[8px]">
-            <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove effect" onClick={() => remove(effect.id)} />
-          </div>
+          </PanelEntry>
         </div>
       ))}
     </PanelSection>
@@ -1665,7 +1678,7 @@ function SlideFillTypeIcon({ type }: { type: "solid" | "gradient" | "image" | "v
     );
   }
   if (type === "image") return <ImageIcon size={12} strokeWidth={1.5} />;
-  return <Video size={12} strokeWidth={1.5} />;
+  return <VideoFillIcon data-icon-semantic="fill-video" size={12} strokeWidth={1.5} />;
 }
 
 // Template style §Template style — a dropdown-shaped trigger (3-colour preview
@@ -1966,6 +1979,8 @@ export interface PropertyPanelProps {
   onRotationChange?: (value: number) => void;
   onScaleXChange?: (value: number) => void;
   onScaleYChange?: (value: number) => void;
+  /** Stateless alignment commands; hosts own the document mutation and history. */
+  onAlignmentAction?: (action: ElementAlignmentAction) => void;
   /** Scale row is shown when applicable (host decides — text/shape support it). */
   scaleApplicable?: boolean;
   /** Per-property keyframe diamonds in the Design tab. Host supplies these ONLY
@@ -2141,7 +2156,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   multiSelect = false,
   x = 0, y = 0, rotation = 0,
   scaleX = 100, scaleY = 100,
-  onXChange, onYChange, onRotationChange, onScaleXChange, onScaleYChange,
+  onXChange, onYChange, onRotationChange, onScaleXChange, onScaleYChange, onAlignmentAction,
   scaleApplicable = false, keyframeControls,
   onNumericEditStart, onNumericEditCommit, onNumericEditCancel,
   easing, easingContext = "keyframe", easingApplyScope, onEasingChange, onEasingApplyScopeChange,
@@ -2499,6 +2514,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             positioning={layout?.positioning}
             positioningApplicable={layout?.positioningApplicable}
             onPositioningChange={onLayoutChange ? positioning => onLayoutChange({ positioning }) : undefined}
+            onAlignmentAction={onAlignmentAction}
             multiSelect={multiSelect}
             positionKeyframe={keyframeControls?.position}
             scaleKeyframe={keyframeControls?.scale}
