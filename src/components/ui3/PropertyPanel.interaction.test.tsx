@@ -96,6 +96,7 @@ describe("DimensionSizingFields interactions", () => {
 describe("Auto-layout settings interactions", () => {
   it("expands controlled padding to four labelled physical sides when any side differs or is mixed", () => {
     const patches: unknown[] = [];
+    const sideEdits: unknown[] = [];
     const layout = {
       mode: "horizontal" as const,
       gap: 8,
@@ -117,11 +118,15 @@ describe("Auto-layout settings interactions", () => {
       elementType="frame-auto"
       layout={{ ...layout, padding: { ...layout.padding, left: 24 } }}
       onLayoutChange={patch => patches.push(patch)}
+      onPaddingChange={(padding, changedEdges) => sideEdits.push({ padding, changedEdges })}
     />); });
     expect(labels()).toEqual(expect.arrayContaining(["Top padding", "Right padding", "Bottom padding", "Left padding"]));
     const left = renderer!.root.findAllByType(NumericInput).find(input => input.props.ariaLabel === "Left padding")!;
     act(() => left.props.onChange(32));
-    expect(patches[patches.length - 1]).toEqual({ padding: { top: 8, right: 8, bottom: 8, left: 32 } });
+    expect(sideEdits).toEqual([{
+      padding: { top: 8, right: 8, bottom: 8, left: 32 },
+      changedEdges: ["left"],
+    }]);
 
     act(() => { renderer!.update(<PropertyPanel
       elementType="frame-auto"
