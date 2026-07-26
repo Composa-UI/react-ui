@@ -198,6 +198,50 @@ describe("Timeline DOM contracts", () => {
     act(() => renderer!.unmount());
   });
 
+  it("routes Delete and Backspace through the body and both trim handles without timing or canvas leakage", () => {
+    const onDelete = vi.fn();
+    const onChange = vi.fn();
+    let renderer: ReactTestRenderer;
+    act(() => {
+      renderer = create(<Timeline height={220} duration={2_000} tracks={[{
+        id: "hero", name: "Hero", type: "frame", props: [], bars: [
+          { id: "pulse", label: "Pulse", timeRange: [100, 500], selected: true },
+        ],
+      }]} onPresetBarChange={onChange} onDeleteSelectedPresets={onDelete} />);
+    });
+    const controls = [
+      renderer!.root.findByProps({ "aria-label": "Move Pulse animation" }),
+      renderer!.root.findByProps({ "aria-label": "Trim Pulse animation from start" }),
+      renderer!.root.findByProps({ "aria-label": "Trim Pulse animation from end" }),
+    ];
+    for (const control of controls) {
+      expect(control.props["aria-keyshortcuts"]).toContain("Delete Backspace");
+      for (const key of ["Delete", "Backspace"]) {
+        const preventDefault = vi.fn();
+        const stopPropagation = vi.fn();
+        act(() => control.props.onKeyDown({
+          key, shiftKey: false, altKey: false, metaKey: false, ctrlKey: false, repeat: false,
+          nativeEvent: { isComposing: false, keyCode: key === "Delete" ? 46 : 8 }, preventDefault, stopPropagation,
+        }));
+        expect(preventDefault).toHaveBeenCalledOnce();
+        expect(stopPropagation).toHaveBeenCalledOnce();
+      }
+    }
+    expect(onDelete).toHaveBeenCalledTimes(6);
+    expect(onDelete.mock.calls).toEqual(Array.from({ length: 6 }, () => ["hero", "pulse"]));
+    expect(onChange).not.toHaveBeenCalled();
+    act(() => renderer!.unmount());
+
+    const timingOnly = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[{
+      id: "hero", name: "Hero", type: "frame", props: [], bars: [
+        { id: "pulse", label: "Pulse", timeRange: [100, 500], selected: true },
+      ],
+    }]} onPresetBarChange={() => undefined} />);
+    expect(timingOnly).toContain('aria-label="Trim Pulse animation from start"');
+    expect(timingOnly).toContain('aria-label="Trim Pulse animation from end"');
+    expect(timingOnly).not.toContain("Delete Backspace");
+  });
+
   it("claims Delete on a selected locked bar without advertising or invoking deletion", () => {
     const onDelete = vi.fn();
     let renderer: ReactTestRenderer;

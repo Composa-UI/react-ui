@@ -775,12 +775,12 @@ function PresetBar({ trackId, preset, projection, viewport, plotWidth, duration,
       </button>
       {selected && !projection.clippedStart && <span aria-hidden className="pointer-events-none absolute left-[3px] top-1/2 z-[1] h-[10px] w-[2px] -translate-y-1/2 rounded-full bg-white" />}
       {selected && !projection.clippedEnd && <span aria-hidden className="pointer-events-none absolute right-[3px] top-1/2 z-[1] h-[10px] w-[2px] -translate-y-1/2 rounded-full bg-white" />}
-      {selected && !projection.clippedStart && <button type="button" aria-label={`Trim ${name} from start`} aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight" data-preset-bar-action="trim-start"
-        onPointerDown={event => begin("trim-start", event)} onPointerMove={move} onKeyDown={event => step("trim-start", event)}
+      {selected && !projection.clippedStart && <button type="button" aria-label={`Trim ${name} from start`} aria-keyshortcuts={`ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight${canDelete ? " Delete Backspace" : ""}`} data-preset-bar-action="trim-start"
+        onPointerDown={event => begin("trim-start", event)} onPointerMove={move} onKeyDown={event => { if (!deleteSelected(event)) step("trim-start", event); }}
         onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
         className="absolute -left-[3px] top-1/2 z-[2] h-[20px] w-[7px] -translate-y-1/2 cursor-ew-resize rounded-c-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />}
-      {selected && !projection.clippedEnd && <button type="button" aria-label={`Trim ${name} from end`} aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight" data-preset-bar-action="trim-end"
-        onPointerDown={event => begin("trim-end", event)} onPointerMove={move} onKeyDown={event => step("trim-end", event)}
+      {selected && !projection.clippedEnd && <button type="button" aria-label={`Trim ${name} from end`} aria-keyshortcuts={`ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight${canDelete ? " Delete Backspace" : ""}`} data-preset-bar-action="trim-end"
+        onPointerDown={event => begin("trim-end", event)} onPointerMove={move} onKeyDown={event => { if (!deleteSelected(event)) step("trim-end", event); }}
         onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
         className="absolute -right-[3px] top-1/2 z-[2] h-[20px] w-[7px] -translate-y-1/2 cursor-ew-resize rounded-c-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />}
     </div>
