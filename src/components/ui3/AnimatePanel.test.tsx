@@ -30,7 +30,7 @@ describe("AnimatePanel — Comp transition reflects the slide's real value (issu
   });
 });
 
-describe("AnimatePanel — default card expansion follows selection type (issue #174)", () => {
+describe("AnimatePanel — object tint and exact-card focus stay distinct (issue #305)", () => {
   it("slide selection expands the Comp transition card by default", () => {
     const html = renderToStaticMarkup(
       <AnimatePanel selectionType="slide" compTransition={{ style: "push", direction: "right", durationMs: 500, easing: "ease-in-out" }} anims={ANIMS} />,
@@ -43,16 +43,39 @@ describe("AnimatePanel — default card expansion follows selection type (issue 
     expect(html).not.toContain(">Build in<");
   });
 
-  it("element selection expands that element's selected Object animation card by default", () => {
+  it("element selection tints every matching card but auto-expands none", () => {
     const html = renderToStaticMarkup(
-      <AnimatePanel selectionType="element" compTransition={{ style: "none", direction: "right", durationMs: 300, easing: "ease-out" }} anims={ANIMS} />,
+      <AnimatePanel
+        selectionType="element"
+        compTransition={{ style: "none", direction: "right", durationMs: 300, easing: "ease-out" }}
+        anims={ANIMS.map(animation => ({ ...animation, selected: animation.id === "a1" || animation.id === "a2" }))}
+      />,
     );
-    // The selected anim (a2 "Subtitle", a build-in) is expanded → its phase body renders.
-    expect(html).toContain(">Build in<");
-    // And the slide-scoped Comp transition stays collapsed on None (not the focus card),
-    // never the phantom 'Fade'.
+    expect(html.match(/data-animation-card-state="selected"/g)).toHaveLength(2);
+    expect(html.match(/bg-c-bg-selected hover:bg-c-bg-selected/g)).toHaveLength(2);
+    expect(html).not.toContain(">Build in<");
+    expect(html).not.toContain('aria-expanded="true"');
     expect(html).toContain(">None<");
     expect(html).not.toContain(">Fade<");
+  });
+
+  it("retains the selected tint on every matching card when one is manually expanded", () => {
+    let renderer: ReturnType<typeof create>;
+    const selected = ANIMS.map(animation => ({
+      ...animation,
+      selected: animation.id === "a1" || animation.id === "a2",
+    }));
+    act(() => {
+      renderer = create(<AnimatePanel selectionType="element" anims={selected} />);
+    });
+    act(() => renderer!.root.findByProps({ "data-animation-card-id": "a1" })
+      .findByProps({ "aria-expanded": false }).props.onClick());
+    const selectedCards = renderer!.root.findAll(node => node.props["data-animation-card-state"] === "selected");
+    expect(selectedCards).toHaveLength(2);
+    for (const card of selectedCards) {
+      expect(card.findAll(node => typeof node.props.className === "string" && node.props.className.includes("bg-c-bg-selected"))).not.toHaveLength(0);
+    }
+    act(() => renderer!.unmount());
   });
 
   it("gives an exact timeline-focused preset precedence over the element-default card", () => {
@@ -64,6 +87,56 @@ describe("AnimatePanel — default card expansion follows selection type (issue 
     // timeline bar must reveal its own card, not merely the first selected one.
     expect(html).toContain(">Action<");
     expect(html).not.toContain(">Build in<");
+  });
+});
+
+describe("AnimatePanel — visible Before / With / After sequencing targets (issue #305)", () => {
+  it("reveals all explicit targets during drag, shows the active indicator, and emits the chosen placement", () => {
+    const reorders: Array<[string, string, "before" | "with" | "after"]> = [];
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(
+        <AnimatePanel
+          selectionType="element"
+          anims={ANIMS}
+          objectAnimationCallbacks={{ onReorder: (id, targetId, placement) => reorders.push([id, targetId, placement]) }}
+        />,
+      );
+    });
+    const transfer = { effectAllowed: "", dropEffect: "", setData: vi.fn() };
+    const dragBody = () => renderer!.root.findByProps({ "aria-label": "Drag Body animation" });
+
+    for (const placement of ["before", "with", "after"] as const) {
+      act(() => dragBody().props.onDragStart({ dataTransfer: transfer }));
+      const target = renderer!.root.findAll(node =>
+        node.props["data-animation-sequence-target"] === placement &&
+        node.props["data-animation-sequence-target-for"] === "a2",
+      )[0]!;
+      expect(renderer!.root.findByProps({ "aria-label": "Place animation relative to Subtitle" })).toBeDefined();
+      act(() => target.props.onDragEnter({ preventDefault: vi.fn(), stopPropagation: vi.fn() }));
+      expect(renderer!.root.findByProps({ "data-animation-sequence-drop-indicator": placement })).toBeDefined();
+      act(() => target.props.onDrop({ preventDefault: vi.fn(), stopPropagation: vi.fn() }));
+    }
+
+    expect(transfer.setData).toHaveBeenCalledWith("text/plain", "a3");
+    expect(reorders).toEqual([
+      ["a3", "a2", "before"],
+      ["a3", "a2", "with"],
+      ["a3", "a2", "after"],
+    ]);
+    act(() => renderer!.unmount());
+  });
+
+  it("renders no sequencing targets without an active drag", () => {
+    const html = renderToStaticMarkup(
+      <AnimatePanel
+        selectionType="element"
+        anims={ANIMS}
+        objectAnimationCallbacks={{ onReorder: () => undefined }}
+      />,
+    );
+    expect(html).not.toContain("data-animation-sequence-target=");
+    expect(html).not.toContain("data-animation-sequence-drop-indicator=");
   });
 });
 
@@ -146,7 +219,7 @@ describe("AnimatePanel — stable topmost Add Action authoring", () => {
 // Composa-App/Composa#410
 describe("AnimatePanel — action intensity uses the canonical dropdown", () => {
   const ACTION: ObjectAnimationItem = {
-    id: "action-1", n: 1, name: "Title", kind: "Action", duration: "0.6s", style: "pulse", intensity: "medium", selected: true,
+    id: "action-1", n: 1, name: "Title", kind: "Action", duration: "0.6s", style: "pulse", intensity: "medium", selected: true, focused: true,
   };
 
   const intensityPopover = (renderer: ReturnType<typeof create>) =>

@@ -96,16 +96,19 @@ function KindGlyph({ kind }: { kind: AnimKind }) {
 }
 
 // ── Shared expandable animation card ──────────────────────────────────────────────
-function AnimationCard({ icon, title, badge, expanded, onToggle, onRemove, children }: {
+function AnimationCard({ icon, title, badge, expanded, selected = false, onToggle, onRemove, children }: {
   icon: ReactNode; title: string; badge?: ReactNode;
-  expanded: boolean; onToggle: () => void; onRemove?: () => void; children?: ReactNode;
+  expanded: boolean; selected?: boolean; onToggle: () => void; onRemove?: () => void; children?: ReactNode;
 }) {
   if (!expanded) {
     return (
       <button
         onClick={onToggle}
         aria-expanded={false}
-        className="h-[32px] w-full rounded-c-md border border-c-border bg-c-bg flex items-center gap-[8px] px-[8px] hover:bg-c-bg-hover"
+        className={clsx(
+          "h-[32px] w-full rounded-c-md border border-c-border flex items-center gap-[8px] px-[8px]",
+          selected ? "bg-c-bg-selected hover:bg-c-bg-selected" : "bg-c-bg hover:bg-c-bg-hover",
+        )}
       >
         <span className="shrink-0 flex text-c-icon">{icon}</span>
         <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] text-c-text text-left truncate")}>{title}</span>
@@ -214,18 +217,18 @@ function DurationPill({ duration, kind }: { duration: string; kind: AnimKind }) 
 function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-click", delayMs: 0 }, addablePhases = ["build-in", "action", "build-out"], contextKey, selectionType, animationDelay = false }: {
   anims: ObjectAnimationItem[]; callbacks?: ObjectAnimationCallbacks; settings?: ObjectAnimationSequenceSettings; addablePhases?: ObjectAnimationPhase[]; contextKey?: string; selectionType?: "slide" | "element"; animationDelay?: boolean;
 }) {
-  // When an element is selected, default-expand that element's own animation card
-  // (the one flagged `selected`). For a slide selection nothing is auto-expanded —
-  // the Comp transition card is the focus there.
+  // Object selection is deliberately broader than Animate-unit focus. Every card
+  // belonging to the selected object receives the selected tint, but selection
+  // alone never chooses one card to expand. Only an exact timeline preset-bar
+  // selection (`focused`) opens its matching card.
   const focusedIndex = anims.findIndex(a => a.focused);
-  const selectedIndex = anims.findIndex(a => a.selected);
-  const defaultIndex = focusedIndex >= 0 ? focusedIndex : selectedIndex;
-  const defaultExpandedId = selectionType === "element" && defaultIndex >= 0
-    ? (anims[defaultIndex].id ?? String(defaultIndex))
+  const defaultExpandedId = selectionType === "element" && focusedIndex >= 0
+    ? (anims[focusedIndex].id ?? String(focusedIndex))
     : null;
   const [expanded, setExpanded] = useState<string | null>(defaultExpandedId);
   useEffect(() => { setExpanded(defaultExpandedId); }, [contextKey, selectionType, defaultExpandedId]);
   const [dragged, setDragged] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ targetId: string; placement: "before" | "after" | "with" } | null>(null);
   const phaseOptions: Array<{ value: ObjectAnimationPhase; label: string }> = [
     { value: "build-in", label: "Build in" }, { value: "action", label: "Action" }, { value: "build-out", label: "Build out" },
   ];
@@ -286,32 +289,101 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
             const styleLabels = Object.fromEntries(styleOptions.map(style => [style, style.split("-").map(word => word[0].toUpperCase() + word.slice(1)).join(" ")])) as Record<string, string>;
             const deliveryLabels = { "all-at-once": "All at once", "by-object": "By object", "by-word": "By word", "by-character": "By character" };
             const deliveryValue = Object.entries(deliveryLabels).find(([, label]) => label === a.delivery)?.[0] as keyof typeof deliveryLabels | undefined;
-            return <div key={id} className="group relative min-w-0 flex flex-col gap-[2px]"
-              onDragOver={event => { if (dragged && dragged !== id) { event.preventDefault(); event.dataTransfer.dropEffect = "move"; } }}
-              onDrop={event => {
-                event.preventDefault();
-                if (!dragged || dragged === id) return;
-                const rect = event.currentTarget.getBoundingClientRect();
-                const placement = event.clientX > rect.left + rect.width * 0.72 ? "with" : event.clientY < rect.top + rect.height / 2 ? "before" : "after";
-                callbacks?.onReorder?.(dragged, id, placement);
-                setDragged(null);
-              }}>
+            const sequenceTarget = (placement: "before" | "with" | "after") => {
+              const active = dropTarget?.targetId === id && dropTarget.placement === placement;
+              const label = placement[0].toUpperCase() + placement.slice(1);
+              return (
+                <div
+                  key={placement}
+                  data-animation-sequence-target={placement}
+                  data-animation-sequence-target-for={id}
+                  className={clsx(
+                    FONT,
+                    "relative flex h-[24px] flex-1 items-center justify-center rounded-c-sm border text-[10px] font-[450] leading-[14px]",
+                    active
+                      ? "border-c-border-selected bg-c-bg-selected text-c-text"
+                      : "border-c-border bg-c-bg-secondary text-c-text-secondary",
+                  )}
+                  onDragEnter={event => {
+                    if (!dragged || dragged === id) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setDropTarget({ targetId: id, placement });
+                  }}
+                  onDragOver={event => {
+                    if (!dragged || dragged === id) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    event.dataTransfer.dropEffect = "move";
+                    if (!active) setDropTarget({ targetId: id, placement });
+                  }}
+                  onDrop={event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (!dragged || dragged === id) return;
+                    callbacks?.onReorder?.(dragged, id, placement);
+                    setDropTarget(null);
+                    setDragged(null);
+                  }}
+                >
+                  {label}
+                  {active && (
+                    <span
+                      aria-hidden
+                      data-animation-sequence-drop-indicator={placement}
+                      className={clsx(
+                        "pointer-events-none absolute bg-c-border-selected",
+                        placement === "before" && "-top-[3px] left-[3px] right-[3px] h-[2px]",
+                        placement === "after" && "-bottom-[3px] left-[3px] right-[3px] h-[2px]",
+                        placement === "with" && "inset-[2px] rounded-c-xs border border-c-border-selected bg-transparent",
+                      )}
+                    />
+                  )}
+                </div>
+              );
+            };
+            return <div
+              key={id}
+              data-animation-card-id={id}
+              data-animation-element-id={a.elementId}
+              data-animation-card-state={a.focused ? "focused" : a.selected ? "selected" : "neutral"}
+              className="group relative min-w-0 flex flex-col gap-[2px]"
+            >
               {/* Drag handle — the reorder control. Rendered as a hover-revealed overlay
                   in the panel's own left padding (negative offset) so it reserves NO
                   horizontal space: the number + card sit FLUSH at the container's left
                   edge at rest, and the grip appears on hover without shifting the card. */}
               <button type="button" draggable={!!callbacks?.onReorder} aria-label={`Drag ${a.name} animation`} className="hidden group-hover:flex absolute -left-[16px] top-[26px] size-[16px] items-center justify-center cursor-grab text-c-icon-secondary"
-                onDragStart={event => { setDragged(id); event.dataTransfer.effectAllowed = "move"; }} onDragEnd={() => setDragged(null)}>
+                onDragStart={event => {
+                  setDragged(id);
+                  setDropTarget(null);
+                  event.dataTransfer.effectAllowed = "move";
+                  event.dataTransfer.setData("text/plain", id);
+                }}
+                onDragEnd={() => { setDragged(null); setDropTarget(null); }}>
                 <GripVertical size={14} />
               </button>
               {/* Build-order number sits ON TOP of the card, aligned with the card's
                   left edge, so the card can take the full available width. */}
               <div className={clsx(FONT, "h-[16px] flex items-center pl-[2px] text-[9px] font-[450] leading-[14px] tracking-[0.045px] text-c-text-secondary")}>{a.n}</div>
+              {dragged && dragged !== id && (
+                <div
+                  role="group"
+                  aria-label={`Place animation relative to ${a.name}`}
+                  data-animation-sequence-targets={id}
+                  className="flex gap-[4px] rounded-c-md border border-c-border bg-c-bg p-[4px]"
+                >
+                  {sequenceTarget("before")}
+                  {sequenceTarget("with")}
+                  {sequenceTarget("after")}
+                </div>
+              )}
               <AnimationCard
                   icon={<Type size={14} strokeWidth={1.5} />}
                   title={a.name}
                   badge={<><KindGlyph kind={a.kind} /><DurationPill duration={a.duration} kind={a.kind} /></>}
                   expanded={expanded === id}
+                  selected={!!a.selected}
                   onToggle={() => setExpanded(current => current === id ? null : id)}
                   onRemove={() => callbacks?.onRemove?.(id)}
                 >
