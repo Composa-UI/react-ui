@@ -294,6 +294,36 @@ export interface DimensionSizingFieldsProps {
   dimensionsKeyframe?: { active: boolean; onToggle: () => void };
 }
 
+export interface SpatialSelectionLayoutControl {
+  axis: "x" | "y";
+  gap: number;
+  onGapChange?: (value: number) => void;
+  onAddAutoLayout?: () => void;
+}
+
+function SpatialSelectionLayoutFields({ value }: { value?: SpatialSelectionLayoutControl }) {
+  if (!value) return null;
+  const horizontal = value.axis === "x";
+  return <>
+    <PanelFieldRow
+      label="Spacing"
+      left={<NumericInput
+        ariaLabel={horizontal ? "Horizontal spacing gap" : "Vertical spacing gap"}
+        iconLead={horizontal ? <MoveHorizontal size={14} strokeWidth={1.5} /> : <MoveVertical size={14} strokeWidth={1.5} />}
+        value={value.gap}
+        min={0}
+        step={1}
+        commitOnBlur
+        onChange={value.onGapChange}
+      />}
+      right={<span aria-hidden />}
+    />
+    {value.onAddAutoLayout && <PanelFullRow height={32}>
+      <Button label="Add auto layout" variant="Secondary" size="wide" onClick={value.onAddAutoLayout} />
+    </PanelFullRow>}
+  </>;
+}
+
 export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
   const [localWidthMode, setLocalWidthMode] = useState<ElementSizingMode>(props.widthMode ?? "fixed");
   const [localHeightMode, setLocalHeightMode] = useState<ElementSizingMode>(props.heightMode ?? "fixed");
@@ -514,6 +544,7 @@ interface LayoutFrameProps {
   /** Auto-layout is reached from here two ways: the "+" button, or moving Flow
    * off its first ("Freeform") option. Both call this. */
   onEnableAutoLayout?: () => void;
+  spatialSelectionLayout?: SpatialSelectionLayoutControl;
 }
 
 function LayoutFrameSection({
@@ -522,6 +553,7 @@ function LayoutFrameSection({
   onWidthChange, onHeightChange, onClipContentChange,
   sizing,
   onEnableAutoLayout,
+  spatialSelectionLayout,
 }: LayoutFrameProps) {
   // Plain frame defaults to Freeform (no auto-layout yet) — NOT "v", which would
   // already imply vertical auto-layout while this is the "no auto-layout" section.
@@ -556,6 +588,7 @@ function LayoutFrameSection({
       />
 
       <DimensionSizingFields width={width} height={height} onWidthChange={onWidthChange} onHeightChange={onHeightChange} {...sizing} />
+      <SpatialSelectionLayoutFields value={spatialSelectionLayout} />
 
       {/* Corner radius moved to Appearance */}
 
@@ -596,6 +629,7 @@ interface LayoutAutoProps {
   onClipContentChange?: (value: boolean) => void;
   onAutoLayoutSettingsRequest?: () => void;
   sizing?: Omit<DimensionSizingFieldsProps, "width" | "height" | "widthMode" | "heightMode">;
+  spatialSelectionLayout?: SpatialSelectionLayoutControl;
 }
 
 export function reconcileAutoLayoutGap(
@@ -624,7 +658,7 @@ function LayoutAutoSection({
   canvasStackingMixed = false,
   settingsBaselineApplicable,
   settingsDisabled = false,
-  onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onAutoLayoutSettingsRequest, sizing,
+  onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onAutoLayoutSettingsRequest, sizing, spatialSelectionLayout,
 }: LayoutAutoProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const controlled = flowMode !== undefined;
@@ -802,6 +836,7 @@ function LayoutAutoSection({
       </div>
 
       <DimensionSizingFields {...sizing} width={width} height={height} widthMode={widthMode} heightMode={heightMode} />
+      <SpatialSelectionLayoutFields value={spatialSelectionLayout} />
 
       {/* Clip content */}
       <PanelFullRow height={28}>
@@ -1970,6 +2005,9 @@ export interface PropertyPanelProps {
   onApplySizingVariable?: (axis: ElementSizingAxis) => void;
   /** Opens the one shared Auto Layout Settings surface from the Flow + Gap row. */
   onAutoLayoutSettingsRequest?: () => void;
+  /** Host-owned equal-spacing projection. It renders in the existing Layout
+   * section directly below Dimensions; the UI package owns presentation only. */
+  spatialSelectionLayout?: SpatialSelectionLayoutControl;
   typography?: ElementTypographySettings;
   onTypographyChange?: (patch: Partial<ElementTypographySettings>) => void;
   fills?: ElementFillSetting[];
@@ -2469,7 +2507,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           />
 
           {/* Layout — polymorphic */}
-          {(isFrame)       && <LayoutFrameSection width={width} height={height} sizing={sizingContract} clipContent={layout?.clipsContent} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onClipContentChange={onLayoutChange ? value => onLayoutChange({ clipsContent: value }) : undefined} onEnableAutoLayout={() => { setAutoLayoutOn(true); onLayoutChange?.({ mode: "vertical" }); }} />}
+          {(isFrame)       && <LayoutFrameSection width={width} height={height} sizing={sizingContract} spatialSelectionLayout={props.spatialSelectionLayout} clipContent={layout?.clipsContent} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onClipContentChange={onLayoutChange ? value => onLayoutChange({ clipsContent: value }) : undefined} onEnableAutoLayout={() => { setAutoLayoutOn(true); onLayoutChange?.({ mode: "vertical" }); }} />}
           {(isAutoLayout)  && <LayoutAutoSection width={width} height={height}
             flowMode={layout?.mode}
             gap={layout?.gap} paddingTop={layout?.padding.top} paddingRight={layout?.padding.right} paddingBottom={layout?.padding.bottom} paddingLeft={layout?.padding.left}
@@ -2482,12 +2520,14 @@ export function PropertyPanel(props: PropertyPanelProps) {
             settingsBaselineApplicable={layout?.autoLayoutSettingsBaselineApplicable} settingsDisabled={layout?.autoLayoutSettingsDisabled}
             widthMode={layout?.widthMode} heightMode={layout?.heightMode}
             sizing={sizingContract}
+            spatialSelectionLayout={props.spatialSelectionLayout}
             onLayoutChange={onLayoutChange} onPaddingChange={props.onPaddingChange ?? (onLayoutChange ? padding => onLayoutChange({ padding }) : undefined)}
             onAlignChange={onLayoutChange ? align => onLayoutChange({ align }) : undefined} onClipContentChange={onLayoutChange ? clipsContent => onLayoutChange({ clipsContent }) : undefined}
             onAutoLayoutSettingsRequest={onAutoLayoutSettingsRequest} />}
           {(isShape || isText) && (
             <PanelSection title="Layout">
               <DimensionSizingFields {...sizingContract} width={width} height={height} dimensionsKeyframe={keyframeControls?.dimensions} />
+              <SpatialSelectionLayoutFields value={props.spatialSelectionLayout} />
               {/* Corner radius moved to Appearance */}
             </PanelSection>
           )}
