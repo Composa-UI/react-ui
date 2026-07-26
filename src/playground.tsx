@@ -717,7 +717,7 @@ export default function Playground() {
     typography: { fontFamily: "Inter", fontWeight: "Medium", fontSize: 48, lineHeight: 58, letterSpacing: 0, align: "left", verticalAlign: "middle" },
     layout: { mode: "vertical", gap: 8, padding: { top: 16, right: 16, bottom: 16, left: 16 }, align: "mc", widthMode: "fill", heightMode: "hug", minWidth: 240, maxHeight: 720, availableWidthModes: ["fixed", "fill"], availableHeightModes: ["fixed", "hug"], clipsContent: true, positioning: "auto", positioningApplicable: true },
     fills: [{ id: "fill-1", color: "#1e1e1e", opacity: 100, visible: true }],
-    strokes: [{ id: "stroke-1", color: "#0d99ff", opacity: 100, visible: true, weight: 1, align: "inside" }],
+    strokes: [{ id: "stroke-1", color: "#0d99ff", opacity: 100, visible: true, weight: 1, align: "inside", style: "solid", join: "miter", cap: "none" }],
     effects: [{ id: "effect-1", type: "Drop shadow", visible: true }],
   });
   const [contractAssets, setContractAssets] = useState<AssetItem[]>([

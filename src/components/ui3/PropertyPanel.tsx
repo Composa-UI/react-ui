@@ -35,6 +35,12 @@ import { Button } from "./Button";
 import { Tooltip } from "./Tooltip";
 import { EffectDetailsDialog, type EffectDetailsValue } from "./EffectDetailsDialog";
 import { AutoLayoutSettingsDialog } from "./AutoLayoutSettingsDialog";
+import {
+  StrokeSettingsDialog,
+  type StrokeCap,
+  type StrokeJoin,
+  type StrokeStyle,
+} from "./StrokeSettingsDialog";
 import { EasingInspectorSection, type EasingInspectorSectionProps, type EasingInspectorValue } from "./EasingInspectorSection";
 import type { EasingApplyScope } from "./easing";
 import { iconForSemantic } from "./IconSemantics";
@@ -54,7 +60,16 @@ export type ExportFormat = "PNG" | "JPG";
 export interface InspectorExportSetting { id: string; scale: number; suffix: string; format: ExportFormat; }
 export type ProjectFrameRate = 24 | 25 | 30 | 60;
 export interface ElementFillSetting { id: string; color: string; opacity: number; visible: boolean; label?: string; }
-export interface ElementStrokeSetting extends ElementFillSetting { weight: number; align: "inside" | "center" | "outside"; }
+export interface ElementStrokeSetting extends ElementFillSetting {
+  weight: number;
+  align: "inside" | "center" | "outside";
+  style?: StrokeStyle;
+  join?: StrokeJoin;
+  cap?: StrokeCap;
+  styleMixed?: boolean;
+  joinMixed?: boolean;
+  capMixed?: boolean;
+}
 export interface ElementEffectSetting extends EffectDetailsValue { id: string; }
 export interface ElementLayoutGuideSetting { id: string; type: "Grid" | "Columns" | "Rows"; visible: boolean; size: number; }
 export interface ElementSelectionColorSetting { id: string; color: string; opacity: number; usageCount?: number; }
@@ -966,17 +981,17 @@ function TypographySection({ value, onChange, stylesAvailable }: { value?: Eleme
 
 type FillEntry = ElementFillSetting;
 
-function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities }: {
+function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities, activeStackDialog, onActiveStackDialogChange }: {
   entries?: FillEntry[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<FillEntry, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
   capabilities: Required<InspectorCapabilities>;
+  activeStackDialog: string | null;
+  onActiveStackDialogChange: (dialog: string | null) => void;
 }) {
   const [internal, setInternal] = useState<FillEntry[]>([
     { id: "1", color: "#1e1e1e", opacity: 100, visible: true, label: "Black" },
   ]);
   const fills = entries ?? internal;
-  const [colorOpen, setColorOpen] = useState(false);
-  const [activeFill, setActiveFill] = useState<string | null>(null);
 
   const addFill = () => { if (!entries) setInternal(f => [...f, { id: String(Date.now()), color: "#ffffff", opacity: 100, visible: true }]); onAdd?.(); };
   const updateFill = (id: string, patch: Partial<Omit<FillEntry, "id">>) => { if (!entries) setInternal(f => f.map(x => x.id === id ? { ...x, ...patch } : x)); onUpdate?.(id, patch); };
@@ -1003,8 +1018,8 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, 
           <div className="flex-1 min-w-0">
             <ColorDialog
               capabilities={capabilities}
-              open={colorOpen && activeFill === fill.id}
-              onClose={() => setColorOpen(false)}
+              open={activeStackDialog === `fill-color:${fill.id}`}
+              onClose={() => onActiveStackDialogChange(null)}
               trigger={<ColorInput
                 ariaLabel="Fill color"
                 fullWidth
@@ -1012,7 +1027,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, 
                 opacity={fill.opacity}
                 onColorChange={color => updateFill(fill.id, { color })}
                 onOpacityChange={opacity => updateFill(fill.id, { opacity })}
-                onSwatchClick={() => { setActiveFill(fill.id); setColorOpen(true); }}
+                onSwatchClick={() => onActiveStackDialogChange(`fill-color:${fill.id}`)}
               />}
               hex={fill.color.replace("#", "")}
               onHexChange={color => updateFill(fill.id, { color: `#${color.replace(/^#/, "")}` })}
@@ -1034,17 +1049,18 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, 
 
 // ─── Section: Stroke ──────────────────────────────────────────────────────────
 
-function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities }: {
+function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities, readOnly, activeStackDialog, onActiveStackDialogChange }: {
   entries?: ElementStrokeSetting[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<ElementStrokeSetting, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
   capabilities: Required<InspectorCapabilities>;
+  readOnly: boolean;
+  activeStackDialog: string | null;
+  onActiveStackDialogChange: (dialog: string | null) => void;
 }) {
   const [internal, setInternal] = useState<ElementStrokeSetting[]>([]);
   const strokes = entries ?? internal;
-  const [colorOpen, setColorOpen] = useState(false);
-  const [activeStroke, setActiveStroke] = useState<string | null>(null);
   const update = (id: string, patch: Partial<Omit<ElementStrokeSetting, "id">>) => { if (!entries) setInternal(s => s.map(x => x.id === id ? { ...x, ...patch } : x)); onUpdate?.(id, patch); };
-  const add = () => { if (!entries) setInternal(s => [...s, { id: String(Date.now()), color: "#000000", opacity: 100, visible: true, weight: 1, align: "center" }]); onAdd?.(); };
+  const add = () => { if (!entries) setInternal(s => [...s, { id: String(Date.now()), color: "#000000", opacity: 100, visible: true, weight: 1, align: "center", style: "solid", join: "miter", cap: "none" }]); onAdd?.(); };
   const remove = (id: string) => { if (!entries) setInternal(s => s.filter(x => x.id !== id)); onRemove?.(id); };
   const toggle = (id: string) => { const stroke = strokes.find(item => item.id === id); if (!stroke) return; if (!entries) setInternal(items => items.map(item => item.id === id ? { ...item, visible: !item.visible } : item)); onToggle?.(id, !stroke.visible); };
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
@@ -1070,8 +1086,8 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
             <div className="flex-1 min-w-0">
               <ColorDialog
                 capabilities={capabilities}
-                open={colorOpen && activeStroke === stroke.id}
-                onClose={() => setColorOpen(false)}
+                open={activeStackDialog === `stroke-color:${stroke.id}`}
+                onClose={() => onActiveStackDialogChange(null)}
                 trigger={<ColorInput
                   ariaLabel="Stroke color"
                   fullWidth
@@ -1079,7 +1095,7 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
                   opacity={stroke.opacity}
                   onColorChange={color => update(stroke.id, { color })}
                   onOpacityChange={opacity => update(stroke.id, { opacity })}
-                  onSwatchClick={() => { setActiveStroke(stroke.id); setColorOpen(true); }}
+                  onSwatchClick={() => onActiveStackDialogChange(`stroke-color:${stroke.id}`)}
                 />}
                 hex={stroke.color.replace("#", "")}
                 onHexChange={color => update(stroke.id, { color: `#${color.replace(/^#/, "")}` })}
@@ -1104,7 +1120,26 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
               <div className={subLabel}>Weight</div>
               <NumericInput iconLead={<AlignJustify size={16} strokeWidth={1.5} />} value={stroke.weight} onChange={weight => update(stroke.id, { weight })} min={0} />
             </div>
-            <PanelActionBtn icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />} label="Stroke settings" />
+            <StrokeSettingsDialog
+              open={activeStackDialog === `stroke-settings:${stroke.id}`}
+              onClose={() => onActiveStackDialogChange(null)}
+              readOnly={readOnly}
+              value={{
+                style: stroke.style ?? "solid",
+                join: stroke.join ?? "miter",
+                cap: stroke.cap ?? "none",
+                styleMixed: stroke.styleMixed,
+                joinMixed: stroke.joinMixed,
+                capMixed: stroke.capMixed,
+              }}
+              onChange={readOnly ? undefined : patch => update(stroke.id, patch)}
+              trigger={<PanelActionBtn
+                icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />}
+                label="Stroke settings"
+                active={activeStackDialog === `stroke-settings:${stroke.id}`}
+                onClick={() => onActiveStackDialogChange(`stroke-settings:${stroke.id}`)}
+              />}
+            />
             <PanelActionBtn icon={<Square size={16} strokeWidth={1.5} />} label="Individual sides" />
           </div>
         </div>
@@ -1115,14 +1150,15 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
 
 // ─── Section: Effects ─────────────────────────────────────────────────────────
 
-function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities }: {
+function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities, activeStackDialog, onActiveStackDialogChange }: {
   entries?: ElementEffectSetting[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<ElementEffectSetting, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
   capabilities: Required<InspectorCapabilities>;
+  activeStackDialog: string | null;
+  onActiveStackDialogChange: (dialog: string | null) => void;
 }) {
   const [internal, setInternal] = useState<ElementEffectSetting[]>([]);
   const effects = entries ?? internal;
-  const [activeEffect, setActiveEffect] = useState<string | null>(null);
   const update = (id: string, patch: Partial<Omit<ElementEffectSetting, "id">>) => { if (!entries) setInternal(e => e.map(x => x.id === id ? { ...x, ...patch } : x)); onUpdate?.(id, patch); };
   const add = () => { if (!entries) setInternal(e => [...e, { id: String(Date.now()), type: "Drop shadow", visible: true }]); onAdd?.(); };
   const remove = (id: string) => { if (!entries) setInternal(e => e.filter(x => x.id !== id)); onRemove?.(id); };
@@ -1146,10 +1182,10 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
           <DragGutter />
           <PanelActionBtn icon={effect.visible ? <Eye size={16} strokeWidth={1.5} /> : <EyeOff size={16} strokeWidth={1.5} />} label={effect.visible ? "Hide" : "Show"} onClick={() => toggle(effect.id)} />
           <div className="flex-1 min-w-0">
-            <EffectDetailsDialog open={activeEffect === effect.id} value={effect}
-              trigger={<Dropdown value={effect.type} fullWidth onClick={() => setActiveEffect(effect.id)} />}
+            <EffectDetailsDialog open={activeStackDialog === `effect:${effect.id}`} value={effect}
+              trigger={<Dropdown value={effect.type} fullWidth onClick={() => onActiveStackDialogChange(`effect:${effect.id}`)} />}
               capabilities={capabilities}
-              onChange={patch => update(effect.id, patch)} onClose={() => setActiveEffect(null)} />
+              onChange={patch => update(effect.id, patch)} onClose={() => onActiveStackDialogChange(null)} />
           </div>
           <div className="shrink-0 flex items-center gap-[4px] pl-[8px]">
             <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove effect" onClick={() => remove(effect.id)} />
@@ -1923,6 +1959,8 @@ export interface PropertyPanelProps {
   fills?: ElementFillSetting[];
   onAddFill?: () => void; onUpdateFill?: (id: string, patch: Partial<Omit<ElementFillSetting, "id">>) => void; onToggleFill?: (id: string, visible: boolean) => void; onReorderFill?: (id: string, targetId: string) => void; onRemoveFill?: (id: string) => void;
   strokes?: ElementStrokeSetting[];
+  /** Locked or inherited-locked selections may inspect Stroke Settings but cannot mutate them. */
+  strokeReadOnly?: boolean;
   onAddStroke?: () => void; onUpdateStroke?: (id: string, patch: Partial<Omit<ElementStrokeSetting, "id">>) => void; onToggleStroke?: (id: string, visible: boolean) => void; onReorderStroke?: (id: string, targetId: string) => void; onRemoveStroke?: (id: string) => void;
   effects?: ElementEffectSetting[];
   onAddEffect?: () => void; onUpdateEffect?: (id: string, patch: Partial<Omit<ElementEffectSetting, "id">>) => void; onToggleEffect?: (id: string, visible: boolean) => void; onReorderEffect?: (id: string, targetId: string) => void; onRemoveEffect?: (id: string) => void;
@@ -2063,7 +2101,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   cornerRadius = 0, onBlendModeChange, onCornerRadiusChange,
   layout, onLayoutChange, onSizingChange, onSizingConstraintChange, onApplySizingVariable, onAutoLayoutSettingsRequest, typography, onTypographyChange,
   fills, onAddFill, onUpdateFill, onToggleFill, onReorderFill, onRemoveFill,
-  strokes, onAddStroke, onUpdateStroke, onToggleStroke, onReorderStroke, onRemoveStroke,
+  strokes, strokeReadOnly = false, onAddStroke, onUpdateStroke, onToggleStroke, onReorderStroke, onRemoveStroke,
   effects, onAddEffect, onUpdateEffect, onToggleEffect, onReorderEffect, onRemoveEffect,
   layoutGuides, onAddLayoutGuide, onUpdateLayoutGuide, onRemoveLayoutGuide,
   selectionColors, onUpdateSelectionColor, onSelectAllUsingColor, objectAnimations, objectAnimationCallbacks, objectAnimationSettings, addableAnimationPhases,
@@ -2145,6 +2183,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
     animationDelay: capabilityOverrides?.animationDelay ?? false,
   };
   const [uncontrolledTab, setUncontrolledTab] = useState<"design" | "animate" | "prototype">("design");
+  const [activeStackDialog, setActiveStackDialog] = useState<string | null>(null);
   const tab = props.activeTab ?? uncontrolledTab;
   const setTab = (next: string) => {
     if (next !== "design" && next !== "animate" && next !== "prototype") return;
@@ -2441,9 +2480,12 @@ export function PropertyPanel(props: PropertyPanelProps) {
           {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} />}
 
           {/* Stackable sections */}
-          <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill} capabilities={capabilities} />
-          <StrokeSection entries={strokes} onAdd={onAddStroke} onUpdate={onUpdateStroke} onToggle={onToggleStroke} onReorder={onReorderStroke} onRemove={onRemoveStroke} capabilities={capabilities} />
-          <EffectsSection entries={effects} onAdd={onAddEffect} onUpdate={onUpdateEffect} onToggle={onToggleEffect} onReorder={onReorderEffect} onRemove={onRemoveEffect} capabilities={capabilities} />
+          <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill} capabilities={capabilities}
+            activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
+          <StrokeSection entries={strokes} onAdd={onAddStroke} onUpdate={onUpdateStroke} onToggle={onToggleStroke} onReorder={onReorderStroke} onRemove={onRemoveStroke} capabilities={capabilities}
+            readOnly={strokeReadOnly} activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
+          <EffectsSection entries={effects} onAdd={onAddEffect} onUpdate={onUpdateEffect} onToggle={onToggleEffect} onReorder={onReorderEffect} onRemove={onRemoveEffect} capabilities={capabilities}
+            activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
 
           {/* Selection Colors — multi-select only (§5.8), positioned right after Effects */}
           {multiSelect && <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} capabilities={capabilities} />}

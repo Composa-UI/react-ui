@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import { EffectDetailsDialog } from "./EffectDetailsDialog";
 
 vi.mock("./InspectorDialog", () => ({
+  COMPACT_INSPECTOR_DIALOG_WIDTH: 240,
+  EFFECTS_INSPECTOR_DIALOG_SIDE_OFFSET: 48,
   InspectorDialog: ({ ariaLabel, width, sideOffset, elevation, trigger, children }: {
     ariaLabel?: string;
     width?: number;
