@@ -44,6 +44,7 @@ import {
 import { EasingInspectorSection, type EasingInspectorSectionProps, type EasingInspectorValue } from "./EasingInspectorSection";
 import type { EasingApplyScope } from "./easing";
 import { iconForSemantic } from "./IconSemantics";
+import { AutoLayoutSpacingIcon } from "./AutoLayoutSpacingIcon";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -670,9 +671,7 @@ function LayoutAutoSection({
 
   const gapMode = renderedGap === "auto" ? "auto" : "fixed";
   const gapAxis = renderedFlow === "v" ? "vertical" : "horizontal";
-  const gapIcon = gapAxis === "vertical"
-    ? <MoveVertical size={14} strokeWidth={1.5} />
-    : <MoveHorizontal size={14} strokeWidth={1.5} />;
+  const gapIcon = <AutoLayoutSpacingIcon kind="gap" axis={gapAxis} />;
 
   const gapMenu = (close: () => void) => (
     <Menu minWidth={156}>
@@ -770,10 +769,10 @@ function LayoutAutoSection({
           // aligned (not centered) since the field block is two rows tall here.
           <div className="flex items-start gap-[4px]">
             <div className="grid grid-cols-2 gap-[4px] flex-1 min-w-0">
-              <NumericInput ariaLabel="Top padding" iconLead={<span className={FONT}>↑</span>} value={controlled ? paddingTop : undefined} defaultValue={paddingTop} mixed={paddingTopMixed} disabled={paddingDisabled} onChange={top => onPaddingChange?.({ top, right: paddingRight, bottom: paddingBottom, left: paddingLeft }, ["top"])} min={0} />
-              <NumericInput ariaLabel="Right padding" iconLead={<span className={FONT}>→</span>} value={controlled ? paddingRight : undefined} defaultValue={paddingRight} mixed={paddingRightMixed} disabled={paddingDisabled} onChange={right => onPaddingChange?.({ top: paddingTop, right, bottom: paddingBottom, left: paddingLeft }, ["right"])} min={0} />
-              <NumericInput ariaLabel="Bottom padding" iconLead={<span className={FONT}>↓</span>} value={controlled ? paddingBottom : undefined} defaultValue={paddingBottom} mixed={paddingBottomMixed} disabled={paddingDisabled} onChange={bottom => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom, left: paddingLeft }, ["bottom"])} min={0} />
-              <NumericInput ariaLabel="Left padding" iconLead={<span className={FONT}>←</span>} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} mixed={paddingLeftMixed} disabled={paddingDisabled} onChange={left => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom: paddingBottom, left }, ["left"])} min={0} />
+              <NumericInput ariaLabel="Top padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="top" />} value={controlled ? paddingTop : undefined} defaultValue={paddingTop} mixed={paddingTopMixed} disabled={paddingDisabled} onChange={top => onPaddingChange?.({ top, right: paddingRight, bottom: paddingBottom, left: paddingLeft }, ["top"])} min={0} />
+              <NumericInput ariaLabel="Right padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="right" />} value={controlled ? paddingRight : undefined} defaultValue={paddingRight} mixed={paddingRightMixed} disabled={paddingDisabled} onChange={right => onPaddingChange?.({ top: paddingTop, right, bottom: paddingBottom, left: paddingLeft }, ["right"])} min={0} />
+              <NumericInput ariaLabel="Bottom padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="bottom" />} value={controlled ? paddingBottom : undefined} defaultValue={paddingBottom} mixed={paddingBottomMixed} disabled={paddingDisabled} onChange={bottom => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom, left: paddingLeft }, ["bottom"])} min={0} />
+              <NumericInput ariaLabel="Left padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="left" />} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} mixed={paddingLeftMixed} disabled={paddingDisabled} onChange={left => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom: paddingBottom, left }, ["left"])} min={0} />
             </div>
             <PanelActionBtn
               icon={<Maximize size={16} strokeWidth={1.5} />}
@@ -786,10 +785,10 @@ function LayoutAutoSection({
         ) : (
           <div className="flex items-center gap-[4px]">
             <div className="flex-1 min-w-0">
-              <NumericInput ariaLabel="Vertical padding" iconLead={<span className={FONT}>↕</span>} value={controlled ? paddingTop : undefined} defaultValue={paddingTop} disabled={paddingDisabled} onChange={vertical => onPaddingChange?.({ top: vertical, right: paddingRight, bottom: vertical, left: paddingLeft }, ["top", "bottom"])} min={0} />
+              <NumericInput ariaLabel="Vertical padding" iconLead={<AutoLayoutSpacingIcon kind="padding" axis="vertical" />} value={controlled ? paddingTop : undefined} defaultValue={paddingTop} disabled={paddingDisabled} onChange={vertical => onPaddingChange?.({ top: vertical, right: paddingRight, bottom: vertical, left: paddingLeft }, ["top", "bottom"])} min={0} />
             </div>
             <div className="flex-1 min-w-0">
-              <NumericInput ariaLabel="Horizontal padding" iconLead={<span className={FONT}>↔</span>} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} disabled={paddingDisabled} onChange={horizontal => onPaddingChange?.({ top: paddingTop, right: horizontal, bottom: paddingBottom, left: horizontal }, ["right", "left"])} min={0} />
+              <NumericInput ariaLabel="Horizontal padding" iconLead={<AutoLayoutSpacingIcon kind="padding" axis="horizontal" />} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} disabled={paddingDisabled} onChange={horizontal => onPaddingChange?.({ top: paddingTop, right: horizontal, bottom: paddingBottom, left: horizontal }, ["right", "left"])} min={0} />
             </div>
             <PanelActionBtn
               icon={<Maximize size={16} strokeWidth={1.5} />}
