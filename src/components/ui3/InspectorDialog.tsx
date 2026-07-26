@@ -2,6 +2,13 @@ import { type ReactElement, type ReactNode } from "react";
 import { AnchoredInspectorOverlay } from "./AnchoredInspectorOverlay";
 import type { AnchoredInspectorOverlayAlign, AnchoredInspectorOverlayElevation } from "./AnchoredInspectorOverlay";
 
+export const COMPACT_INSPECTOR_DIALOG_WIDTH = 240;
+/**
+ * The settings/effects trigger sits inside the Inspector's row action gutter.
+ * This compensated offset yields the approved 8px visual gutter at the panel edge.
+ */
+export const EFFECTS_INSPECTOR_DIALOG_SIDE_OFFSET = 48;
+
 export interface InspectorDialogProps {
   open: boolean;
   onClose: () => void;

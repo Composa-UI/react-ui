@@ -5,7 +5,11 @@ import { ColorInput, NumericInput } from "./Input";
 import { ColorDialog, COLOR_DIALOG_NESTED_EFFECT_SIDE_OFFSET } from "./ColorDialog";
 import type { ColorDialogCapabilities } from "./ColorDialog";
 import { Dropdown } from "./Dropdown";
-import { InspectorDialog } from "./InspectorDialog";
+import {
+  COMPACT_INSPECTOR_DIALOG_WIDTH,
+  EFFECTS_INSPECTOR_DIALOG_SIDE_OFFSET,
+  InspectorDialog,
+} from "./InspectorDialog";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 
 export type EffectDetailsType = "Drop shadow" | "Inner shadow" | "Layer blur" | "Background blur";
@@ -60,7 +64,7 @@ export function EffectDetailsDialog({ open, value, trigger, capabilities, onChan
   const shadow = value.type === "Drop shadow" || value.type === "Inner shadow";
   const [colorOpen, setColorOpen] = useState(false);
   return <InspectorDialog open={open} onClose={onClose} trigger={trigger} ariaLabel="Effect details"
-    width={240} sideOffset={48} elevation={400} blockOutsideDismiss={colorOpen}>
+    width={COMPACT_INSPECTOR_DIALOG_WIDTH} sideOffset={EFFECTS_INSPECTOR_DIALOG_SIDE_OFFSET} elevation={400} blockOutsideDismiss={colorOpen}>
     <div className="flex h-[40px] items-center gap-[4px] border-b border-c-border px-[8px]">
       <div className="flex-1"><PopoverMenu align="left" trigger={<Dropdown value={value.type} fullWidth />}>
         {close => <Menu minWidth={200}>{TYPES.map(type => <MenuRow key={type} type="checkmark" checked={type === value.type} label={type} onClick={() => { onChange?.({ type }); close(); }} />)}</Menu>}
