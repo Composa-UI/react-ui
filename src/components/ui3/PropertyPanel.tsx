@@ -264,9 +264,11 @@ export function SizingComboField({
       {variablesEnabled && <><MenuRow type="divider" /><MenuRow type="simple" label="Apply variable" disabled={!onApplyVariable} onClick={onApplyVariable ? () => { onApplyVariable(); close(); } : undefined} /></>}
     </Menu>
   );
-  if (keyframe) {
+  if (keyframe && !mixed && mode === "fixed") {
     // Motion mode: value + keyframe diamond (the sizing-mode combo is dropped —
-    // a keyframed dimension is fixed, matching Figma's motion inspector).
+    // a keyframed fixed dimension is numeric, matching Figma's motion inspector).
+    // Relative Hug/Fill axes stay visibly relative until the user edits their
+    // resolved value, which atomically converts that axis to Fixed.
     return <NumericInput
       ariaLabel={axisLabel}
       iconLead={<span className={FONT}>{axis === "width" ? "W" : "H"}</span>}

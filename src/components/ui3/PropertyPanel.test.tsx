@@ -32,6 +32,20 @@ describe("Motion inspector rows", () => {
     expect(html.match(/aria-pressed="true"/g)?.length).toBeGreaterThanOrEqual(2);
   });
 
+  it("keeps relative dimensions labeled until a numeric edit converts them to fixed", () => {
+    const html = renderToStaticMarkup(<PropertyPanel elementType="text"
+      layout={{
+        mode: "none", gap: 0, padding: { top: 0, right: 0, bottom: 0, left: 0 },
+        align: "tl", widthMode: "hug", heightMode: "hug", clipsContent: false,
+      }}
+      keyframeControls={{ dimensions: { active: false, onToggle: () => undefined } }} />);
+
+    expect(html).toContain('data-composa-numeric-combo="hug"');
+    expect(html).toContain("data-composa-relative-mode-label");
+    expect(html).not.toContain('aria-label="Width keyframe"');
+    expect(html).not.toContain('aria-label="Height keyframe"');
+  });
+
   it("accepts a host-controlled Animate tab so timeline selection can reveal its matching card", () => {
     const html = renderToStaticMarkup(<PropertyPanel elementType="text" activeTab="animate" objectAnimations={[
       { id: "pulse", n: 1, name: "Title", kind: "Action", duration: "0.6s", style: "pulse", focused: true },
