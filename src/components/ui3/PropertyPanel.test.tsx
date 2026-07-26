@@ -158,3 +158,21 @@ describe("Plain-frame flow contract", () => {
     expect(horizontal).toBeLessThan(wrap);
   });
 });
+
+describe("Smart-selection spacing placement", () => {
+  it("places spacing below Dimensions inside the existing Layout section", () => {
+    const html = renderToStaticMarkup(<PropertyPanel
+      elementType="shape"
+      width={120}
+      height={80}
+      spatialSelectionLayout={{ axis: "x", gap: 24, onGapChange: () => undefined, onAddAutoLayout: () => undefined }}
+    />);
+
+    expect(html.match(/>Layout<\/span>/g)).toHaveLength(1);
+    expect(html).not.toContain(">Selection layout</span>");
+    expect(html.indexOf(">Dimensions</span>")).toBeLessThan(html.indexOf(">Spacing</span>"));
+    expect(html).toContain('aria-label="Horizontal spacing gap"');
+    expect(html).toContain('class="lucide lucide-move-horizontal"');
+    expect(html).toContain(">Add auto layout</span>");
+  });
+});

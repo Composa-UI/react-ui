@@ -93,6 +93,26 @@ describe("DimensionSizingFields interactions", () => {
   });
 });
 
+describe("Smart-selection spacing interactions", () => {
+  it("routes the Layout spacing field through the host-controlled callback", () => {
+    const changes: number[] = [];
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel
+      elementType="shape"
+      width={120}
+      height={80}
+      spatialSelectionLayout={{ axis: "y", gap: 18, onGapChange: value => changes.push(value) }}
+    />); });
+
+    const input = renderer!.root.findAllByType(NumericInput)
+      .find(candidate => candidate.props.ariaLabel === "Vertical spacing gap")!;
+    expect(input.props.value).toBe(18);
+    act(() => input.props.onChange(27));
+    expect(changes).toEqual([27]);
+    act(() => renderer!.unmount());
+  });
+});
+
 describe("Auto-layout settings interactions", () => {
   it("expands controlled padding to four labelled physical sides when any side differs or is mixed", () => {
     const patches: unknown[] = [];
