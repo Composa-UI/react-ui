@@ -41,6 +41,7 @@ import {
   type StrokeJoin,
   type StrokeStyle,
 } from "./StrokeSettingsDialog";
+import { TypeSettingsDialog, type TypeSettingsValue } from "./TypeSettingsDialog";
 import { EasingInspectorSection, type EasingInspectorSectionProps, type EasingInspectorValue } from "./EasingInspectorSection";
 import type { EasingApplyScope } from "./easing";
 import { iconForSemantic } from "./IconSemantics";
@@ -78,6 +79,7 @@ export interface ElementTypographySettings {
   fontFamily: string; fontWeight: string; fontSize: number; lineHeight: number; letterSpacing: number;
   align: "left" | "center" | "right"; verticalAlign: "top" | "middle" | "bottom"; styleName?: string;
 }
+export type ElementTypeSettings = TypeSettingsValue;
 export interface ElementLayoutSettings {
   mode: "none" | "horizontal" | "vertical" | "wrap"; gap: number | "auto";
   padding: { top: number; right: number; bottom: number; left: number };
@@ -904,7 +906,16 @@ function StyleInput({ chit, value, onClick }: { chit: ReactNode; value: string; 
   );
 }
 
-function TypographySection({ value, onChange, stylesAvailable }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean }) {
+function TypographySection({ value, onChange, typeSettings, typeSettingsReadOnly, onTypeSettingsChange, stylesAvailable, activeStackDialog, onActiveStackDialogChange }: {
+  value?: ElementTypographySettings;
+  onChange?: (patch: Partial<ElementTypographySettings>) => void;
+  typeSettings?: ElementTypeSettings;
+  typeSettingsReadOnly?: boolean;
+  onTypeSettingsChange?: (patch: Partial<Pick<ElementTypeSettings, "alignment" | "decoration" | "textCase">>) => void;
+  stylesAvailable: boolean;
+  activeStackDialog: string | null;
+  onActiveStackDialogChange: (dialog: string | null) => void;
+}) {
   const [internal, setInternal] = useState<ElementTypographySettings>({ fontFamily: "Inter", fontWeight: "Medium", fontSize: 11, lineHeight: 16, letterSpacing: 0, align: "left", verticalAlign: "top", styleName: "Title · 96/120" });
   const settings = value ?? internal;
   const update = (patch: Partial<ElementTypographySettings>) => { if (!value) setInternal(current => ({ ...current, ...patch })); onChange?.(patch); };
@@ -971,7 +982,23 @@ function TypographySection({ value, onChange, stylesAvailable }: { value?: Eleme
         label="Alignment"
         left={<IconButtonRow buttons={textAlignBtns} value={settings.align} onChange={align => update({ align: align as ElementTypographySettings["align"] })} fill />}
         right={<IconButtonRow buttons={vAlignBtns} value={settings.verticalAlign} onChange={verticalAlign => update({ verticalAlign: verticalAlign as ElementTypographySettings["verticalAlign"] })} fill />}
-        rightAction={<PanelActionBtn icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />} label="Type settings" />}
+        rightAction={<TypeSettingsDialog
+          open={activeStackDialog === "type-settings"}
+          onClose={() => onActiveStackDialogChange(null)}
+          value={typeSettings ?? {
+            alignment: settings.align,
+            decoration: "none",
+            textCase: "none",
+          }}
+          readOnly={typeSettingsReadOnly}
+          onChange={typeSettingsReadOnly ? undefined : onTypeSettingsChange}
+          trigger={<PanelActionBtn
+            icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />}
+            label="Type settings"
+            active={activeStackDialog === "type-settings"}
+            onClick={() => onActiveStackDialogChange("type-settings")}
+          />}
+        />}
       />
     </PanelSection>
   );
@@ -1956,6 +1983,9 @@ export interface PropertyPanelProps {
   onAutoLayoutSettingsRequest?: () => void;
   typography?: ElementTypographySettings;
   onTypographyChange?: (patch: Partial<ElementTypographySettings>) => void;
+  typeSettings?: ElementTypeSettings;
+  typeSettingsReadOnly?: boolean;
+  onTypeSettingsChange?: (patch: Partial<Pick<ElementTypeSettings, "alignment" | "decoration" | "textCase">>) => void;
   fills?: ElementFillSetting[];
   onAddFill?: () => void; onUpdateFill?: (id: string, patch: Partial<Omit<ElementFillSetting, "id">>) => void; onToggleFill?: (id: string, visible: boolean) => void; onReorderFill?: (id: string, targetId: string) => void; onRemoveFill?: (id: string) => void;
   strokes?: ElementStrokeSetting[];
@@ -2100,6 +2130,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   blendMode = "Pass through",
   cornerRadius = 0, onBlendModeChange, onCornerRadiusChange,
   layout, onLayoutChange, onSizingChange, onSizingConstraintChange, onApplySizingVariable, onAutoLayoutSettingsRequest, typography, onTypographyChange,
+  typeSettings, typeSettingsReadOnly = false, onTypeSettingsChange,
   fills, onAddFill, onUpdateFill, onToggleFill, onReorderFill, onRemoveFill,
   strokes, strokeReadOnly = false, onAddStroke, onUpdateStroke, onToggleStroke, onReorderStroke, onRemoveStroke,
   effects, onAddEffect, onUpdateEffect, onToggleEffect, onReorderEffect, onRemoveEffect,
@@ -2477,7 +2508,16 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <AppearanceSection opacity={opacity} blendMode={blendMode} cornerRadius={cornerRadius} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} />
 
           {/* Typography — text only */}
-          {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} />}
+          {isText && <TypographySection
+            value={typography}
+            onChange={onTypographyChange}
+            typeSettings={typeSettings}
+            typeSettingsReadOnly={typeSettingsReadOnly}
+            onTypeSettingsChange={onTypeSettingsChange}
+            stylesAvailable={capabilities.styles}
+            activeStackDialog={activeStackDialog}
+            onActiveStackDialogChange={setActiveStackDialog}
+          />}
 
           {/* Stackable sections */}
           <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill} capabilities={capabilities}

@@ -52,6 +52,7 @@ export * from "./components/ui3/SlidesPanel";
 export * from "./components/ui3/Slider";
 export * from "./components/ui3/SplitButton";
 export * from "./components/ui3/StrokeSettingsDialog";
+export * from "./components/ui3/TypeSettingsDialog";
 export * from "./components/ui3/Timeline";
 export * from "./components/ui3/Switch";
 export * from "./components/ui3/Tabs";
