@@ -4,8 +4,15 @@ import { describe, expect, it, vi } from "vitest";
 import { EffectDetailsDialog } from "./EffectDetailsDialog";
 
 vi.mock("./InspectorDialog", () => ({
-  InspectorDialog: ({ width, sideOffset, className, children }: { width?: number; sideOffset?: number; className?: string; children: ReactNode }) =>
-    <div data-width={width} data-side-offset={sideOffset} data-class-name={className}>{children}</div>,
+  InspectorDialog: ({ ariaLabel, width, sideOffset, elevation, trigger, children }: {
+    ariaLabel?: string;
+    width?: number;
+    sideOffset?: number;
+    elevation?: number;
+    trigger?: ReactNode;
+    children: ReactNode;
+  }) =>
+    <div data-aria-label={ariaLabel} data-width={width} data-side-offset={sideOffset} data-elevation={elevation}>{trigger}{children}</div>,
 }));
 
 describe("EffectDetailsDialog", () => {
@@ -21,7 +28,9 @@ describe("EffectDetailsDialog", () => {
 
     expect(html).toContain('data-width="240"');
     expect(html).toContain('data-side-offset="48"');
-    expect(html).toContain('data-class-name="shadow-c-400"');
+    expect(html).toContain('data-elevation="400"');
+    expect(html).toContain('data-aria-label="Color"');
+    expect(html).toContain('data-side-offset="100"');
   });
 
   it("keeps shadow X/Y in one reference-aligned Position row with shrink-safe fields", () => {

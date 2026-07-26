@@ -1,7 +1,9 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, type ReactElement } from "react";
 import { clsx } from "clsx";
-import { Image, Pipette, Blend, Contrast, Plus, Minus, RotateCcw, Disc, Diamond, Search, LayoutGrid, ChevronDown } from "lucide-react";
-import { Modal, ModalHeader, ModalBody, ModalDivider, MODAL_WIDTHS } from "./Dialog";
+import { Image, Pipette, Blend, Contrast, Plus, Minus, RotateCcw, Disc, Diamond, Search, LayoutGrid, ChevronDown, X } from "lucide-react";
+import { ModalBody, ModalDivider } from "./Dialog";
+import { InspectorDialog } from "./InspectorDialog";
+import type { AnchoredInspectorOverlayAlign } from "./AnchoredInspectorOverlay";
 import { hexToHsb, hsbToHex } from "../../lib/color";
 import { Tabs } from "./Tabs";
 import { Slider, PickerHandle, GradientStopHandle } from "./Slider";
@@ -23,9 +25,18 @@ export interface GradientStop {
 
 export interface ColorDialogCapabilities { styles?: boolean; variables?: boolean; libraries?: boolean; }
 
-interface ColorDialogProps {
+export const COLOR_DIALOG_WIDTH = 240;
+export const COLOR_DIALOG_INSPECTOR_SIDE_OFFSET = 24;
+export const COLOR_DIALOG_NESTED_EFFECT_SIDE_OFFSET = 100;
+
+export interface ColorDialogProps {
   open: boolean;
   onClose: () => void;
+  /** The control whose captured launch rectangle owns placement and focus return. */
+  trigger: ReactElement;
+  /** Compensates for the trigger's inset so the surface clears its owner by 8px. */
+  sideOffset?: number;
+  align?: AnchoredInspectorOverlayAlign;
   fillType?: FillType;
   onFillTypeChange?: (t: FillType) => void;
   hue?: number;
@@ -336,6 +347,9 @@ const COLOR_FORMATS = ["Hex", "RGB", "CSS", "HSL", "HSB"];
 export function ColorDialog({
   open,
   onClose,
+  trigger,
+  sideOffset = COLOR_DIALOG_INSPECTOR_SIDE_OFFSET,
+  align = "start",
   fillType: fillTypeProp,
   onFillTypeChange,
   hue: hueProp = 0,
@@ -451,20 +465,38 @@ export function ColorDialog({
   );
 
   return (
-    <Modal open={open} onClose={onClose} width={MODAL_WIDTHS.compact} backdrop={false}>
+    <InspectorDialog
+      open={open}
+      onClose={onClose}
+      trigger={trigger}
+      ariaLabel="Color"
+      width={COLOR_DIALOG_WIDTH}
+      sideOffset={sideOffset}
+      align={align}
+      elevation={400}
+      className="flex flex-col"
+    >
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <ModalHeader
-        variant="tabs"
-        title="Color"
-        tabs={headerTabs}
-        onClose={onClose}
-        actions={(stylesAvailable || variablesAvailable) ? (
-          <Btn label={stylesAvailable && variablesAvailable ? "New style or variable" : stylesAvailable ? "New style" : "New variable"}>
-            <Plus size={14} strokeWidth={1.5} />
-          </Btn>
-        ) : undefined}
-      />
+      <div className="flex h-[40px] shrink-0 items-center gap-[4px] border-b border-c-border px-[8px]">
+        <h2 className="sr-only">Color</h2>
+        <div className="flex min-w-0 flex-1 items-center overflow-hidden">{headerTabs}</div>
+        {(stylesAvailable || variablesAvailable) && (
+          <div className="flex shrink-0 items-center gap-[4px]">
+            <Btn label={stylesAvailable && variablesAvailable ? "New style or variable" : stylesAvailable ? "New style" : "New variable"}>
+              <Plus size={14} strokeWidth={1.5} />
+            </Btn>
+          </div>
+        )}
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={onClose}
+          className="flex size-[24px] shrink-0 items-center justify-center rounded-c-sm text-c-icon-secondary hover:bg-c-bg-hover"
+        >
+          <X size={16} strokeWidth={1.5} />
+        </button>
+      </div>
 
       {/* ── Custom tab: toolbar + body ───────────────────────────────────── */}
       {activeTab === "custom" && (
@@ -506,7 +538,7 @@ export function ColorDialog({
             </div>
           )}
 
-          <ModalBody scrollable={fillType === "image"}>
+          <ModalBody scrollable>
 
         {/* ── SOLID ──────────────────────────────────────────────────────── */}
         {fillType === "solid" && (
@@ -690,6 +722,6 @@ export function ColorDialog({
           />
         </ModalBody>
       )}
-    </Modal>
+    </InspectorDialog>
   );
 }

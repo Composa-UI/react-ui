@@ -26,7 +26,7 @@ vi.mock("@radix-ui/react-popover", async () => {
 
 const rect = { x: 920, y: 80, width: 24, height: 24, top: 80, right: 944, bottom: 104, left: 920, toJSON: () => ({}) } as DOMRect;
 
-function renderOpen(mode: "light" | "dark", onClose = vi.fn(), blockOutsideDismiss = false) {
+function renderOpen(mode: "light" | "dark", onClose = vi.fn(), blockOutsideDismiss = false, elevation?: 400 | 500) {
   const focus = vi.fn();
   const collisionBoundary = { dataset: { composaOverlayBoundary: "" } };
   const trigger = {
@@ -39,7 +39,7 @@ function renderOpen(mode: "light" | "dark", onClose = vi.fn(), blockOutsideDismi
   let renderer: ReturnType<typeof create>;
   act(() => {
     renderer = create(
-      <AnchoredInspectorOverlay open onClose={onClose} ariaLabel={`${mode} settings`} blockOutsideDismiss={blockOutsideDismiss}
+      <AnchoredInspectorOverlay open onClose={onClose} ariaLabel={`${mode} settings`} blockOutsideDismiss={blockOutsideDismiss} elevation={elevation}
         trigger={<button type="button" aria-label={`Open ${mode}`}>Open</button>}>
         <button type="button">First field</button>
       </AnchoredInspectorOverlay>,
@@ -93,12 +93,21 @@ describe("AnchoredInspectorOverlay runtime contract", () => {
     expect(content.props.className).toContain(ANCHORED_INSPECTOR_OVERLAY_Z_CLASS);
     expect(content.props.className).toContain("max-h-[var(--radix-popover-content-available-height)]");
     expect(content.props.className).toContain("max-w-[calc(100vw-16px)]");
+    expect(content.props.style.maxHeight).toBe("var(--radix-popover-content-available-height)");
+    act(() => renderer.unmount());
+  });
+
+  it("applies the canonical elevation token directly when requested", () => {
+    const { renderer } = renderOpen("light", vi.fn(), false, 400);
+    expect(radix(renderer.root, "content").props.style.boxShadow).toBe("var(--elevation-400)");
     act(() => renderer.unmount());
   });
 
   it("closes through the controlled Radix dismissal path used by Escape and outside click", () => {
     const { renderer, onClose } = renderOpen("light");
-    act(() => radix(renderer.root, "root").props.onOpenChange(false));
+    const escape = { preventDefault: vi.fn() };
+    act(() => radix(renderer.root, "content").props.onEscapeKeyDown(escape));
+    expect(escape.preventDefault).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalledOnce();
     act(() => renderer.unmount());
   });

@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode } from "react";
 import { AnchoredInspectorOverlay } from "./AnchoredInspectorOverlay";
+import type { AnchoredInspectorOverlayAlign, AnchoredInspectorOverlayElevation } from "./AnchoredInspectorOverlay";
 
 export interface InspectorDialogProps {
   open: boolean;
@@ -9,13 +10,15 @@ export interface InspectorDialogProps {
   ariaLabel: string;
   width?: number;
   sideOffset?: number;
+  align?: AnchoredInspectorOverlayAlign;
   blockOutsideDismiss?: boolean;
   triggerClassName?: string;
   className?: string;
+  elevation?: AnchoredInspectorOverlayElevation;
 }
 
 /** Non-modal inspector dialog anchored to the captured trigger and portalled above the canvas. */
-export function InspectorDialog({ open, onClose, trigger, children, ariaLabel, width = 320, sideOffset, blockOutsideDismiss = false, triggerClassName = "block w-full", className }: InspectorDialogProps) {
+export function InspectorDialog({ open, onClose, trigger, children, ariaLabel, width = 320, sideOffset, align, blockOutsideDismiss = false, triggerClassName = "block w-full", className, elevation }: InspectorDialogProps) {
   return <AnchoredInspectorOverlay
     open={open}
     onClose={onClose}
@@ -23,10 +26,12 @@ export function InspectorDialog({ open, onClose, trigger, children, ariaLabel, w
     ariaLabel={ariaLabel}
     width={width}
     sideOffset={sideOffset}
+    align={align}
     trapFocus={false}
     blockOutsideDismiss={blockOutsideDismiss}
     triggerClassName={triggerClassName}
     className={className}
+    elevation={elevation}
   >
     {children}
   </AnchoredInspectorOverlay>;

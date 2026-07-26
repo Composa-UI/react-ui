@@ -1,10 +1,11 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { clsx } from "clsx";
-import { useLayoutEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { composaModeAt, useComposaMode } from "./useComposaMode";
 
 export type AnchoredInspectorOverlaySide = "left" | "right" | "top" | "bottom";
 export type AnchoredInspectorOverlayAlign = "start" | "center" | "end";
+export type AnchoredInspectorOverlayElevation = 400 | 500;
 
 export const ANCHORED_INSPECTOR_OVERLAY_COLLISION_PADDING = 8;
 export const ANCHORED_INSPECTOR_OVERLAY_Z_CLASS = "z-50";
@@ -30,6 +31,8 @@ export interface AnchoredInspectorOverlayProps {
   blockOutsideDismiss?: boolean;
   triggerClassName?: string;
   className?: string;
+  /** Applies a canonical Composa elevation token without relying on generated utility CSS. */
+  elevation?: AnchoredInspectorOverlayElevation;
 }
 
 function triggerControl(host: HTMLElement | null): HTMLElement | null {
@@ -56,44 +59,69 @@ export function AnchoredInspectorOverlay({
   blockOutsideDismiss = false,
   triggerClassName,
   className,
+  elevation,
 }: AnchoredInspectorOverlayProps) {
   const mode = useComposaMode();
-  const [triggerMode, setTriggerMode] = useState<string>();
+  const triggerMode = useRef<string | undefined>(undefined);
   const triggerHost = useRef<HTMLSpanElement>(null);
+  const openingGesture = useRef(false);
   const capturedRect = useRef<DOMRect | null>(null);
   const capturedBoundary = useRef<HTMLElement | null>(null);
   const [anchorVersion, setAnchorVersion] = useState(0);
   const virtualAnchor = useRef({ getBoundingClientRect: () => capturedRect.current! });
 
-  const capture = () => {
+  const capture = (markOpeningGesture = false) => {
     const target = triggerControl(triggerHost.current);
     if (target) {
+      openingGesture.current = markOpeningGesture;
       capturedRect.current = target.getBoundingClientRect();
       capturedBoundary.current = target.closest<HTMLElement>(COMPOSA_OVERLAY_BOUNDARY_SELECTOR);
-      setTriggerMode(composaModeAt(target) ?? mode);
-      setAnchorVersion(version => version + 1);
+      triggerMode.current = composaModeAt(target) ?? mode;
+      return true;
     }
+    return false;
   };
 
   useLayoutEffect(() => {
-    if (open && !capturedRect.current) capture();
+    if (open && !capturedRect.current && capture()) {
+      // Programmatic opens have no pointer/key gesture to trigger the host
+      // render, so mount the virtual anchor once after capturing its refs.
+      setAnchorVersion(version => version + 1);
+    }
     if (!open && capturedRect.current) {
       capturedRect.current = null;
       capturedBoundary.current = null;
-      setTriggerMode(undefined);
+      triggerMode.current = undefined;
       setAnchorVersion(0);
     }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      openingGesture.current = false;
+      return;
+    }
+    const timer = setTimeout(() => { openingGesture.current = false; }, 0);
+    return () => clearTimeout(timer);
   }, [open]);
 
   const contentOpen = shouldMountAnchoredInspectorOverlay(open, capturedRect.current !== null);
 
   return (
-    <PopoverPrimitive.Root modal={trapFocus} open={contentOpen} onOpenChange={next => { if (!next && open) onClose(); }}>
+    <PopoverPrimitive.Root modal={trapFocus} open={contentOpen} onOpenChange={next => {
+      if (!next && open) {
+        if (openingGesture.current) {
+          openingGesture.current = false;
+          return;
+        }
+        onClose();
+      }
+    }}>
       <span
         ref={triggerHost}
         className={clsx("inline-flex", triggerClassName)}
-        onPointerDownCapture={capture}
-        onKeyDownCapture={event => { if (event.key === "Enter" || event.key === " ") capture(); }}
+        onPointerDownCapture={() => { capture(true); }}
+        onKeyDownCapture={event => { if (event.key === "Enter" || event.key === " ") capture(true); }}
       >
         {trigger}
       </span>
@@ -104,7 +132,7 @@ export function AnchoredInspectorOverlay({
           aria-label={ariaLabel}
           aria-modal={trapFocus}
           data-composa-component="AnchoredInspectorOverlay"
-          data-composa-mode={triggerMode ?? mode}
+          data-composa-mode={triggerMode.current ?? mode}
           side={side}
           align={align}
           sideOffset={sideOffset}
@@ -113,6 +141,11 @@ export function AnchoredInspectorOverlay({
           avoidCollisions
           sticky="always"
           onInteractOutside={event => { if (blockOutsideDismiss) event.preventDefault(); }}
+          onEscapeKeyDown={event => {
+            event.preventDefault();
+            openingGesture.current = false;
+            onClose();
+          }}
           onCloseAutoFocus={event => {
             event.preventDefault();
             triggerControl(triggerHost.current)?.focus();
@@ -122,7 +155,11 @@ export function AnchoredInspectorOverlay({
             "max-h-[var(--radix-popover-content-available-height)] max-w-[calc(100vw-16px)] overflow-hidden rounded-c-lg bg-c-bg shadow-c-500 outline-none",
             className,
           )}
-          style={{ width }}
+          style={{
+            width,
+            maxHeight: "var(--radix-popover-content-available-height)",
+            ...(elevation ? { boxShadow: `var(--elevation-${elevation})` } : {}),
+          }}
         >
           {children}
         </PopoverPrimitive.Content>
