@@ -1036,11 +1036,18 @@ type ComboInputState = "default" | "hover" | "selectedInput" | "selectedChevron"
 interface ComboInputProps {
   value?: string;
   defaultValue?: string;
+  ariaLabel?: string;
   iconLead?: ReactNode;
   variableValue?: string;
   size?: InputSize;
   disabled?: boolean;
   state?: ComboInputState;
+  /**
+   * Selects the editable value when focus first enters the input. Because this
+   * runs only on focus, a deliberate second pointer click keeps the browser's
+   * native caret-placement behavior.
+   */
+  selectAllOnFocus?: boolean;
   onInputChange?: (v: string) => void;
   onDropdownClick?: () => void;
   className?: string;
@@ -1049,11 +1056,13 @@ interface ComboInputProps {
 export function ComboInput({
   value,
   defaultValue,
+  ariaLabel,
   iconLead,
   variableValue,
   size = "medium",
   disabled = false,
   state = "default",
+  selectAllOnFocus = false,
   onInputChange,
   onDropdownClick,
   className,
@@ -1091,12 +1100,16 @@ export function ComboInput({
           </div>
         ) : (
           <input
+            aria-label={ariaLabel}
             type="text"
             value={value}
             defaultValue={defaultValue}
             disabled={disabled}
             onChange={e => onInputChange?.(e.target.value)}
-            onFocus={() => setInternalFocused(true)}
+            onFocus={event => {
+              setInternalFocused(true);
+              if (selectAllOnFocus) event.currentTarget.select();
+            }}
             onBlur={() => setInternalFocused(false)}
             className={clsx(
               "w-full h-full bg-transparent outline-none",

@@ -932,7 +932,7 @@ function TypographySection({ value, onChange, stylesAvailable }: { value?: Eleme
           {/* Weight / Size — no labels (Figma); Size is a combo input */}
           <div className="flex items-center gap-[8px] pl-[16px] pr-[16px] pt-[3px]">
             <div className="flex-1 min-w-0"><ChoiceDropdown value={settings.fontWeight} options={["Regular", "Medium", "Semibold", "Bold"]} labels={{ Regular: "Regular", Medium: "Medium", Semibold: "Semibold", Bold: "Bold" }} onChange={fontWeight => update({ fontWeight })} /></div>
-            <div className="flex-1 min-w-0"><ComboInput iconLead={<span className={FONT}>T</span>} value={String(settings.fontSize)} onInputChange={fontSize => update({ fontSize: Number(fontSize) })} /></div>
+            <div className="flex-1 min-w-0"><ComboInput ariaLabel="Font size" selectAllOnFocus iconLead={<span className={FONT}>T</span>} value={String(settings.fontSize)} onInputChange={fontSize => update({ fontSize: Number(fontSize) })} /></div>
             <div className="shrink-0 min-w-[24px]" />
           </div>
 
