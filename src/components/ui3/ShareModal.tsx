@@ -179,6 +179,10 @@ export interface ShareModalProps {
   onScopeChange?: (value: string) => void;
   onCopyLink?: () => void;
   onInvite?: (value: string) => void;
+  /** Capability gate for workspaces that cannot accept invitations yet. */
+  inviteDisabled?: boolean;
+  /** Truthful explanation rendered below the invite row when invitation is unavailable. */
+  inviteHint?: string;
   onChangeAccess?: (id: string, access: ShareAccess) => void;
   onRemovePerson?: (id: string) => void;
 }
@@ -203,6 +207,8 @@ export function ShareModal({
   onScopeChange,
   onCopyLink,
   onInvite,
+  inviteDisabled = false,
+  inviteHint,
   onChangeAccess,
   onRemovePerson,
 }: ShareModalProps) {
@@ -225,7 +231,7 @@ export function ShareModal({
 
   const handleInvite = () => {
     const value = invite.trim();
-    if (!value) return;
+    if (!value || inviteDisabled) return;
     onInvite?.(value);
     setInvite("");
   };
@@ -260,16 +266,20 @@ export function ShareModal({
                 placeholder="Add emails, names, or user groups"
                 value={invite}
                 onChange={setInvite}
+                disabled={inviteDisabled}
               />
             </div>
             <Button
               variant="Primary"
               size="large"
               label="Invite"
-              disabled={!invite.trim()}
+              disabled={inviteDisabled || !invite.trim()}
               onClick={handleInvite}
             />
           </div>
+          {inviteDisabled && inviteHint && (
+            <p className={clsx(LABEL, "px-[2px] pb-[6px] text-c-text-secondary")}>{inviteHint}</p>
+          )}
 
           {/* Who has access */}
           <div className="flex flex-col pt-[4px]">

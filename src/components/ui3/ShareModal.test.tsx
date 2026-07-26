@@ -81,6 +81,23 @@ describe("ShareModal (Composa#289)", () => {
     expect(onInvite).toHaveBeenCalledWith("a@b.com");
   });
 
+  it("fails closed when the host cannot invite and explains why", () => {
+    const onInvite = vi.fn();
+    let renderer!: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(
+        <ShareModal open onClose={() => undefined} people={OWNER}
+          inviteDisabled inviteHint="Move this project to a team to invite collaborators."
+          onInvite={onInvite} />,
+      );
+    });
+    const root = renderer.root;
+    expect(root.findByType("input").props.disabled).toBe(true);
+    expect(labelledButton(root, "Invite").props.disabled).toBe(true);
+    expect(text(root)).toContain("Move this project to a team to invite collaborators.");
+    expect(onInvite).not.toHaveBeenCalled();
+  });
+
   it("routes role changes and removals through callbacks", () => {
     const onChangeAccess = vi.fn();
     const onRemovePerson = vi.fn();
