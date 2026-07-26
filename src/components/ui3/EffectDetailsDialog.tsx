@@ -2,7 +2,7 @@ import { Eye, EyeOff, X } from "lucide-react";
 import { useState, type ReactElement } from "react";
 import { Checkbox } from "./Checkbox";
 import { ColorInput, NumericInput } from "./Input";
-import { ColorDialog } from "./ColorDialog";
+import { ColorDialog, COLOR_DIALOG_NESTED_EFFECT_SIDE_OFFSET } from "./ColorDialog";
 import type { ColorDialogCapabilities } from "./ColorDialog";
 import { Dropdown } from "./Dropdown";
 import { InspectorDialog } from "./InspectorDialog";
@@ -60,7 +60,7 @@ export function EffectDetailsDialog({ open, value, trigger, capabilities, onChan
   const shadow = value.type === "Drop shadow" || value.type === "Inner shadow";
   const [colorOpen, setColorOpen] = useState(false);
   return <InspectorDialog open={open} onClose={onClose} trigger={trigger} ariaLabel="Effect details"
-    width={240} sideOffset={48} className="shadow-c-400" blockOutsideDismiss={colorOpen}>
+    width={240} sideOffset={48} elevation={400} blockOutsideDismiss={colorOpen}>
     <div className="flex h-[40px] items-center gap-[4px] border-b border-c-border px-[8px]">
       <div className="flex-1"><PopoverMenu align="left" trigger={<Dropdown value={value.type} fullWidth />}>
         {close => <Menu minWidth={200}>{TYPES.map(type => <MenuRow key={type} type="checkmark" checked={type === value.type} label={type} onClick={() => { onChange?.({ type }); close(); }} />)}</Menu>}
@@ -78,14 +78,27 @@ export function EffectDetailsDialog({ open, value, trigger, capabilities, onChan
         <NumberRow label="Spread" icon="☼" value={value.spread ?? 0} onChange={spread => onChange?.({ spread })} />
         <div className="flex items-center gap-[8px] min-h-[32px]">
           <span className={LABEL}>Color</span>
-          <div className="min-w-0 flex-1"><ColorInput ariaLabel="Effect color" fullWidth color={value.color ?? "#000000"} opacity={value.opacity ?? 25}
-            onSwatchClick={() => setColorOpen(true)} onColorChange={color => onChange?.({ color })} onOpacityChange={opacity => onChange?.({ opacity })} /></div>
+          <div className="min-w-0 flex-1">
+            <ColorDialog
+              open={colorOpen}
+              onClose={() => setColorOpen(false)}
+              sideOffset={COLOR_DIALOG_NESTED_EFFECT_SIDE_OFFSET}
+              align="end"
+              trigger={<ColorInput ariaLabel="Effect color" fullWidth color={value.color ?? "#000000"} opacity={value.opacity ?? 25}
+                onSwatchClick={() => setColorOpen(true)} onColorChange={color => onChange?.({ color })} onOpacityChange={opacity => onChange?.({ opacity })} />}
+              solidOnly
+              pickerSource="hex"
+              capabilities={capabilities}
+              hex={(value.color ?? "#000000").replace(/^#/, "")}
+              opacity={value.opacity ?? 25}
+              onHexChange={hex => onChange?.({ color: `#${hex.replace(/^#/, "")}` })}
+              onOpacityChange={opacity => onChange?.({ opacity })}
+            />
+          </div>
         </div>
         {value.type === "Drop shadow" && <div className="pt-[8px]"><Checkbox checked={value.showBehindTransparent ?? false}
           label="Show behind transparent areas" onChange={showBehindTransparent => onChange?.({ showBehindTransparent })} /></div>}
       </> : <NumberRow label="Blur" icon="⊞" value={value.blur ?? 4} onChange={blur => onChange?.({ blur })} />}
     </div>
-    <ColorDialog open={colorOpen} onClose={() => setColorOpen(false)} solidOnly pickerSource="hex" capabilities={capabilities} hex={(value.color ?? "#000000").replace(/^#/, "")}
-      opacity={value.opacity ?? 25} onHexChange={hex => onChange?.({ color: `#${hex.replace(/^#/, "")}` })} onOpacityChange={opacity => onChange?.({ opacity })} />
   </InspectorDialog>;
 }

@@ -1001,13 +1001,21 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, 
         <div key={fill.id} draggable={!!onReorder} onDragStart={event => event.dataTransfer.setData("text/plain", fill.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), fill.id); }} className="group/row flex items-center pr-[16px] h-[32px]">
           <DragGutter />
           <div className="flex-1 min-w-0">
-            <ColorInput
-              fullWidth
-              color={fill.color}
-              opacity={fill.opacity}
-              onColorChange={color => updateFill(fill.id, { color })}
-              onOpacityChange={opacity => updateFill(fill.id, { opacity })}
-              onSwatchClick={() => { setActiveFill(fill.id); setColorOpen(true); }}
+            <ColorDialog
+              capabilities={capabilities}
+              open={colorOpen && activeFill === fill.id}
+              onClose={() => setColorOpen(false)}
+              trigger={<ColorInput
+                ariaLabel="Fill color"
+                fullWidth
+                color={fill.color}
+                opacity={fill.opacity}
+                onColorChange={color => updateFill(fill.id, { color })}
+                onOpacityChange={opacity => updateFill(fill.id, { opacity })}
+                onSwatchClick={() => { setActiveFill(fill.id); setColorOpen(true); }}
+              />}
+              hex={fill.color.replace("#", "")}
+              onHexChange={color => updateFill(fill.id, { color: `#${color.replace(/^#/, "")}` })}
             />
           </div>
           <div className="shrink-0 flex items-center gap-[4px] pl-[8px]">
@@ -1020,14 +1028,6 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, 
           </div>
         </div>
       ))}
-
-      <ColorDialog
-        capabilities={capabilities}
-        open={colorOpen}
-        onClose={() => setColorOpen(false)}
-        hex={fills.find(f => f.id === activeFill)?.color.replace("#", "") ?? "1e1e1e"}
-        onHexChange={color => activeFill && updateFill(activeFill, { color: `#${color.replace(/^#/, "")}` })}
-      />
     </PanelSection>
   );
 }
@@ -1068,13 +1068,21 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
           <div className="group/row flex items-center pr-[16px] h-[32px]">
             <DragGutter />
             <div className="flex-1 min-w-0">
-              <ColorInput
-                fullWidth
-                color={stroke.color}
-                opacity={stroke.opacity}
-                onColorChange={color => update(stroke.id, { color })}
-                onOpacityChange={opacity => update(stroke.id, { opacity })}
-                onSwatchClick={() => { setActiveStroke(stroke.id); setColorOpen(true); }}
+              <ColorDialog
+                capabilities={capabilities}
+                open={colorOpen && activeStroke === stroke.id}
+                onClose={() => setColorOpen(false)}
+                trigger={<ColorInput
+                  ariaLabel="Stroke color"
+                  fullWidth
+                  color={stroke.color}
+                  opacity={stroke.opacity}
+                  onColorChange={color => update(stroke.id, { color })}
+                  onOpacityChange={opacity => update(stroke.id, { opacity })}
+                  onSwatchClick={() => { setActiveStroke(stroke.id); setColorOpen(true); }}
+                />}
+                hex={stroke.color.replace("#", "")}
+                onHexChange={color => update(stroke.id, { color: `#${color.replace(/^#/, "")}` })}
               />
             </div>
             <div className="shrink-0 flex items-center gap-[4px] pl-[8px]">
@@ -1101,14 +1109,6 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
           </div>
         </div>
       ))}
-
-      <ColorDialog
-        capabilities={capabilities}
-        open={colorOpen}
-        onClose={() => setColorOpen(false)}
-        hex={strokes.find(s => s.id === activeStroke)?.color.replace("#", "") ?? "000000"}
-        onHexChange={color => activeStroke && update(activeStroke, { color: `#${color.replace(/^#/, "")}` })}
-      />
     </PanelSection>
   );
 }
@@ -1310,15 +1310,23 @@ function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = 
 }) {
   const renderedColors = colors ?? DEMO_SELECTION_COLORS;
   const [colorOpen, setColorOpen] = useState(false);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const active = renderedColors.find(color => color.id === activeId);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
   if (renderedColors.length === 0) return null;
   return (
     <PanelSection title="Selection colors">
-      {renderedColors.map(c => (
+      {renderedColors.map((c, index) => (
         <div key={c.id} className="group/row flex items-center px-[16px] h-[32px] gap-[8px]">
           <div className="flex-1 min-w-0">
-            <ColorInput fullWidth color={c.color} opacity={c.opacity} onSwatchClick={() => { setActiveId(c.id); setColorOpen(true); }} />
+            <ColorDialog
+              capabilities={capabilities}
+              open={colorOpen && activeIndex === index}
+              onClose={() => setColorOpen(false)}
+              trigger={<ColorInput ariaLabel="Selection color" fullWidth color={c.color} opacity={c.opacity} onSwatchClick={() => { setActiveIndex(index); setColorOpen(true); }} />}
+              hex={c.color.replace(/^#/, "")}
+              opacity={c.opacity}
+              onHexChange={hex => onUpdate?.(c.id, { color: `#${hex.replace(/^#/, "")}` })}
+              onOpacityChange={opacity => onUpdate?.(c.id, { opacity })}
+            />
           </div>
           {/* Reserved slot; actions reveal on this row's hover — no reflow (§5.8) */}
           <div className="shrink-0 flex items-center gap-[4px] opacity-0 group-hover/row:opacity-100 transition-opacity duration-100">
@@ -1327,10 +1335,6 @@ function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = 
           </div>
         </div>
       ))}
-
-      <ColorDialog key={active?.id ?? "selection-color"} capabilities={capabilities} open={colorOpen} onClose={() => setColorOpen(false)} hex={(active?.color ?? "#1e1e1e").replace(/^#/, "")} opacity={active?.opacity ?? 100}
-        onHexChange={hex => active && onUpdate?.(active.id, { color: `#${hex.replace(/^#/, "")}` })}
-        onOpacityChange={opacity => active && onUpdate?.(active.id, { opacity })} />
     </PanelSection>
   );
 }
@@ -1668,14 +1672,32 @@ function SlideBackgroundSection({
       {fillType === "solid" && (
         <div className="flex items-center px-[16px] h-[32px]">
           <div className="flex-1 min-w-0">
-            <ColorInput
-              fullWidth
-              color={color}
+            <ColorDialog
+              capabilities={capabilities}
+              open={colorOpen}
+              onClose={() => setColorOpen(false)}
+              trigger={<ColorInput
+                ariaLabel="Background color"
+                fullWidth
+                color={color}
+                opacity={opacity}
+                onSwatchClick={() => setColorOpen(true)}
+                onColorChange={value => {
+                  if (controlledColor === undefined) setInternalColor(value);
+                  onColorChange?.(value);
+                }}
+                onOpacityChange={value => {
+                  if (controlledOpacity === undefined) setInternalOpacity(value);
+                  onOpacityChange?.(value);
+                }}
+              />}
+              fillType="solid"
+              hex={color.replace(/^#/, "")}
               opacity={opacity}
-              onSwatchClick={() => setColorOpen(true)}
-              onColorChange={value => {
-                if (controlledColor === undefined) setInternalColor(value);
-                onColorChange?.(value);
+              onHexChange={value => {
+                const next = `#${value.replace(/^#/, "")}`;
+                if (controlledColor === undefined) setInternalColor(next);
+                onColorChange?.(next);
               }}
               onOpacityChange={value => {
                 if (controlledOpacity === undefined) setInternalOpacity(value);
@@ -1688,11 +1710,23 @@ function SlideBackgroundSection({
       {fillType === "gradient" && (
         <div className="flex items-center px-[16px] h-[32px]">
           <div className="flex-1 min-w-0">
-            <ColorInput
-              fullWidth
-              fillType="Gradient"
-              fillLabel="Linear gradient"
-              onSwatchClick={() => setColorOpen(true)}
+            <ColorDialog
+              capabilities={capabilities}
+              open={colorOpen}
+              onClose={() => setColorOpen(false)}
+              trigger={<ColorInput ariaLabel="Background gradient" fullWidth fillType="Gradient" fillLabel="Linear gradient" onSwatchClick={() => setColorOpen(true)} />}
+              fillType="linear"
+              hex={color.replace(/^#/, "")}
+              opacity={opacity}
+              onHexChange={value => {
+                const next = `#${value.replace(/^#/, "")}`;
+                if (controlledColor === undefined) setInternalColor(next);
+                onColorChange?.(next);
+              }}
+              onOpacityChange={value => {
+                if (controlledOpacity === undefined) setInternalOpacity(value);
+                onOpacityChange?.(value);
+              }}
             />
           </div>
         </div>
@@ -1701,33 +1735,27 @@ function SlideBackgroundSection({
         <div className="flex items-center px-[16px] h-[32px]">
           <div className="flex-1 min-w-0">
             {/* Same ColorInput row as Solid/Gradient — only the chit + label change */}
-            <ColorInput
-              fullWidth
-              fillType="Image"
-              fillLabel={fillType === "video" ? "clip.mp4" : "cover.png"}
-              onSwatchClick={() => setColorOpen(true)}
+            <ColorDialog
+              capabilities={capabilities}
+              open={colorOpen}
+              onClose={() => setColorOpen(false)}
+              trigger={<ColorInput ariaLabel="Background media" fullWidth fillType="Image" fillLabel={fillType === "video" ? "clip.mp4" : "cover.png"} onSwatchClick={() => setColorOpen(true)} />}
+              fillType="image"
+              hex={color.replace(/^#/, "")}
+              opacity={opacity}
+              onHexChange={value => {
+                const next = `#${value.replace(/^#/, "")}`;
+                if (controlledColor === undefined) setInternalColor(next);
+                onColorChange?.(next);
+              }}
+              onOpacityChange={value => {
+                if (controlledOpacity === undefined) setInternalOpacity(value);
+                onOpacityChange?.(value);
+              }}
             />
           </div>
         </div>
       )}
-
-      <ColorDialog
-        capabilities={capabilities}
-        open={colorOpen}
-        onClose={() => setColorOpen(false)}
-        fillType={fillType === "gradient" ? "linear" : fillType === "image" || fillType === "video" ? "image" : "solid"}
-        hex={color.replace(/^#/, "")}
-        opacity={opacity}
-        onHexChange={value => {
-          const next = `#${value.replace(/^#/, "")}`;
-          if (controlledColor === undefined) setInternalColor(next);
-          onColorChange?.(next);
-        }}
-        onOpacityChange={value => {
-          if (controlledOpacity === undefined) setInternalOpacity(value);
-          onOpacityChange?.(value);
-        }}
-      />
     </PanelSection>
   );
 }
