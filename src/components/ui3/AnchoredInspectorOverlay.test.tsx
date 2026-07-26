@@ -26,7 +26,7 @@ vi.mock("@radix-ui/react-popover", async () => {
 
 const rect = { x: 920, y: 80, width: 24, height: 24, top: 80, right: 944, bottom: 104, left: 920, toJSON: () => ({}) } as DOMRect;
 
-function renderOpen(mode: "light" | "dark", onClose = vi.fn(), blockOutsideDismiss = false, elevation?: 400 | 500) {
+function renderOpen(mode: "light" | "dark", onClose = vi.fn(), blockOutsideDismiss = false, elevation?: 400 | 500, onInteractOutside?: () => void) {
   const focus = vi.fn();
   const collisionBoundary = { dataset: { composaOverlayBoundary: "" } };
   const trigger = {
@@ -40,6 +40,7 @@ function renderOpen(mode: "light" | "dark", onClose = vi.fn(), blockOutsideDismi
   act(() => {
     renderer = create(
       <AnchoredInspectorOverlay open onClose={onClose} ariaLabel={`${mode} settings`} blockOutsideDismiss={blockOutsideDismiss} elevation={elevation}
+        onInteractOutside={onInteractOutside}
         trigger={<button type="button" aria-label={`Open ${mode}`}>Open</button>}>
         <button type="button">First field</button>
       </AnchoredInspectorOverlay>,
@@ -122,9 +123,11 @@ describe("AnchoredInspectorOverlay runtime contract", () => {
   });
 
   it("blocks nested-overlay outside interaction without weakening explicit close", () => {
-    const { renderer, onClose } = renderOpen("dark", vi.fn(), true);
+    const outsideCallback = vi.fn();
+    const { renderer, onClose } = renderOpen("dark", vi.fn(), true, undefined, outsideCallback);
     const outside = { preventDefault: vi.fn() };
     act(() => radix(renderer.root, "content").props.onInteractOutside(outside));
+    expect(outsideCallback).toHaveBeenCalledOnce();
     expect(outside.preventDefault).toHaveBeenCalledOnce();
     expect(onClose).not.toHaveBeenCalled();
     act(() => radix(renderer.root, "root").props.onOpenChange(false));
