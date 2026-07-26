@@ -3,8 +3,8 @@ import { type ReactElement, type ReactNode } from "react";
 import { Dropdown } from "./Dropdown";
 import {
   COMPACT_INSPECTOR_DIALOG_WIDTH,
-  EFFECTS_INSPECTOR_DIALOG_SIDE_OFFSET,
   InspectorDialog,
+  STROKE_SETTINGS_INSPECTOR_SIDE_OFFSET,
 } from "./InspectorDialog";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { SegmentedControlGroup, SegmentedControlItem } from "./SegmentedControl";
@@ -146,7 +146,7 @@ export function StrokeSettingsDialog({
     trigger={trigger}
     ariaLabel="Stroke settings"
     width={COMPACT_INSPECTOR_DIALOG_WIDTH}
-    sideOffset={EFFECTS_INSPECTOR_DIALOG_SIDE_OFFSET}
+    sideOffset={STROKE_SETTINGS_INSPECTOR_SIDE_OFFSET}
     elevation={400}
   >
     <div className="flex h-[40px] items-center border-b border-c-border pl-[16px] pr-[8px]">
