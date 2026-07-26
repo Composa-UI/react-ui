@@ -717,7 +717,7 @@ export function NumericComboInput({
             disabled={disabled}
             className={clsx(
               "!rounded-r-none",
-              idleLabel && "[&>input]:text-transparent group-hover:[&>input]:text-c-text group-focus-within:[&>input]:text-c-text",
+              idleLabel && "[&_input]:text-transparent group-hover:[&_input]:text-c-text group-focus-within:[&_input]:text-c-text",
             )}
           />
         )}

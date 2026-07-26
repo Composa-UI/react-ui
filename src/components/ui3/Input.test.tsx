@@ -39,6 +39,7 @@ describe("NumericInput presentation contract", () => {
     expect(html).toContain('aria-label="Width sizing mode: Hug"');
     expect(html).toContain("data-composa-relative-mode-label");
     expect(html).toMatch(/data-composa-relative-mode-label[^>]*>Hug<\/span>/);
+    expect(html).toContain("[&amp;_input]:text-transparent");
     const trigger = html.match(/<button[^>]*aria-label="Width sizing mode: Hug"[^>]*>[\s\S]*?<\/button>/)?.[0];
     expect(trigger).toBeTruthy();
     expect(trigger).not.toContain("<span");
