@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
-import { shouldActivateTimelineTrackKey, shouldBeginTimelineMiddlePan, shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, timelineDurationBarProjection, timelineDurationBarTargetRange, timelineTimeAtClientX, timelineTrackExpansionForKey, timelineTrackNavigationIndex, Timeline, type Track } from "./Timeline";
+import { act, create, type ReactTestRenderer } from "react-test-renderer";
+import { describe, expect, it, vi } from "vitest";
+import { shouldActivateTimelineTrackKey, shouldBeginTimelineMiddlePan, shouldBeginTimelinePointer, shouldClaimSelectedTimelinePresetDelete, shouldClaimTimelineGestureEscape, shouldDeleteSelectedTimelinePreset, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, timelineDurationBarProjection, timelineDurationBarTargetRange, timelineTimeAtClientX, timelineTrackExpansionForKey, timelineTrackNavigationIndex, Timeline, type Track } from "./Timeline";
 
 const numericTrack: Track = { id: "hero", name: "Hero", type: "frame", props: [
   { id: "opacity", name: "Opacity", keyframes: [500, 900] },
@@ -133,6 +134,92 @@ describe("Timeline DOM contracts", () => {
     expect(html).not.toContain('aria-label="Trim Pulse animation from start"');
     expect(html).not.toContain('aria-label="Trim Pulse animation from end"');
     expect(html).not.toContain('aria-label="Hide Pulse animation"');
+    expect(html).not.toContain('aria-keyshortcuts="Delete Backspace"');
+  });
+
+  it("advertises and claims preset deletion only for a selected editable bar with a host callback", () => {
+    expect(shouldDeleteSelectedTimelinePreset({
+      key: "Delete", selected: true, editable: true, callbackAvailable: true,
+    })).toBe(true);
+    expect(shouldDeleteSelectedTimelinePreset({
+      key: "Backspace", selected: true, editable: true, callbackAvailable: true, isComposing: true,
+    })).toBe(false);
+    expect(shouldDeleteSelectedTimelinePreset({
+      key: "Delete", selected: true, editable: false, callbackAvailable: true,
+    })).toBe(false);
+    expect(shouldDeleteSelectedTimelinePreset({
+      key: "Delete", selected: false, editable: true, callbackAvailable: true,
+    })).toBe(false);
+    expect(shouldDeleteSelectedTimelinePreset({
+      key: "Delete", selected: true, editable: true, callbackAvailable: false,
+    })).toBe(false);
+    expect(shouldClaimSelectedTimelinePresetDelete({
+      key: "Delete", selected: true,
+    })).toBe(true);
+
+    const withDelete = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[{
+      id: "hero", name: "Hero", type: "frame", props: [], bars: [
+        { id: "pulse", label: "Pulse", timeRange: [100, 500], selected: true },
+      ],
+    }]} onDeleteSelectedPresets={() => undefined} />);
+    const withoutDelete = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[{
+      id: "hero", name: "Hero", type: "frame", props: [], bars: [
+        { id: "pulse", label: "Pulse", timeRange: [100, 500], selected: true },
+      ],
+    }]} />);
+    expect(withDelete).toContain('aria-keyshortcuts="Delete Backspace"');
+    expect(withoutDelete).not.toContain('aria-keyshortcuts="Delete Backspace"');
+  });
+
+  it("routes Delete and additive selection from the focused preset without leaking the event", () => {
+    const onDelete = vi.fn();
+    const onSelect = vi.fn();
+    let renderer: ReactTestRenderer;
+    act(() => {
+      renderer = create(<Timeline height={220} duration={2_000} tracks={[{
+        id: "hero", name: "Hero", type: "frame", props: [], bars: [
+          { id: "pulse", label: "Pulse", timeRange: [100, 500], selected: true },
+        ],
+      }]} onPresetSelect={onSelect} onDeleteSelectedPresets={onDelete} />);
+    });
+    const button = renderer!.root.findByProps({ "aria-label": "Select Pulse animation" });
+    const preventDefault = vi.fn();
+    const stopPropagation = vi.fn();
+    act(() => button.props.onKeyDown({
+      key: "Delete", shiftKey: false, altKey: false, metaKey: false, ctrlKey: false, repeat: false,
+      nativeEvent: { isComposing: false, keyCode: 46 }, preventDefault, stopPropagation,
+    }));
+    expect(onDelete).toHaveBeenCalledWith("hero", "pulse");
+    expect(preventDefault).toHaveBeenCalledOnce();
+    expect(stopPropagation).toHaveBeenCalledOnce();
+
+    act(() => button.props.onClick({ shiftKey: true, metaKey: false, ctrlKey: false }));
+    expect(onSelect).toHaveBeenCalledWith("hero", "pulse", { additive: true });
+    act(() => renderer!.unmount());
+  });
+
+  it("claims Delete on a selected locked bar without advertising or invoking deletion", () => {
+    const onDelete = vi.fn();
+    let renderer: ReactTestRenderer;
+    act(() => {
+      renderer = create(<Timeline height={220} duration={2_000} tracks={[{
+        id: "locked", name: "Locked", type: "frame", props: [], bars: [
+          { id: "pulse", label: "Pulse", timeRange: [100, 500], selected: true, editable: false },
+        ],
+      }]} onDeleteSelectedPresets={onDelete} />);
+    });
+    const button = renderer!.root.findByProps({ "aria-label": "Select Pulse animation" });
+    expect(button.props["aria-keyshortcuts"]).toBeUndefined();
+    const preventDefault = vi.fn();
+    const stopPropagation = vi.fn();
+    act(() => button.props.onKeyDown({
+      key: "Delete", shiftKey: false, altKey: false, metaKey: false, ctrlKey: false, repeat: false,
+      nativeEvent: { isComposing: false, keyCode: 46 }, preventDefault, stopPropagation,
+    }));
+    expect(onDelete).not.toHaveBeenCalled();
+    expect(preventDefault).toHaveBeenCalledOnce();
+    expect(stopPropagation).toHaveBeenCalledOnce();
+    act(() => renderer!.unmount());
   });
 
   it("renders disclosures without enabling aggregate product behavior when callbacks are absent", () => {

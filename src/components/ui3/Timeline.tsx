@@ -108,6 +108,10 @@ export interface TimelinePresetBar {
   /** Locked ancestry remains readable and selectable, but cannot expose timing affordances. */
   editable?: boolean;
 }
+export interface TimelinePresetSelectionModifiers {
+  /** Add or remove this preset without discarding the other selected presets. */
+  additive: boolean;
+}
 export interface Track {
   id?: string;
   name: string;
@@ -195,6 +199,57 @@ export type TimelineGestureTarget =
 
 export function shouldClaimTimelineGestureEscape(key: string, gestureActive: boolean): boolean {
   return key === "Escape" && gestureActive;
+}
+
+export function shouldDeleteSelectedTimelinePreset({
+  key,
+  selected,
+  editable,
+  callbackAvailable,
+  shiftKey = false,
+  altKey = false,
+  metaKey = false,
+  ctrlKey = false,
+  isComposing = false,
+  keyCode = 0,
+}: {
+  key: string;
+  selected: boolean;
+  editable: boolean;
+  callbackAvailable: boolean;
+  shiftKey?: boolean;
+  altKey?: boolean;
+  metaKey?: boolean;
+  ctrlKey?: boolean;
+  isComposing?: boolean;
+  keyCode?: number;
+}): boolean {
+  return callbackAvailable && editable && shouldClaimSelectedTimelinePresetDelete({
+    key, selected, shiftKey, altKey, metaKey, ctrlKey, isComposing, keyCode,
+  });
+}
+
+export function shouldClaimSelectedTimelinePresetDelete({
+  key,
+  selected,
+  shiftKey = false,
+  altKey = false,
+  metaKey = false,
+  ctrlKey = false,
+  isComposing = false,
+  keyCode = 0,
+}: {
+  key: string;
+  selected: boolean;
+  shiftKey?: boolean;
+  altKey?: boolean;
+  metaKey?: boolean;
+  ctrlKey?: boolean;
+  isComposing?: boolean;
+  keyCode?: number;
+}): boolean {
+  return selected && !shiftKey && !altKey && !metaKey && !ctrlKey && !isComposing && keyCode !== 229 &&
+    (key === "Delete" || key === "Backspace");
 }
 
 export function stepTimelinePlayhead(timeMs: number, frameDelta: number, frameRate: TimelineFrameRate, durationMs: number): number {
@@ -592,7 +647,7 @@ function DurationBar({ trackId, name, range, projection, selectionState, viewpor
  * bar's pointer/keyboard and Escape semantics, while leaving scheduling and
  * persistence to the controlled host. Presets are not keyframes.
  */
-function PresetBar({ trackId, preset, projection, viewport, plotWidth, duration, laneRef, edgeDrag, onSelect, onChange, onGestureStart, onGestureEnd }: {
+function PresetBar({ trackId, preset, projection, viewport, plotWidth, duration, laneRef, edgeDrag, onSelect, onChange, onDeleteSelected, onGestureStart, onGestureEnd }: {
   trackId: string;
   preset: TimelinePresetBar;
   projection: TimelineDurationBarProjection;
@@ -601,8 +656,9 @@ function PresetBar({ trackId, preset, projection, viewport, plotWidth, duration,
   duration: number;
   laneRef: { current: HTMLDivElement | null };
   edgeDrag: TimelineEdgeDragController;
-  onSelect?: (trackId: string, presetId: string) => void;
+  onSelect?: (trackId: string, presetId: string, modifiers: TimelinePresetSelectionModifiers) => void;
   onChange?: (change: TimelinePresetBarChange) => void;
+  onDeleteSelected?: (trackId: string, presetId: string) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
 }) {
@@ -633,11 +689,33 @@ function PresetBar({ trackId, preset, projection, viewport, plotWidth, duration,
   const finishRef = useRef(finish);
   finishRef.current = finish;
   useEffect(() => () => finishRef.current(true), []);
-  const select = () => onSelect?.(trackId, preset.id);
+  const select = (additive = false) => onSelect?.(trackId, preset.id, { additive });
+  const canDelete = selected && preset.editable !== false && !!onDeleteSelected;
+  const deleteSelected = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    const shortcut = {
+      key: event.key,
+      selected,
+      shiftKey: event.shiftKey,
+      altKey: event.altKey,
+      metaKey: event.metaKey,
+      ctrlKey: event.ctrlKey,
+      isComposing: event.nativeEvent.isComposing,
+      keyCode: event.nativeEvent.keyCode,
+    };
+    if (!shouldClaimSelectedTimelinePresetDelete(shortcut)) return false;
+    event.preventDefault();
+    event.stopPropagation();
+    if (!event.repeat && shouldDeleteSelectedTimelinePreset({
+      ...shortcut,
+      editable: preset.editable !== false,
+      callbackAvailable: !!onDeleteSelected,
+    })) onDeleteSelected!(trackId, preset.id);
+    return true;
+  };
   const begin = (action: TimelineDurationBarAction, event: ReactPointerEvent<HTMLButtonElement>) => {
     if (!shouldBeginTimelinePointer(event.button, event.isPrimary)) return;
     event.stopPropagation();
-    select();
+    if (!selected) select();
     edgeDrag.start(() => finish(true));
     drag.current = { action, initialRange: preset.timeRange, startX: event.clientX, startViewportStartMs: viewport.startMs };
     escapeOwnership.claim();
@@ -654,7 +732,7 @@ function PresetBar({ trackId, preset, projection, viewport, plotWidth, duration,
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
     event.stopPropagation();
-    select();
+    if (!selected) select();
     const target = { kind: "preset-bar", id: preset.id, action } as const;
     const deltaMs = (event.shiftKey ? 1_000 : 100) * (event.key === "ArrowLeft" ? -1 : 1);
     const [startMs, endMs] = timelineDurationBarTargetRange(preset.timeRange, action, deltaMs, duration);
@@ -678,7 +756,10 @@ function PresetBar({ trackId, preset, projection, viewport, plotWidth, duration,
   );
   const labelClassName = clsx(FONT, "text-[11px] truncate", selected ? "text-white" : "text-[#0d99ff]");
   const staticButton = (
-    <button type="button" aria-label={`Select ${name}`} aria-pressed={selected} onClick={select}
+    <button type="button" aria-label={`Select ${name}`} aria-pressed={selected}
+      aria-keyshortcuts={canDelete ? "Delete Backspace" : undefined}
+      onClick={event => select(event.shiftKey || event.metaKey || event.ctrlKey)}
+      onKeyDown={deleteSelected}
       className="absolute inset-0 cursor-pointer bg-transparent text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring">
       <span className={clsx("absolute inset-y-0 left-[10px] right-[10px] flex items-center", labelClassName)}>{preset.label}</span>
     </button>
@@ -686,8 +767,8 @@ function PresetBar({ trackId, preset, projection, viewport, plotWidth, duration,
   if (!onChange) return <div role="group" aria-label={`${name} ${projection.authoredStartMs}ms to ${projection.authoredEndMs}ms`} {...data} className={barClassName} style={style}>{staticButton}</div>;
   return (
     <div role="group" aria-label={`${name} ${projection.authoredStartMs}ms to ${projection.authoredEndMs}ms`} {...data} className={barClassName} style={style}>
-      <button type="button" aria-label={`Move ${name}`} aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight" data-preset-bar-action="move"
-        onPointerDown={event => begin("move", event)} onPointerMove={move} onKeyDown={event => step("move", event)}
+      <button type="button" aria-label={`Move ${name}`} aria-keyshortcuts={`ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight${canDelete ? " Delete Backspace" : ""}`} data-preset-bar-action="move"
+        onPointerDown={event => begin("move", event)} onPointerMove={move} onKeyDown={event => { if (!deleteSelected(event)) step("move", event); }}
         onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
         className="absolute inset-0 cursor-grab bg-transparent text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring active:cursor-grabbing">
         <span className={clsx("absolute inset-y-0 left-[10px] right-[10px] flex items-center", labelClassName)}>{preset.label}</span>
@@ -890,7 +971,7 @@ function TimelineChildConnector({ index, count, depth }: { index: number; count:
   );
 }
 
-function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onPropertyValueChange, onPropertyToggleHidden, onPresetToggleHidden, onPresetSelect, onPresetBarChange, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
+function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onPropertyValueChange, onPropertyToggleHidden, onPresetToggleHidden, onPresetSelect, onPresetBarChange, onDeleteSelectedPresets, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
   track: Track; trackIndex: number;
   focusable: boolean;
   viewport: TimelineViewport; plotWidth: number; duration: number;
@@ -908,8 +989,9 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
   onPropertyValueChange?: (trackId: string, propertyId: string, value: number) => void;
   onPropertyToggleHidden?: (trackId: string, propertyId: string) => void;
   onPresetToggleHidden?: (trackId: string, presetId: string) => void;
-  onPresetSelect?: (trackId: string, presetId: string) => void;
+  onPresetSelect?: (trackId: string, presetId: string, modifiers: TimelinePresetSelectionModifiers) => void;
   onPresetBarChange?: (change: TimelinePresetBarChange) => void;
+  onDeleteSelectedPresets?: (trackId: string, presetId: string) => void;
   onEasingSegmentSelect?: (target: TimelineEasingSegmentTarget) => void;
   onEasingPresetChange?: (target: TimelineEasingSegmentTarget, easing: NamedEasingPreset) => void;
   onDurationBarChange?: (change: TimelineDurationBarChange) => void;
@@ -1028,6 +1110,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
               viewport={viewport} plotWidth={plotWidth} duration={duration} laneRef={laneRef} edgeDrag={edgeDrag}
               onSelect={onPresetSelect}
               onChange={preset.editable !== false ? onPresetBarChange : undefined}
+              onDeleteSelected={preset.editable !== false ? onDeleteSelectedPresets : undefined}
               onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />}
           </div>
         </div>
@@ -1391,6 +1474,7 @@ export function Timeline({
   onPresetToggleHidden,
   onPresetSelect,
   onPresetBarChange,
+  onDeleteSelectedPresets,
   onTrackExpandedChange,
   onTrackSelect,
   onAggregateKeyframeSelect,
@@ -1454,9 +1538,11 @@ export function Timeline({
   /** Toggle an Animate preset bar without changing its scheduled range (#349). */
   onPresetToggleHidden?: (trackId: string, presetId: string) => void;
   /** Select one first-class Animate preset and mirror it to the inspector. */
-  onPresetSelect?: (trackId: string, presetId: string) => void;
+  onPresetSelect?: (trackId: string, presetId: string, modifiers: TimelinePresetSelectionModifiers) => void;
   /** Move or trim one selected editable Animate preset without compiling keyframes. */
   onPresetBarChange?: (change: TimelinePresetBarChange) => void;
+  /** Delete the selected editable Animate presets while timeline focus remains on one of them. */
+  onDeleteSelectedPresets?: (trackId: string, presetId: string) => void;
   onTrackExpandedChange?: (trackId: string, expanded: boolean) => void;
   onTrackSelect?: (trackId: string, modifiers: TimelineTrackSelectionModifiers) => void;
   onAggregateKeyframeSelect?: (target: AggregateKeyframeTarget, additive: boolean) => void;
@@ -1736,7 +1822,7 @@ export function Timeline({
               onKeyframeSelect={(target, additive) => { revealTime(target.timeMs); onKeyframeSelect?.(target, additive); }} onKeyframeMove={onKeyframeMove} onKeyframeDelete={onKeyframeDelete}
               onEasingSegmentSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange}
               onDurationBarChange={onDurationBarChange}
-              onPresetSelect={onPresetSelect} onPresetBarChange={onPresetBarChange}
+              onPresetSelect={onPresetSelect} onPresetBarChange={onPresetBarChange} onDeleteSelectedPresets={onDeleteSelectedPresets}
               onGestureStart={onGestureStart} onGestureEnd={onGestureEnd}
               onPropertyAddKeyframe={onPropertyAddKeyframe ? (trackId, propertyId, timeMs = playhead) => onPropertyAddKeyframe(trackId, propertyId, timeMs) : undefined}
               onPropertyStepKeyframe={onPropertyStepKeyframe}
