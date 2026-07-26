@@ -8,6 +8,9 @@ export const COMPACT_INSPECTOR_DIALOG_WIDTH = 240;
  * This compensated offset yields the approved 8px visual gutter at the panel edge.
  */
 export const EFFECTS_INSPECTOR_DIALOG_SIDE_OFFSET = 48;
+// The stroke settings action sits 7px farther into its row than the Effects
+// trigger. Compensate so both dialogs land on the same 8px inspector gutter.
+export const STROKE_SETTINGS_INSPECTOR_SIDE_OFFSET = 41;
 
 export interface InspectorDialogProps {
   open: boolean;

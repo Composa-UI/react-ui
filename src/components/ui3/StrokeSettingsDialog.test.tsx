@@ -11,7 +11,7 @@ import { TooltipProvider } from "./Tooltip";
 
 vi.mock("./InspectorDialog", () => ({
   COMPACT_INSPECTOR_DIALOG_WIDTH: 240,
-  EFFECTS_INSPECTOR_DIALOG_SIDE_OFFSET: 48,
+  STROKE_SETTINGS_INSPECTOR_SIDE_OFFSET: 41,
   InspectorDialog: ({
     ariaLabel,
     width,
@@ -46,7 +46,7 @@ describe("StrokeSettingsDialog", () => {
 
     expect(html).toContain('data-inspector-dialog="Stroke settings"');
     expect(html).toContain('data-width="240"');
-    expect(html).toContain('data-side-offset="48"');
+    expect(html).toContain('data-side-offset="41"');
     expect(html).toContain('data-elevation="400"');
     expect(html).toContain("Dynamic stroke behavior needs an approved engine and persistence contract.");
     expect(html).toContain("Brush strokes need an approved engine and persistence contract.");
