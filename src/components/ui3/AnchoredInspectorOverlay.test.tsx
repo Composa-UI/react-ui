@@ -26,7 +26,7 @@ vi.mock("@radix-ui/react-popover", async () => {
 
 const rect = { x: 920, y: 80, width: 24, height: 24, top: 80, right: 944, bottom: 104, left: 920, toJSON: () => ({}) } as DOMRect;
 
-function renderOpen(mode: "light" | "dark", onClose = vi.fn(), blockOutsideDismiss = false, elevation?: 400 | 500, onInteractOutside?: () => void) {
+function renderOpen(mode: "light" | "dark", onClose = vi.fn(), blockOutsideDismiss = false, elevation?: 400 | 500, onInteractOutside?: () => void, surface?: "default" | "bare") {
   const focus = vi.fn();
   const collisionBoundary = { dataset: { composaOverlayBoundary: "" } };
   const trigger = {
@@ -39,7 +39,7 @@ function renderOpen(mode: "light" | "dark", onClose = vi.fn(), blockOutsideDismi
   let renderer: ReturnType<typeof create>;
   act(() => {
     renderer = create(
-      <AnchoredInspectorOverlay open onClose={onClose} ariaLabel={`${mode} settings`} blockOutsideDismiss={blockOutsideDismiss} elevation={elevation}
+      <AnchoredInspectorOverlay open onClose={onClose} ariaLabel={`${mode} settings`} blockOutsideDismiss={blockOutsideDismiss} elevation={elevation} surface={surface}
         onInteractOutside={onInteractOutside}
         trigger={<button type="button" aria-label={`Open ${mode}`}>Open</button>}>
         <button type="button">First field</button>
@@ -101,6 +101,15 @@ describe("AnchoredInspectorOverlay runtime contract", () => {
   it("applies the canonical elevation token directly when requested", () => {
     const { renderer } = renderOpen("light", vi.fn(), false, 400);
     expect(radix(renderer.root, "content").props.style.boxShadow).toBe("var(--elevation-400)");
+    act(() => renderer.unmount());
+  });
+
+  it("can retain positioning and elevation without adding a second panel surface", () => {
+    const { renderer } = renderOpen("dark", vi.fn(), false, 400, undefined, "bare");
+    const content = radix(renderer.root, "content");
+    expect(content.props.className).not.toContain("rounded-c-lg");
+    expect(content.props.className).not.toContain("bg-c-bg");
+    expect(content.props.style.boxShadow).toBe("var(--elevation-400)");
     act(() => renderer.unmount());
   });
 

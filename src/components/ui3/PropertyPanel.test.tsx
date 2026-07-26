@@ -93,6 +93,7 @@ describe("Auto-layout gap control", () => {
     expect(html).toContain('role="group" aria-label="Flow"');
     expect(html).toContain('role="group" aria-label="Alignment and gap"');
     expect(html).toContain('aria-label="Gap"');
+    expect(html).toContain('data-icon-semantic="gap-horizontal"');
     expect(html).toContain('aria-label="Gap sizing mode: Fixed"');
     expect(html).toContain('aria-haspopup="menu"');
     expect(html).toContain('class="lucide lucide-move-horizontal"');
@@ -133,6 +134,7 @@ describe("Auto-layout gap control", () => {
     expect(html).toContain('data-composa-numeric-combo="auto"');
     expect(html).toContain('aria-label="Gap sizing mode: Auto"');
     expect(html).toContain('class="lucide lucide-move-vertical"');
+    expect(html).toContain('data-icon-semantic="gap-vertical"');
     expect(html).toMatch(/data-composa-numeric-combo="auto"[\s\S]*?>Auto<\/span>/);
   });
 

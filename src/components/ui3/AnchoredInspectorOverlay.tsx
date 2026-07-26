@@ -32,6 +32,9 @@ export interface AnchoredInspectorOverlayProps {
   onInteractOutside?: () => void;
   triggerClassName?: string;
   className?: string;
+  /** Omits the default floating-panel surface while retaining positioning,
+   * collision handling, focus behavior, and optional elevation. */
+  surface?: "default" | "bare";
   /** Applies a canonical Composa elevation token without relying on generated utility CSS. */
   elevation?: AnchoredInspectorOverlayElevation;
 }
@@ -61,6 +64,7 @@ export function AnchoredInspectorOverlay({
   onInteractOutside,
   triggerClassName,
   className,
+  surface = "default",
   elevation,
 }: AnchoredInspectorOverlayProps) {
   const mode = useComposaMode();
@@ -157,7 +161,8 @@ export function AnchoredInspectorOverlay({
           }}
           className={clsx(
             ANCHORED_INSPECTOR_OVERLAY_Z_CLASS,
-            "max-h-[var(--radix-popover-content-available-height)] max-w-[calc(100vw-16px)] overflow-hidden rounded-c-lg bg-c-bg shadow-c-500 outline-none",
+            "max-h-[var(--radix-popover-content-available-height)] max-w-[calc(100vw-16px)] overflow-hidden outline-none",
+            surface === "default" && "rounded-c-lg bg-c-bg shadow-c-500",
             className,
           )}
           style={{
