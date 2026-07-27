@@ -1140,6 +1140,39 @@ export default function Playground() {
     </div>;
   }
 
+  if (view === "issue-499-type-anchor") {
+    // #499 — reproduce the REAL app-like context: a full-width workspace that is
+    // the overlay collision boundary (`data-composa-overlay-boundary`), a fluid
+    // canvas region on the left, and the element PropertyPanel docked hard-right
+    // at its native width — mirroring ComposaApp's `.composa-workspace` +
+    // `.composa-inspector`. The prior offset fix passed against a fixture where
+    // the text panel was NOT at the viewport edge; here it is, so the Type
+    // Settings dialog's clearance to the LEFT of the inspector is measurable.
+    const params = new URLSearchParams(window.location.search);
+    const dark = params.get("theme") === "dark";
+    // Optional inspector-width override. The panel's real width is 240px; a
+    // different value proves the dialog tracks the inspector's ACTUAL left edge
+    // rather than a hard-coded width assumption baked into a trigger offset.
+    const widthOverride = Number(params.get("w"));
+    return (
+      <div
+        data-composa-mode={dark ? "dark" : undefined}
+        data-composa-overlay-boundary
+        data-issue-499-workspace
+        style={{ height: "100vh", width: "100vw", display: "flex", background: dark ? "#1e1e1e" : "#e6e6e6" }}
+      >
+        {Number.isFinite(widthOverride) && widthOverride > 0 && (
+          <style>{`.composa-inspector{width:${widthOverride}px !important;}`}</style>
+        )}
+        <div data-issue-499-canvas style={{ flex: 1, minWidth: 0 }} />
+        <PropertyPanel className="composa-inspector" elementType="text"
+          typography={elementContract.typography}
+          strokes={elementContract.strokes}
+          effects={elementContract.effects} />
+      </div>
+    );
+  }
+
   if (view === "issue-490-fill-rows") {
     // #490 — multi-item Fill/Stroke/Effects stacks so the reorder grip renders
     // (grip only shows with >1 item), for measuring row-anatomy alignment of

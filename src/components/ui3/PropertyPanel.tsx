@@ -2838,7 +2838,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
         panels (CompositionPanel / AssetsPanel), flipped to a left border since it
         sits to the right of the canvas. No inset ring on top/right/bottom — a single
         border-l against the canvas (Composa#250, analogous to #33). */}
-    <div className={clsx("relative w-[240px] shrink-0 h-full flex flex-col bg-c-bg border-l border-c-border overflow-hidden", className)}>
+    <div data-composa-inspector-surface className={clsx("relative w-[240px] shrink-0 h-full flex flex-col bg-c-bg border-l border-c-border overflow-hidden", className)}>
       {/* Multiplayer tools — above the tabs; shared across all modes */}
       <MultiplayerBar
         previewPlaying={previewPlaying}

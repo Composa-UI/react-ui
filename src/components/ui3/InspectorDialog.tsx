@@ -1,6 +1,8 @@
 import { Children, cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
-import { AnchoredInspectorOverlay } from "./AnchoredInspectorOverlay";
+import { AnchoredInspectorOverlay, COMPOSA_INSPECTOR_SURFACE_SELECTOR } from "./AnchoredInspectorOverlay";
 import type { AnchoredInspectorOverlayAlign, AnchoredInspectorOverlayElevation } from "./AnchoredInspectorOverlay";
+
+export { COMPOSA_INSPECTOR_SURFACE_SELECTOR };
 
 export const COMPACT_INSPECTOR_DIALOG_WIDTH = 240;
 /**
@@ -12,12 +14,16 @@ export const EFFECTS_INSPECTOR_DIALOG_SIDE_OFFSET = 48;
 // trigger. Compensate so both dialogs land on the same 8px inspector gutter.
 export const STROKE_SETTINGS_INSPECTOR_SIDE_OFFSET = 41;
 // The Type settings trigger is a 24px action button in the Alignment row's
-// far-right action gutter — unlike the Effects/Stroke triggers, which sit at
-// the row's left. Its left edge lands at panel.right − 40 (16px row pad + 24px
-// button), so a left-anchored 240px dialog needs a larger compensating offset to
-// clear the full 240px inspector: 40 + (240 − 8) = 208 leaves the same approved
-// 8px gutter between the dialog's right edge and the inspector's left edge (#499).
-export const TYPE_SETTINGS_INSPECTOR_SIDE_OFFSET = 208;
+// far-right action gutter — unlike the Effects/Stroke triggers, which sit at the
+// row's left. A fixed trigger-relative offset therefore has to encode BOTH the
+// trigger inset AND the panel width (the prior 40 + (240 − 8) = 208 magic
+// number), so it silently overlapped the inspector whenever either drifted — the
+// isolated unit test only checked the number, never the geometry (#499). Instead
+// this dialog anchors its side axis to the inspector surface's LEFT edge
+// (`COMPOSA_INSPECTOR_SURFACE_SELECTOR`), so `sideOffset` is just the approved
+// 8px gutter and the dialog lands clear of the inspector regardless of where the
+// trigger sits or how wide the panel is.
+export const TYPE_SETTINGS_INSPECTOR_SIDE_OFFSET = 8;
 export const INSPECTOR_DIALOG_DRAG_HANDLE_SELECTOR = "[data-composa-inspector-dialog-drag-handle]";
 
 export interface InspectorDialogProps {
@@ -34,6 +40,13 @@ export interface InspectorDialogProps {
   className?: string;
   elevation?: AnchoredInspectorOverlayElevation;
   draggable?: boolean;
+  /**
+   * Anchor the dialog's side axis to the inspector surface's left edge instead
+   * of the trigger. Pass `COMPOSA_INSPECTOR_SURFACE_SELECTOR` for a trigger that
+   * does not sit at the panel's left (e.g. a far-right action button) so the
+   * dialog lands clear of the inspector regardless of trigger position (#499).
+   */
+  anchorSurfaceSelector?: string;
 }
 
 function withInspectorDialogDragHandle(children: ReactNode): ReactNode {
@@ -49,7 +62,7 @@ function withInspectorDialogDragHandle(children: ReactNode): ReactNode {
 }
 
 /** Non-modal inspector dialog anchored to the captured trigger and portalled above the canvas. */
-export function InspectorDialog({ open, onClose, trigger, children, ariaLabel, width = 320, sideOffset, align, blockOutsideDismiss = false, triggerClassName = "block w-full", className, elevation = 400, draggable = true }: InspectorDialogProps) {
+export function InspectorDialog({ open, onClose, trigger, children, ariaLabel, width = 320, sideOffset, align, blockOutsideDismiss = false, triggerClassName = "block w-full", className, elevation = 400, draggable = true, anchorSurfaceSelector }: InspectorDialogProps) {
   return <AnchoredInspectorOverlay
     open={open}
     onClose={onClose}
@@ -65,6 +78,7 @@ export function InspectorDialog({ open, onClose, trigger, children, ariaLabel, w
     className={className}
     elevation={elevation}
     dragHandleSelector={draggable ? INSPECTOR_DIALOG_DRAG_HANDLE_SELECTOR : undefined}
+    anchorSurfaceSelector={anchorSurfaceSelector}
   >
     {draggable ? withInspectorDialogDragHandle(children) : children}
   </AnchoredInspectorOverlay>;

@@ -13,6 +13,7 @@ import { clsx } from "clsx";
 import {
   InspectorDialog,
   COMPACT_INSPECTOR_DIALOG_WIDTH,
+  COMPOSA_INSPECTOR_SURFACE_SELECTOR,
   TYPE_SETTINGS_INSPECTOR_SIDE_OFFSET,
 } from "./InspectorDialog";
 import { NumericInput } from "./Input";
@@ -241,6 +242,7 @@ export function TypeSettingsDialog({
       ariaLabel="Type settings"
       width={COMPACT_INSPECTOR_DIALOG_WIDTH}
       sideOffset={TYPE_SETTINGS_INSPECTOR_SIDE_OFFSET}
+      anchorSurfaceSelector={COMPOSA_INSPECTOR_SURFACE_SELECTOR}
       elevation={400}
     >
       <div className="flex h-[40px] items-center border-b border-c-border pl-[16px] pr-[8px]">

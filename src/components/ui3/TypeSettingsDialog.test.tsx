@@ -5,9 +5,10 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("./InspectorDialog", () => ({
   COMPACT_INSPECTOR_DIALOG_WIDTH: 240,
-  TYPE_SETTINGS_INSPECTOR_SIDE_OFFSET: 208,
+  COMPOSA_INSPECTOR_SURFACE_SELECTOR: "[data-composa-inspector-surface]",
+  TYPE_SETTINGS_INSPECTOR_SIDE_OFFSET: 8,
   InspectorDialog: ({ children, trigger, ...props }: { children: ReactNode; trigger?: ReactElement } & Record<string, unknown>) => (
-    <div data-dialog={String(props.ariaLabel)} data-width={String(props.width)} data-side-offset={String(props.sideOffset)} data-elevation={String(props.elevation)}>
+    <div data-dialog={String(props.ariaLabel)} data-width={String(props.width)} data-side-offset={String(props.sideOffset)} data-anchor-surface={String(props.anchorSurfaceSelector)} data-elevation={String(props.elevation)}>
       {trigger}
       {children}
     </div>
@@ -46,8 +47,11 @@ describe("TypeSettingsDialog", () => {
     );
     expect(html).toContain('data-dialog="Type settings"');
     expect(html).toContain('data-width="240"');
-    // Anchored clear of the inspector via the far-right-trigger offset (#499).
-    expect(html).toContain('data-side-offset="208"');
+    // Anchored clear of the inspector by anchoring the side axis to the inspector
+    // surface's LEFT edge (not a magic trigger-relative offset), so `sideOffset`
+    // is just the approved 8px gutter regardless of trigger position/width (#499).
+    expect(html).toContain('data-side-offset="8"');
+    expect(html).toContain('data-anchor-surface="[data-composa-inspector-surface]"');
     expect(html).toContain('data-elevation="400"');
     // Both existing metrics survive.
     expect(html).toContain('aria-label="Type settings line height"');
