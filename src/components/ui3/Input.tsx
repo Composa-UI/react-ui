@@ -255,6 +255,8 @@ export function InputField({
 export interface NumericInputProps extends NumericEditSessionCallbacks {
   ariaLabel?: string;
   iconLead?: ReactNode;       // scrubber label (e.g. "W", "X", or an icon)
+  /** Keep the canonical 24px leading-icon column even when no glyph is shown. */
+  reserveLeadingSlot?: boolean;
   value?: number;
   defaultValue?: number;
   min?: number;
@@ -279,6 +281,7 @@ export interface NumericInputProps extends NumericEditSessionCallbacks {
 export function NumericInput({
   ariaLabel,
   iconLead,
+  reserveLeadingSlot = false,
   value,
   defaultValue = 0,
   min,
@@ -502,7 +505,7 @@ export function NumericInput({
             "placeholder:text-c-text-tertiary",
             !focused && "truncate",
             "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-            iconLead ? "pl-[26px]" : "pl-[8px]",
+            iconLead || reserveLeadingSlot ? "pl-[26px]" : "pl-[8px]",
             (suffix || dropdown || keyframe) ? "pr-[2px]" : "pr-[8px]",
             disabled && "cursor-not-allowed",
           )}
@@ -528,9 +531,12 @@ export function NumericInput({
           aria-label={ariaLabel ? `${ariaLabel} keyframe` : "Toggle keyframe"}
           aria-pressed={keyframe.active}
           onClick={event => { event.stopPropagation(); keyframe.onToggle(); }}
-          className="shrink-0 flex items-center justify-center size-[24px] rounded-c-sm hover:bg-c-bg-hover"
+          className={clsx(
+            "shrink-0 flex items-center justify-center size-[24px] rounded-c-sm hover:bg-c-bg-hover",
+            keyframe.active && "bg-c-bg-selected",
+          )}
         >
-          <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active ? "fill-current text-[#0d99ff]" : "text-c-icon-secondary")} />
+          <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active ? "fill-current text-c-text-brand" : "text-c-icon-secondary")} />
         </button>
       )}
     </FieldShell>
@@ -642,9 +648,13 @@ export function NumericPairInput({ a, b, keyframe, trailing, size = "medium", di
           aria-label={`${a.ariaLabel}/${b.ariaLabel} keyframe`}
           aria-pressed={keyframe.active}
           onClick={event => { event.stopPropagation(); keyframe.onToggle(); }}
-          className={clsx("shrink-0 flex items-center justify-center size-[24px] hover:bg-c-bg-hover", trailing && "border-r border-c-bg")}
+          className={clsx(
+            "shrink-0 flex items-center justify-center size-[24px] hover:bg-c-bg-hover",
+            keyframe.active && "bg-c-bg-selected",
+            trailing && "border-r border-c-bg",
+          )}
         >
-          <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active ? "fill-current text-[#0d99ff]" : "text-c-icon-secondary")} />
+          <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active ? "fill-current text-c-text-brand" : "text-c-icon-secondary")} />
         </button>
       )}
       {trailing && <span className="shrink-0 flex items-center justify-center size-[24px]">{trailing}</span>}
@@ -663,7 +673,8 @@ export interface NumericComboInputProps extends Omit<NumericInputProps, "dropdow
   readOnlyLabel?: string;
   /**
    * Covers the resolved numeric value while idle, then reveals that value on
-   * hover/focus so typing can atomically convert a relative sizing mode.
+   * focus so typing can atomically convert a relative sizing mode. Mere hover
+   * must never replace the authored Hug/Fill label with a resolved number.
    */
   idleLabel?: string;
   /** Optional visible state in the menu segment (for example Hug, Fill or Mixed). */
@@ -707,7 +718,7 @@ export function NumericComboInput({
             disabled={disabled}
             className={clsx(
               "!rounded-r-none",
-              idleLabel && "[&>input]:text-transparent group-hover:[&>input]:text-c-text group-focus-within:[&>input]:text-c-text",
+              idleLabel && "[&_input]:text-transparent group-focus-within:[&_input]:text-c-text",
             )}
           />
         )}
@@ -720,7 +731,7 @@ export function NumericComboInput({
               FONT,
               T[size],
               iconLead ? "left-[26px]" : "left-[8px]",
-              "group-hover:hidden group-focus-within:hidden",
+              "group-focus-within:hidden",
             )}
           >
             {idleLabel}
@@ -875,7 +886,7 @@ export function NumericInputMulti({ iconLead, values, step = 1, size = "medium",
 
 // ─── ColorInput ───────────────────────────────────────────────────────────────
 
-export type ColorFillType = "Fill" | "Opacity" | "Gradient" | "Image" | "Variable";
+export type ColorFillType = "Fill" | "Opacity" | "Gradient" | "Image" | "Video" | "Variable";
 
 interface ColorInputProps {
   ariaLabel?: string;
@@ -917,15 +928,15 @@ export function ColorInput({
 
   const hex = color.replace("#", "").toUpperCase();
   const isVariable = fillType === "Variable";
-  const isTextLabel = fillType === "Gradient" || fillType === "Image" || isVariable;
+  const isTextLabel = fillType === "Gradient" || fillType === "Image" || fillType === "Video" || isVariable;
 
   // chit type mapping
-  const chitType = fillType === "Variable" ? "Fill" : fillType as ChitType;
+  const chitType = fillType === "Variable" || fillType === "Video" ? "Fill" : fillType as ChitType;
 
   const midText = isVariable
     ? variableValue ?? "bg-assistive"
     : isTextLabel
-      ? fillLabel ?? (fillType === "Gradient" ? "Angular" : "Image")
+      ? fillLabel ?? (fillType === "Gradient" ? "Angular" : fillType)
       : hex;
 
   return (
@@ -1036,11 +1047,18 @@ type ComboInputState = "default" | "hover" | "selectedInput" | "selectedChevron"
 interface ComboInputProps {
   value?: string;
   defaultValue?: string;
+  ariaLabel?: string;
   iconLead?: ReactNode;
   variableValue?: string;
   size?: InputSize;
   disabled?: boolean;
   state?: ComboInputState;
+  /**
+   * Selects the editable value when focus first enters the input. Because this
+   * runs only on focus, a deliberate second pointer click keeps the browser's
+   * native caret-placement behavior.
+   */
+  selectAllOnFocus?: boolean;
   onInputChange?: (v: string) => void;
   onDropdownClick?: () => void;
   className?: string;
@@ -1049,11 +1067,13 @@ interface ComboInputProps {
 export function ComboInput({
   value,
   defaultValue,
+  ariaLabel,
   iconLead,
   variableValue,
   size = "medium",
   disabled = false,
   state = "default",
+  selectAllOnFocus = false,
   onInputChange,
   onDropdownClick,
   className,
@@ -1091,12 +1111,16 @@ export function ComboInput({
           </div>
         ) : (
           <input
+            aria-label={ariaLabel}
             type="text"
             value={value}
             defaultValue={defaultValue}
             disabled={disabled}
             onChange={e => onInputChange?.(e.target.value)}
-            onFocus={() => setInternalFocused(true)}
+            onFocus={event => {
+              setInternalFocused(true);
+              if (selectAllOnFocus) event.currentTarget.select();
+            }}
             onBlur={() => setInternalFocused(false)}
             className={clsx(
               "w-full h-full bg-transparent outline-none",

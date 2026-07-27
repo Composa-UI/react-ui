@@ -19,6 +19,40 @@ export type ToolId =
   | "rectangle" | "ellipse" | "line"
   | "text";
 
+export interface CreationToolbarMemory {
+  move: Extract<ToolId, "move" | "hand">;
+  frame: Extract<ToolId, "frame">;
+  shape: Extract<ToolId, "rectangle" | "ellipse" | "line">;
+}
+
+export const DEFAULT_CREATION_TOOLBAR_MEMORY: CreationToolbarMemory = {
+  move: "move",
+  frame: "frame",
+  shape: "rectangle",
+};
+
+/**
+ * Remember only the family a tool belongs to. The active tool may return to
+ * Move after one-shot creation without erasing the last shape/frame choice.
+ * This is deliberately UI-only state: it never enters a project document or
+ * the host application's undo stack.
+ */
+export function rememberCreationToolbarTool(
+  memory: CreationToolbarMemory,
+  tool: ToolId,
+): CreationToolbarMemory {
+  if (tool === "move" || tool === "hand") {
+    return memory.move === tool ? memory : { ...memory, move: tool };
+  }
+  if (tool === "frame") {
+    return memory.frame === tool ? memory : { ...memory, frame: tool };
+  }
+  if (tool === "rectangle" || tool === "ellipse" || tool === "line") {
+    return memory.shape === tool ? memory : { ...memory, shape: tool };
+  }
+  return memory;
+}
+
 interface Tool {
   id: ToolId;
   icon: ReactNode;
@@ -240,14 +274,22 @@ export function CreationToolbar({
   className,
 }: CreationToolbarProps) {
   const [activeTool, setActiveTool] = useState<ToolId>(activeToolProp ?? "move");
+  const [lastUsed, setLastUsed] = useState<CreationToolbarMemory>(() =>
+    rememberCreationToolbarTool(DEFAULT_CREATION_TOOLBAR_MEMORY, activeToolProp ?? "move"));
 
-  // Keep in sync with the controlled prop.
+  // Keep in sync with the controlled prop. Host-owned shortcuts and one-shot
+  // creation both update this prop, so remembering here covers every selection
+  // path without asking the host to persist presentation state.
   useEffect(() => {
-    if (activeToolProp !== undefined) setActiveTool(activeToolProp);
+    if (activeToolProp !== undefined) {
+      setActiveTool(activeToolProp);
+      setLastUsed(memory => rememberCreationToolbarTool(memory, activeToolProp));
+    }
   }, [activeToolProp]);
 
   const selectTool = (id: ToolId) => {
     setActiveTool(id);
+    setLastUsed(memory => rememberCreationToolbarTool(memory, id));
     onToolChange?.(id);
   };
 
@@ -275,10 +317,8 @@ export function CreationToolbar({
   const shapeActive = isActive("rectangle") || isActive("ellipse") || isActive("line");
 
   // Group button icon follows the last-used tool in the group.
-  const moveTool: ToolId  = isActive("hand") ? "hand" : "move";
-  const shapeTool: ToolId = isActive("ellipse") ? "ellipse"
-    : isActive("line") ? "line"
-    : "rectangle";
+  const moveTool: ToolId = lastUsed.move;
+  const shapeTool: ToolId = lastUsed.shape;
 
   return (
     <div
@@ -297,8 +337,8 @@ export function CreationToolbar({
         tool={moveTool}
         active={moveActive}
         menu={[
-          { tool: "move", active: isActive("move") },
-          { tool: "hand", active: isActive("hand") },
+          { tool: "move", active: lastUsed.move === "move" },
+          { tool: "hand", active: lastUsed.move === "hand" },
         ]}
         onSelect={selectTool}
       />
@@ -307,7 +347,7 @@ export function CreationToolbar({
       <ToolGroupButton
         tool="frame"
         active={isActive("frame")}
-        menu={[{ tool: "frame", active: isActive("frame") }]}
+        menu={[{ tool: "frame", active: lastUsed.frame === "frame" }]}
         onSelect={selectTool}
       />
 
@@ -316,9 +356,9 @@ export function CreationToolbar({
         tool={shapeTool}
         active={shapeActive}
         menu={[
-          { tool: "rectangle", active: isActive("rectangle") },
-          { tool: "ellipse",   active: isActive("ellipse") },
-          { tool: "line",      active: isActive("line") },
+          { tool: "rectangle", active: lastUsed.shape === "rectangle" },
+          { tool: "ellipse",   active: lastUsed.shape === "ellipse" },
+          { tool: "line",      active: lastUsed.shape === "line" },
         ]}
         onSelect={selectTool}
       />

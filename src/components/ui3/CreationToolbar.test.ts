@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { shouldHandleCreationToolbarShortcut } from "./CreationToolbar";
+import {
+  DEFAULT_CREATION_TOOLBAR_MEMORY,
+  rememberCreationToolbarTool,
+  shouldHandleCreationToolbarShortcut,
+} from "./CreationToolbar";
 
 type FakeTarget = EventTarget & {
   tagName?: string;
@@ -44,5 +48,31 @@ describe("CreationToolbar shortcut ownership", () => {
     expect(shouldHandleCreationToolbarShortcut(keyEvent(canvas, { meta: true }), "global")).toBe(false);
     expect(shouldHandleCreationToolbarShortcut(keyEvent(canvas, { composing: true }), "global")).toBe(false);
     expect(shouldHandleCreationToolbarShortcut(keyEvent(canvas, { keyCode: 229 }), "global")).toBe(false);
+  });
+});
+
+describe("CreationToolbar family memory", () => {
+  it("remembers the last selection independently for each tool family", () => {
+    const ellipse = rememberCreationToolbarTool(DEFAULT_CREATION_TOOLBAR_MEMORY, "ellipse");
+    expect(ellipse).toEqual({ move: "move", frame: "frame", shape: "ellipse" });
+
+    const hand = rememberCreationToolbarTool(ellipse, "hand");
+    expect(hand).toEqual({ move: "hand", frame: "frame", shape: "ellipse" });
+
+    const line = rememberCreationToolbarTool(hand, "line");
+    expect(line).toEqual({ move: "hand", frame: "frame", shape: "line" });
+  });
+
+  it("does not erase a remembered creation choice when the active tool returns to Move", () => {
+    const line = rememberCreationToolbarTool(DEFAULT_CREATION_TOOLBAR_MEMORY, "line");
+    const move = rememberCreationToolbarTool(line, "move");
+
+    expect(move.shape).toBe("line");
+    expect(move.move).toBe("move");
+  });
+
+  it("keeps text selection outside the grouped-family memory", () => {
+    const memory = rememberCreationToolbarTool(DEFAULT_CREATION_TOOLBAR_MEMORY, "ellipse");
+    expect(rememberCreationToolbarTool(memory, "text")).toBe(memory);
   });
 });

@@ -1,9 +1,7 @@
 import { useEffect, useState, Fragment, type ReactNode } from "react";
 import { clsx } from "clsx";
 import {
-  AlignLeft, AlignCenter, AlignRight,
-  AlignStartVertical, AlignCenterVertical, AlignEndVertical,
-  RotateCw, FlipHorizontal, FlipVertical,
+  RotateCw, FlipHorizontal2, FlipVertical2,
   Link2, Link2Off, MoreHorizontal,
   AlignHorizontalJustifyCenter,
   Maximize2, Minimize2, Plus, Eye, Square,
@@ -12,7 +10,7 @@ import {
   Crosshair, Grid3x3, ExternalLink, Unlink,
   Minus, EyeOff, AlignJustify, Maximize, ChevronDown,
   MoveHorizontal, MoveVertical, Play, Pause,
-  Image as ImageIcon, Video, Clock,
+  Image as ImageIcon, Video, Clock, SquareSquare,
 } from "lucide-react";
 import { CirclesFour } from "@phosphor-icons/react";
 import {
@@ -35,9 +33,17 @@ import { Button } from "./Button";
 import { Tooltip } from "./Tooltip";
 import { EffectDetailsDialog, type EffectDetailsValue } from "./EffectDetailsDialog";
 import { AutoLayoutSettingsDialog } from "./AutoLayoutSettingsDialog";
+import {
+  StrokeSettingsDialog,
+  type StrokeCap,
+  type StrokeJoin,
+  type StrokeStyle,
+} from "./StrokeSettingsDialog";
 import { EasingInspectorSection, type EasingInspectorSectionProps, type EasingInspectorValue } from "./EasingInspectorSection";
 import type { EasingApplyScope } from "./easing";
 import { iconForSemantic } from "./IconSemantics";
+import { AutoLayoutSpacingIcon } from "./AutoLayoutSpacingIcon";
+import { TypeSettingsDialog } from "./TypeSettingsDialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -54,11 +60,20 @@ export type ExportFormat = "PNG" | "JPG";
 export interface InspectorExportSetting { id: string; scale: number; suffix: string; format: ExportFormat; }
 export type ProjectFrameRate = 24 | 25 | 30 | 60;
 export interface ElementFillSetting { id: string; color: string; opacity: number; visible: boolean; label?: string; }
-export interface ElementStrokeSetting extends ElementFillSetting { weight: number; align: "inside" | "center" | "outside"; }
+export interface ElementStrokeSetting extends ElementFillSetting {
+  weight: number;
+  align: "inside" | "center" | "outside";
+  style?: StrokeStyle;
+  join?: StrokeJoin;
+  cap?: StrokeCap;
+  styleMixed?: boolean;
+  joinMixed?: boolean;
+  capMixed?: boolean;
+}
 export interface ElementEffectSetting extends EffectDetailsValue { id: string; }
 export interface ElementLayoutGuideSetting { id: string; type: "Grid" | "Columns" | "Rows"; visible: boolean; size: number; }
 export interface ElementSelectionColorSetting { id: string; color: string; opacity: number; usageCount?: number; }
-export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; animationDelay?: boolean; }
+export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; animationDelay?: boolean; }
 export interface ElementTypographySettings {
   fontFamily: string; fontWeight: string; fontSize: number; lineHeight: number; letterSpacing: number;
   align: "left" | "center" | "right"; verticalAlign: "top" | "middle" | "bottom"; styleName?: string;
@@ -75,6 +90,8 @@ export interface ElementLayoutSettings {
   widthModeMixed?: boolean;
   heightModeMixed?: boolean;
   minWidthMixed?: boolean; minHeightMixed?: boolean; maxWidthMixed?: boolean; maxHeightMixed?: boolean;
+  paddingTopMixed?: boolean; paddingRightMixed?: boolean; paddingBottomMixed?: boolean; paddingLeftMixed?: boolean;
+  paddingDisabled?: boolean;
   textBaseline?: boolean;
   strokeSizing?: "excluded" | "included";
   canvasStacking?: "first-on-top" | "last-on-top";
@@ -84,11 +101,18 @@ export interface ElementLayoutSettings {
   autoLayoutSettingsBaselineApplicable?: boolean;
   autoLayoutSettingsDisabled?: boolean;
 }
+export type ElementPaddingEdge = keyof ElementLayoutSettings["padding"];
 
 export type ElementSizingAxis = "width" | "height";
 export type ElementSizingMode = "fixed" | "hug" | "fill";
 export interface ElementSizingChange { mode: ElementSizingMode; value?: number; }
 export type ElementSizingConstraint = "min" | "max";
+export type TextSizingMode = "auto-width" | "auto-height" | "fixed-size";
+export type PositionPresentation = "combined" | "separate";
+export interface ProjectCanvasSize {
+  width: number;
+  height: number;
+}
 
 type BlendMode = string;
 
@@ -107,6 +131,26 @@ const FONT = "font-[family-name:var(--composa-font-family)]";
 const BODY = clsx(FONT, "text-[11px] font-[450] leading-[16px] tracking-[0.055px] text-c-text");
 const SUBLABEL = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary");
 const SettingsIcon = iconForSemantic("settings");
+const BlendModeIcon = iconForSemantic("blend-mode");
+const AbsolutePositionIcon = iconForSemantic("absolute-position");
+const RotationIcon = iconForSemantic("rotation");
+const OpacityIcon = iconForSemantic("opacity");
+const LayoutFreeformIcon = iconForSemantic("layout-freeform");
+const LayoutHorizontalIcon = iconForSemantic("layout-horizontal");
+const LayoutVerticalIcon = iconForSemantic("layout-vertical");
+const AlignLeftIcon = iconForSemantic("align-left");
+const AlignCenterXIcon = iconForSemantic("align-center-x");
+const AlignRightIcon = iconForSemantic("align-right");
+const AlignTopIcon = iconForSemantic("align-top");
+const AlignCenterYIcon = iconForSemantic("align-center-y");
+const AlignBottomIcon = iconForSemantic("align-bottom");
+const TextAlignTopIcon = iconForSemantic("text-align-top");
+const TextAlignCenterIcon = iconForSemantic("text-align-center");
+const TextAlignBottomIcon = iconForSemantic("text-align-bottom");
+const SizingFixedIcon = iconForSemantic("sizing-fixed");
+const SizingHugIcon = iconForSemantic("sizing-hug");
+const SizingFillIcon = iconForSemantic("sizing-fill");
+const VideoFillIcon = iconForSemantic("fill-video");
 
 // Two independently-labeled fields side by side. Used by the project/slide/clip
 // panels (not the element PropertyPanel) where two related controls read better as
@@ -139,22 +183,6 @@ function DualField({
 // ─── Small icon for panel use ─────────────────────────────────────────────────
 const S = 16; // icon size in panel (24px button frame, 16px glyph = Figma inset)
 const si = (n: number) => n; // alias for clarity
-
-// Dual-tone blend/droplet glyph — grey fill + current-colour stroke (an original
-// SVG in the UI3 style; not a lifted Figma asset).
-function BlendDroplet({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
-      <path
-        d="M8 2.2c0 0 4 4.1 4 7a4 4 0 0 1-8 0c0-2.9 4-7 4-7Z"
-        fill="var(--color-c-icon-secondary)"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 // Shared blend-mode menu (grouped + checkmark on current). Render fn → receives
 // `close` from PopoverMenu.
@@ -225,20 +253,27 @@ export function SizingComboField({
   };
   const initialMin = maxValue === undefined ? value : Math.min(value, maxValue);
   const initialMax = minValue === undefined ? value : Math.max(value, minValue);
+  const modeIcons: Record<ElementSizingMode, ReactNode> = {
+    fixed: <SizingFixedIcon data-icon-semantic="sizing-fixed" size={14} strokeWidth={1.5} />,
+    hug: <SizingHugIcon data-icon-semantic="sizing-hug" size={14} strokeWidth={1.5} />,
+    fill: <SizingFillIcon data-icon-semantic="sizing-fill" size={14} strokeWidth={1.5} />,
+  };
   const menu = (close: () => void) => (
     <Menu minWidth={190}>
-      {availableModes.includes("fixed") && <MenuRow type="checkmark" label={`Fixed ${axis} (${formatNumericDisplay(value)})`} checked={!mixed && mode === "fixed"} onClick={() => { emitMode("fixed"); close(); }} />}
-      {availableModes.includes("hug") && <MenuRow type="checkmark" label="Hug contents" checked={!mixed && mode === "hug"} onClick={() => { emitMode("hug"); close(); }} />}
-      {availableModes.includes("fill") && <MenuRow type="checkmark" label="Fill container" checked={!mixed && mode === "fill"} onClick={() => { emitMode("fill"); close(); }} />}
+      {availableModes.includes("fixed") && <MenuRow type="checkmark" leading={modeIcons.fixed} label={`Fixed ${axis} (${formatNumericDisplay(value)})`} checked={!mixed && mode === "fixed"} onClick={() => { emitMode("fixed"); close(); }} />}
+      {availableModes.includes("hug") && <MenuRow type="checkmark" leading={modeIcons.hug} label="Hug contents" checked={!mixed && mode === "hug"} onClick={() => { emitMode("hug"); close(); }} />}
+      {availableModes.includes("fill") && <MenuRow type="checkmark" leading={modeIcons.fill} label="Fill container" checked={!mixed && mode === "fill"} onClick={() => { emitMode("fill"); close(); }} />}
       <MenuRow type="divider" />
       {minValue === undefined && <MenuRow type="simple" leading={<Minimize2 size={14} strokeWidth={1.5} />} label={`Add min ${axis}`} onClick={() => { onConstraintChange?.("min", initialMin); close(); }} />}
       {maxValue === undefined && <MenuRow type="simple" leading={<Maximize2 size={14} strokeWidth={1.5} />} label={`Add max ${axis}`} onClick={() => { onConstraintChange?.("max", initialMax); close(); }} />}
       {variablesEnabled && <><MenuRow type="divider" /><MenuRow type="simple" label="Apply variable" disabled={!onApplyVariable} onClick={onApplyVariable ? () => { onApplyVariable(); close(); } : undefined} /></>}
     </Menu>
   );
-  if (keyframe) {
+  if (keyframe && !mixed && mode === "fixed") {
     // Motion mode: value + keyframe diamond (the sizing-mode combo is dropped —
-    // a keyframed dimension is fixed, matching Figma's motion inspector).
+    // a keyframed fixed dimension is numeric, matching Figma's motion inspector).
+    // Relative Hug/Fill axes stay visibly relative until the user edits their
+    // resolved value, which atomically converts that axis to Fixed.
     return <NumericInput
       ariaLabel={axisLabel}
       iconLead={<span className={FONT}>{axis === "width" ? "W" : "H"}</span>}
@@ -274,6 +309,36 @@ export interface DimensionSizingFieldsProps {
   onApplySizingVariable?: (axis: ElementSizingAxis) => void;
   /** Motion mode: width/height become value + keyframe diamond (diamond on the H field). */
   dimensionsKeyframe?: { active: boolean; onToggle: () => void };
+}
+
+export interface SpatialSelectionLayoutControl {
+  axis: "x" | "y";
+  gap: number;
+  onGapChange?: (value: number) => void;
+  onAddAutoLayout?: () => void;
+}
+
+function SpatialSelectionLayoutFields({ value }: { value?: SpatialSelectionLayoutControl }) {
+  if (!value) return null;
+  const horizontal = value.axis === "x";
+  return <>
+    <PanelFieldRow
+      label="Spacing"
+      left={<NumericInput
+        ariaLabel={horizontal ? "Horizontal spacing gap" : "Vertical spacing gap"}
+        iconLead={<AutoLayoutSpacingIcon kind="gap" axis={horizontal ? "horizontal" : "vertical"} />}
+        value={value.gap}
+        min={0}
+        step={1}
+        commitOnBlur
+        onChange={value.onGapChange}
+      />}
+      right={<span aria-hidden />}
+    />
+    {value.onAddAutoLayout && <PanelFullRow height={32}>
+      <Button label="Add auto layout" variant="Secondary" size="wide" onClick={value.onAddAutoLayout} />
+    </PanelFullRow>}
+  </>;
 }
 
 export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
@@ -351,6 +416,55 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
   </>;
 }
 
+const TEXT_SIZING_LABELS: Record<TextSizingMode, string> = {
+  "auto-width": "Auto width",
+  "auto-height": "Auto height",
+  "fixed-size": "Fixed size",
+};
+
+function TextSizingModeField({
+  value,
+  availableModes = ["auto-width", "auto-height", "fixed-size"],
+  disabled = false,
+  onChange,
+}: {
+  value?: TextSizingMode | "mixed";
+  availableModes?: readonly TextSizingMode[];
+  disabled?: boolean;
+  onChange?: (mode: TextSizingMode) => void;
+}) {
+  const renderedLabel = value === "mixed" ? "Mixed" : value ? TEXT_SIZING_LABELS[value] : "Text resizing";
+  return (
+    <PanelFieldRow
+      label="Text resizing"
+      reserveRightSlot={false}
+      left={
+        <PopoverMenu
+          directTrigger
+          trigger={<Dropdown
+            ariaLabel={`Text resizing: ${renderedLabel}`}
+            value={renderedLabel}
+            fullWidth
+            disabled={disabled || !onChange}
+          />}
+        >
+          {close => <Menu minWidth={190}>
+            {availableModes.map(mode => (
+              <MenuRow
+                key={mode}
+                type="checkmark"
+                label={TEXT_SIZING_LABELS[mode]}
+                checked={value === mode}
+                onClick={() => { onChange?.(mode); close(); }}
+              />
+            ))}
+          </Menu>}
+        </PopoverMenu>
+      }
+    />
+  );
+}
+
 // ─── Inspector keyframe affordance ────────────────────────────────────────────
 // Per-property keyframe diamond shown in the Design tab, matching the timeline's
 // own keyframe stepper (Timeline.tsx). Present ONLY when the host supplies a
@@ -368,46 +482,55 @@ export interface InspectorKeyframeControls {
 
 // ─── Section: Position ────────────────────────────────────────────────────────
 
+export type ElementAlignmentAction = "left" | "center-x" | "right" | "top" | "center-y" | "bottom";
+
 interface PositionSectionProps {
   x?: number; y?: number; rotation?: number;
   scaleX?: number; scaleY?: number;
   onXChange?: (v: number) => void;
   onYChange?: (v: number) => void;
   onRotationChange?: (v: number) => void;
+  onRotate90Clockwise?: () => void;
+  onFlipHorizontal?: () => void;
+  onFlipVertical?: () => void;
   onScaleXChange?: (v: number) => void;
   onScaleYChange?: (v: number) => void;
   positioning?: "auto" | "absolute";
   positioningApplicable?: boolean;
   onPositioningChange?: (value: "auto" | "absolute") => void;
+  onAlignmentAction?: (action: ElementAlignmentAction) => void;
   multiSelect?: boolean;
   positionKeyframe?: InspectorKeyframeControl;
   scaleKeyframe?: InspectorKeyframeControl;
   rotationKeyframe?: InspectorKeyframeControl;
   scaleApplicable?: boolean;
+  positionPresentation?: PositionPresentation;
+  onPositionPresentationChange?: (presentation: PositionPresentation) => void;
 }
 
 function PositionSection({
   x = 0, y = 0, rotation = 0,
   scaleX = 100, scaleY = 100,
-  onXChange, onYChange, onRotationChange, onScaleXChange, onScaleYChange,
-  positioning, positioningApplicable, onPositioningChange,
+  onXChange, onYChange, onRotationChange, onRotate90Clockwise, onFlipHorizontal, onFlipVertical, onScaleXChange, onScaleYChange,
+  positioning, positioningApplicable, onPositioningChange, onAlignmentAction,
   multiSelect = false,
   positionKeyframe, scaleKeyframe, rotationKeyframe, scaleApplicable = false,
+  positionPresentation = "separate", onPositionPresentationChange,
 }: PositionSectionProps) {
   const hAlignBtns: IconBtn[] = [
-    { icon: <AlignLeft       size={S} strokeWidth={1.5} />, label: "Align left",   value: "left" },
-    { icon: <AlignCenter     size={S} strokeWidth={1.5} />, label: "Align center", value: "hcenter" },
-    { icon: <AlignRight      size={S} strokeWidth={1.5} />, label: "Align right",  value: "right" },
+    { icon: <AlignLeftIcon data-icon-semantic="align-left" size={S} strokeWidth={1.5} />, label: "Align left", onClick: () => onAlignmentAction?.("left") },
+    { icon: <AlignCenterXIcon data-icon-semantic="align-center-x" size={S} strokeWidth={1.5} />, label: "Align center", onClick: () => onAlignmentAction?.("center-x") },
+    { icon: <AlignRightIcon data-icon-semantic="align-right" size={S} strokeWidth={1.5} />, label: "Align right", onClick: () => onAlignmentAction?.("right") },
   ];
   const vAlignBtns: IconBtn[] = [
-    { icon: <AlignStartVertical size={S} strokeWidth={1.5} />, label: "Align top",    value: "top" },
-    { icon: <AlignCenterVertical size={S} strokeWidth={1.5} />, label: "Align middle", value: "vcenter" },
-    { icon: <AlignEndVertical   size={S} strokeWidth={1.5} />, label: "Align bottom", value: "bottom" },
+    { icon: <AlignTopIcon data-icon-semantic="align-top" size={S} strokeWidth={1.5} />, label: "Align top", onClick: () => onAlignmentAction?.("top") },
+    { icon: <AlignCenterYIcon data-icon-semantic="align-center-y" size={S} strokeWidth={1.5} />, label: "Align middle", onClick: () => onAlignmentAction?.("center-y") },
+    { icon: <AlignBottomIcon data-icon-semantic="align-bottom" size={S} strokeWidth={1.5} />, label: "Align bottom", onClick: () => onAlignmentAction?.("bottom") },
   ];
   const rotateBtns: IconBtn[] = [
-    { icon: <RotateCw       size={S} strokeWidth={1.5} />, label: "Rotate 90° CW" },
-    { icon: <FlipHorizontal size={S} strokeWidth={1.5} />, label: "Flip horizontal" },
-    { icon: <FlipVertical   size={S} strokeWidth={1.5} />, label: "Flip vertical" },
+    { icon: <RotateCw       size={S} strokeWidth={1.5} />, label: "Rotate 90° CW", onClick: onRotate90Clockwise ?? (onRotationChange ? () => onRotationChange(rotation + 90) : undefined) },
+    { icon: <FlipHorizontal2 size={S} strokeWidth={1.5} />, label: "Flip horizontal", onClick: onFlipHorizontal },
+    { icon: <FlipVertical2   size={S} strokeWidth={1.5} />, label: "Flip vertical", onClick: onFlipVertical },
   ];
   // Scale aspect-lock (Figma Motion scale row's trailing ⊡). When locked, the two
   // axes scale uniformly. Kept in one edit session by NumericEditSessionProvider.
@@ -419,8 +542,9 @@ function PositionSection({
     <PanelSection
       title="Position"
       rightActions={positioningApplicable === false ? undefined :
-        <PanelActionBtn icon={<Maximize2 size={16} strokeWidth={1.5} />}
-          label={positioning === "absolute" ? "Return to auto-layout flow" : "Absolute position"}
+        <PanelActionBtn icon={<AbsolutePositionIcon data-icon-semantic="absolute-position" size={16} strokeWidth={1.5} />}
+          label={positioning === "absolute" ? "Use auto layout" : "Ignore auto layout"}
+          tooltip={positioning === "absolute" ? "Use auto layout" : "Ignore auto layout"}
           selected={positioning === undefined ? undefined : positioning === "absolute"}
           disabled={positioningApplicable === true && (positioning === undefined || !onPositioningChange)}
           onClick={onPositioningChange && positioning ? () => onPositioningChange(positioning === "absolute" ? "auto" : "absolute") : undefined} />
@@ -435,17 +559,35 @@ function PositionSection({
           ? <PanelActionBtn icon={<MoreHorizontal size={16} strokeWidth={1.5} />} label="More alignment" />
           : undefined}
       />
-      {/* Position — combined [X | Y | ◇] field (Figma Motion position row). */}
-      <PanelFieldRow
-        label="Position"
-        left={
-          <NumericPairInput
-            a={{ ariaLabel: "Position X", iconLead: <span className={clsx(FONT, "text-[11px] font-normal")}>X</span>, value: x, onChange: onXChange, defaultValue: 0 }}
-            b={{ ariaLabel: "Position Y", iconLead: <span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>, value: y, onChange: onYChange, defaultValue: 0 }}
-            keyframe={positionKeyframe}
-          />
-        }
-      />
+      {/* Position topology is presentation-only. A combined row never implies
+          independent X/Y timing tracks; a separate row still owns one position
+          keyframe through the Y field's trailing diamond. */}
+      {positionPresentation === "combined" ? (
+        <PanelFieldRow
+          label="Position"
+          left={
+            <NumericPairInput
+              a={{ ariaLabel: "Position X", iconLead: <span className={clsx(FONT, "text-[11px] font-normal")}>X</span>, value: x, onChange: onXChange, defaultValue: 0 }}
+              b={{ ariaLabel: "Position Y", iconLead: <span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>, value: y, onChange: onYChange, defaultValue: 0 }}
+              keyframe={positionKeyframe}
+            />
+          }
+          rightAction={onPositionPresentationChange
+            ? <PanelActionBtn
+                icon={<Unlink size={16} strokeWidth={1.5} />}
+                label="Separate dimensions"
+                tooltip="Separate dimensions"
+                onClick={() => onPositionPresentationChange("separate")}
+              />
+            : undefined}
+        />
+      ) : (
+        <PanelFieldRow
+          label="Position"
+          left={<NumericInput ariaLabel="Position X" iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>X</span>} value={x} onChange={onXChange} defaultValue={0} />}
+          right={<NumericInput ariaLabel="Position Y" iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>} value={y} onChange={onYChange} defaultValue={0} keyframe={positionKeyframe} />}
+        />
+      )}
 
       {/* Scale — combined [X | Y | ◇] field + aspect-lock (Figma Motion scale row).
           % of the object's base size. Present when the host marks it applicable. */}
@@ -471,8 +613,8 @@ function PositionSection({
         left={
           <NumericInput
             ariaLabel="Rotation"
-            iconLead={<RotateCw size={16} strokeWidth={1.5} />}
-            value={rotation} onChange={onRotationChange} min={-360} max={360} suffix="°"
+            iconLead={<RotationIcon data-icon-semantic="rotation" size={16} strokeWidth={1.5} />}
+            value={rotation} onChange={onRotationChange} min={-360} max={360}
             keyframe={rotationKeyframe}
           />
         }
@@ -496,6 +638,7 @@ interface LayoutFrameProps {
   /** Auto-layout is reached from here two ways: the "+" button, or moving Flow
    * off its first ("Freeform") option. Both call this. */
   onEnableAutoLayout?: () => void;
+  spatialSelectionLayout?: SpatialSelectionLayoutControl;
 }
 
 function LayoutFrameSection({
@@ -504,15 +647,16 @@ function LayoutFrameSection({
   onWidthChange, onHeightChange, onClipContentChange,
   sizing,
   onEnableAutoLayout,
+  spatialSelectionLayout,
 }: LayoutFrameProps) {
   // Plain frame defaults to Freeform (no auto-layout yet) — NOT "v", which would
   // already imply vertical auto-layout while this is the "no auto-layout" section.
   const [flow, setFlow] = useState("none");
 
   const flowBtns: IconBtn[] = [
-    { icon: <AlignHorizontalJustifyCenter size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
-    { icon: <Rows2 size={S} strokeWidth={1.5} />, label: "Vertical", value: "v" },
-    { icon: <Columns size={S} strokeWidth={1.5} />, label: "Horizontal", value: "h" },
+    { icon: <LayoutFreeformIcon data-icon-semantic="layout-freeform" size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
+    { icon: <LayoutVerticalIcon data-icon-semantic="layout-vertical" size={S} strokeWidth={1.5} />, label: "Vertical", value: "v" },
+    { icon: <LayoutHorizontalIcon data-icon-semantic="layout-horizontal" size={S} strokeWidth={1.5} />, label: "Horizontal", value: "h" },
     { icon: <WrapText size={S} strokeWidth={1.5} />, label: "Wrap", value: "wrap" },
   ];
 
@@ -538,6 +682,7 @@ function LayoutFrameSection({
       />
 
       <DimensionSizingFields width={width} height={height} onWidthChange={onWidthChange} onHeightChange={onHeightChange} {...sizing} />
+      <SpatialSelectionLayoutFields value={spatialSelectionLayout} />
 
       {/* Corner radius moved to Appearance */}
 
@@ -559,6 +704,9 @@ interface LayoutAutoProps {
   gap?: number | "auto";
   paddingTop?: number; paddingRight?: number;
   paddingBottom?: number; paddingLeft?: number;
+  paddingTopMixed?: boolean; paddingRightMixed?: boolean;
+  paddingBottomMixed?: boolean; paddingLeftMixed?: boolean;
+  paddingDisabled?: boolean;
   alignValue?: string;
   clipContent?: boolean;
   textBaseline?: boolean;
@@ -570,11 +718,12 @@ interface LayoutAutoProps {
   settingsBaselineApplicable?: boolean;
   settingsDisabled?: boolean;
   onLayoutChange?: (patch: Partial<ElementLayoutSettings>) => void;
-  onPaddingChange?: (value: ElementLayoutSettings["padding"]) => void;
+  onPaddingChange?: (value: ElementLayoutSettings["padding"], changedEdges: readonly ElementPaddingEdge[]) => void;
   onAlignChange?: (value: string) => void;
   onClipContentChange?: (value: boolean) => void;
   onAutoLayoutSettingsRequest?: () => void;
   sizing?: Omit<DimensionSizingFieldsProps, "width" | "height" | "widthMode" | "heightMode">;
+  spatialSelectionLayout?: SpatialSelectionLayoutControl;
 }
 
 export function reconcileAutoLayoutGap(
@@ -591,6 +740,8 @@ function LayoutAutoSection({
   widthMode = "hug", heightMode = "fill",
   gap: gapProp,
   paddingTop = 16, paddingRight = 0, paddingBottom = 8, paddingLeft = 0,
+  paddingTopMixed = false, paddingRightMixed = false, paddingBottomMixed = false, paddingLeftMixed = false,
+  paddingDisabled = false,
   alignValue = "mc",
   clipContent = false,
   textBaseline = false,
@@ -601,7 +752,7 @@ function LayoutAutoSection({
   canvasStackingMixed = false,
   settingsBaselineApplicable,
   settingsDisabled = false,
-  onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onAutoLayoutSettingsRequest, sizing,
+  onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onAutoLayoutSettingsRequest, sizing, spatialSelectionLayout,
 }: LayoutAutoProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const controlled = flowMode !== undefined;
@@ -614,12 +765,17 @@ function LayoutAutoSection({
   const renderedGap = gapControlled ? gapProp : internalGap;
   const [lastFixedGap, setLastFixedGap] = useState(typeof renderedGap === "number" ? renderedGap : 0);
   const [indivPadding, setIndivPadding] = useState(false);
+  const paddingSidesDiffer = paddingTop !== paddingRight || paddingTop !== paddingBottom || paddingTop !== paddingLeft;
+  const paddingHasMixedSide = paddingTopMixed || paddingRightMixed || paddingBottomMixed || paddingLeftMixed;
+  const expandedPadding = indivPadding || paddingSidesDiffer || paddingHasMixedSide;
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
 
-  // Freeform is the plain-frame state, not an active auto-layout direction.
+  // Freeform is the explicit "disable auto layout" action and remains distinct
+  // from the trailing Auto-layout Settings entry point.
   const flowBtns: IconBtn[] = [
-    { icon: <Rows2    size={S} strokeWidth={1.5} />, label: "Vertical",    value: "v" },
-    { icon: <Columns  size={S} strokeWidth={1.5} />, label: "Horizontal",  value: "h" },
+    { icon: <LayoutFreeformIcon data-icon-semantic="layout-freeform" size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
+    { icon: <LayoutVerticalIcon data-icon-semantic="layout-vertical" size={S} strokeWidth={1.5} />, label: "Vertical", value: "v" },
+    { icon: <LayoutHorizontalIcon data-icon-semantic="layout-horizontal" size={S} strokeWidth={1.5} />, label: "Horizontal", value: "h" },
     { icon: <WrapText size={S} strokeWidth={1.5} />, label: "Wrap",        value: "wrap" },
   ];
 
@@ -644,9 +800,7 @@ function LayoutAutoSection({
 
   const gapMode = renderedGap === "auto" ? "auto" : "fixed";
   const gapAxis = renderedFlow === "v" ? "vertical" : "horizontal";
-  const gapIcon = gapAxis === "vertical"
-    ? <MoveVertical size={14} strokeWidth={1.5} />
-    : <MoveHorizontal size={14} strokeWidth={1.5} />;
+  const gapIcon = <AutoLayoutSpacingIcon kind="gap" axis={gapAxis} />;
 
   const gapMenu = (close: () => void) => (
     <Menu minWidth={156}>
@@ -680,7 +834,7 @@ function LayoutAutoSection({
       value={settingsValue}
       disabled={settingsDisabled}
       trigger={<PanelActionBtn
-        icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />}
+        icon={<LayoutFreeformIcon data-icon-semantic="layout-freeform" size={16} strokeWidth={1.5} />}
         label="Auto-layout settings"
         disabled={settingsDisabled}
         onClick={settingsDisabled ? undefined : () => { setSettingsOpen(true); onAutoLayoutSettingsRequest?.(); }}
@@ -691,7 +845,7 @@ function LayoutAutoSection({
   );
 
   return (
-    <PanelSection title="Auto layout" rightActions={settingsTriggerButton}>
+    <PanelSection title="Auto layout">
       <div role="group" aria-label="Flow" className="px-[16px] pt-[8px]">
         <div className={subLabel}>Flow</div>
         <SegmentedControl
@@ -729,6 +883,7 @@ function LayoutAutoSection({
             className="w-full"
           />
         </div>
+        <div className="shrink-0 pt-[17px]">{settingsTriggerButton}</div>
       </div>
 
       {/* Padding — cross layout. Combined (default): Vertical + Horizontal, two
@@ -737,36 +892,38 @@ function LayoutAutoSection({
         <div className="flex items-center justify-between mb-[3px]">
           <span className={subLabel}>Padding</span>
         </div>
-        {indivPadding ? (
+        {expandedPadding ? (
           // Same reserved icon column as the combined state below (shrink-0, right
           // edge) — the field grid is flex-1 so it shrinks to leave that room,
           // instead of the icon getting bumped to its own row underneath. Top-
           // aligned (not centered) since the field block is two rows tall here.
           <div className="flex items-start gap-[4px]">
             <div className="grid grid-cols-2 gap-[4px] flex-1 min-w-0">
-              <NumericInput iconLead={<span className={FONT}>↑</span>} value={controlled ? paddingTop : undefined} defaultValue={paddingTop} onChange={top => onPaddingChange?.({ top, right: paddingRight, bottom: paddingBottom, left: paddingLeft })} min={0} />
-              <NumericInput iconLead={<span className={FONT}>→</span>} value={controlled ? paddingRight : undefined} defaultValue={paddingRight} onChange={right => onPaddingChange?.({ top: paddingTop, right, bottom: paddingBottom, left: paddingLeft })} min={0} />
-              <NumericInput iconLead={<span className={FONT}>↓</span>} value={controlled ? paddingBottom : undefined} defaultValue={paddingBottom} onChange={bottom => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom, left: paddingLeft })} min={0} />
-              <NumericInput iconLead={<span className={FONT}>←</span>} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} onChange={left => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom: paddingBottom, left })} min={0} />
+              <NumericInput ariaLabel="Top padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="top" />} value={controlled ? paddingTop : undefined} defaultValue={paddingTop} mixed={paddingTopMixed} disabled={paddingDisabled} onChange={top => onPaddingChange?.({ top, right: paddingRight, bottom: paddingBottom, left: paddingLeft }, ["top"])} min={0} />
+              <NumericInput ariaLabel="Right padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="right" />} value={controlled ? paddingRight : undefined} defaultValue={paddingRight} mixed={paddingRightMixed} disabled={paddingDisabled} onChange={right => onPaddingChange?.({ top: paddingTop, right, bottom: paddingBottom, left: paddingLeft }, ["right"])} min={0} />
+              <NumericInput ariaLabel="Bottom padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="bottom" />} value={controlled ? paddingBottom : undefined} defaultValue={paddingBottom} mixed={paddingBottomMixed} disabled={paddingDisabled} onChange={bottom => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom, left: paddingLeft }, ["bottom"])} min={0} />
+              <NumericInput ariaLabel="Left padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="left" />} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} mixed={paddingLeftMixed} disabled={paddingDisabled} onChange={left => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom: paddingBottom, left }, ["left"])} min={0} />
             </div>
             <PanelActionBtn
-              icon={<Maximize size={16} strokeWidth={1.5} />}
+              icon={<SquareSquare size={16} strokeWidth={1.5} />}
               label="Combine padding"
               active
+              disabled={paddingDisabled || paddingSidesDiffer || paddingHasMixedSide}
               onClick={() => setIndivPadding(false)}
             />
           </div>
         ) : (
           <div className="flex items-center gap-[4px]">
             <div className="flex-1 min-w-0">
-              <NumericInput iconLead={<span className={FONT}>↕</span>} value={controlled ? paddingTop : undefined} defaultValue={paddingTop} onChange={vertical => onPaddingChange?.({ top: vertical, right: paddingRight, bottom: vertical, left: paddingLeft })} min={0} />
+              <NumericInput ariaLabel="Vertical padding" iconLead={<AutoLayoutSpacingIcon kind="padding" axis="vertical" />} value={controlled ? paddingTop : undefined} defaultValue={paddingTop} disabled={paddingDisabled} onChange={vertical => onPaddingChange?.({ top: vertical, right: paddingRight, bottom: vertical, left: paddingLeft }, ["top", "bottom"])} min={0} />
             </div>
             <div className="flex-1 min-w-0">
-              <NumericInput iconLead={<span className={FONT}>↔</span>} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} onChange={horizontal => onPaddingChange?.({ top: paddingTop, right: horizontal, bottom: paddingBottom, left: horizontal })} min={0} />
+              <NumericInput ariaLabel="Horizontal padding" iconLead={<AutoLayoutSpacingIcon kind="padding" axis="horizontal" />} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} disabled={paddingDisabled} onChange={horizontal => onPaddingChange?.({ top: paddingTop, right: horizontal, bottom: paddingBottom, left: horizontal }, ["right", "left"])} min={0} />
             </div>
             <PanelActionBtn
-              icon={<Maximize size={16} strokeWidth={1.5} />}
+              icon={<SquareSquare size={16} strokeWidth={1.5} />}
               label="Independent padding"
+              disabled={paddingDisabled}
               onClick={() => setIndivPadding(true)}
             />
           </div>
@@ -774,6 +931,7 @@ function LayoutAutoSection({
       </div>
 
       <DimensionSizingFields {...sizing} width={width} height={height} widthMode={widthMode} heightMode={heightMode} />
+      <SpatialSelectionLayoutFields value={spatialSelectionLayout} />
 
       {/* Clip content */}
       <PanelFullRow height={28}>
@@ -818,10 +976,10 @@ function AppearanceSection({
       rightActions={
         <>
           <PanelActionBtn icon={<Eye size={16} strokeWidth={1.5} />} label="Visibility" />
-          {/* Blend mode — dual-tone droplet; opens the grouped blend menu */}
+          {/* Blend mode — outlined semantic glyph; opens the grouped blend menu. */}
           <PopoverMenu
             align="right"
-            trigger={<PanelActionBtn icon={<BlendDroplet size={16} />} label="Blend mode" active={renderedBlend !== "Pass through"} />}
+            trigger={<PanelActionBtn icon={<BlendModeIcon data-icon-semantic="blend-mode" size={16} strokeWidth={1.5} />} label="Blend mode" />}
           >
             {blendMenu(renderedBlend, setBlendValue)}
           </PopoverMenu>
@@ -832,7 +990,7 @@ function AppearanceSection({
       <div className="flex items-end gap-[8px] pl-[16px] pr-[16px] pt-[3px]">
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Opacity</div>
-          <NumericInput ariaLabel="Opacity" value={opacity} onChange={onOpacityChange} min={0} max={100} suffix="%" keyframe={opacityKeyframe} />
+          <NumericInput ariaLabel="Opacity" iconLead={<OpacityIcon data-icon-semantic="opacity" size={16} strokeWidth={1.5} />} value={opacity} onChange={onOpacityChange} min={0} max={100} suffix="%" keyframe={opacityKeyframe} />
         </div>
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Corner radius</div>
@@ -862,7 +1020,7 @@ function AppearanceSection({
       <div className="pl-[16px] pr-[16px] pt-[6px] pb-[8px]">
         <div className={subLabel}>Blend mode</div>
         <div className="flex items-center gap-[8px]">
-          <PopoverMenu className="flex-1 min-w-0" trigger={<Dropdown value={renderedBlend} fullWidth leadingIcon={<BlendDroplet size={16} />} />}>
+          <PopoverMenu className="flex-1 min-w-0" trigger={<Dropdown value={renderedBlend} fullWidth leadingIcon={<BlendModeIcon data-icon-semantic="blend-mode" size={16} strokeWidth={1.5} />} />}>
             {blendMenu(renderedBlend, setBlendValue)}
           </PopoverMenu>
           <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove blend mode" onClick={() => setBlendValue("Pass through")} />
@@ -896,15 +1054,24 @@ function TypographySection({ value, onChange, stylesAvailable }: { value?: Eleme
   const hasStyle = stylesAvailable && !!settings.styleName;
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
   const textAlignBtns: IconBtn[] = [
-    { icon: <AlignLeft   size={S} strokeWidth={1.5} />, label: "Align left",   value: "left" },
-    { icon: <AlignCenter size={S} strokeWidth={1.5} />, label: "Align center", value: "center" },
-    { icon: <AlignRight  size={S} strokeWidth={1.5} />, label: "Align right",  value: "right" },
+    { icon: <AlignLeftIcon data-icon-semantic="align-left" size={S} strokeWidth={1.5} />, label: "Align left", onClick: () => update({ align: "left" }) },
+    { icon: <AlignCenterXIcon data-icon-semantic="align-center-x" size={S} strokeWidth={1.5} />, label: "Align center", onClick: () => update({ align: "center" }) },
+    { icon: <AlignRightIcon data-icon-semantic="align-right" size={S} strokeWidth={1.5} />, label: "Align right", onClick: () => update({ align: "right" }) },
   ];
   const vAlignBtns: IconBtn[] = [
-    { icon: <AlignStartVertical size={S} strokeWidth={1.5} />, label: "Top",    value: "top" },
-    { icon: <AlignCenterVertical size={S} strokeWidth={1.5} />, label: "Middle", value: "middle" },
-    { icon: <AlignEndVertical   size={S} strokeWidth={1.5} />, label: "Bottom", value: "bottom" },
+    { icon: <TextAlignTopIcon data-icon-semantic="text-align-top" size={S} strokeWidth={1.5} />, label: "Top", onClick: () => update({ verticalAlign: "top" }) },
+    { icon: <TextAlignCenterIcon data-icon-semantic="text-align-center" size={S} strokeWidth={1.5} />, label: "Middle", onClick: () => update({ verticalAlign: "middle" }) },
+    { icon: <TextAlignBottomIcon data-icon-semantic="text-align-bottom" size={S} strokeWidth={1.5} />, label: "Bottom", onClick: () => update({ verticalAlign: "bottom" }) },
   ];
+  const [typeSettingsOpen, setTypeSettingsOpen] = useState(false);
+  const typeSettingsTrigger = (
+    <PanelActionBtn
+      icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />}
+      label="Type settings"
+      active={typeSettingsOpen}
+      onClick={() => setTypeSettingsOpen(true)}
+    />
+  );
 
   return (
     <PanelSection
@@ -932,7 +1099,7 @@ function TypographySection({ value, onChange, stylesAvailable }: { value?: Eleme
           {/* Weight / Size — no labels (Figma); Size is a combo input */}
           <div className="flex items-center gap-[8px] pl-[16px] pr-[16px] pt-[3px]">
             <div className="flex-1 min-w-0"><ChoiceDropdown value={settings.fontWeight} options={["Regular", "Medium", "Semibold", "Bold"]} labels={{ Regular: "Regular", Medium: "Medium", Semibold: "Semibold", Bold: "Bold" }} onChange={fontWeight => update({ fontWeight })} /></div>
-            <div className="flex-1 min-w-0"><ComboInput iconLead={<span className={FONT}>T</span>} value={String(settings.fontSize)} onInputChange={fontSize => update({ fontSize: Number(fontSize) })} /></div>
+            <div className="flex-1 min-w-0"><ComboInput ariaLabel="Font size" selectAllOnFocus iconLead={<span className={FONT}>T</span>} value={String(settings.fontSize)} onInputChange={fontSize => update({ fontSize: Number(fontSize) })} /></div>
             <div className="shrink-0 min-w-[24px]" />
           </div>
 
@@ -954,9 +1121,17 @@ function TypographySection({ value, onChange, stylesAvailable }: { value?: Eleme
       {/* Alignment — always present, labeled */}
       <PanelFieldRow
         label="Alignment"
-        left={<IconButtonRow buttons={textAlignBtns} value={settings.align} onChange={align => update({ align: align as ElementTypographySettings["align"] })} fill />}
-        right={<IconButtonRow buttons={vAlignBtns} value={settings.verticalAlign} onChange={verticalAlign => update({ verticalAlign: verticalAlign as ElementTypographySettings["verticalAlign"] })} fill />}
-        rightAction={<PanelActionBtn icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />} label="Type settings" />}
+        left={<IconButtonRow buttons={textAlignBtns} fill />}
+        right={<IconButtonRow buttons={vAlignBtns} fill />}
+        rightAction={
+          <TypeSettingsDialog
+            open={typeSettingsOpen}
+            onClose={() => setTypeSettingsOpen(false)}
+            trigger={typeSettingsTrigger}
+            value={settings}
+            onChange={update}
+          />
+        }
       />
     </PanelSection>
   );
@@ -966,17 +1141,17 @@ function TypographySection({ value, onChange, stylesAvailable }: { value?: Eleme
 
 type FillEntry = ElementFillSetting;
 
-function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities }: {
+function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities, activeStackDialog, onActiveStackDialogChange }: {
   entries?: FillEntry[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<FillEntry, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
   capabilities: Required<InspectorCapabilities>;
+  activeStackDialog: string | null;
+  onActiveStackDialogChange: (dialog: string | null) => void;
 }) {
   const [internal, setInternal] = useState<FillEntry[]>([
     { id: "1", color: "#1e1e1e", opacity: 100, visible: true, label: "Black" },
   ]);
   const fills = entries ?? internal;
-  const [colorOpen, setColorOpen] = useState(false);
-  const [activeFill, setActiveFill] = useState<string | null>(null);
 
   const addFill = () => { if (!entries) setInternal(f => [...f, { id: String(Date.now()), color: "#ffffff", opacity: 100, visible: true }]); onAdd?.(); };
   const updateFill = (id: string, patch: Partial<Omit<FillEntry, "id">>) => { if (!entries) setInternal(f => f.map(x => x.id === id ? { ...x, ...patch } : x)); onUpdate?.(id, patch); };
@@ -1001,13 +1176,21 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, 
         <div key={fill.id} draggable={!!onReorder} onDragStart={event => event.dataTransfer.setData("text/plain", fill.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), fill.id); }} className="group/row flex items-center pr-[16px] h-[32px]">
           <DragGutter />
           <div className="flex-1 min-w-0">
-            <ColorInput
-              fullWidth
-              color={fill.color}
-              opacity={fill.opacity}
-              onColorChange={color => updateFill(fill.id, { color })}
-              onOpacityChange={opacity => updateFill(fill.id, { opacity })}
-              onSwatchClick={() => { setActiveFill(fill.id); setColorOpen(true); }}
+            <ColorDialog
+              capabilities={capabilities}
+              open={activeStackDialog === `fill-color:${fill.id}`}
+              onClose={() => onActiveStackDialogChange(null)}
+              trigger={<ColorInput
+                ariaLabel="Fill color"
+                fullWidth
+                color={fill.color}
+                opacity={fill.opacity}
+                onColorChange={color => updateFill(fill.id, { color })}
+                onOpacityChange={opacity => updateFill(fill.id, { opacity })}
+                onSwatchClick={() => onActiveStackDialogChange(`fill-color:${fill.id}`)}
+              />}
+              hex={fill.color.replace("#", "")}
+              onHexChange={color => updateFill(fill.id, { color: `#${color.replace(/^#/, "")}` })}
             />
           </div>
           <div className="shrink-0 flex items-center gap-[4px] pl-[8px]">
@@ -1020,31 +1203,24 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, 
           </div>
         </div>
       ))}
-
-      <ColorDialog
-        capabilities={capabilities}
-        open={colorOpen}
-        onClose={() => setColorOpen(false)}
-        hex={fills.find(f => f.id === activeFill)?.color.replace("#", "") ?? "1e1e1e"}
-        onHexChange={color => activeFill && updateFill(activeFill, { color: `#${color.replace(/^#/, "")}` })}
-      />
     </PanelSection>
   );
 }
 
 // ─── Section: Stroke ──────────────────────────────────────────────────────────
 
-function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities }: {
+function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities, readOnly, activeStackDialog, onActiveStackDialogChange }: {
   entries?: ElementStrokeSetting[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<ElementStrokeSetting, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
   capabilities: Required<InspectorCapabilities>;
+  readOnly: boolean;
+  activeStackDialog: string | null;
+  onActiveStackDialogChange: (dialog: string | null) => void;
 }) {
   const [internal, setInternal] = useState<ElementStrokeSetting[]>([]);
   const strokes = entries ?? internal;
-  const [colorOpen, setColorOpen] = useState(false);
-  const [activeStroke, setActiveStroke] = useState<string | null>(null);
   const update = (id: string, patch: Partial<Omit<ElementStrokeSetting, "id">>) => { if (!entries) setInternal(s => s.map(x => x.id === id ? { ...x, ...patch } : x)); onUpdate?.(id, patch); };
-  const add = () => { if (!entries) setInternal(s => [...s, { id: String(Date.now()), color: "#000000", opacity: 100, visible: true, weight: 1, align: "center" }]); onAdd?.(); };
+  const add = () => { if (!entries) setInternal(s => [...s, { id: String(Date.now()), color: "#000000", opacity: 100, visible: true, weight: 1, align: "center", style: "solid", join: "miter", cap: "none" }]); onAdd?.(); };
   const remove = (id: string) => { if (!entries) setInternal(s => s.filter(x => x.id !== id)); onRemove?.(id); };
   const toggle = (id: string) => { const stroke = strokes.find(item => item.id === id); if (!stroke) return; if (!entries) setInternal(items => items.map(item => item.id === id ? { ...item, visible: !item.visible } : item)); onToggle?.(id, !stroke.visible); };
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
@@ -1068,13 +1244,21 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
           <div className="group/row flex items-center pr-[16px] h-[32px]">
             <DragGutter />
             <div className="flex-1 min-w-0">
-              <ColorInput
-                fullWidth
-                color={stroke.color}
-                opacity={stroke.opacity}
-                onColorChange={color => update(stroke.id, { color })}
-                onOpacityChange={opacity => update(stroke.id, { opacity })}
-                onSwatchClick={() => { setActiveStroke(stroke.id); setColorOpen(true); }}
+              <ColorDialog
+                capabilities={capabilities}
+                open={activeStackDialog === `stroke-color:${stroke.id}`}
+                onClose={() => onActiveStackDialogChange(null)}
+                trigger={<ColorInput
+                  ariaLabel="Stroke color"
+                  fullWidth
+                  color={stroke.color}
+                  opacity={stroke.opacity}
+                  onColorChange={color => update(stroke.id, { color })}
+                  onOpacityChange={opacity => update(stroke.id, { opacity })}
+                  onSwatchClick={() => onActiveStackDialogChange(`stroke-color:${stroke.id}`)}
+                />}
+                hex={stroke.color.replace("#", "")}
+                onHexChange={color => update(stroke.id, { color: `#${color.replace(/^#/, "")}` })}
               />
             </div>
             <div className="shrink-0 flex items-center gap-[4px] pl-[8px]">
@@ -1096,33 +1280,45 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
               <div className={subLabel}>Weight</div>
               <NumericInput iconLead={<AlignJustify size={16} strokeWidth={1.5} />} value={stroke.weight} onChange={weight => update(stroke.id, { weight })} min={0} />
             </div>
-            <PanelActionBtn icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />} label="Stroke settings" />
+            <StrokeSettingsDialog
+              open={activeStackDialog === `stroke-settings:${stroke.id}`}
+              onClose={() => onActiveStackDialogChange(null)}
+              readOnly={readOnly}
+              value={{
+                style: stroke.style ?? "solid",
+                join: stroke.join ?? "miter",
+                cap: stroke.cap ?? "none",
+                styleMixed: stroke.styleMixed,
+                joinMixed: stroke.joinMixed,
+                capMixed: stroke.capMixed,
+              }}
+              onChange={readOnly ? undefined : patch => update(stroke.id, patch)}
+              trigger={<PanelActionBtn
+                icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />}
+                label="Stroke settings"
+                active={activeStackDialog === `stroke-settings:${stroke.id}`}
+                onClick={() => onActiveStackDialogChange(`stroke-settings:${stroke.id}`)}
+              />}
+            />
             <PanelActionBtn icon={<Square size={16} strokeWidth={1.5} />} label="Individual sides" />
           </div>
         </div>
       ))}
-
-      <ColorDialog
-        capabilities={capabilities}
-        open={colorOpen}
-        onClose={() => setColorOpen(false)}
-        hex={strokes.find(s => s.id === activeStroke)?.color.replace("#", "") ?? "000000"}
-        onHexChange={color => activeStroke && update(activeStroke, { color: `#${color.replace(/^#/, "")}` })}
-      />
     </PanelSection>
   );
 }
 
 // ─── Section: Effects ─────────────────────────────────────────────────────────
 
-function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities }: {
+function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities, activeStackDialog, onActiveStackDialogChange }: {
   entries?: ElementEffectSetting[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<ElementEffectSetting, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
   capabilities: Required<InspectorCapabilities>;
+  activeStackDialog: string | null;
+  onActiveStackDialogChange: (dialog: string | null) => void;
 }) {
   const [internal, setInternal] = useState<ElementEffectSetting[]>([]);
   const effects = entries ?? internal;
-  const [activeEffect, setActiveEffect] = useState<string | null>(null);
   const update = (id: string, patch: Partial<Omit<ElementEffectSetting, "id">>) => { if (!entries) setInternal(e => e.map(x => x.id === id ? { ...x, ...patch } : x)); onUpdate?.(id, patch); };
   const add = () => { if (!entries) setInternal(e => [...e, { id: String(Date.now()), type: "Drop shadow", visible: true }]); onAdd?.(); };
   const remove = (id: string) => { if (!entries) setInternal(e => e.filter(x => x.id !== id)); onRemove?.(id); };
@@ -1142,18 +1338,21 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
       }
     >
       {effects.map(effect => (
-        <div key={effect.id} draggable={!!onReorder} onDragStart={event => event.dataTransfer.setData("text/plain", effect.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), effect.id); }} className="group/row flex items-center pr-[16px] h-[32px]">
-          <DragGutter />
-          <PanelActionBtn icon={effect.visible ? <Eye size={16} strokeWidth={1.5} /> : <EyeOff size={16} strokeWidth={1.5} />} label={effect.visible ? "Hide" : "Show"} onClick={() => toggle(effect.id)} />
-          <div className="flex-1 min-w-0">
-            <EffectDetailsDialog open={activeEffect === effect.id} value={effect}
-              trigger={<Dropdown value={effect.type} fullWidth onClick={() => setActiveEffect(effect.id)} />}
+        <div key={effect.id} draggable={!!onReorder} onDragStart={event => event.dataTransfer.setData("text/plain", effect.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), effect.id); }}>
+          <PanelEntry
+            draggable={!!onReorder}
+            visible={effect.visible}
+            hideLabel="Hide effect"
+            showLabel="Show effect"
+            removeLabel="Remove effect"
+            onToggleVisible={() => toggle(effect.id)}
+            onRemove={() => remove(effect.id)}
+          >
+            <EffectDetailsDialog open={activeStackDialog === `effect:${effect.id}`} value={effect}
+              trigger={<Dropdown value={effect.type} fullWidth onClick={() => onActiveStackDialogChange(`effect:${effect.id}`)} />}
               capabilities={capabilities}
-              onChange={patch => update(effect.id, patch)} onClose={() => setActiveEffect(null)} />
-          </div>
-          <div className="shrink-0 flex items-center gap-[4px] pl-[8px]">
-            <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove effect" onClick={() => remove(effect.id)} />
-          </div>
+              onChange={patch => update(effect.id, patch)} onClose={() => onActiveStackDialogChange(null)} />
+          </PanelEntry>
         </div>
       ))}
     </PanelSection>
@@ -1302,7 +1501,7 @@ const DEMO_SELECTION_COLORS: ElementSelectionColorSetting[] = [
   { id: "demo-selection-6", color: "#9747FF", opacity: 100 },
 ];
 
-function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = { templates: true, styles: true, variables: true, libraries: true, animationDelay: false } }: {
+function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = { templates: true, styles: true, variables: true, libraries: true, videoFill: false, animationDelay: false } }: {
   colors?: ElementSelectionColorSetting[];
   onUpdate?: (id: string, patch: Partial<Omit<ElementSelectionColorSetting, "id">>) => void;
   onSelectAll?: (id: string) => void;
@@ -1310,15 +1509,23 @@ function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = 
 }) {
   const renderedColors = colors ?? DEMO_SELECTION_COLORS;
   const [colorOpen, setColorOpen] = useState(false);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const active = renderedColors.find(color => color.id === activeId);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
   if (renderedColors.length === 0) return null;
   return (
     <PanelSection title="Selection colors">
-      {renderedColors.map(c => (
+      {renderedColors.map((c, index) => (
         <div key={c.id} className="group/row flex items-center px-[16px] h-[32px] gap-[8px]">
           <div className="flex-1 min-w-0">
-            <ColorInput fullWidth color={c.color} opacity={c.opacity} onSwatchClick={() => { setActiveId(c.id); setColorOpen(true); }} />
+            <ColorDialog
+              capabilities={capabilities}
+              open={colorOpen && activeIndex === index}
+              onClose={() => setColorOpen(false)}
+              trigger={<ColorInput ariaLabel="Selection color" fullWidth color={c.color} opacity={c.opacity} onSwatchClick={() => { setActiveIndex(index); setColorOpen(true); }} />}
+              hex={c.color.replace(/^#/, "")}
+              opacity={c.opacity}
+              onHexChange={hex => onUpdate?.(c.id, { color: `#${hex.replace(/^#/, "")}` })}
+              onOpacityChange={opacity => onUpdate?.(c.id, { opacity })}
+            />
           </div>
           {/* Reserved slot; actions reveal on this row's hover — no reflow (§5.8) */}
           <div className="shrink-0 flex items-center gap-[4px] opacity-0 group-hover/row:opacity-100 transition-opacity duration-100">
@@ -1327,10 +1534,6 @@ function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = 
           </div>
         </div>
       ))}
-
-      <ColorDialog key={active?.id ?? "selection-color"} capabilities={capabilities} open={colorOpen} onClose={() => setColorOpen(false)} hex={(active?.color ?? "#1e1e1e").replace(/^#/, "")} opacity={active?.opacity ?? 100}
-        onHexChange={hex => active && onUpdate?.(active.id, { color: `#${hex.replace(/^#/, "")}` })}
-        onOpacityChange={opacity => active && onUpdate?.(active.id, { opacity })} />
     </PanelSection>
   );
 }
@@ -1578,7 +1781,7 @@ function SlideFillTypeIcon({ type }: { type: "solid" | "gradient" | "image" | "v
     );
   }
   if (type === "image") return <ImageIcon size={12} strokeWidth={1.5} />;
-  return <Video size={12} strokeWidth={1.5} />;
+  return <VideoFillIcon data-icon-semantic="fill-video" size={12} strokeWidth={1.5} />;
 }
 
 // Template style §Template style — a dropdown-shaped trigger (3-colour preview
@@ -1668,14 +1871,32 @@ function SlideBackgroundSection({
       {fillType === "solid" && (
         <div className="flex items-center px-[16px] h-[32px]">
           <div className="flex-1 min-w-0">
-            <ColorInput
-              fullWidth
-              color={color}
+            <ColorDialog
+              capabilities={capabilities}
+              open={colorOpen}
+              onClose={() => setColorOpen(false)}
+              trigger={<ColorInput
+                ariaLabel="Background color"
+                fullWidth
+                color={color}
+                opacity={opacity}
+                onSwatchClick={() => setColorOpen(true)}
+                onColorChange={value => {
+                  if (controlledColor === undefined) setInternalColor(value);
+                  onColorChange?.(value);
+                }}
+                onOpacityChange={value => {
+                  if (controlledOpacity === undefined) setInternalOpacity(value);
+                  onOpacityChange?.(value);
+                }}
+              />}
+              fillType="solid"
+              hex={color.replace(/^#/, "")}
               opacity={opacity}
-              onSwatchClick={() => setColorOpen(true)}
-              onColorChange={value => {
-                if (controlledColor === undefined) setInternalColor(value);
-                onColorChange?.(value);
+              onHexChange={value => {
+                const next = `#${value.replace(/^#/, "")}`;
+                if (controlledColor === undefined) setInternalColor(next);
+                onColorChange?.(next);
               }}
               onOpacityChange={value => {
                 if (controlledOpacity === undefined) setInternalOpacity(value);
@@ -1688,11 +1909,23 @@ function SlideBackgroundSection({
       {fillType === "gradient" && (
         <div className="flex items-center px-[16px] h-[32px]">
           <div className="flex-1 min-w-0">
-            <ColorInput
-              fullWidth
-              fillType="Gradient"
-              fillLabel="Linear gradient"
-              onSwatchClick={() => setColorOpen(true)}
+            <ColorDialog
+              capabilities={capabilities}
+              open={colorOpen}
+              onClose={() => setColorOpen(false)}
+              trigger={<ColorInput ariaLabel="Background gradient" fullWidth fillType="Gradient" fillLabel="Linear gradient" onSwatchClick={() => setColorOpen(true)} />}
+              fillType="linear"
+              hex={color.replace(/^#/, "")}
+              opacity={opacity}
+              onHexChange={value => {
+                const next = `#${value.replace(/^#/, "")}`;
+                if (controlledColor === undefined) setInternalColor(next);
+                onColorChange?.(next);
+              }}
+              onOpacityChange={value => {
+                if (controlledOpacity === undefined) setInternalOpacity(value);
+                onOpacityChange?.(value);
+              }}
             />
           </div>
         </div>
@@ -1701,33 +1934,27 @@ function SlideBackgroundSection({
         <div className="flex items-center px-[16px] h-[32px]">
           <div className="flex-1 min-w-0">
             {/* Same ColorInput row as Solid/Gradient — only the chit + label change */}
-            <ColorInput
-              fullWidth
-              fillType="Image"
-              fillLabel={fillType === "video" ? "clip.mp4" : "cover.png"}
-              onSwatchClick={() => setColorOpen(true)}
+            <ColorDialog
+              capabilities={capabilities}
+              open={colorOpen}
+              onClose={() => setColorOpen(false)}
+              trigger={<ColorInput ariaLabel="Background media" fullWidth fillType="Image" fillLabel={fillType === "video" ? "clip.mp4" : "cover.png"} onSwatchClick={() => setColorOpen(true)} />}
+              fillType="image"
+              hex={color.replace(/^#/, "")}
+              opacity={opacity}
+              onHexChange={value => {
+                const next = `#${value.replace(/^#/, "")}`;
+                if (controlledColor === undefined) setInternalColor(next);
+                onColorChange?.(next);
+              }}
+              onOpacityChange={value => {
+                if (controlledOpacity === undefined) setInternalOpacity(value);
+                onOpacityChange?.(value);
+              }}
             />
           </div>
         </div>
       )}
-
-      <ColorDialog
-        capabilities={capabilities}
-        open={colorOpen}
-        onClose={() => setColorOpen(false)}
-        fillType={fillType === "gradient" ? "linear" : fillType === "image" || fillType === "video" ? "image" : "solid"}
-        hex={color.replace(/^#/, "")}
-        opacity={opacity}
-        onHexChange={value => {
-          const next = `#${value.replace(/^#/, "")}`;
-          if (controlledColor === undefined) setInternalColor(next);
-          onColorChange?.(next);
-        }}
-        onOpacityChange={value => {
-          if (controlledOpacity === undefined) setInternalOpacity(value);
-          onOpacityChange?.(value);
-        }}
-      />
     </PanelSection>
   );
 }
@@ -1853,8 +2080,13 @@ export interface PropertyPanelProps {
   onXChange?: (value: number) => void;
   onYChange?: (value: number) => void;
   onRotationChange?: (value: number) => void;
+  onRotate90Clockwise?: () => void;
+  onFlipHorizontal?: () => void;
+  onFlipVertical?: () => void;
   onScaleXChange?: (value: number) => void;
   onScaleYChange?: (value: number) => void;
+  /** Stateless alignment commands; hosts own the document mutation and history. */
+  onAlignmentAction?: (action: ElementAlignmentAction) => void;
   /** Scale row is shown when applicable (host decides — text/shape support it). */
   scaleApplicable?: boolean;
   /** Per-property keyframe diamonds in the Design tab. Host supplies these ONLY
@@ -1884,17 +2116,33 @@ export interface PropertyPanelProps {
   onCornerRadiusChange?: AppearanceSectionProps["onCornerRadiusChange"];
   layout?: ElementLayoutSettings;
   onLayoutChange?: (patch: Partial<ElementLayoutSettings>) => void;
+  /** Reports the exact physical side(s) edited so controlled multi-selection hosts
+   * can preserve every untouched side on each selected object. */
+  onPaddingChange?: (value: ElementLayoutSettings["padding"], changedEdges: readonly ElementPaddingEdge[]) => void;
   /** Preferred atomic sizing seam. Numeric edits from Hug/Fill emit Fixed + value together. */
   onSizingChange?: (axis: ElementSizingAxis, change: ElementSizingChange) => void;
   onSizingConstraintChange?: (axis: ElementSizingAxis, constraint: ElementSizingConstraint, value: number | undefined) => void;
   onApplySizingVariable?: (axis: ElementSizingAxis) => void;
+  /** Text resizing is a controlled projection over width/height sizing modes. */
+  textSizingMode?: TextSizingMode | "mixed";
+  availableTextSizingModes?: readonly TextSizingMode[];
+  textSizingModeDisabled?: boolean;
+  onTextSizingModeChange?: (mode: TextSizingMode) => void;
+  /** Presentation-only topology for the canonical 2D position value. */
+  positionPresentation?: PositionPresentation;
+  onPositionPresentationChange?: (presentation: PositionPresentation) => void;
   /** Opens the one shared Auto Layout Settings surface from the Flow + Gap row. */
   onAutoLayoutSettingsRequest?: () => void;
+  /** Host-owned equal-spacing projection. It renders in the existing Layout
+   * section directly below Dimensions; the UI package owns presentation only. */
+  spatialSelectionLayout?: SpatialSelectionLayoutControl;
   typography?: ElementTypographySettings;
   onTypographyChange?: (patch: Partial<ElementTypographySettings>) => void;
   fills?: ElementFillSetting[];
   onAddFill?: () => void; onUpdateFill?: (id: string, patch: Partial<Omit<ElementFillSetting, "id">>) => void; onToggleFill?: (id: string, visible: boolean) => void; onReorderFill?: (id: string, targetId: string) => void; onRemoveFill?: (id: string) => void;
   strokes?: ElementStrokeSetting[];
+  /** Locked or inherited-locked selections may inspect Stroke Settings but cannot mutate them. */
+  strokeReadOnly?: boolean;
   onAddStroke?: () => void; onUpdateStroke?: (id: string, patch: Partial<Omit<ElementStrokeSetting, "id">>) => void; onToggleStroke?: (id: string, visible: boolean) => void; onReorderStroke?: (id: string, targetId: string) => void; onRemoveStroke?: (id: string) => void;
   effects?: ElementEffectSetting[];
   onAddEffect?: () => void; onUpdateEffect?: (id: string, patch: Partial<Omit<ElementEffectSetting, "id">>) => void; onToggleEffect?: (id: string, visible: boolean) => void; onReorderEffect?: (id: string, targetId: string) => void; onRemoveEffect?: (id: string) => void;
@@ -1917,6 +2165,10 @@ export interface PropertyPanelProps {
   projectPlayhead?: number;
   onProjectWidthChange?: (value: number) => void;
   onProjectHeightChange?: (value: number) => void;
+  /** Atomic preset seam for the project-global canvas size. */
+  onProjectCanvasSizeChange?: (size: ProjectCanvasSize) => void;
+  /** Opens the host-owned custom project-size route. */
+  onCustomProjectCanvasSizeRequest?: () => void;
   onProjectFrameRateChange?: (value: ProjectFrameRate) => void;
   onProjectDurationChange?: (value: number) => void;
   onProjectPlayheadChange?: (value: number) => void;
@@ -1924,6 +2176,14 @@ export interface PropertyPanelProps {
   previewPlaying?: boolean;
   onPreviewToggle?: () => void;
   onPreviewMenu?: () => void;
+  /** Access/invite action. Omit until a truthful share surface exists. */
+  onShare?: () => void;
+  /** Durable account/profile menu, independent of live multiplayer presence. */
+  onAccountMenu?: () => void;
+  /** Live presence/spotlight menu action. Only used when presence is enabled. */
+  onPresenceMenu?: () => void;
+  /** Live presence/spotlight capability, independent of durable sharing. */
+  presenceControlsEnabled?: boolean;
   /** Multiplayer account avatar identity for the top bar. Defaults to the
    *  historical hardcoded initial "S" / color "purple" when omitted. */
   accountInitial?: string;
@@ -1986,30 +2246,226 @@ export interface PropertyPanelProps {
   className?: string;
 }
 
+const PROJECT_CANVAS_PRESETS: ReadonlyArray<ProjectCanvasSize & { label: string }> = [
+  { label: "HD 16:9", width: 1920, height: 1080 },
+  { label: "HD 720p", width: 1280, height: 720 },
+  { label: "Square", width: 1080, height: 1080 },
+  { label: "Portrait 9:16", width: 1080, height: 1920 },
+];
+
+function ProjectCanvasSizeControl({
+  width,
+  height,
+  onChange,
+  onCustomRequest,
+}: {
+  width: number;
+  height: number;
+  onChange?: (size: ProjectCanvasSize) => void;
+  onCustomRequest?: () => void;
+}) {
+  const currentPreset = PROJECT_CANVAS_PRESETS.find(preset => preset.width === width && preset.height === height);
+  const currentLabel = currentPreset?.label ?? `${formatNumericDisplay(width)} × ${formatNumericDisplay(height)}`;
+  const [customEditing, setCustomEditing] = useState(false);
+  const [customWidth, setCustomWidth] = useState(width);
+  const [customHeight, setCustomHeight] = useState(height);
+  return (
+    <PopoverMenu
+      align="right"
+      directTrigger
+      trigger={<Dropdown
+        ariaLabel={`Project canvas size: ${currentLabel}`}
+        value={currentLabel}
+        className="!w-[100px]"
+        disabled={!onChange && !onCustomRequest}
+      />}
+    >
+      {close => <Menu minWidth={190}>
+        {!currentPreset && <MenuRow type="checkmark" label={`Current (${currentLabel})`} checked disabled />}
+        {PROJECT_CANVAS_PRESETS.map(preset => (
+          <MenuRow
+            key={`${preset.width}x${preset.height}`}
+            type="checkmark"
+            label={`${preset.label} (${preset.width} × ${preset.height})`}
+            checked={currentPreset === preset}
+            disabled={!onChange}
+            onClick={onChange ? () => { onChange({ width: preset.width, height: preset.height }); close(); } : undefined}
+          />
+        ))}
+        <MenuRow type="divider" />
+        {!customEditing ? (
+          <MenuRow
+            type="simple"
+            label="Custom project canvas size…"
+            disabled={!onChange && !onCustomRequest}
+            onClick={() => {
+              if (onCustomRequest) {
+                onCustomRequest();
+                close();
+              } else {
+                setCustomWidth(width);
+                setCustomHeight(height);
+                setCustomEditing(true);
+              }
+            }}
+          />
+        ) : (
+          <div className="flex flex-col gap-[8px] px-[8px] py-[6px]" aria-label="Custom project canvas size">
+            <div className="flex items-center gap-[4px]">
+              <NumericInput
+                ariaLabel="Custom canvas width"
+                iconLead={<span className={FONT}>W</span>}
+                value={customWidth}
+                min={1}
+                onChange={setCustomWidth}
+              />
+              <NumericInput
+                ariaLabel="Custom canvas height"
+                iconLead={<span className={FONT}>H</span>}
+                value={customHeight}
+                min={1}
+                onChange={setCustomHeight}
+              />
+            </div>
+            <div className="flex justify-end gap-[4px]">
+              <Button variant="Ghost" size="small" label="Cancel" onClick={() => setCustomEditing(false)} />
+              <Button
+                variant="Primary"
+                size="small"
+                label="Apply"
+                onClick={() => {
+                  onChange?.({ width: Math.max(1, customWidth), height: Math.max(1, customHeight) });
+                  setCustomEditing(false);
+                  close();
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </Menu>}
+    </PopoverMenu>
+  );
+}
+
+function InspectorTabs({
+  value,
+  onChange,
+  panelPrefix,
+  projectWidth,
+  projectHeight,
+  onProjectCanvasSizeChange,
+  onCustomProjectCanvasSizeRequest,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  panelPrefix: "slide" | "element";
+  projectWidth: number;
+  projectHeight: number;
+  onProjectCanvasSizeChange?: (size: ProjectCanvasSize) => void;
+  onCustomProjectCanvasSizeRequest?: () => void;
+}) {
+  return (
+    <div className="flex items-start gap-[4px]">
+      <Tabs
+        value={value}
+        onChange={onChange}
+        className="min-w-0 flex-1"
+        tabs={[
+          { value: "design", label: "Design", panelId: `${panelPrefix}-design-panel` },
+          { value: "animate", label: "Animate", panelId: `${panelPrefix}-animate-panel` },
+        ]}
+      />
+      <ProjectCanvasSizeControl
+        width={projectWidth}
+        height={projectHeight}
+        onChange={onProjectCanvasSizeChange}
+        onCustomRequest={onCustomProjectCanvasSizeRequest}
+      />
+    </div>
+  );
+}
+
 // ─── Multiplayer bar ──────────────────────────────────────────────────────────
-// Sits above the tab strip: avatar split-button (leading), then a play/present
-// split-button + Share button trailing.
-function MultiplayerBar({ previewPlaying = false, onPreviewToggle, onPreviewMenu, accountInitial = "S", accountColor = "purple", accountPhotoUrl }: { previewPlaying?: boolean; onPreviewToggle?: () => void; onPreviewMenu?: () => void; accountInitial?: string; accountColor?: AvatarColor; accountPhotoUrl?: string }) {
+// Sits above the tab strip. Durable Share and live presence are deliberately
+// separate capabilities: neither renders as inert chrome.
+function MultiplayerBar({
+  previewPlaying = false,
+  onPreviewToggle,
+  onPreviewMenu,
+  onShare,
+  onAccountMenu,
+  onPresenceMenu,
+  presenceControlsEnabled = false,
+  accountInitial = "S",
+  accountColor = "purple",
+  accountPhotoUrl,
+}: {
+  previewPlaying?: boolean;
+  onPreviewToggle?: () => void;
+  onPreviewMenu?: () => void;
+  onShare?: () => void;
+  onAccountMenu?: () => void;
+  onPresenceMenu?: () => void;
+  presenceControlsEnabled?: boolean;
+  accountInitial?: string;
+  accountColor?: AvatarColor;
+  accountPhotoUrl?: string;
+}) {
+  const accountAvatar = <Avatar initial={accountInitial} src={accountPhotoUrl} size="default" color={accountColor} />;
   return (
     <div className="flex items-center gap-[8px] px-[8px] py-[6px]">
-      <SplitButton
-        size="large"
-        icon={<Avatar initial={accountInitial} src={accountPhotoUrl} size="default" color={accountColor} />}
-        actionLabel="Account"
-        menuLabel="Account menu"
-        onIconClick={() => {}}
-        onChevronClick={() => {}}
-      />
+      {presenceControlsEnabled && onAccountMenu && onPresenceMenu ? (
+        <SplitButton
+          size="large"
+          icon={accountAvatar}
+          actionLabel="Account"
+          menuLabel="Presence and spotlight"
+          onIconClick={onAccountMenu}
+          onChevronClick={onPresenceMenu}
+        />
+      ) : onAccountMenu ? (
+        <button
+          type="button"
+          aria-label="Account menu"
+          onClick={onAccountMenu}
+          className="flex h-[32px] items-center rounded-c-md px-[4px] hover:bg-c-bg-hover"
+        >
+          {accountAvatar}
+        </button>
+      ) : presenceControlsEnabled && onPresenceMenu ? (
+        <button
+          type="button"
+          aria-label="Presence and spotlight"
+          onClick={onPresenceMenu}
+          className="flex h-[32px] items-center rounded-c-md px-[4px] hover:bg-c-bg-hover"
+        >
+          {accountAvatar}
+        </button>
+      ) : (
+        <div aria-label="Account" className="h-[32px] flex items-center px-[4px]">{accountAvatar}</div>
+      )}
       <div className="flex-1" />
-      <SplitButton
-        size="large"
-        icon={previewPlaying ? <Pause size={18} strokeWidth={1.5} /> : <Play size={18} strokeWidth={1.5} />}
-        actionLabel={previewPlaying ? "Pause preview" : "Play preview"}
-        menuLabel="Preview options"
-        onIconClick={onPreviewToggle}
-        onChevronClick={onPreviewMenu}
-      />
-      <Button label="Share" variant="Primary" size="large" />
+      {onPreviewMenu ? (
+        <SplitButton
+          size="large"
+          icon={previewPlaying ? <Pause size={18} strokeWidth={1.5} /> : <Play size={18} strokeWidth={1.5} />}
+          actionLabel={previewPlaying ? "Pause presentation" : "Present"}
+          menuLabel="Preview options"
+          onIconClick={onPreviewToggle}
+          onChevronClick={onPreviewMenu}
+        />
+      ) : (
+        <Button
+          label={previewPlaying ? "Pause" : "Present"}
+          variant="Ghost"
+          size="large"
+          iconLead="left"
+          icon={previewPlaying ? <Pause size={18} strokeWidth={1.5} /> : <Play size={18} strokeWidth={1.5} />}
+          disabled={!onPreviewToggle}
+          onClick={onPreviewToggle}
+        />
+      )}
+      {onShare && <Button label="Share" variant="Primary" size="large" onClick={onShare} />}
     </div>
   );
 }
@@ -2022,7 +2478,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   multiSelect = false,
   x = 0, y = 0, rotation = 0,
   scaleX = 100, scaleY = 100,
-  onXChange, onYChange, onRotationChange, onScaleXChange, onScaleYChange,
+  onXChange, onYChange, onRotationChange, onRotate90Clockwise, onFlipHorizontal, onFlipVertical, onScaleXChange, onScaleYChange, onAlignmentAction,
   scaleApplicable = false, keyframeControls,
   onNumericEditStart, onNumericEditCommit, onNumericEditCancel,
   easing, easingContext = "keyframe", easingApplyScope, onEasingChange, onEasingApplyScopeChange,
@@ -2033,9 +2489,12 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onOpacityChange,
   blendMode = "Pass through",
   cornerRadius = 0, onBlendModeChange, onCornerRadiusChange,
-  layout, onLayoutChange, onSizingChange, onSizingConstraintChange, onApplySizingVariable, onAutoLayoutSettingsRequest, typography, onTypographyChange,
+  layout, onLayoutChange, onSizingChange, onSizingConstraintChange, onApplySizingVariable,
+  textSizingMode, availableTextSizingModes, textSizingModeDisabled = false, onTextSizingModeChange,
+  positionPresentation = "separate", onPositionPresentationChange,
+  onAutoLayoutSettingsRequest, typography, onTypographyChange,
   fills, onAddFill, onUpdateFill, onToggleFill, onReorderFill, onRemoveFill,
-  strokes, onAddStroke, onUpdateStroke, onToggleStroke, onReorderStroke, onRemoveStroke,
+  strokes, strokeReadOnly = false, onAddStroke, onUpdateStroke, onToggleStroke, onReorderStroke, onRemoveStroke,
   effects, onAddEffect, onUpdateEffect, onToggleEffect, onReorderEffect, onRemoveEffect,
   layoutGuides, onAddLayoutGuide, onUpdateLayoutGuide, onRemoveLayoutGuide,
   selectionColors, onUpdateSelectionColor, onSelectAllUsingColor, objectAnimations, objectAnimationCallbacks, objectAnimationSettings, addableAnimationPhases,
@@ -2047,12 +2506,18 @@ export function PropertyPanel(props: PropertyPanelProps) {
   projectPlayhead = 0,
   onProjectWidthChange,
   onProjectHeightChange,
+  onProjectCanvasSizeChange,
+  onCustomProjectCanvasSizeRequest,
   onProjectFrameRateChange,
   onProjectDurationChange,
   onProjectPlayheadChange,
   previewPlaying = false,
   onPreviewToggle,
   onPreviewMenu,
+  onShare,
+  onAccountMenu,
+  onPresenceMenu,
+  presenceControlsEnabled = false,
   accountInitial,
   accountColor,
   accountPhotoUrl,
@@ -2112,11 +2577,13 @@ export function PropertyPanel(props: PropertyPanelProps) {
     styles: capabilityOverrides?.styles ?? true,
     variables: capabilityOverrides?.variables ?? true,
     libraries: capabilityOverrides?.libraries ?? true,
+    videoFill: capabilityOverrides?.videoFill ?? false,
     // #222: animation "starts automatically" + delay authoring — default OFF (unlike the
     // other capabilities) so the delay is removed from the default path until re-enabled.
     animationDelay: capabilityOverrides?.animationDelay ?? false,
   };
   const [uncontrolledTab, setUncontrolledTab] = useState<"design" | "animate" | "prototype">("design");
+  const [activeStackDialog, setActiveStackDialog] = useState<string | null>(null);
   const tab = props.activeTab ?? uncontrolledTab;
   const setTab = (next: string) => {
     if (next !== "design" && next !== "animate" && next !== "prototype") return;
@@ -2124,6 +2591,13 @@ export function PropertyPanel(props: PropertyPanelProps) {
     if (props.activeTab === undefined) setUncontrolledTab(value);
     if (value !== "prototype") props.onActiveTabChange?.(value);
   };
+  const changeProjectCanvasSize = onProjectCanvasSizeChange
+    ?? ((onProjectWidthChange || onProjectHeightChange)
+      ? ({ width, height }: ProjectCanvasSize) => {
+          onProjectWidthChange?.(width);
+          onProjectHeightChange?.(height);
+        }
+      : undefined);
   const [demoSlideName, setDemoSlideName] = useState(slideName);
   const [demoSkipped, setDemoSkipped] = useState(slideSkipped);
   const [demoTransitionType, setDemoTransitionType] = useState<SlideTransitionType>(slideTransitionType ?? "none");
@@ -2205,7 +2679,18 @@ export function PropertyPanel(props: PropertyPanelProps) {
         border-l against the canvas (Composa#250, analogous to #33). */}
     <div className={clsx("relative w-[240px] shrink-0 h-full flex flex-col bg-c-bg border-l border-c-border overflow-hidden", className)}>
       {/* Multiplayer tools — above the tabs; shared across all modes */}
-      <MultiplayerBar previewPlaying={previewPlaying} onPreviewToggle={onPreviewToggle} onPreviewMenu={onPreviewMenu} accountInitial={accountInitial} accountColor={accountColor} accountPhotoUrl={accountPhotoUrl} />
+      <MultiplayerBar
+        previewPlaying={previewPlaying}
+        onPreviewToggle={onPreviewToggle}
+        onPreviewMenu={onPreviewMenu}
+        onShare={onShare}
+        onAccountMenu={onAccountMenu}
+        onPresenceMenu={onPresenceMenu}
+        presenceControlsEnabled={presenceControlsEnabled}
+        accountInitial={accountInitial}
+        accountColor={accountColor}
+        accountPhotoUrl={accountPhotoUrl}
+      />
 
       {/* ── PROJECT mode (inspector-project-mode.md) ─────────────────────────
           Active when nothing is selected. Static "Project" header, no tabs. */}
@@ -2232,13 +2717,14 @@ export function PropertyPanel(props: PropertyPanelProps) {
       {mode === "slide" && (
         <>
           <div className="border-b border-c-border px-[8px] pt-[6px] pb-[6px]">
-            <Tabs
+            <InspectorTabs
               value={tab}
               onChange={setTab}
-              tabs={[
-                { value: "design", label: "Design", panelId: "slide-design-panel" },
-                { value: "animate", label: "Animate", panelId: "slide-animate-panel" },
-              ]}
+              panelPrefix="slide"
+              projectWidth={projectWidth}
+              projectHeight={projectHeight}
+              onProjectCanvasSizeChange={changeProjectCanvasSize}
+              onCustomProjectCanvasSizeRequest={onCustomProjectCanvasSizeRequest}
             />
           </div>
 
@@ -2341,13 +2827,14 @@ export function PropertyPanel(props: PropertyPanelProps) {
       <>
       {/* Tab strip */}
       <div className="border-b border-c-border px-[8px] pt-[6px] pb-[6px]">
-        <Tabs
+        <InspectorTabs
           value={tab}
           onChange={setTab}
-          tabs={[
-            { value: "design",  label: "Design", panelId: "element-design-panel" },
-            { value: "animate", label: "Animate", panelId: "element-animate-panel" },
-          ]}
+          panelPrefix="element"
+          projectWidth={projectWidth}
+          projectHeight={projectHeight}
+          onProjectCanvasSizeChange={changeProjectCanvasSize}
+          onCustomProjectCanvasSizeRequest={onCustomProjectCanvasSizeRequest}
         />
       </div>
 
@@ -2374,34 +2861,49 @@ export function PropertyPanel(props: PropertyPanelProps) {
             x={x} y={y} rotation={rotation}
             scaleX={scaleX} scaleY={scaleY}
             onXChange={onXChange} onYChange={onYChange} onRotationChange={onRotationChange}
+            onRotate90Clockwise={onRotate90Clockwise} onFlipHorizontal={onFlipHorizontal} onFlipVertical={onFlipVertical}
             onScaleXChange={onScaleXChange} onScaleYChange={onScaleYChange}
             scaleApplicable={scaleApplicable}
             positioning={layout?.positioning}
             positioningApplicable={layout?.positioningApplicable}
             onPositioningChange={onLayoutChange ? positioning => onLayoutChange({ positioning }) : undefined}
+            onAlignmentAction={onAlignmentAction}
             multiSelect={multiSelect}
             positionKeyframe={keyframeControls?.position}
             scaleKeyframe={keyframeControls?.scale}
             rotationKeyframe={keyframeControls?.rotation}
+            positionPresentation={positionPresentation}
+            onPositionPresentationChange={onPositionPresentationChange}
           />
 
           {/* Layout — polymorphic */}
-          {(isFrame)       && <LayoutFrameSection width={width} height={height} sizing={sizingContract} clipContent={layout?.clipsContent} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onClipContentChange={onLayoutChange ? value => onLayoutChange({ clipsContent: value }) : undefined} onEnableAutoLayout={() => { setAutoLayoutOn(true); onLayoutChange?.({ mode: "vertical" }); }} />}
+          {(isFrame)       && <LayoutFrameSection width={width} height={height} sizing={sizingContract} spatialSelectionLayout={props.spatialSelectionLayout} clipContent={layout?.clipsContent} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onClipContentChange={onLayoutChange ? value => onLayoutChange({ clipsContent: value }) : undefined} onEnableAutoLayout={() => { setAutoLayoutOn(true); onLayoutChange?.({ mode: "vertical" }); }} />}
           {(isAutoLayout)  && <LayoutAutoSection width={width} height={height}
             flowMode={layout?.mode}
             gap={layout?.gap} paddingTop={layout?.padding.top} paddingRight={layout?.padding.right} paddingBottom={layout?.padding.bottom} paddingLeft={layout?.padding.left}
+            paddingTopMixed={layout?.paddingTopMixed} paddingRightMixed={layout?.paddingRightMixed}
+            paddingBottomMixed={layout?.paddingBottomMixed} paddingLeftMixed={layout?.paddingLeftMixed}
+            paddingDisabled={layout?.paddingDisabled}
             alignValue={layout?.align} clipContent={layout?.clipsContent}
             textBaseline={layout?.textBaseline} strokeSizing={layout?.strokeSizing} canvasStacking={layout?.canvasStacking}
             textBaselineMixed={layout?.textBaselineMixed} strokeSizingMixed={layout?.strokeSizingMixed} canvasStackingMixed={layout?.canvasStackingMixed}
             settingsBaselineApplicable={layout?.autoLayoutSettingsBaselineApplicable} settingsDisabled={layout?.autoLayoutSettingsDisabled}
             widthMode={layout?.widthMode} heightMode={layout?.heightMode}
             sizing={sizingContract}
-            onLayoutChange={onLayoutChange} onPaddingChange={onLayoutChange ? padding => onLayoutChange({ padding }) : undefined}
+            spatialSelectionLayout={props.spatialSelectionLayout}
+            onLayoutChange={onLayoutChange} onPaddingChange={props.onPaddingChange ?? (onLayoutChange ? padding => onLayoutChange({ padding }) : undefined)}
             onAlignChange={onLayoutChange ? align => onLayoutChange({ align }) : undefined} onClipContentChange={onLayoutChange ? clipsContent => onLayoutChange({ clipsContent }) : undefined}
             onAutoLayoutSettingsRequest={onAutoLayoutSettingsRequest} />}
           {(isShape || isText) && (
             <PanelSection title="Layout">
+              {isText && <TextSizingModeField
+                value={textSizingMode}
+                availableModes={availableTextSizingModes}
+                disabled={textSizingModeDisabled}
+                onChange={onTextSizingModeChange}
+              />}
               <DimensionSizingFields {...sizingContract} width={width} height={height} dimensionsKeyframe={keyframeControls?.dimensions} />
+              <SpatialSelectionLayoutFields value={props.spatialSelectionLayout} />
               {/* Corner radius moved to Appearance */}
             </PanelSection>
           )}
@@ -2413,9 +2915,12 @@ export function PropertyPanel(props: PropertyPanelProps) {
           {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} />}
 
           {/* Stackable sections */}
-          <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill} capabilities={capabilities} />
-          <StrokeSection entries={strokes} onAdd={onAddStroke} onUpdate={onUpdateStroke} onToggle={onToggleStroke} onReorder={onReorderStroke} onRemove={onRemoveStroke} capabilities={capabilities} />
-          <EffectsSection entries={effects} onAdd={onAddEffect} onUpdate={onUpdateEffect} onToggle={onToggleEffect} onReorder={onReorderEffect} onRemove={onRemoveEffect} capabilities={capabilities} />
+          <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill} capabilities={capabilities}
+            activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
+          <StrokeSection entries={strokes} onAdd={onAddStroke} onUpdate={onUpdateStroke} onToggle={onToggleStroke} onReorder={onReorderStroke} onRemove={onRemoveStroke} capabilities={capabilities}
+            readOnly={strokeReadOnly} activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
+          <EffectsSection entries={effects} onAdd={onAddEffect} onUpdate={onUpdateEffect} onToggle={onToggleEffect} onReorder={onReorderEffect} onRemove={onRemoveEffect} capabilities={capabilities}
+            activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
 
           {/* Selection Colors — multi-select only (§5.8), positioned right after Effects */}
           {multiSelect && <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} capabilities={capabilities} />}

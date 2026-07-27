@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, create } from "react-test-renderer";
 import { afterEach, describe, expect, it } from "vitest";
-import { PanelSection, ScrollArea } from "./Panel";
+import { PanelEntry, PanelSection, ScrollArea } from "./Panel";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -26,6 +26,18 @@ describe("PanelSection landmarks", () => {
     const labelledBy = html.match(/role="region" aria-labelledby="([^"]+)"/)?.[1];
     expect(labelledBy).toBeTruthy();
     expect(html).toContain(`<button id="${labelledBy}"`);
+  });
+});
+
+describe("PanelEntry stack anatomy", () => {
+  it("keeps content first and the visibility action immediately beside remove", () => {
+    const html = renderToStaticMarkup(<PanelEntry visible hideLabel="Hide effect" removeLabel="Remove effect"><span>Drop shadow</span></PanelEntry>);
+    const content = html.indexOf("Drop shadow");
+    const eye = html.indexOf('aria-label="Hide effect"');
+    const remove = html.indexOf('aria-label="Remove effect"');
+    expect(content).toBeGreaterThan(-1);
+    expect(content).toBeLessThan(eye);
+    expect(eye).toBeLessThan(remove);
   });
 });
 

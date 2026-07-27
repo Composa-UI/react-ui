@@ -14,7 +14,16 @@ export const proposedLucideMetadata = {
   layoutFreeform: { pr: 4543, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4543", replacementImport: "LayoutFreeform" },
   gapHorizontal: { pr: 4544, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4544", replacementImport: "GapHorizontal" },
   gapVertical: { pr: 4544, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4544", replacementImport: "GapVertical" },
+  angle: { pr: 4545, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4545", replacementImport: "Angle" },
+  opacity: { pr: 4549, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4549", replacementImport: "Opacity" },
   arrowUpDownToLine: { pr: 4546, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4546", replacementImport: "ArrowUpDownToLine" },
+  layoutHorizontalBottom: { pr: 4548, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4548", replacementImport: "LayoutHorizontalBottom" },
+  layoutHorizontalCenter: { pr: 4548, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4548", replacementImport: "LayoutHorizontalCenter" },
+  layoutHorizontalTop: { pr: 4548, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4548", replacementImport: "LayoutHorizontalTop" },
+  layoutVerticalCenter: { pr: 4548, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4548", replacementImport: "LayoutVerticalCenter" },
+  layoutVerticalLeft: { pr: 4548, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4548", replacementImport: "LayoutVerticalLeft" },
+  layoutVerticalRight: { pr: 4548, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4548", replacementImport: "LayoutVerticalRight" },
+  scanSquare: { pr: 4550, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4550", replacementImport: "ScanSquare" },
 } as const satisfies Record<string, ProposedLucideMetadata>;
 
 // TODO(lucide-pr-4541): replace with lucide-react LayoutHorizontal after upstream merge.
@@ -75,6 +84,48 @@ export const ProposedGapVertical = createLucideIcon("ProposedGapVertical", [
   ["path", { d: "M3 3v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V3", key: "top" }],
 ]);
 
+// TODO(lucide-pr-4545): replace with lucide-react Angle after upstream merge.
+export const ProposedAngle = createLucideIcon("ProposedAngle", [
+  ["path", { d: "M3 3v16a2 2 0 0 0 2 2h16", key: "corner" }],
+  ["path", { d: "M3 11a10 10 0 0 1 10 10", key: "arc" }],
+]);
+
+// TODO(lucide-pr-4549): replace with lucide-react Opacity after upstream merge.
+export const ProposedOpacity = createLucideIcon("ProposedOpacity", [
+  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "frame" }],
+  ["path", { d: "M16 8h.01", key: "dot-1" }],
+  ["path", { d: "M12 12h.01", key: "dot-2" }],
+  ["path", { d: "M16 12h.01", key: "dot-3" }],
+  ["path", { d: "M8 16h.01", key: "dot-4" }],
+  ["path", { d: "M12 16h.01", key: "dot-5" }],
+  ["path", { d: "M16 16h.01", key: "dot-6" }],
+]);
+
+/** Combined-axis variants of Lucide's Panel*Dashed family. */
+export const ProposedPanelLeftRightDashed = createLucideIcon("ProposedPanelLeftRightDashed", [
+  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "frame" }],
+  ["path", { d: "M9 3v2", key: "left-1" }],
+  ["path", { d: "M9 9v1", key: "left-2" }],
+  ["path", { d: "M9 14v1", key: "left-3" }],
+  ["path", { d: "M9 19v2", key: "left-4" }],
+  ["path", { d: "M15 3v2", key: "right-1" }],
+  ["path", { d: "M15 9v1", key: "right-2" }],
+  ["path", { d: "M15 14v1", key: "right-3" }],
+  ["path", { d: "M15 19v2", key: "right-4" }],
+]);
+
+export const ProposedPanelTopBottomDashed = createLucideIcon("ProposedPanelTopBottomDashed", [
+  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "frame" }],
+  ["path", { d: "M3 9h2", key: "top-1" }],
+  ["path", { d: "M9 9h1", key: "top-2" }],
+  ["path", { d: "M14 9h1", key: "top-3" }],
+  ["path", { d: "M19 9h2", key: "top-4" }],
+  ["path", { d: "M3 15h2", key: "bottom-1" }],
+  ["path", { d: "M9 15h1", key: "bottom-2" }],
+  ["path", { d: "M14 15h1", key: "bottom-3" }],
+  ["path", { d: "M19 15h2", key: "bottom-4" }],
+]);
+
 // TODO(lucide-pr-4546): replace with lucide-react ArrowUpDownToLine after upstream merge.
 export const ProposedArrowUpDownToLine = createLucideIcon("ProposedArrowUpDownToLine", [
   ["path", { d: "M12 2v6", key: "top-line" }],
@@ -82,4 +133,49 @@ export const ProposedArrowUpDownToLine = createLucideIcon("ProposedArrowUpDownTo
   ["path", { d: "M2 12h20", key: "center-line" }],
   ["path", { d: "M12 22v-6", key: "bottom-line" }],
   ["path", { d: "m9 19 3-3 3 3", key: "bottom-arrow" }],
+]);
+
+// TODO(lucide-pr-4548): replace with lucide-react LayoutHorizontalBottom after upstream merge.
+export const ProposedLayoutHorizontalBottom = createLucideIcon("ProposedLayoutHorizontalBottom", [
+  ["rect", { width: "7", height: "18", x: "3", y: "3", rx: "1", key: "primary" }],
+  ["rect", { width: "7", height: "10", x: "14", y: "11", rx: "1", key: "secondary" }],
+]);
+
+// TODO(lucide-pr-4548): replace with lucide-react LayoutHorizontalCenter after upstream merge.
+export const ProposedLayoutHorizontalCenter = createLucideIcon("ProposedLayoutHorizontalCenter", [
+  ["rect", { width: "7", height: "18", x: "3", y: "3", rx: "1", key: "primary" }],
+  ["rect", { width: "7", height: "10", x: "14", y: "7", rx: "1", key: "secondary" }],
+]);
+
+// TODO(lucide-pr-4548): replace with lucide-react LayoutHorizontalTop after upstream merge.
+export const ProposedLayoutHorizontalTop = createLucideIcon("ProposedLayoutHorizontalTop", [
+  ["rect", { width: "7", height: "18", x: "3", y: "3", rx: "1", key: "primary" }],
+  ["rect", { width: "7", height: "10", x: "14", y: "3", rx: "1", key: "secondary" }],
+]);
+
+// TODO(lucide-pr-4548): replace with lucide-react LayoutVerticalCenter after upstream merge.
+export const ProposedLayoutVerticalCenter = createLucideIcon("ProposedLayoutVerticalCenter", [
+  ["rect", { width: "18", height: "7", x: "3", y: "3", rx: "1", key: "primary" }],
+  ["rect", { width: "10", height: "7", x: "7", y: "14", rx: "1", key: "secondary" }],
+]);
+
+// TODO(lucide-pr-4548): replace with lucide-react LayoutVerticalLeft after upstream merge.
+export const ProposedLayoutVerticalLeft = createLucideIcon("ProposedLayoutVerticalLeft", [
+  ["rect", { width: "18", height: "7", x: "3", y: "3", rx: "1", key: "primary" }],
+  ["rect", { width: "10", height: "7", x: "3", y: "14", rx: "1", key: "secondary" }],
+]);
+
+// TODO(lucide-pr-4548): replace with lucide-react LayoutVerticalRight after upstream merge.
+export const ProposedLayoutVerticalRight = createLucideIcon("ProposedLayoutVerticalRight", [
+  ["rect", { width: "18", height: "7", x: "3", y: "3", rx: "1", key: "primary" }],
+  ["rect", { width: "10", height: "7", x: "11", y: "14", rx: "1", key: "secondary" }],
+]);
+
+// TODO(lucide-pr-4550): replace with lucide-react ScanSquare after upstream merge.
+export const ProposedScanSquare = createLucideIcon("ProposedScanSquare", [
+  ["path", { d: "M3 7V5a2 2 0 0 1 2-2h2", key: "top-left" }],
+  ["path", { d: "M17 3h2a2 2 0 0 1 2 2v2", key: "top-right" }],
+  ["path", { d: "M21 17v2a2 2 0 0 1-2 2h-2", key: "bottom-right" }],
+  ["path", { d: "M7 21H5a2 2 0 0 1-2-2v-2", key: "bottom-left" }],
+  ["rect", { width: "8", height: "8", x: "8", y: "8", rx: "1", key: "square" }],
 ]);

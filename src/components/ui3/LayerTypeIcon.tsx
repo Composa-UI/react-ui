@@ -15,7 +15,9 @@ export interface LayerTypeIconProps {
 
 /** Canonical element-type icon shared by Layers and the element timeline. */
 export function LayerTypeIcon({ type, autoLayoutMode = "none", size = 16, strokeWidth = 1.5, tone = "primary", className }: LayerTypeIconProps) {
-  const semantic: ComposaIconSemantic = type === "frame" && autoLayoutMode !== "none" ? "auto-layout-frame"
+  const semantic: ComposaIconSemantic = type === "frame" && autoLayoutMode === "horizontal" ? "auto-layout-horizontal-center"
+    : type === "frame" && autoLayoutMode === "vertical" ? "auto-layout-vertical-center"
+    : type === "frame" && autoLayoutMode === "wrap" ? "auto-layout-frame"
     : type === "frame" ? "frame"
     : type === "group" ? "group-compatibility"
     : type === "text" ? "text"

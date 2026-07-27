@@ -155,10 +155,10 @@ export function SlideListItem({ item, tabIndex = 0, onNavigate, onRenameRequest,
 // rename): the name reads as a button at rest and swaps to a bordered input on
 // click / Enter; a trailing chevron opens the composition menu. Enter (or blur)
 // commits, Escape cancels. Controlled name in, committed name out.
-function EditableCompTitle({ title, onCommit, onMenu }: {
+function EditableProjectTitle({ title, onCommit, onMenu }: {
   title: string;
   onCommit?: (name: string) => void;
-  onMenu?: () => void;
+  onMenu?: (trigger: HTMLButtonElement) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(title);
@@ -180,7 +180,7 @@ function EditableCompTitle({ title, onCommit, onMenu }: {
     return (
       <input
         ref={inputRef}
-        aria-label="Composition name"
+        aria-label="Project name"
         value={draft}
         onChange={event => setDraft(event.target.value)}
         onBlur={commit}
@@ -198,15 +198,15 @@ function EditableCompTitle({ title, onCommit, onMenu }: {
       <button
         type="button"
         onClick={startEdit}
-        aria-label={`Rename composition ${title}`}
+        aria-label={`Rename project ${title}`}
         className="min-w-0 flex items-center h-[24px] px-[4px] -mx-[4px] rounded-c-sm hover:bg-c-bg-hover"
       >
         <span className="text-c-text text-[13px] font-[550] leading-[22px] tracking-[-0.0325px] truncate" style={INTER}>{title}</span>
       </button>
       <button
         type="button"
-        onClick={onMenu}
-        aria-label="Composition options"
+        onClick={event => onMenu?.(event.currentTarget)}
+        aria-label="Project options"
         className="shrink-0 flex items-center justify-center size-[20px] rounded-c-sm text-c-text hover:bg-c-bg-hover"
       >
         <ChevronDown size={11} />
@@ -224,10 +224,10 @@ export function SlidesPanel({ slides, title = "Product review", subtitle: _subti
   onNewSlide?: () => void;
   onNewSlideMenu?: () => void;
   onRenameRequest?: (index: number) => void;
-  /** Commit an inline rename of the composition (header title). */
+  /** Commit an inline rename of the project (header title). */
   onTitleChange?: (name: string) => void;
-  /** Open the composition options menu (header title chevron). */
-  onTitleMenu?: () => void;
+  /** Open the project options menu (header title chevron). */
+  onTitleMenu?: (trigger: HTMLButtonElement) => void;
   /** Slide-item menu actions. Duplicate/Delete semantics are not yet pinned. */
   onSlideDuplicate?: (index: number) => void;
   onSlideDelete?: (index: number) => void;
@@ -253,7 +253,7 @@ export function SlidesPanel({ slides, title = "Product review", subtitle: _subti
       {/* Header — fixed 40px to match the DS panel-header standard (LayerList /
           PanelSection). Holds the inline-rename composition title combo. */}
       <div className="shrink-0 h-[40px] flex items-center px-[16px]">
-        <EditableCompTitle title={title} onCommit={onTitleChange} onMenu={onTitleMenu} />
+        <EditableProjectTitle title={title} onCommit={onTitleChange} onMenu={onTitleMenu} />
       </div>
 
       {/* New composition (split: label + chevron on the left, plus on the right) */}

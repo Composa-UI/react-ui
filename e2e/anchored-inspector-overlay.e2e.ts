@@ -90,3 +90,34 @@ test("outside interaction dismisses the modal owner and InspectorDialog remains 
   await expect(compatibility).toHaveCount(0);
   await expect(compatibilityTrigger).toBeFocused();
 });
+
+test("InspectorDialog header dragging clamps to the workspace and a fresh open resets to its anchor", async ({ page }) => {
+  const trigger = page.getByRole("button", { name: "Open dark inspector dialog compatibility" });
+  await trigger.click();
+  const boundary = page.locator('[data-composa-mode="dark"][data-composa-overlay-boundary]');
+  const dialog = page.getByRole("dialog", { name: "dark inspector dialog compatibility" });
+  const handle = dialog.locator("[data-composa-inspector-dialog-drag-handle]");
+  const initial = await dialog.boundingBox();
+  const boundaryBox = await boundary.boundingBox();
+  const handleBox = await handle.boundingBox();
+  expect(initial).not.toBeNull();
+  expect(boundaryBox).not.toBeNull();
+  expect(handleBox).not.toBeNull();
+
+  await page.mouse.move(handleBox!.x + 4, handleBox!.y + 4);
+  await page.mouse.down();
+  await page.mouse.move(-500, -500);
+  await page.mouse.up();
+  const clamped = await dialog.boundingBox();
+  expect(clamped).not.toBeNull();
+  expect(clamped!.x).toBeGreaterThanOrEqual(boundaryBox!.x + 8);
+  expect(clamped!.y).toBeGreaterThanOrEqual(boundaryBox!.y + 8);
+
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await trigger.click();
+  const reset = await dialog.boundingBox();
+  expect(reset).not.toBeNull();
+  expect(reset!.x).toBeCloseTo(initial!.x, 0);
+  expect(reset!.y).toBeCloseTo(initial!.y, 0);
+});

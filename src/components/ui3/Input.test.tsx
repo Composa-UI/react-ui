@@ -1,6 +1,9 @@
+import { act, create } from "react-test-renderer";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
-import { formatNumericDisplay, NumericComboInput, NumericEditSessionProvider, NumericInput, NumericInputMulti } from "./Input";
+import { describe, expect, it, vi } from "vitest";
+import { ComboInput, formatNumericDisplay, NumericComboInput, NumericEditSessionProvider, NumericInput, NumericInputMulti, NumericPairInput } from "./Input";
+
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 describe("NumericInput presentation contract", () => {
   it("rounds only the unfocused presentation to at most two decimals", () => {
@@ -36,8 +39,57 @@ describe("NumericInput presentation contract", () => {
     expect(html).toContain('aria-label="Width sizing mode: Hug"');
     expect(html).toContain("data-composa-relative-mode-label");
     expect(html).toMatch(/data-composa-relative-mode-label[^>]*>Hug<\/span>/);
+    expect(html).toContain("[&amp;_input]:text-transparent");
+    expect(html).not.toContain("group-hover:[&amp;_input]:text-c-text");
+    expect(html).not.toContain("group-hover:hidden");
+    expect(html).toContain("group-focus-within:[&amp;_input]:text-c-text");
     const trigger = html.match(/<button[^>]*aria-label="Width sizing mode: Hug"[^>]*>[\s\S]*?<\/button>/)?.[0];
     expect(trigger).toBeTruthy();
     expect(trigger).not.toContain("<span");
+  });
+
+  it("reserves the leading anatomy for suffix fields and gives active keyframes the selected-blue surface", () => {
+    const opacity = renderToStaticMarkup(<NumericInput ariaLabel="Opacity" reserveLeadingSlot value={75} suffix="%" />);
+    expect(opacity).toContain("pl-[26px]");
+    expect(opacity).toContain('value="75"');
+    expect(opacity).toContain(">%<");
+
+    const single = renderToStaticMarkup(<NumericInput ariaLabel="Rotation" value={30} keyframe={{ active: true, onToggle: () => undefined }} />);
+    expect(single).toMatch(/aria-label="Rotation keyframe"[^>]*class="[^"]*bg-c-bg-selected/);
+    expect(single).toContain("text-c-text-brand");
+
+    const pair = renderToStaticMarkup(<NumericPairInput
+      a={{ ariaLabel: "Position X", iconLead: "X", value: 10 }}
+      b={{ ariaLabel: "Position Y", iconLead: "Y", value: 20 }}
+      keyframe={{ active: true, onToggle: () => undefined }}
+    />);
+    expect(pair).toMatch(/aria-label="Position X\/Position Y keyframe"[^>]*class="[^"]*bg-c-bg-selected/);
+  });
+});
+
+describe("ComboInput focus contract", () => {
+  it("selects an editable value only when the consumer opts in", () => {
+    const selected = vi.fn();
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<ComboInput ariaLabel="Font size" value="48" selectAllOnFocus />); });
+
+    const input = renderer!.root.findByProps({ "aria-label": "Font size" });
+    act(() => input.props.onFocus({ currentTarget: { select: selected } }));
+
+    expect(selected).toHaveBeenCalledOnce();
+    act(() => renderer!.unmount());
+  });
+
+  it("does not select ordinary or non-editable combo values", () => {
+    const ordinarySelect = vi.fn();
+    let ordinary: ReturnType<typeof create>;
+    act(() => { ordinary = create(<ComboInput ariaLabel="Family" value="Inter" />); });
+    const ordinaryInput = ordinary!.root.findByProps({ "aria-label": "Family" });
+    act(() => ordinaryInput.props.onFocus({ currentTarget: { select: ordinarySelect } }));
+    expect(ordinarySelect).not.toHaveBeenCalled();
+    act(() => ordinary!.unmount());
+
+    const locked = renderToStaticMarkup(<ComboInput ariaLabel="Variable font size" variableValue="Size/Large" selectAllOnFocus />);
+    expect(locked).not.toContain('aria-label="Variable font size"');
   });
 });

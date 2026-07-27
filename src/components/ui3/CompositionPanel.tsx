@@ -43,10 +43,10 @@ export interface CompositionPanelProps {
   onSlideRenameRequest?: (index: number) => void;
   onSlideDuplicate?: (index: number) => void;
   onSlideDelete?: (index: number) => void;
-  /** Commit an inline rename of the composition (Slides header title). */
+  /** Commit an inline rename of the project (Slides header title). */
   onCompRename?: (name: string) => void;
-  /** Open the composition options menu (Slides header title chevron). */
-  onCompMenu?: () => void;
+  /** Open the project options menu (Slides header title chevron). */
+  onCompMenu?: (trigger: HTMLButtonElement) => void;
   slidesTitle?: string;
   slidesSubtitle?: string;
   layersTitle?: string;

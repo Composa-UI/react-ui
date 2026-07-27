@@ -94,26 +94,30 @@ export function Tooltip({
   const { side, align } = DIRECTION_MAP[direction] ?? DIRECTION_MAP.TopCenter;
   const mode = useComposaMode();
 
-  if (disabled) return <>{children}</>;
+  // Keep primitives renderable in SSR and react-test-renderer environments.
+  // Radix Tooltip installs document/window listeners even while closed.
+  if (disabled || typeof document === "undefined") return <>{children}</>;
 
   return (
-    <TooltipPrimitive.Root delayDuration={delayDuration}>
-      <TooltipPrimitive.Trigger asChild>
-        {children}
-      </TooltipPrimitive.Trigger>
-      <TooltipPrimitive.Portal>
-        <TooltipPrimitive.Content
-          data-composa-mode={mode}
-          side={side}
-          align={align}
-          sideOffset={6}
-          className="z-50 animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
-        >
-          <TooltipContent label={label} hotkey={hotkey} />
-          <TooltipArrow />
-        </TooltipPrimitive.Content>
-      </TooltipPrimitive.Portal>
-    </TooltipPrimitive.Root>
+    <TooltipPrimitive.Provider delayDuration={delayDuration}>
+      <TooltipPrimitive.Root delayDuration={delayDuration}>
+        <TooltipPrimitive.Trigger asChild>
+          {children}
+        </TooltipPrimitive.Trigger>
+        <TooltipPrimitive.Portal>
+          <TooltipPrimitive.Content
+            data-composa-mode={mode}
+            side={side}
+            align={align}
+            sideOffset={6}
+            className="z-50 animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+          >
+            <TooltipContent label={label} hotkey={hotkey} />
+            <TooltipArrow />
+          </TooltipPrimitive.Content>
+        </TooltipPrimitive.Portal>
+      </TooltipPrimitive.Root>
+    </TooltipPrimitive.Provider>
   );
 }
 

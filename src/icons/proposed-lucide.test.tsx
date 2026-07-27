@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
+  ProposedAngle,
   ProposedArrowUpDownToLine,
   ProposedGapHorizontal,
   ProposedGapVertical,
@@ -9,6 +10,14 @@ import {
   ProposedLayoutPanelLeftCheck,
   ProposedLayoutPanelLeftPlus,
   ProposedLayoutVertical,
+  ProposedLayoutHorizontalBottom,
+  ProposedLayoutHorizontalCenter,
+  ProposedLayoutHorizontalTop,
+  ProposedLayoutVerticalCenter,
+  ProposedLayoutVerticalLeft,
+  ProposedLayoutVerticalRight,
+  ProposedOpacity,
+  ProposedScanSquare,
   proposedLucideMetadata,
 } from "./proposed-lucide";
 
@@ -20,7 +29,16 @@ const icons = [
   ProposedLayoutFreeform,
   ProposedGapHorizontal,
   ProposedGapVertical,
+  ProposedAngle,
+  ProposedOpacity,
   ProposedArrowUpDownToLine,
+  ProposedLayoutHorizontalBottom,
+  ProposedLayoutHorizontalCenter,
+  ProposedLayoutHorizontalTop,
+  ProposedLayoutVerticalCenter,
+  ProposedLayoutVerticalLeft,
+  ProposedLayoutVerticalRight,
+  ProposedScanSquare,
 ];
 
 describe("proposed Lucide icon boundary", () => {

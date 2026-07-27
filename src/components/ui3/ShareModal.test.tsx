@@ -61,7 +61,25 @@ describe("ShareModal (Composa#289)", () => {
     );
     expect(html).toContain("owner");
     expect(html).toContain("Alan Anabelle");
-    expect(html).toContain("can view"); // role-menu trigger for the invited person
+    expect(html).toContain("can view");
+    expect(html).not.toContain('aria-haspopup="menu"'); // no host mutation = no inert menus
+  });
+
+  it("renders pending invitations truthfully and only offers revoke when wired", () => {
+    const staticHtml = renderToStaticMarkup(
+      <ShareModal open onClose={() => undefined} people={OWNER}
+        pendingInvitations={[{ id: "invite-1", email: "pending@example.com" }]} />,
+    );
+    expect(staticHtml).toContain("pending@example.com");
+    expect(staticHtml).toContain("(pending)");
+    expect(staticHtml).not.toContain(">Revoke<");
+
+    const actionable = renderToStaticMarkup(
+      <ShareModal open onClose={() => undefined} people={OWNER}
+        pendingInvitations={[{ id: "invite-1", email: "pending@example.com" }]}
+        onRevokeInvitation={() => undefined} />,
+    );
+    expect(actionable).toContain(">Revoke<");
   });
 
   it("gates Invite on input and emits the trimmed value", () => {
@@ -79,6 +97,23 @@ describe("ShareModal (Composa#289)", () => {
     expect(invite.props.disabled).toBe(false);
     act(() => { invite.props.onClick(); });
     expect(onInvite).toHaveBeenCalledWith("a@b.com");
+  });
+
+  it("fails closed when the host cannot invite and explains why", () => {
+    const onInvite = vi.fn();
+    let renderer!: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(
+        <ShareModal open onClose={() => undefined} people={OWNER}
+          inviteDisabled inviteHint="Move this project to a team to invite collaborators."
+          onInvite={onInvite} />,
+      );
+    });
+    const root = renderer.root;
+    expect(root.findByType("input").props.disabled).toBe(true);
+    expect(labelledButton(root, "Invite").props.disabled).toBe(true);
+    expect(text(root)).toContain("Move this project to a team to invite collaborators.");
+    expect(onInvite).not.toHaveBeenCalled();
   });
 
   it("routes role changes and removals through callbacks", () => {

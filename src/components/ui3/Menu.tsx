@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import { type ReactElement, type ReactNode, useState, useRef } from "react";
+import { type FocusEventHandler, type MouseEventHandler, type ReactElement, type ReactNode, useId, useState, useRef } from "react";
 import { Check, ChevronRight, Minus } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { useComposaMode } from "./useComposaMode";
@@ -28,6 +28,8 @@ export type MenuRowType =
   | "footer";    // bottom action bar
 
 interface MenuRowProps {
+  /** Stable DOM id used by menu orchestrators for focus return. */
+  id?: string;
   type?: MenuRowType;
   label?: string;
   sublabel?: string;
@@ -40,15 +42,26 @@ interface MenuRowProps {
   /** Indeterminate state for checkmark rows */
   mixed?: boolean;
   disabled?: boolean;
+  /** Visible and programmatically-associated explanation for an unavailable row. */
+  disabledReason?: string;
   destructive?: boolean;
+  /** Marks a row as the trigger for a nested menu. */
+  hasSubmenu?: boolean;
+  /** Controlled disclosure state for a nested menu trigger. */
+  submenuExpanded?: boolean;
+  /** ID of the nested menu controlled by this row. */
+  submenuControls?: string;
   /** For heading rows — capitalise text (default false) */
   uppercase?: boolean;
   onClick?: () => void;
+  onFocus?: FocusEventHandler<HTMLDivElement>;
+  onMouseEnter?: MouseEventHandler<HTMLDivElement>;
   children?: ReactNode;
   className?: string;
 }
 
 export function MenuRow({
+  id,
   type = "simple",
   label = "",
   sublabel,
@@ -59,13 +72,20 @@ export function MenuRow({
   selectionRole,
   mixed = false,
   disabled = false,
+  disabledReason,
   destructive = false,
+  hasSubmenu = false,
+  submenuExpanded,
+  submenuControls,
   uppercase = false,
   onClick,
+  onFocus,
+  onMouseEnter,
   children,
   className,
 }: MenuRowProps) {
   const [hovered, setHovered] = useState(false);
+  const reasonId = useId();
 
   // ── Divider ──────────────────────────────────────────────────────────────
   if (type === "divider") {
@@ -175,12 +195,27 @@ export function MenuRow({
 
   return (
     <div
+      id={id}
       role={itemRole}
-      tabIndex={interactive ? 0 : undefined}
+      // Preserve existing label+shortcut accessible names. Only override the
+      // computed name when visible explanatory copy would otherwise be folded
+      // into a disabled row's name; the reason remains in aria-describedby.
+      aria-label={disabledReason ? label : undefined}
+      // Disabled menu items stay in the roving set so keyboard users can reach
+      // their visible explanation instead of silently skipping the topology.
+      tabIndex={0}
       aria-disabled={disabled}
       aria-checked={selectionRole ? checked : undefined}
+      aria-describedby={disabledReason ? reasonId : undefined}
+      aria-haspopup={hasSubmenu ? "menu" : undefined}
+      aria-expanded={hasSubmenu ? Boolean(submenuExpanded) : undefined}
+      aria-controls={hasSubmenu ? submenuControls : undefined}
       onClick={disabled ? undefined : onClick}
-      onMouseEnter={() => interactive && setHovered(true)}
+      onFocus={onFocus}
+      onMouseEnter={event => {
+        if (interactive) setHovered(true);
+        onMouseEnter?.(event);
+      }}
       onMouseLeave={() => setHovered(false)}
       onKeyDown={interactive ? e => (e.key === "Enter" || e.key === " ") && onClick?.() : undefined}
       className={clsx(
@@ -217,28 +252,31 @@ export function MenuRow({
       <span className={clsx(
         "flex-1 min-w-0 flex flex-col justify-center py-[4px]",
         !(hasCheckSlot || hasLeadingSlot) && "pl-[4px]",
-        !(trailing || shortcut || type === "expand") && "pr-[8px]",
+        !(trailing || shortcut || type === "expand" || hasSubmenu) && "pr-[8px]",
       )}>
         <span className={clsx(LABEL_CLASS, labelColor, "truncate")}>{label}</span>
-        {sublabel && type === "complex" && (
-          <span className={clsx(FONT, "text-[9px] leading-[14px] font-[450]", mutedColor, "truncate")}>
-            {sublabel}
+        {(disabledReason || (sublabel && type === "complex")) && (
+          <span
+            id={disabledReason ? reasonId : undefined}
+            className={clsx(FONT, "text-[9px] leading-[14px] font-[450]", mutedColor, "max-w-[260px] whitespace-normal")}
+          >
+            {disabledReason ?? sublabel}
           </span>
         )}
       </span>
 
       {/* Trailing: right-aligned shortcut, chevron, or custom */}
-      {(shortcut || type === "expand" || trailing) && (
+      {(shortcut || type === "expand" || hasSubmenu || trailing) && (
         <span className={clsx(
           "shrink-0 flex items-center justify-end pr-[8px] gap-[4px]",
-          type === "expand" ? "size-[24px] pr-0" : "pl-[8px]",
+          type === "expand" || hasSubmenu ? "size-[24px] pr-0" : "pl-[8px]",
           mutedColor,
         )}>
           {trailing && trailing}
           {shortcut && !trailing && (
             <span className={clsx(SHORTCUT_CLASS, "text-right")}>{shortcut}</span>
           )}
-          {type === "expand" && !trailing && (
+          {(type === "expand" || hasSubmenu) && !trailing && (
             <ChevronRight size={12} strokeWidth={2} />
           )}
         </span>
