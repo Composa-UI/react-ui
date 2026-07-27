@@ -88,6 +88,10 @@ export interface ElementLayoutSettings {
   availableHeightModes?: ElementSizingMode[];
   widthModeMixed?: boolean;
   heightModeMixed?: boolean;
+  /** The resolved numeric W/H differs across a multi-selection (mode may still be
+   *  uniformly Fixed). Renders the "Mixed" placeholder in the value field. */
+  widthValueMixed?: boolean;
+  heightValueMixed?: boolean;
   minWidthMixed?: boolean; minHeightMixed?: boolean; maxWidthMixed?: boolean; maxHeightMixed?: boolean;
   paddingTopMixed?: boolean; paddingRightMixed?: boolean; paddingBottomMixed?: boolean; paddingLeftMixed?: boolean;
   paddingDisabled?: boolean;
@@ -143,6 +147,9 @@ const AlignRightIcon = iconForSemantic("align-right");
 const AlignTopIcon = iconForSemantic("align-top");
 const AlignCenterYIcon = iconForSemantic("align-center-y");
 const AlignBottomIcon = iconForSemantic("align-bottom");
+const DistributeHorizontalIcon = iconForSemantic("distribute-horizontal");
+const DistributeVerticalIcon = iconForSemantic("distribute-vertical");
+const TidyUpIcon = iconForSemantic("tidy-up");
 const TextAlignTopIcon = iconForSemantic("text-align-top");
 const TextAlignCenterIcon = iconForSemantic("text-align-center");
 const TextAlignBottomIcon = iconForSemantic("text-align-bottom");
@@ -212,7 +219,11 @@ export interface SizingComboFieldProps {
   axis: ElementSizingAxis;
   value: number;
   mode: ElementSizingMode;
+  /** Sizing MODE (Fixed/Hug/Fill) is mixed across the selection — shows the "Mixed" mode chip. */
   mixed?: boolean;
+  /** Resolved numeric VALUE differs across the selection while the mode is uniform —
+   *  shows the "Mixed" placeholder inside the value field; typing commits to all. */
+  valueMixed?: boolean;
   availableModes?: ElementSizingMode[];
   minValue?: number;
   maxValue?: number;
@@ -240,7 +251,7 @@ export function getSizingMenuLabels({
 }
 
 export function SizingComboField({
-  axis, value, mode, mixed = false, availableModes = ["fixed", "hug", "fill"],
+  axis, value, mode, mixed = false, valueMixed = false, availableModes = ["fixed", "hug", "fill"],
   minValue, maxValue, variablesEnabled = false, onValueChange, onSizingChange, onConstraintChange, onApplyVariable, keyframe,
 }: SizingComboFieldProps) {
   const axisLabel = axis === "width" ? "Width" : "Height";
@@ -283,6 +294,7 @@ export function SizingComboField({
       ariaLabel={axisLabel}
       iconLead={<span className={FONT}>{axis === "width" ? "W" : "H"}</span>}
       value={value} onChange={emitValue} min={1}
+      mixed={valueMixed}
       keyframe={keyframe}
     />;
   }
@@ -294,6 +306,7 @@ export function SizingComboField({
     iconLead={<span className={FONT}>{axis === "width" ? "W" : "H"}</span>}
     value={value}
     onChange={emitValue}
+    mixed={valueMixed}
     min={0}
     menu={menu}
     className="w-full"
@@ -304,6 +317,8 @@ export interface DimensionSizingFieldsProps {
   width: number; height: number;
   widthMode?: ElementSizingMode; heightMode?: ElementSizingMode;
   widthMixed?: boolean; heightMixed?: boolean;
+  /** Numeric W/H value differs across the selection (mode uniform) — "Mixed" placeholder. */
+  widthValueMixed?: boolean; heightValueMixed?: boolean;
   availableWidthModes?: ElementSizingMode[]; availableHeightModes?: ElementSizingMode[];
   minWidth?: number; minHeight?: number; maxWidth?: number; maxHeight?: number;
   minWidthMixed?: boolean; minHeightMixed?: boolean; maxWidthMixed?: boolean; maxHeightMixed?: boolean;
@@ -392,8 +407,8 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
   return <>
     <PanelFieldRow
       label="Dimensions"
-      left={<SizingComboField axis="width" value={props.width} mode={controlledSizing ? props.widthMode ?? "fixed" : localWidthMode} mixed={props.widthMixed} availableModes={props.availableWidthModes} minValue={values.minWidth} maxValue={values.maxWidth} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("width", change)} onConstraintChange={(constraint, value) => changeConstraint("width", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("width") : undefined} keyframe={props.dimensionsKeyframe} />}
-      right={<SizingComboField axis="height" value={props.height} mode={controlledSizing ? props.heightMode ?? "fixed" : localHeightMode} mixed={props.heightMixed} availableModes={props.availableHeightModes} minValue={values.minHeight} maxValue={values.maxHeight} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("height", change)} onConstraintChange={(constraint, value) => changeConstraint("height", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("height") : undefined} keyframe={props.dimensionsKeyframe} />}
+      left={<SizingComboField axis="width" value={props.width} mode={controlledSizing ? props.widthMode ?? "fixed" : localWidthMode} mixed={props.widthMixed} valueMixed={props.widthValueMixed} availableModes={props.availableWidthModes} minValue={values.minWidth} maxValue={values.maxWidth} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("width", change)} onConstraintChange={(constraint, value) => changeConstraint("width", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("width") : undefined} keyframe={props.dimensionsKeyframe} />}
+      right={<SizingComboField axis="height" value={props.height} mode={controlledSizing ? props.heightMode ?? "fixed" : localHeightMode} mixed={props.heightMixed} valueMixed={props.heightValueMixed} availableModes={props.availableHeightModes} minValue={values.minHeight} maxValue={values.maxHeight} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("height", change)} onConstraintChange={(constraint, value) => changeConstraint("height", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("height") : undefined} keyframe={props.dimensionsKeyframe} />}
       rightAction={<PanelActionBtn icon={lockAspect ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />} label="Lock aspect ratio" active={lockAspect} onClick={() => setLockAspect(value => !value)} />}
     />
     {hasConstraints && <div className="flex flex-col gap-y-[6px] px-[16px] pb-[8px]">
@@ -498,10 +513,17 @@ export interface InspectorKeyframeControls {
 
 // ─── Section: Position ────────────────────────────────────────────────────────
 
-export type ElementAlignmentAction = "left" | "center-x" | "right" | "top" | "center-y" | "bottom";
+export type ElementAlignmentAction =
+  | "left" | "center-x" | "right"
+  | "top" | "center-y" | "bottom"
+  // Overflow ("More alignment") actions for a multi-selection.
+  | "distribute-horizontal" | "distribute-vertical"
+  | "tidy-up";
 
 interface PositionSectionProps {
   x?: number; y?: number; rotation?: number;
+  /** Multi-select with differing values renders the field's "Mixed" state; edits still commit to all. */
+  xMixed?: boolean; yMixed?: boolean; rotationMixed?: boolean;
   scaleX?: number; scaleY?: number;
   onXChange?: (v: number) => void;
   onYChange?: (v: number) => void;
@@ -526,6 +548,7 @@ interface PositionSectionProps {
 
 function PositionSection({
   x = 0, y = 0, rotation = 0,
+  xMixed = false, yMixed = false, rotationMixed = false,
   scaleX = 100, scaleY = 100,
   onXChange, onYChange, onRotationChange, onRotate90Clockwise, onFlipHorizontal, onFlipVertical, onScaleXChange, onScaleYChange,
   positioning, positioningApplicable, onPositioningChange, onAlignmentAction,
@@ -572,7 +595,35 @@ function PositionSection({
         left={<IconButtonRow buttons={hAlignBtns} fill />}
         right={<IconButtonRow buttons={vAlignBtns} fill />}
         rightAction={multiSelect
-          ? <PanelActionBtn icon={<MoreHorizontal size={16} strokeWidth={1.5} />} label="More alignment" />
+          ? <PopoverMenu
+              align="right"
+              trigger={<PanelActionBtn icon={<MoreHorizontal size={16} strokeWidth={1.5} />} label="More alignment" />}
+            >
+              {close => <Menu minWidth={200}>
+                <MenuRow
+                  type="simple"
+                  leading={<DistributeHorizontalIcon data-icon-semantic="distribute-horizontal" size={14} strokeWidth={1.5} />}
+                  label="Distribute horizontal spacing"
+                  disabled={!onAlignmentAction}
+                  onClick={onAlignmentAction ? () => { onAlignmentAction("distribute-horizontal"); close(); } : undefined}
+                />
+                <MenuRow
+                  type="simple"
+                  leading={<DistributeVerticalIcon data-icon-semantic="distribute-vertical" size={14} strokeWidth={1.5} />}
+                  label="Distribute vertical spacing"
+                  disabled={!onAlignmentAction}
+                  onClick={onAlignmentAction ? () => { onAlignmentAction("distribute-vertical"); close(); } : undefined}
+                />
+                <MenuRow type="divider" />
+                <MenuRow
+                  type="simple"
+                  leading={<TidyUpIcon data-icon-semantic="tidy-up" size={14} strokeWidth={1.5} />}
+                  label="Tidy up"
+                  disabled={!onAlignmentAction}
+                  onClick={onAlignmentAction ? () => { onAlignmentAction("tidy-up"); close(); } : undefined}
+                />
+              </Menu>}
+            </PopoverMenu>
           : undefined}
       />
       {/* Position topology is presentation-only. A combined row never implies
@@ -583,8 +634,8 @@ function PositionSection({
           label="Position"
           left={
             <NumericPairInput
-              a={{ ariaLabel: "Position X", iconLead: <span className={clsx(FONT, "text-[11px] font-normal")}>X</span>, value: x, onChange: onXChange, defaultValue: 0 }}
-              b={{ ariaLabel: "Position Y", iconLead: <span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>, value: y, onChange: onYChange, defaultValue: 0 }}
+              a={{ ariaLabel: "Position X", iconLead: <span className={clsx(FONT, "text-[11px] font-normal")}>X</span>, value: x, onChange: onXChange, defaultValue: 0, mixed: xMixed }}
+              b={{ ariaLabel: "Position Y", iconLead: <span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>, value: y, onChange: onYChange, defaultValue: 0, mixed: yMixed }}
               keyframe={positionKeyframe}
             />
           }
@@ -600,8 +651,8 @@ function PositionSection({
       ) : (
         <PanelFieldRow
           label="Position"
-          left={<NumericInput ariaLabel="Position X" iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>X</span>} value={x} onChange={onXChange} defaultValue={0} />}
-          right={<NumericInput ariaLabel="Position Y" iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>} value={y} onChange={onYChange} defaultValue={0} keyframe={positionKeyframe} />}
+          left={<NumericInput ariaLabel="Position X" iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>X</span>} value={x} onChange={onXChange} defaultValue={0} mixed={xMixed} />}
+          right={<NumericInput ariaLabel="Position Y" iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>} value={y} onChange={onYChange} defaultValue={0} mixed={yMixed} keyframe={positionKeyframe} />}
         />
       )}
 
@@ -631,6 +682,7 @@ function PositionSection({
             ariaLabel="Rotation"
             iconLead={<RotationIcon data-icon-semantic="rotation" size={16} strokeWidth={1.5} />}
             value={rotation} onChange={onRotationChange} min={-360} max={360}
+            mixed={rotationMixed}
             keyframe={rotationKeyframe}
           />
         }
@@ -968,6 +1020,9 @@ interface AppearanceSectionProps {
   opacity?: number;
   blendMode?: BlendMode;
   cornerRadius?: number | { topLeft: number; topRight: number; bottomLeft: number; bottomRight: number };
+  /** Multi-select with differing values renders the field's "Mixed" state; edits still commit to all. */
+  opacityMixed?: boolean;
+  cornerRadiusMixed?: boolean;
   onOpacityChange?: (v: number) => void;
   onBlendModeChange?: (value: BlendMode) => void;
   onCornerRadiusChange?: (value: AppearanceSectionProps["cornerRadius"]) => void;
@@ -978,6 +1033,7 @@ interface AppearanceSectionProps {
 
 function AppearanceSection({
   opacity = 100, blendMode = "Pass through", cornerRadius = 0, onOpacityChange, onBlendModeChange, onCornerRadiusChange, blendControlled = false, cornerControlled = false,
+  opacityMixed = false, cornerRadiusMixed = false,
   opacityKeyframe,
 }: AppearanceSectionProps) {
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
@@ -1011,11 +1067,11 @@ function AppearanceSection({
       <div className="flex items-end gap-[8px] pl-[16px] pr-[16px] pt-[3px]">
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Opacity</div>
-          <NumericInput ariaLabel="Opacity" iconLead={<OpacityIcon data-icon-semantic="opacity" size={16} strokeWidth={1.5} />} value={opacity} onChange={onOpacityChange} min={0} max={100} suffix="%" keyframe={opacityKeyframe} />
+          <NumericInput ariaLabel="Opacity" iconLead={<OpacityIcon data-icon-semantic="opacity" size={16} strokeWidth={1.5} />} value={opacity} onChange={onOpacityChange} min={0} max={100} suffix="%" mixed={opacityMixed} keyframe={opacityKeyframe} />
         </div>
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Corner radius</div>
-          <NumericInput ariaLabel="Corner radius" iconLead={<Maximize size={16} strokeWidth={1.5} />} value={corners.topLeft} onChange={setCornerValue} min={0} disabled={indivCorners} />
+          <NumericInput ariaLabel="Corner radius" iconLead={<Maximize size={16} strokeWidth={1.5} />} value={corners.topLeft} onChange={setCornerValue} min={0} mixed={cornerRadiusMixed && !indivCorners} disabled={indivCorners} />
         </div>
         <PanelActionBtn icon={<Maximize size={16} strokeWidth={1.5} />} label="Independent corners" selected={indivCorners} onClick={() => setIndivCorners(v => !v)} />
       </div>
@@ -2105,6 +2161,9 @@ export interface PropertyPanelProps {
   elementType?: ElementType;
   multiSelect?: boolean;
   x?: number; y?: number; rotation?: number;
+  /** Per-field Mixed state for a multi-selection with differing values. The field
+   *  renders the Figma-style "Mixed" placeholder; editing still commits to all. */
+  xMixed?: boolean; yMixed?: boolean; rotationMixed?: boolean;
   scaleX?: number; scaleY?: number;
   onXChange?: (value: number) => void;
   onYChange?: (value: number) => void;
@@ -2139,6 +2198,9 @@ export interface PropertyPanelProps {
   onHeightChange?: (value: number) => void;
   opacity?: number;
   onOpacityChange?: (value: number) => void;
+  /** Per-field Mixed state for a multi-selection with differing values. */
+  opacityMixed?: boolean;
+  cornerRadiusMixed?: boolean;
   blendMode?: BlendMode;
   cornerRadius?: AppearanceSectionProps["cornerRadius"];
   onBlendModeChange?: (value: BlendMode) => void;
@@ -2506,6 +2568,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
   elementType = "text",
   multiSelect = false,
   x = 0, y = 0, rotation = 0,
+  xMixed = false, yMixed = false, rotationMixed = false,
+  opacityMixed = false, cornerRadiusMixed = false,
   scaleX = 100, scaleY = 100,
   onXChange, onYChange, onRotationChange, onRotate90Clockwise, onFlipHorizontal, onFlipVertical, onScaleXChange, onScaleYChange, onAlignmentAction,
   scaleApplicable = false, keyframeControls,
@@ -2673,6 +2737,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
     heightMode: layout?.heightMode,
     widthMixed: layout?.widthModeMixed,
     heightMixed: layout?.heightModeMixed,
+    widthValueMixed: layout?.widthValueMixed,
+    heightValueMixed: layout?.heightValueMixed,
     availableWidthModes: layout?.availableWidthModes,
     availableHeightModes: layout?.availableHeightModes,
     minWidth: layout?.minWidth,
@@ -2888,6 +2954,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           {/* Position — always present */}
           <PositionSection
             x={x} y={y} rotation={rotation}
+            xMixed={xMixed} yMixed={yMixed} rotationMixed={rotationMixed}
             scaleX={scaleX} scaleY={scaleY}
             onXChange={onXChange} onYChange={onYChange} onRotationChange={onRotationChange}
             onRotate90Clockwise={onRotate90Clockwise} onFlipHorizontal={onFlipHorizontal} onFlipVertical={onFlipVertical}
@@ -2938,7 +3005,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           )}
 
           {/* Appearance — always present */}
-          <AppearanceSection opacity={opacity} blendMode={blendMode} cornerRadius={cornerRadius} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} />
+          <AppearanceSection opacity={opacity} blendMode={blendMode} cornerRadius={cornerRadius} opacityMixed={opacityMixed} cornerRadiusMixed={cornerRadiusMixed} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} />
 
           {/* Typography — text only */}
           {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} />}

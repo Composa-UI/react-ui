@@ -3,11 +3,14 @@ import {
   AlignCenterVertical,
   AlignEndHorizontal,
   AlignEndVertical,
+  AlignHorizontalDistributeCenter,
+  AlignVerticalDistributeCenter,
   AlignStartHorizontal,
   AlignStartVertical,
   ArrowDownToLine,
   ArrowUpToLine,
   Blend,
+  LayoutGrid,
   Component,
   Frame,
   Image as ImageIcon,
@@ -73,6 +76,9 @@ export type ComposaIconSemantic =
   | "align-top"
   | "align-center-y"
   | "align-bottom"
+  | "distribute-horizontal"
+  | "distribute-vertical"
+  | "tidy-up"
   | "text-align-top"
   | "text-align-center"
   | "text-align-bottom"
@@ -120,6 +126,9 @@ export const composaIconSemantics = {
   "align-top": AlignStartHorizontal,
   "align-center-y": AlignCenterHorizontal,
   "align-bottom": AlignEndHorizontal,
+  "distribute-horizontal": AlignHorizontalDistributeCenter,
+  "distribute-vertical": AlignVerticalDistributeCenter,
+  "tidy-up": LayoutGrid,
   "text-align-top": ArrowUpToLine,
   "text-align-center": ProposedArrowUpDownToLine,
   "text-align-bottom": ArrowDownToLine,
