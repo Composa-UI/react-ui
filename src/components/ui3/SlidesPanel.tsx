@@ -41,41 +41,54 @@ export function slideItemKeyboardAction(key: string): "rename" | "activate" | "n
 }
 
 // ── Slide thumbnail (+ motion badge) ──────────────────────────────────────────
-// RESPONSIVE: the thumbnail fills the available width between a left number-gutter
-// offset and a 12px right inset — matching the 12px left inset before the number
-// gutter so the gaps read symmetrically. Its height is driven by the slide-canvas
-// aspect ratio (~140/79) rather than a fixed width. Sub-slides carry a deeper left inset.
-const THUMB_RATIO = 140 / 79; // slide canvas ratio
-function SlideThumb({ item }: { item: SlideData }) {
+// RESPONSIVE: the fixed left-panel SLOT fills the available width between a left
+// number-gutter offset and a 12px right inset — matching the 12px left inset before
+// the number gutter so the gaps read symmetrically. Its height is driven by the
+// SLOT_RATIO (~140/79); that height is the "available thumbnail height" the row
+// reserves and stays constant regardless of the project aspect ratio (#482).
+// The inner thumbnail then honors the selected project ratio: it keeps the slot
+// height, derives its width from the ratio, and centers within the slot (and the
+// selected-row background). Sub-slides carry a deeper left inset.
+const SLOT_RATIO = 140 / 79; // fixed left-panel slot ratio → reserves the available height
+export const THUMB_RATIO = SLOT_RATIO; // back-compat alias (slot ratio)
+function SlideThumb({ item, aspectRatio = SLOT_RATIO }: { item: SlideData; aspectRatio?: number }) {
   const gutter = item.sub ? "left-[68px]" : "left-[44px]";
+  const ratio = aspectRatio > 0 ? aspectRatio : SLOT_RATIO;
   return (
-    <div className={clsx("absolute top-[8px] right-[12px] rounded-[5px]", gutter)} style={{ aspectRatio: THUMB_RATIO }}>
-      <div className="absolute inset-0 rounded-[5px] overflow-hidden bg-white">
-        {item.thumb
-          ? <img alt="" className="absolute inset-0 size-full object-cover" src={item.thumb} />
-          : <div className="absolute inset-0" style={{ background: item.tint ?? "#111" }} />}
-      </div>
-      <div aria-hidden className="absolute inset-0 rounded-[5px] border border-c-border" />
-      {/* motion badge — Figma icon.24.animate.small: 18px rounded chip, bottom-left,
-          with the animate glyph (24-viewBox path inset −3px to sit centred in 18px). */}
-      {item.motion && (
-        <div className="absolute bottom-[5px] left-[5px] size-[18px] rounded-[2px] bg-c-bg border border-c-border">
-          <svg
-            className="absolute inset-[-3px] size-[24px] text-c-icon-secondary"
-            fill="none"
-            viewBox="0 0 24 24"
-            aria-hidden
-          >
-            <path d={ANIMATE_GLYPH} fill="currentColor" />
-          </svg>
+    <div className={clsx("absolute top-[8px] right-[12px]", gutter)} style={{ aspectRatio: SLOT_RATIO }}>
+      {/* Center the project-ratio thumbnail within the fixed slot. Height is
+          preserved (fills the slot); width = height × project ratio, clamped to
+          the slot width so ultra-wide ratios never overflow the panel. */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="relative h-full max-w-full rounded-[5px]" style={{ aspectRatio: ratio }}>
+          <div className="absolute inset-0 rounded-[5px] overflow-hidden bg-white">
+            {item.thumb
+              ? <img alt="" className="absolute inset-0 size-full object-cover" src={item.thumb} />
+              : <div className="absolute inset-0" style={{ background: item.tint ?? "#111" }} />}
+          </div>
+          <div aria-hidden className="absolute inset-0 rounded-[5px] border border-c-border" />
+          {/* motion badge — Figma icon.24.animate.small: 18px rounded chip, bottom-left,
+              with the animate glyph (24-viewBox path inset −3px to sit centred in 18px). */}
+          {item.motion && (
+            <div className="absolute bottom-[5px] left-[5px] size-[18px] rounded-[2px] bg-c-bg border border-c-border">
+              <svg
+                className="absolute inset-[-3px] size-[24px] text-c-icon-secondary"
+                fill="none"
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <path d={ANIMATE_GLYPH} fill="currentColor" />
+              </svg>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
 // ── One slide row ─────────────────────────────────────────────────────────────
-export function SlideListItem({ item, tabIndex = 0, onNavigate, onRenameRequest, onMenuRequest, onFocus, itemRef }: { item: SlideData; tabIndex?: number; onNavigate?: (event: KeyboardEvent<HTMLDivElement>) => void; onRenameRequest?: () => void; onMenuRequest?: (event: { clientX: number; clientY: number }) => void; onFocus?: () => void; itemRef?: (node: HTMLDivElement | null) => void }) {
+export function SlideListItem({ item, aspectRatio, tabIndex = 0, onNavigate, onRenameRequest, onMenuRequest, onFocus, itemRef }: { item: SlideData; aspectRatio?: number; tabIndex?: number; onNavigate?: (event: KeyboardEvent<HTMLDivElement>) => void; onRenameRequest?: () => void; onMenuRequest?: (event: { clientX: number; clientY: number }) => void; onFocus?: () => void; itemRef?: (node: HTMLDivElement | null) => void }) {
   const numLeft = item.sub ? "left-[36px]" : "left-[12px]";
   // Row height tracks the responsive thumbnail. An in-flow spacer uses the same
   // left-gutter + 12px-right margins, so it fills the remaining width; aspect-ratio
@@ -95,8 +108,10 @@ export function SlideListItem({ item, tabIndex = 0, onNavigate, onRenameRequest,
         else if (action === "activate") { event.preventDefault(); item.onClick?.(event as unknown as MouseEvent<HTMLDivElement>); }
         else onNavigate?.(event);
       }}>
-      {/* height spacer — invisible box matching the thumbnail width + aspect ratio */}
-      <div aria-hidden className="invisible" style={{ aspectRatio: THUMB_RATIO, marginLeft: spacerLeft, marginRight: 12, marginTop: 8, marginBottom: spacerBottom }} />
+      {/* height spacer — invisible box matching the fixed slot width + slot ratio.
+          Uses SLOT_RATIO (not the project ratio) so the reserved row height — the
+          available thumbnail height — stays constant across aspect ratios (#482). */}
+      <div aria-hidden className="invisible" style={{ aspectRatio: SLOT_RATIO, marginLeft: spacerLeft, marginRight: 12, marginTop: 8, marginBottom: spacerBottom }} />
 
       {/* The thumbnail sits 8px inside the selection tint on both its top and
           right edges. The list adds a small outer inset above and below rows. */}
@@ -116,7 +131,7 @@ export function SlideListItem({ item, tabIndex = 0, onNavigate, onRenameRequest,
         </>
       )}
 
-      <SlideThumb item={item} />
+      <SlideThumb item={item} aspectRatio={aspectRatio} />
 
       {/* number (+ group chevron) */}
       <div className={clsx("absolute top-[6px] flex flex-col items-center", item.group && "gap-[4px]", numLeft)}>
@@ -216,8 +231,11 @@ function EditableProjectTitle({ title, onCommit, onMenu }: {
 }
 
 // ── Panel ─────────────────────────────────────────────────────────────────────
-export function SlidesPanel({ slides, title = "Product review", subtitle: _subtitle = "", onNewSlide, onNewSlideMenu, onRenameRequest, onTitleChange, onTitleMenu, onSlideDuplicate, onSlideDelete }: {
+export function SlidesPanel({ slides, aspectRatio, title = "Product review", subtitle: _subtitle = "", onNewSlide, onNewSlideMenu, onRenameRequest, onTitleChange, onTitleMenu, onSlideDuplicate, onSlideDelete }: {
   slides: SlideData[];
+  /** Project canvas aspect ratio (width / height). Slide thumbnails honor it while
+   *  the reserved slot height stays constant. Defaults to the ~16:9 slot ratio. */
+  aspectRatio?: number;
   title?: string;
   /** @deprecated The fixed 40px DS header no longer renders a subtitle line. */
   subtitle?: string;
@@ -272,7 +290,7 @@ export function SlidesPanel({ slides, title = "Product review", subtitle: _subti
       {/* Slide list — overlay scrollbar (theme-aware thumb) */}
       <ScrollArea>
         <div className="flex flex-col py-[4px]" role="listbox" aria-label="Compositions">
-          {slides.map((s, i) => <SlideListItem key={i} item={s} tabIndex={i === focusIndex ? 0 : -1}
+          {slides.map((s, i) => <SlideListItem key={i} item={s} aspectRatio={aspectRatio} tabIndex={i === focusIndex ? 0 : -1}
             itemRef={node => { itemRefs.current[i] = node; }} onFocus={() => setFocusIndex(i)} onNavigate={event => navigate(i, event)}
             onRenameRequest={() => onRenameRequest?.(i)}
             onMenuRequest={hasItemMenu ? event => setMenu({ index: i, x: event.clientX, y: event.clientY }) : undefined} />)}

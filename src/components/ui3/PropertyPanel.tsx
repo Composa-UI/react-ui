@@ -19,7 +19,7 @@ import {
 import { Tabs } from "./Tabs";
 import { NumericEditSessionProvider, NumericInput, NumericComboInput, NumericPairInput, InputField, ColorInput, ComboInput, formatNumericDisplay } from "./Input";
 import { Dropdown } from "./Dropdown";
-import { SegmentedControl } from "./SegmentedControl";
+import { SegmentedControl, SegmentedControlGroup, SegmentedControlItem } from "./SegmentedControl";
 import { AlignmentControl, type AlignmentValue } from "./AlignmentControl";
 import { Chit } from "./Chit";
 import { Checkbox } from "./Checkbox";
@@ -2267,7 +2267,17 @@ export interface PropertyPanelProps {
   onProjectPlayheadChange?: (value: number) => void;
   /** Controlled transport seam for the existing reskin-clean preview control. */
   previewPlaying?: boolean;
+  /** Primary Present action — enter the full presentation/playback surface. */
   onPreviewToggle?: () => void;
+  /**
+   * Open the floating, non-destructive Preview surface (#440). The Preview
+   * segment stays visibly capability-gated (disabled) until both this handler
+   * and {@link previewAvailable} are supplied, so no inert control ships.
+   */
+  onPreviewOpen?: () => void;
+  /** Capability gate for the floating Preview segment. Default false. */
+  previewAvailable?: boolean;
+  /** @deprecated Superseded by the segmented Play control (#482); accepted but ignored. */
   onPreviewMenu?: () => void;
   /** Access/invite action. Omit until a truthful share surface exists. */
   onShare?: () => void;
@@ -2369,7 +2379,7 @@ function ProjectCanvasSizeControl({
       trigger={<Dropdown
         ariaLabel={`Project canvas size: ${currentLabel}`}
         value={currentLabel}
-        className="!w-[100px]"
+        stroke={false}
         disabled={!onChange && !onCustomRequest}
       />}
     >
@@ -2458,7 +2468,7 @@ function InspectorTabs({
   onCustomProjectCanvasSizeRequest?: () => void;
 }) {
   return (
-    <div className="flex items-start gap-[4px]">
+    <div className="flex items-center gap-[4px]">
       <Tabs
         value={value}
         onChange={onChange}
@@ -2478,13 +2488,54 @@ function InspectorTabs({
   );
 }
 
+// ─── Segmented Play control (#482) ────────────────────────────────────────────
+// Restores the segmented Play control exposing the two truthful playback surfaces:
+// Present (enter the full presentation) and Preview (floating, non-destructive).
+// Present is the primary action; Preview stays visibly capability-gated until the
+// floating-preview surface exists end-to-end (#440) — it renders as a disabled
+// segment rather than an inert chevron, so the Present/Preview distinction is
+// always legible without advertising behavior that isn't wired.
+function PlayControl({
+  playing,
+  onPresent,
+  onPreviewOpen,
+  previewAvailable,
+}: {
+  playing: boolean;
+  onPresent?: () => void;
+  onPreviewOpen?: () => void;
+  previewAvailable: boolean;
+}) {
+  const canPreview = previewAvailable && Boolean(onPreviewOpen);
+  return (
+    <SegmentedControlGroup role="group" aria-label="Play" className="p-[1px]">
+      <SegmentedControlItem
+        selected={playing}
+        icon={playing ? <Pause size={16} strokeWidth={1.5} /> : <Play size={16} strokeWidth={1.5} />}
+        label={playing ? "Pause" : "Present"}
+        aria-label={playing ? "Pause presentation" : "Present"}
+        disabled={!onPresent}
+        onClick={onPresent}
+      />
+      <SegmentedControlItem
+        selected={false}
+        label="Preview"
+        aria-label={canPreview ? "Preview" : "Preview unavailable"}
+        disabled={!canPreview}
+        onClick={canPreview ? onPreviewOpen : undefined}
+      />
+    </SegmentedControlGroup>
+  );
+}
+
 // ─── Multiplayer bar ──────────────────────────────────────────────────────────
 // Sits above the tab strip. Durable Share and live presence are deliberately
 // separate capabilities: neither renders as inert chrome.
 function MultiplayerBar({
   previewPlaying = false,
   onPreviewToggle,
-  onPreviewMenu,
+  onPreviewOpen,
+  previewAvailable = false,
   onShare,
   onAccountMenu,
   onPresenceMenu,
@@ -2495,7 +2546,8 @@ function MultiplayerBar({
 }: {
   previewPlaying?: boolean;
   onPreviewToggle?: () => void;
-  onPreviewMenu?: () => void;
+  onPreviewOpen?: () => void;
+  previewAvailable?: boolean;
   onShare?: () => void;
   onAccountMenu?: () => void;
   onPresenceMenu?: () => void;
@@ -2538,26 +2590,12 @@ function MultiplayerBar({
         <div aria-label="Account" className="h-[32px] flex items-center px-[4px]">{accountAvatar}</div>
       )}
       <div className="flex-1" />
-      {onPreviewMenu ? (
-        <SplitButton
-          size="large"
-          icon={previewPlaying ? <Pause size={18} strokeWidth={1.5} /> : <Play size={18} strokeWidth={1.5} />}
-          actionLabel={previewPlaying ? "Pause presentation" : "Present"}
-          menuLabel="Preview options"
-          onIconClick={onPreviewToggle}
-          onChevronClick={onPreviewMenu}
-        />
-      ) : (
-        <Button
-          label={previewPlaying ? "Pause" : "Present"}
-          variant="Ghost"
-          size="large"
-          iconLead="left"
-          icon={previewPlaying ? <Pause size={18} strokeWidth={1.5} /> : <Play size={18} strokeWidth={1.5} />}
-          disabled={!onPreviewToggle}
-          onClick={onPreviewToggle}
-        />
-      )}
+      <PlayControl
+        playing={previewPlaying}
+        onPresent={onPreviewToggle}
+        onPreviewOpen={onPreviewOpen}
+        previewAvailable={previewAvailable}
+      />
       {onShare && <Button label="Share" variant="Primary" size="large" onClick={onShare} />}
     </div>
   );
@@ -2608,7 +2646,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onProjectPlayheadChange,
   previewPlaying = false,
   onPreviewToggle,
-  onPreviewMenu,
+  onPreviewOpen,
+  previewAvailable = false,
   onShare,
   onAccountMenu,
   onPresenceMenu,
@@ -2779,7 +2818,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
       <MultiplayerBar
         previewPlaying={previewPlaying}
         onPreviewToggle={onPreviewToggle}
-        onPreviewMenu={onPreviewMenu}
+        onPreviewOpen={onPreviewOpen}
+        previewAvailable={previewAvailable}
         onShare={onShare}
         onAccountMenu={onAccountMenu}
         onPresenceMenu={onPresenceMenu}
