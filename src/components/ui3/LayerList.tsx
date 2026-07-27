@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from "react";
 import { clsx } from "clsx";
-import { ChevronRight, Eye, EyeOff, LockOpen } from "lucide-react";
-import { Lock as LockDuotone } from "@phosphor-icons/react";
+import { ChevronRight, Eye, EyeOff, Lock, LockOpen } from "lucide-react";
 import { ScrollArea } from "./Panel";
 import { LayerTypeIcon, type LayerAutoLayoutMode } from "./LayerTypeIcon";
 import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSelectionState";
@@ -291,9 +290,9 @@ function LayerRow({ row, hasChildren, open, focused, renaming, renameDraft, onRe
       ) : (
         <span className={clsx(FONT, "relative flex-1 min-w-0 text-[11px] leading-[16px] truncate", selectionState === "selected" ? "font-[550]" : "font-[450]", isComponent ? "text-accent-component" : "text-c-text")}>{node.name}</span>
       )}
-      {/* trailing: lock first (open padlock on hover; closed duotone padlock persistent when locked), then visibility */}
+      {/* trailing: lock first (open padlock on hover; closed padlock persistent when locked), then visibility */}
       <button type="button" tabIndex={-1} disabled={!!node.inheritedLocked && !node.locked} aria-label={node.inheritedLocked && !node.locked ? `${node.name} locked by parent` : node.locked ? `Unlock ${node.name}` : `Lock ${node.name}`} onClick={event => { event.stopPropagation(); onLockChange?.(); }} className={clsx("relative shrink-0 size-[14px] flex items-center justify-center text-c-icon-secondary focus-visible:opacity-100", !effectivelyLocked && "opacity-0 group-hover/layer:opacity-100")}>
-        {effectivelyLocked ? <LockDuotone size={14} weight="duotone" /> : <LockOpen size={14} strokeWidth={1.5} />}
+        {effectivelyLocked ? <Lock size={14} strokeWidth={1.5} /> : <LockOpen size={14} strokeWidth={1.5} />}
       </button>
       <button type="button" tabIndex={-1} aria-label={node.hidden ? `Show ${node.name}` : `Hide ${node.name}`} onClick={event => { event.stopPropagation(); onVisibilityChange?.(); }} className={clsx("relative shrink-0 size-[14px] flex items-center justify-center text-c-icon-secondary focus-visible:opacity-100", !node.hidden && "opacity-0 group-hover/layer:opacity-100")}>
         {node.hidden ? <EyeOff size={14} strokeWidth={1.5} /> : <Eye size={14} strokeWidth={1.5} />}
