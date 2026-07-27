@@ -1,4 +1,4 @@
-import { Settings2 } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, Settings2 } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { composaIconSemantics, iconForSemantic } from "./IconSemantics";
@@ -68,12 +68,33 @@ describe("settings icon semantics", () => {
       "padding-left",
       "padding-horizontal",
       "padding-vertical",
+      "text-align-left",
+      "text-align-center-x",
+      "text-align-right",
       "text-align-top",
       "text-align-center",
       "text-align-bottom",
     ] as const) {
       expect(iconForSemantic(semantic)).toBe(composaIconSemantics[semantic]);
     }
+  });
+
+  it("wires Typography horizontal alignment to paragraph text-align glyphs, distinct from the vertical group and the object-align row (#495)", () => {
+    // Horizontal text-align uses the Lucide paragraph glyphs (horizontal text
+    // lines), not the object-align box glyphs.
+    expect(composaIconSemantics["text-align-left"]).toBe(AlignLeft);
+    expect(composaIconSemantics["text-align-center-x"]).toBe(AlignCenter);
+    expect(composaIconSemantics["text-align-right"]).toBe(AlignRight);
+
+    // Genuinely different from the object-align (Position) row…
+    expect(composaIconSemantics["text-align-left"]).not.toBe(composaIconSemantics["align-left"]);
+    expect(composaIconSemantics["text-align-center-x"]).not.toBe(composaIconSemantics["align-center-x"]);
+    expect(composaIconSemantics["text-align-right"]).not.toBe(composaIconSemantics["align-right"]);
+
+    // …and from the Typography vertical group (top/middle/bottom).
+    expect(composaIconSemantics["text-align-left"]).not.toBe(composaIconSemantics["text-align-top"]);
+    expect(composaIconSemantics["text-align-center-x"]).not.toBe(composaIconSemantics["text-align-center"]);
+    expect(composaIconSemantics["text-align-right"]).not.toBe(composaIconSemantics["text-align-bottom"]);
   });
 
   it("projects the authored auto-layout direction into the canonical layer icon", () => {
