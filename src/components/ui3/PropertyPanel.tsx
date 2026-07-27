@@ -7,7 +7,7 @@ import {
   Rows2, Columns, WrapText,
   BookOpen,
   Crosshair, Grid3x3, ExternalLink, Unlink,
-  Minus, EyeOff, AlignJustify, Maximize, ChevronDown,
+  Minus, EyeOff, AlignJustify, Maximize, ChevronDown, Ruler,
   MoveHorizontal, MoveVertical, Play, Pause,
   Image as ImageIcon, Clock, SquareSquare,
 } from "lucide-react";
@@ -263,8 +263,14 @@ export function SizingComboField({
       {availableModes.includes("hug") && <MenuRow type="checkmark" leading={modeIcons.hug} label="Hug contents" checked={!mixed && mode === "hug"} onClick={() => { emitMode("hug"); close(); }} />}
       {availableModes.includes("fill") && <MenuRow type="checkmark" leading={modeIcons.fill} label="Fill container" checked={!mixed && mode === "fill"} onClick={() => { emitMode("fill"); close(); }} />}
       <MenuRow type="divider" />
-      {minValue === undefined && <MenuRow type="simple" leading={<Minimize2 size={14} strokeWidth={1.5} />} label={`Add min ${axis}`} onClick={() => { onConstraintChange?.("min", initialMin); close(); }} />}
-      {maxValue === undefined && <MenuRow type="simple" leading={<Maximize2 size={14} strokeWidth={1.5} />} label={`Add max ${axis}`} onClick={() => { onConstraintChange?.("max", initialMax); close(); }} />}
+      {/* Set to current {axis}: snapshots the layer's current rendered dimension
+          (the resolved `value`) into an authored Fixed dimension via the shared
+          typed sizing mutation. Checkmark row so its label shares the reserved
+          check + semantic-icon gutters with the mode rows. */}
+      {availableModes.includes("fixed") && <MenuRow type="checkmark" leading={<Ruler size={14} strokeWidth={1.5} />} label={`Set to current ${axis}`} onClick={() => { emitMode("fixed"); close(); }} />}
+      {(minValue === undefined || maxValue === undefined) && <MenuRow type="divider" />}
+      {minValue === undefined && <MenuRow type="checkmark" leading={<Minimize2 size={14} strokeWidth={1.5} />} label={`Add min ${axis}`} onClick={() => { onConstraintChange?.("min", initialMin); close(); }} />}
+      {maxValue === undefined && <MenuRow type="checkmark" leading={<Maximize2 size={14} strokeWidth={1.5} />} label={`Add max ${axis}`} onClick={() => { onConstraintChange?.("max", initialMax); close(); }} />}
       {variablesEnabled && <><MenuRow type="divider" /><MenuRow type="simple" label="Apply variable" disabled={!onApplyVariable} onClick={onApplyVariable ? () => { onApplyVariable(); close(); } : undefined} /></>}
     </Menu>
   );
@@ -374,7 +380,15 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
       ["max", "height", "Max height", values.maxHeight, props.maxHeightMixed],
     ],
   ] as const;
-  const hasConstraints = constraintRows.flat().some(([, , , value, mixed]) => value !== undefined || mixed);
+  // Pack only the ACTIVE constraint fields, in canonical order
+  // (min-width · min-height · max-width · max-height), two per grid row, so a
+  // sparse set never leaves an empty canonical position. e.g. Min width + Max
+  // height active → they pack side-by-side in a single row instead of straddling
+  // two rows with holes. Labels stay explicit so packing never hides an axis/bound.
+  const activeConstraints = constraintRows.flat().filter(([, , , value, mixed]) => value !== undefined || mixed);
+  const hasConstraints = activeConstraints.length > 0;
+  const packedConstraintRows: (typeof activeConstraints)[] = [];
+  for (let i = 0; i < activeConstraints.length; i += 2) packedConstraintRows.push(activeConstraints.slice(i, i + 2));
   return <>
     <PanelFieldRow
       label="Dimensions"
@@ -383,10 +397,9 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
       rightAction={<PanelActionBtn icon={lockAspect ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />} label="Lock aspect ratio" active={lockAspect} onClick={() => setLockAspect(value => !value)} />}
     />
     {hasConstraints && <div className="flex flex-col gap-y-[6px] px-[16px] pb-[8px]">
-      {constraintRows.map((row, rowIndex) => <div key={rowIndex} className="flex items-end gap-[8px]">
-        {row.map(([constraint, axis, label, value, mixed]) => value === undefined && !mixed
-          ? <div key={`${constraint}-${axis}`} className="flex-1 min-w-0" />
-          : <div key={`${constraint}-${axis}`} className="flex-1 min-w-0">
+      {packedConstraintRows.map((row, rowIndex) => <div key={rowIndex} className="flex items-end gap-[8px]">
+        {row.map(([constraint, axis, label, value, mixed]) => (
+          <div key={`${constraint}-${axis}`} className="flex-1 min-w-0">
             <div className={clsx(SUBLABEL, "mb-[3px]")}>{label}</div>
             <NumericComboInput
               dataMode="constraint"
@@ -400,7 +413,7 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
               max={constraint === "min" ? (axis === "width" ? values.maxWidth : values.maxHeight) : undefined}
               menu={close => <Menu minWidth={160}>
                 <MenuRow
-                  type="simple"
+                  type="checkmark"
                   leading={<Minus size={14} strokeWidth={1.5} />}
                   label={`Remove ${constraint} ${axis}`}
                   onClick={() => { changeConstraint(axis, constraint, undefined); close(); }}
@@ -408,7 +421,11 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
               </Menu>}
               className="w-full"
             />
-          </div>)}
+          </div>
+        ))}
+        {/* Keep a lone trailing field at half width so packed rows share the
+            two-column geometry; this is a layout spacer, not a canonical hole. */}
+        {row.length === 1 && <div aria-hidden className="flex-1 min-w-0" />}
         <div aria-hidden className="shrink-0 w-[24px]" />
       </div>)}
     </div>}
@@ -998,7 +1015,7 @@ function AppearanceSection({
         </div>
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Corner radius</div>
-          <NumericInput ariaLabel="Corner radius" iconLead={<Maximize size={11} strokeWidth={1.5} />} value={corners.topLeft} onChange={setCornerValue} min={0} disabled={indivCorners} />
+          <NumericInput ariaLabel="Corner radius" iconLead={<Maximize size={16} strokeWidth={1.5} />} value={corners.topLeft} onChange={setCornerValue} min={0} disabled={indivCorners} />
         </div>
         <PanelActionBtn icon={<Maximize size={16} strokeWidth={1.5} />} label="Independent corners" selected={indivCorners} onClick={() => setIndivCorners(v => !v)} />
       </div>
@@ -1177,8 +1194,8 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, 
     >
       {/* Entry = base ColorInput + eye + minus icon buttons on the right (matches ours) */}
       {fills.map(fill => (
-        <div key={fill.id} draggable={!!onReorder} onDragStart={event => event.dataTransfer.setData("text/plain", fill.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), fill.id); }} className="group/row flex items-center pr-[16px] h-[32px]">
-          <DragGutter />
+        <div key={fill.id} draggable={!!onReorder && fills.length > 1} onDragStart={event => event.dataTransfer.setData("text/plain", fill.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), fill.id); }} className="group/row flex items-center pr-[16px] h-[32px]">
+          <DragGutter grip={fills.length > 1} />
           <div className="flex-1 min-w-0">
             <ColorDialog
               capabilities={capabilities}
@@ -1243,10 +1260,10 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
       }
     >
       {strokes.map(stroke => (
-        <div key={stroke.id} draggable={!!onReorder} onDragStart={event => event.dataTransfer.setData("text/plain", stroke.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), stroke.id); }} className="pb-[2px]">
+        <div key={stroke.id} draggable={!!onReorder && strokes.length > 1} onDragStart={event => event.dataTransfer.setData("text/plain", stroke.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), stroke.id); }} className="pb-[2px]">
           {/* Row 1 — color + eye + minus (same as Fill) */}
           <div className="group/row flex items-center pr-[16px] h-[32px]">
-            <DragGutter />
+            <DragGutter grip={strokes.length > 1} />
             <div className="flex-1 min-w-0">
               <ColorDialog
                 capabilities={capabilities}
@@ -1342,9 +1359,9 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
       }
     >
       {effects.map(effect => (
-        <div key={effect.id} draggable={!!onReorder} onDragStart={event => event.dataTransfer.setData("text/plain", effect.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), effect.id); }}>
+        <div key={effect.id} draggable={!!onReorder && effects.length > 1} onDragStart={event => event.dataTransfer.setData("text/plain", effect.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), effect.id); }}>
           <PanelEntry
-            draggable={!!onReorder}
+            draggable={!!onReorder && effects.length > 1}
             visible={effect.visible}
             hideLabel="Hide effect"
             showLabel="Show effect"
@@ -1419,13 +1436,21 @@ const StylesIcon = () => <CirclesFour size={16} weight="regular" />;
 
 // Reserved 16px left gutter holding the drag handle (hover-reveal). The handle gets its
 // OWN space so it never overlaps the content's 16px inset. Rows must be `group/row`.
-const DragGutter = () => (
-  <span className="w-[16px] shrink-0 flex items-center justify-center opacity-0 group-hover/row:opacity-40 cursor-grab text-c-icon">
-    <svg width="6" height="10" viewBox="0 0 6 10" fill="none">
-      <circle cx="1.5" cy="2" r="1" fill="currentColor" /><circle cx="4.5" cy="2" r="1" fill="currentColor" />
-      <circle cx="1.5" cy="5" r="1" fill="currentColor" /><circle cx="4.5" cy="5" r="1" fill="currentColor" />
-      <circle cx="1.5" cy="8" r="1" fill="currentColor" /><circle cx="4.5" cy="8" r="1" fill="currentColor" />
-    </svg>
+// `grip` gates only the reorder affordance: a single-item stack has nowhere to reorder,
+// so the grip glyph and grab cursor are suppressed while the 16px inset column is kept
+// intact — content centerline and row width stay identical as items are added/removed.
+const DragGutter = ({ grip = true }: { grip?: boolean }) => (
+  <span className={clsx(
+    "w-[16px] shrink-0 flex items-center justify-center",
+    grip && "opacity-0 group-hover/row:opacity-40 cursor-grab text-c-icon",
+  )}>
+    {grip && (
+      <svg width="6" height="10" viewBox="0 0 6 10" fill="none">
+        <circle cx="1.5" cy="2" r="1" fill="currentColor" /><circle cx="4.5" cy="2" r="1" fill="currentColor" />
+        <circle cx="1.5" cy="5" r="1" fill="currentColor" /><circle cx="4.5" cy="5" r="1" fill="currentColor" />
+        <circle cx="1.5" cy="8" r="1" fill="currentColor" /><circle cx="4.5" cy="8" r="1" fill="currentColor" />
+      </svg>
+    )}
   </span>
 );
 
