@@ -75,7 +75,20 @@ export interface ElementSelectionColorSetting { id: string; color: string; opaci
 export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; animationDelay?: boolean; }
 export interface ElementTypographySettings {
   fontFamily: string; fontWeight: string; fontSize: number; lineHeight: number; letterSpacing: number;
-  align: "left" | "center" | "right"; verticalAlign: "top" | "middle" | "bottom"; styleName?: string;
+  align: "left" | "center" | "right" | "justify"; verticalAlign: "top" | "middle" | "bottom"; styleName?: string;
+  /** Type-settings dialog fields — host-backed typographic properties (#431). */
+  decoration?: "none" | "underline" | "strikethrough";
+  textCase?: "none" | "upper" | "lower" | "title";
+  /** Variable-font weight 100–900 (regular 400 · medium 500 · bold 700). */
+  weight?: number;
+  /** Mixed-selection truth flags so multi-select never fabricates a concrete value. */
+  alignMixed?: boolean;
+  verticalAlignMixed?: boolean;
+  decorationMixed?: boolean;
+  textCaseMixed?: boolean;
+  weightMixed?: boolean;
+  lineHeightMixed?: boolean;
+  letterSpacingMixed?: boolean;
 }
 export interface ElementLayoutSettings {
   mode: "none" | "horizontal" | "vertical" | "wrap"; gap: number | "auto";
@@ -1127,7 +1140,7 @@ function StyleInput({ chit, value, onClick }: { chit: ReactNode; value: string; 
 }
 
 function TypographySection({ value, onChange, stylesAvailable }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean }) {
-  const [internal, setInternal] = useState<ElementTypographySettings>({ fontFamily: "Inter", fontWeight: "Medium", fontSize: 11, lineHeight: 16, letterSpacing: 0, align: "left", verticalAlign: "top", styleName: "Title · 96/120" });
+  const [internal, setInternal] = useState<ElementTypographySettings>({ fontFamily: "Inter", fontWeight: "Medium", fontSize: 11, lineHeight: 16, letterSpacing: 0, align: "left", verticalAlign: "top", decoration: "none", textCase: "none", weight: 500, styleName: "Title · 96/120" });
   const settings = value ?? internal;
   const update = (patch: Partial<ElementTypographySettings>) => { if (!value) setInternal(current => ({ ...current, ...patch })); onChange?.(patch); };
   const hasStyle = stylesAvailable && !!settings.styleName;
