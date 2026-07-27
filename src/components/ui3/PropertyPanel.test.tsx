@@ -88,21 +88,31 @@ describe("Project shell seams", () => {
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*><span>Export project<\/span>/);
   });
 
-  it("reveals only host-backed Preview, Share, and presence affordances", () => {
+  it("restores a segmented Play control with a gated Preview, plus host-backed Share and presence", () => {
+    // Segmented Play: Present is the primary action; Preview is a visible but
+    // capability-gated (disabled) segment until the floating-preview surface
+    // exists end-to-end (#440 / #482) — never an inert chevron.
     const plain = renderToStaticMarkup(<TooltipProvider><PropertyPanel mode="project" onPreviewToggle={() => undefined} /></TooltipProvider>);
+    expect(plain).toContain('aria-label="Play"');
     expect(plain).toContain(">Present</span>");
+    expect(plain).toContain(">Preview</span>");
+    expect(plain).toContain('aria-label="Preview unavailable"');
     expect(plain).not.toContain('aria-label="Preview options"');
     expect(plain).not.toContain('aria-label="Presence and spotlight"');
 
+    // With a host-backed floating-preview capability, the Preview segment becomes
+    // an enabled action; Share stays a separate button; presence exposes its split.
     const enabled = renderToStaticMarkup(<TooltipProvider><PropertyPanel mode="project"
       onPreviewToggle={() => undefined}
-      onPreviewMenu={() => undefined}
+      onPreviewOpen={() => undefined}
+      previewAvailable
       onShare={() => undefined}
       presenceControlsEnabled
       onAccountMenu={() => undefined}
       onPresenceMenu={() => undefined}
     /></TooltipProvider>);
-    expect(enabled).toContain('aria-label="Preview options"');
+    expect(enabled).toContain('aria-label="Preview"');
+    expect(enabled).not.toContain('aria-label="Preview unavailable"');
     expect(enabled).toContain('aria-label="Presence and spotlight"');
     expect(enabled).toContain(">Share</span>");
   });
