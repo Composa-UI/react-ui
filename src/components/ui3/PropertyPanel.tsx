@@ -1254,7 +1254,12 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, 
       {fills.map(fill => (
         <div key={fill.id} draggable={!!onReorder && fills.length > 1} onDragStart={event => event.dataTransfer.setData("text/plain", fill.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), fill.id); }} className="group/row flex items-center pr-[16px] h-[32px]">
           <DragGutter grip={fills.length > 1} />
-          <div className="flex-1 min-w-0">
+          {/* flex items-center: the dialog trigger wraps the swatch in an
+              inline-flex span; a plain block cell would give it a line box whose
+              baseline strut top-aligns the 24px swatch and lifts its centre ~3px
+              above the grip/eye/minus baseline (#490). Centering the cell keeps
+              every row element on one baseline. */}
+          <div className="flex-1 min-w-0 flex items-center">
             <ColorDialog
               capabilities={capabilities}
               open={activeStackDialog === `fill-color:${fill.id}`}
@@ -1322,7 +1327,8 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
           {/* Row 1 — color + eye + minus (same as Fill) */}
           <div className="group/row flex items-center pr-[16px] h-[32px]">
             <DragGutter grip={strokes.length > 1} />
-            <div className="flex-1 min-w-0">
+            {/* flex items-center — same baseline fix as the Fill row (#490). */}
+            <div className="flex-1 min-w-0 flex items-center">
               <ColorDialog
                 capabilities={capabilities}
                 open={activeStackDialog === `stroke-color:${stroke.id}`}

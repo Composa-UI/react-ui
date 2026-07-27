@@ -1140,6 +1140,16 @@ export default function Playground() {
     </div>;
   }
 
+  if (view === "issue-490-fill-rows") {
+    // #490 — multi-item Fill/Stroke/Effects stacks so the reorder grip renders
+    // (grip only shows with >1 item), for measuring row-anatomy alignment of
+    // grip · swatch · fields · eye · minus.
+    const dark = new URLSearchParams(window.location.search).get("theme") === "dark";
+    return <div data-composa-mode={dark ? "dark" : undefined} style={{ height: "100vh", width: "100vw", display: "flex", justifyContent: "flex-end", background: dark ? "#1e1e1e" : "#e6e6e6" }}>
+      <PropertyPanel elementType="shape" />
+    </div>;
+  }
+
   if (view === "element-contract") {
     const dark = new URLSearchParams(window.location.search).get("theme") === "dark";
     return <div data-composa-mode={dark ? "dark" : undefined} style={{ height: "100vh", width: "100vw", display: "flex", gap: 20, justifyContent: "flex-end", background: dark ? "#1e1e1e" : "#e6e6e6" }}>
