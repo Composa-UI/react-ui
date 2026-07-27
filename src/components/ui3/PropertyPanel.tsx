@@ -845,14 +845,19 @@ function LayoutAutoSection({
 
   return (
     <PanelSection title="Auto layout">
-      <div role="group" aria-label="Flow" className="px-[16px] pt-[8px]">
-        <div className={subLabel}>Flow</div>
-        <SegmentedControl
-          segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon, ariaLabel: b.label }))}
-          value={renderedFlow}
-          onChange={handleFlowChange}
-          className="w-full"
-        />
+      <div role="group" aria-label="Flow" className="flex items-start gap-[8px] px-[16px] pt-[8px]">
+        <div className="flex-1 min-w-0">
+          <div className={subLabel}>Flow</div>
+          <SegmentedControl
+            segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon, ariaLabel: b.label }))}
+            value={renderedFlow}
+            onChange={handleFlowChange}
+            className="w-full"
+          />
+        </div>
+        {/* Reserved trailing slot — matches the Alignment/Gap row's 24px settings-button
+            column so the Flow control aligns instead of running edge-to-edge. */}
+        <div className="shrink-0 w-[24px]" aria-hidden="true" />
       </div>
 
       {/* Alignment and Gap are the paired authoring row. Wrap intentionally
@@ -1348,7 +1353,7 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
             onRemove={() => remove(effect.id)}
           >
             <EffectDetailsDialog open={activeStackDialog === `effect:${effect.id}`} value={effect}
-              trigger={<Dropdown value={effect.type} fullWidth onClick={() => onActiveStackDialogChange(`effect:${effect.id}`)} />}
+              trigger={<Dropdown value={effect.type} onClick={() => onActiveStackDialogChange(`effect:${effect.id}`)} />}
               capabilities={capabilities}
               onChange={patch => update(effect.id, patch)} onClose={() => onActiveStackDialogChange(null)} />
           </PanelEntry>
