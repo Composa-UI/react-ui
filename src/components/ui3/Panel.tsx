@@ -379,8 +379,10 @@ export function PanelEntry({
         )}
       </span>
 
-      {/* Content */}
-      <div className="flex-1 min-w-0">{children}</div>
+      {/* Content — flex items-center so a dialog trigger wrapped in an inline-flex
+          span (Effects dropdown, etc.) is centred on the row baseline rather than
+          top-aligned by its line-box strut, matching the grip/eye/minus (#490). */}
+      <div className="flex-1 min-w-0 flex items-center">{children}</div>
 
       {/* Eye toggle — adjacent to Remove, matching Fill/Stroke stack anatomy. */}
       <button
