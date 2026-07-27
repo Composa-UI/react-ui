@@ -10,6 +10,8 @@ export type AnchoredInspectorOverlayElevation = 400 | 500;
 export const ANCHORED_INSPECTOR_OVERLAY_COLLISION_PADDING = 8;
 export const ANCHORED_INSPECTOR_OVERLAY_Z_CLASS = "z-50";
 export const COMPOSA_OVERLAY_BOUNDARY_SELECTOR = "[data-composa-overlay-boundary]";
+/** Marks the inspector panel surface so overlays can anchor to its edge (see `anchorSurfaceSelector`). */
+export const COMPOSA_INSPECTOR_SURFACE_SELECTOR = "[data-composa-inspector-surface]";
 
 export type AnchoredInspectorOverlayOffset = {
   x: number;
@@ -68,6 +70,16 @@ export interface AnchoredInspectorOverlayProps {
    * Interactive controls inside the handle keep their native behavior.
    */
   dragHandleSelector?: string;
+  /**
+   * Anchors the overlay's `side` axis to the LEFT edge of the nearest ancestor
+   * matching this selector (the inspector panel), instead of to the trigger.
+   * The trigger still supplies the cross-axis (vertical) position. This keeps a
+   * left-docked dialog clear of the inspector regardless of where its trigger
+   * sits in the row — a fixed trigger-relative `sideOffset` silently overlaps as
+   * soon as the trigger inset or panel width drifts from the value it was tuned
+   * to (see #499). With this set, `sideOffset` is simply the gutter to the edge.
+   */
+  anchorSurfaceSelector?: string;
 }
 
 function triggerControl(host: HTMLElement | null): HTMLElement | null {
@@ -99,12 +111,14 @@ export function AnchoredInspectorOverlay({
   surface = "default",
   elevation,
   dragHandleSelector,
+  anchorSurfaceSelector,
 }: AnchoredInspectorOverlayProps) {
   const mode = useComposaMode();
   const triggerMode = useRef<string | undefined>(undefined);
   const triggerHost = useRef<HTMLSpanElement>(null);
   const openingGesture = useRef(false);
   const capturedRect = useRef<DOMRect | null>(null);
+  const capturedSurfaceRect = useRef<DOMRect | null>(null);
   const capturedBoundary = useRef<HTMLElement | null>(null);
   const [anchorVersion, setAnchorVersion] = useState(0);
   const [dragOffset, setDragOffset] = useState<AnchoredInspectorOverlayOffset>({ x: 0, y: 0 });
@@ -116,13 +130,38 @@ export function AnchoredInspectorOverlay({
     surface: DOMRect;
     boundary: OverlayBounds;
   } | null>(null);
-  const virtualAnchor = useRef({ getBoundingClientRect: () => capturedRect.current! });
+  // When anchoring to the inspector surface edge, keep the trigger's vertical
+  // extent (cross axis) but collapse the horizontal position onto the surface's
+  // LEFT edge, so a side="left" placement rests `sideOffset` to the left of the
+  // inspector regardless of the trigger's own x (see `anchorSurfaceSelector`).
+  const virtualAnchor = useRef({
+    getBoundingClientRect: () => {
+      const trigger = capturedRect.current!;
+      const surface = capturedSurfaceRect.current;
+      if (!surface) return trigger;
+      const left = surface.left;
+      return {
+        x: left,
+        y: trigger.top,
+        left,
+        right: left,
+        top: trigger.top,
+        bottom: trigger.bottom,
+        width: 0,
+        height: trigger.height,
+        toJSON() { return this; },
+      } as DOMRect;
+    },
+  });
 
   const capture = (markOpeningGesture = false) => {
     const target = triggerControl(triggerHost.current);
     if (target) {
       openingGesture.current = markOpeningGesture;
       capturedRect.current = target.getBoundingClientRect();
+      capturedSurfaceRect.current = anchorSurfaceSelector
+        ? target.closest<HTMLElement>(anchorSurfaceSelector)?.getBoundingClientRect() ?? null
+        : null;
       capturedBoundary.current = target.closest<HTMLElement>(COMPOSA_OVERLAY_BOUNDARY_SELECTOR);
       triggerMode.current = composaModeAt(target) ?? mode;
       return true;
@@ -138,6 +177,7 @@ export function AnchoredInspectorOverlay({
     }
     if (!open && capturedRect.current) {
       capturedRect.current = null;
+      capturedSurfaceRect.current = null;
       capturedBoundary.current = null;
       triggerMode.current = undefined;
       drag.current = null;
