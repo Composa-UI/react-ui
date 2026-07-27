@@ -558,6 +558,8 @@ export interface NumericPairSegment {
   suffix?: string;
   defaultValue?: number;
   step?: number;
+  /** Multi-select with differing values — shows "Mixed", edits commit to all (v5 §7). */
+  mixed?: boolean;
 }
 
 interface NumericPairInputProps {
@@ -600,6 +602,8 @@ function PairSegment({ seg, size, isLast, onFocusChange }: {
   const begin = () => { if (!sessionOpen.current) { sessionOpen.current = true; session.onEditStart?.(); } };
   const finish = (cancelled: boolean) => { if (!sessionOpen.current) return; sessionOpen.current = false; cancelled ? session.onEditCancel?.() : session.onEditCommit?.(); };
   const setFocus = (value: boolean) => { setFocused(value); onFocusChange(value); };
+  // Mixed (v5 §7): a multi-select with differing values shows "Mixed" until focused; typing commits to all.
+  const displayMixed = seg.mixed && !focused && !scrubbing;
 
   return (
     <div className={clsx("relative flex-1 min-w-0 h-full flex items-center", !isLast && "border-r border-c-bg")}>

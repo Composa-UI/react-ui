@@ -2,7 +2,7 @@ import { act, create, type ReactTestInstance } from "react-test-renderer";
 import { describe, expect, it } from "vitest";
 import { AutoLayoutSettingsDialog } from "./AutoLayoutSettingsDialog";
 import { Button } from "./Button";
-import { NumericComboInput, NumericInput } from "./Input";
+import { NumericComboInput, NumericInput, NumericPairInput } from "./Input";
 import { PopoverMenu } from "./Menu";
 import { DimensionSizingFields, PropertyPanel, SizingComboField, type ElementSizingMode, type SizingComboFieldProps } from "./PropertyPanel";
 
@@ -384,6 +384,90 @@ describe("Auto-layout settings interactions", () => {
     const triggers = renderer!.root.findAll(node => node.type === "button" && node.props["aria-label"] === "Auto-layout settings");
     expect(triggers).toHaveLength(1);
     expect(triggers.every(trigger => trigger.props.disabled)).toBe(true);
+    act(() => renderer!.unmount());
+  });
+});
+
+describe("Inspector Mixed values (Composa#406)", () => {
+  const numericByLabel = (root: ReactTestInstance, label: string) =>
+    root.findAllByType(NumericInput).find(input => input.props.ariaLabel === label)!;
+
+  it("renders the Mixed state for differing transform/appearance values across a multi-selection", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel
+      elementType="shape"
+      multiSelect
+      x={10} y={20} rotation={0} opacity={100} cornerRadius={4}
+      xMixed yMixed rotationMixed opacityMixed cornerRadiusMixed
+    />); });
+    for (const label of ["Position X", "Position Y", "Rotation", "Opacity", "Corner radius"]) {
+      const field = numericByLabel(renderer!.root, label);
+      expect(field.props.mixed).toBe(true);
+    }
+    act(() => renderer!.unmount());
+  });
+
+  it("keeps single-value fields unmixed", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel elementType="shape" x={10} y={20} rotation={0} opacity={100} />); });
+    for (const label of ["Position X", "Position Y", "Rotation", "Opacity"]) {
+      expect(numericByLabel(renderer!.root, label).props.mixed).toBeFalsy();
+    }
+    act(() => renderer!.unmount());
+  });
+
+  it("renders the combined Position row per-axis Mixed", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel elementType="shape" multiSelect positionPresentation="combined" x={1} y={2} xMixed yMixed />); });
+    const pair = renderer!.root.findAllByType(NumericPairInput)[0];
+    expect(pair.props.a.mixed).toBe(true);
+    expect(pair.props.b.mixed).toBe(true);
+    act(() => renderer!.unmount());
+  });
+
+  it("propagates numeric W/H Mixed through the sizing combo value field", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<DimensionSizingFields width={100} height={50} widthValueMixed heightValueMixed />); });
+    const width = renderer!.root.findAllByType(SizingComboField).find(f => f.props.axis === "width")!;
+    const height = renderer!.root.findAllByType(SizingComboField).find(f => f.props.axis === "height")!;
+    expect(width.props.valueMixed).toBe(true);
+    expect(height.props.valueMixed).toBe(true);
+    const widthCombo = renderer!.root.findAllByType(NumericComboInput).find(c => c.props.ariaLabel === "Width")!;
+    expect(widthCombo.props.mixed).toBe(true);
+    act(() => renderer!.unmount());
+  });
+});
+
+describe("More alignment menu (Composa#406)", () => {
+  const moreMenuContent = (root: ReactTestInstance) => {
+    const popover = root.findAllByType(PopoverMenu)
+      .find(item => item.props.trigger?.props?.label === "More alignment")!;
+    return popover.props.children(() => undefined);
+  };
+
+  it("only exposes the More alignment overflow for multi-selection", () => {
+    let single: ReturnType<typeof create>;
+    act(() => { single = create(<PropertyPanel elementType="shape" onAlignmentAction={() => undefined} />); });
+    expect(single!.root.findAllByType(PopoverMenu).some(item => item.props.trigger?.props?.label === "More alignment")).toBe(false);
+    act(() => single!.unmount());
+
+    let multi: ReturnType<typeof create>;
+    act(() => { multi = create(<PropertyPanel elementType="shape" multiSelect onAlignmentAction={() => undefined} />); });
+    expect(multi!.root.findAllByType(PopoverMenu).some(item => item.props.trigger?.props?.label === "More alignment")).toBe(true);
+    act(() => multi!.unmount());
+  });
+
+  it("routes distribute and tidy-up commands through the host callback", () => {
+    const actions: string[] = [];
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel elementType="shape" multiSelect onAlignmentAction={action => actions.push(action)} />); });
+    const rows = moreMenuContent(renderer!.root).props.children.flat(Infinity);
+    for (const label of ["Distribute horizontal spacing", "Distribute vertical spacing", "Tidy up"]) {
+      const row = rows.find((child: { props?: { label?: string } }) => child?.props?.label === label);
+      if (!row?.props?.onClick) throw new Error(`Missing interactive row: ${label}`);
+      act(() => row.props.onClick());
+    }
+    expect(actions).toEqual(["distribute-horizontal", "distribute-vertical", "tidy-up"]);
     act(() => renderer!.unmount());
   });
 });
