@@ -3,14 +3,13 @@ import { clsx } from "clsx";
 import {
   RotateCw, FlipHorizontal2, FlipVertical2,
   Link2, Link2Off, MoreHorizontal,
-  AlignHorizontalJustifyCenter,
   Maximize2, Minimize2, Plus, Eye, Square,
   Rows2, Columns, WrapText,
   BookOpen,
   Crosshair, Grid3x3, ExternalLink, Unlink,
   Minus, EyeOff, AlignJustify, Maximize, ChevronDown,
   MoveHorizontal, MoveVertical, Play, Pause,
-  Image as ImageIcon, Video, Clock, SquareSquare,
+  Image as ImageIcon, Clock, SquareSquare,
 } from "lucide-react";
 import { CirclesFour } from "@phosphor-icons/react";
 import {
