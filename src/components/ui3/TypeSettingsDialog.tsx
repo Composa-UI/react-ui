@@ -1,9 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
 import {
-  AlignCenter,
   AlignJustify,
-  AlignLeft,
-  AlignRight,
   CaseLower,
   CaseSensitive,
   CaseUpper,
@@ -23,6 +20,12 @@ const FONT = "font-[family-name:var(--composa-font-family)]";
 
 const LineHeightIcon = iconForSemantic("line-height");
 const LetterSpacingIcon = iconForSemantic("letter-spacing");
+// Horizontal text axis — paragraph text-align glyphs (align text within its
+// box). Wired to the canonical `text-align-*` semantics (#495) instead of the
+// object-align box glyphs.
+const HorizontalLeftIcon = iconForSemantic("text-align-left");
+const HorizontalCenterIcon = iconForSemantic("text-align-center-x");
+const HorizontalRightIcon = iconForSemantic("text-align-right");
 // Vertical text axis — reuse the canonical vertical align semantics so the
 // "Vertical trim" row is wired to the CORRECT (vertical) axis with the CORRECT
 // icons (see #495: the inspector row's vertical group wrongly fired the
@@ -217,9 +220,9 @@ export function TypeSettingsDialog({
   const weight = value.weight ?? NAMED_WEIGHTS.regular;
 
   const alignOptions: ReadonlyArray<ChoiceOption<TextHorizontalAlign>> = [
-    { value: "left", label: "Align left", icon: <AlignLeft {...ICON} /> },
-    { value: "center", label: "Align center", icon: <AlignCenter {...ICON} /> },
-    { value: "right", label: "Align right", icon: <AlignRight {...ICON} /> },
+    { value: "left", label: "Align left", icon: <HorizontalLeftIcon data-icon-semantic="text-align-left" {...ICON} /> },
+    { value: "center", label: "Align center", icon: <HorizontalCenterIcon data-icon-semantic="text-align-center-x" {...ICON} /> },
+    { value: "right", label: "Align right", icon: <HorizontalRightIcon data-icon-semantic="text-align-right" {...ICON} /> },
     {
       value: "justify",
       label: "Justify",

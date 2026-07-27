@@ -1,10 +1,13 @@
 import {
+  AlignCenter,
   AlignCenterHorizontal,
   AlignCenterVertical,
   AlignEndHorizontal,
   AlignEndVertical,
   AlignHorizontalDistributeCenter,
   AlignVerticalDistributeCenter,
+  AlignLeft,
+  AlignRight,
   AlignStartHorizontal,
   AlignStartVertical,
   ArrowDownToLine,
@@ -81,6 +84,9 @@ export type ComposaIconSemantic =
   | "distribute-horizontal"
   | "distribute-vertical"
   | "tidy-up"
+  | "text-align-left"
+  | "text-align-center-x"
+  | "text-align-right"
   | "text-align-top"
   | "text-align-center"
   | "text-align-bottom"
@@ -133,6 +139,14 @@ export const composaIconSemantics = {
   "distribute-horizontal": AlignHorizontalDistributeCenter,
   "distribute-vertical": AlignVerticalDistributeCenter,
   "tidy-up": LayoutGrid,
+  // Typography horizontal text-alignment (align text within its box).
+  // Paragraph glyphs with horizontal text lines — distinct from the
+  // object-align box glyphs (align-*) and the vertical text-align group below.
+  // Named with the `-x` axis suffix (mirroring `align-center-x`) so the
+  // horizontal center does not collide with the vertical `text-align-center`.
+  "text-align-left": AlignLeft,
+  "text-align-center-x": AlignCenter,
+  "text-align-right": AlignRight,
   "text-align-top": ArrowUpToLine,
   "text-align-center": ProposedArrowUpDownToLine,
   "text-align-bottom": ArrowDownToLine,

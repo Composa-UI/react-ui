@@ -165,6 +165,9 @@ const AlignBottomIcon = iconForSemantic("align-bottom");
 const DistributeHorizontalIcon = iconForSemantic("distribute-horizontal");
 const DistributeVerticalIcon = iconForSemantic("distribute-vertical");
 const TidyUpIcon = iconForSemantic("tidy-up");
+const TextAlignLeftIcon = iconForSemantic("text-align-left");
+const TextAlignCenterXIcon = iconForSemantic("text-align-center-x");
+const TextAlignRightIcon = iconForSemantic("text-align-right");
 const TextAlignTopIcon = iconForSemantic("text-align-top");
 const TextAlignCenterIcon = iconForSemantic("text-align-center");
 const TextAlignBottomIcon = iconForSemantic("text-align-bottom");
@@ -1146,9 +1149,9 @@ function TypographySection({ value, onChange, stylesAvailable }: { value?: Eleme
   const hasStyle = stylesAvailable && !!settings.styleName;
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
   const textAlignBtns: IconBtn[] = [
-    { icon: <AlignLeftIcon data-icon-semantic="align-left" size={S} strokeWidth={1.5} />, label: "Align left", onClick: () => update({ align: "left" }) },
-    { icon: <AlignCenterXIcon data-icon-semantic="align-center-x" size={S} strokeWidth={1.5} />, label: "Align center", onClick: () => update({ align: "center" }) },
-    { icon: <AlignRightIcon data-icon-semantic="align-right" size={S} strokeWidth={1.5} />, label: "Align right", onClick: () => update({ align: "right" }) },
+    { icon: <TextAlignLeftIcon data-icon-semantic="text-align-left" size={S} strokeWidth={1.5} />, label: "Align left", onClick: () => update({ align: "left" }) },
+    { icon: <TextAlignCenterXIcon data-icon-semantic="text-align-center-x" size={S} strokeWidth={1.5} />, label: "Align center", onClick: () => update({ align: "center" }) },
+    { icon: <TextAlignRightIcon data-icon-semantic="text-align-right" size={S} strokeWidth={1.5} />, label: "Align right", onClick: () => update({ align: "right" }) },
   ];
   const vAlignBtns: IconBtn[] = [
     { icon: <TextAlignTopIcon data-icon-semantic="text-align-top" size={S} strokeWidth={1.5} />, label: "Top", onClick: () => update({ verticalAlign: "top" }) },
