@@ -1,6 +1,7 @@
 // @composa/ui public API — re-exports the merged UI3 component set.
 // Consumed by composa-editor. Panels/dialogs from ours land here as they're recomposed.
 export * from "./components/ui3/AnimatePanel";
+export * from "./components/ui3/AnimationStylesDialog";
 export * from "./components/ui3/AgentPanel";
 // Chat leaf components (import: "Stateful left chat panel") — message pieces + cards.
 export * from "./components/ui3/AiResponse";

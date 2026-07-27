@@ -3,6 +3,7 @@ import { act, create } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
 import { ACTION_STYLE_OPTIONS, AnimatePanel, type ObjectAnimationItem } from "./AnimatePanel";
 import { PopoverMenu } from "./Menu";
+import { AnimationStylesDialog } from "./AnimationStylesDialog";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -294,5 +295,61 @@ describe("AnimatePanel — settings icon + delay gated behind the animationDelay
     expect(html).toContain('aria-label="Comp transition settings"');
     expect(html).toContain(">Start<");
     expect(html).toContain(">Delay<");
+  });
+});
+
+// Composa-App/Composa#303 — the object-animation Style control opens the anchored
+// AnimationStylesDialog (not the old bottom popover), with single-open exclusivity.
+describe("AnimatePanel — object-animation Style opens the anchored dialog (issue #303)", () => {
+  const STYLED: ObjectAnimationItem = {
+    id: "s1", n: 1, name: "Title", kind: "Action", duration: "0.6s", style: "pulse", intensity: "medium", selected: true, focused: true,
+  };
+
+  const styleDialog = (renderer: ReturnType<typeof create>) => renderer.root.findByType(AnimationStylesDialog);
+
+  it("routes the Style control through AnimationStylesDialog, closed until its trigger is clicked", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={[STYLED]} />); });
+    // Exactly one Style dialog, phase-labelled, anchored to a Style trigger — and closed.
+    const dialog = styleDialog(renderer!);
+    expect(dialog.props.title).toBe("Action styles");
+    expect(dialog.props.open).toBe(false);
+    expect(dialog.props.trigger.props["aria-haspopup"]).toBe("dialog");
+    expect(dialog.props.trigger.props.ariaLabel).toBe("Style: Pulse");
+
+    act(() => dialog.props.trigger.props.onClick());
+    expect(styleDialog(renderer!).props.open).toBe(true);
+    // Single-open exclusivity: never more than one anchored Style dialog exists.
+    expect(renderer!.root.findAllByType(AnimationStylesDialog)).toHaveLength(1);
+    act(() => renderer!.unmount());
+  });
+
+  it("applies the picked style through the unchanged onStyleChange path and closes on select", () => {
+    const changes: Array<[string, string]> = [];
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<AnimatePanel selectionType="element" anims={[STYLED]}
+        objectAnimationCallbacks={{ onStyleChange: (id, style) => changes.push([id, style]) }} />);
+    });
+    act(() => styleDialog(renderer!).props.trigger.props.onClick());
+    expect(styleDialog(renderer!).props.open).toBe(true);
+
+    act(() => styleDialog(renderer!).props.onSelect("bounce"));
+    expect(changes).toEqual([["s1", "bounce"]]);
+    expect(styleDialog(renderer!).props.open).toBe(false);
+    act(() => renderer!.unmount());
+  });
+
+  it("dismisses the Style dialog when the card is collapsed", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={[STYLED]} />); });
+    act(() => styleDialog(renderer!).props.trigger.props.onClick());
+    expect(styleDialog(renderer!).props.open).toBe(true);
+
+    // Collapse via the expanded card header toggle.
+    const header = renderer!.root.findAll(node => node.type === "button" && node.props["aria-expanded"] === true)[0];
+    act(() => header.props.onClick());
+    expect(renderer!.root.findAllByType(AnimationStylesDialog)).toHaveLength(0);
+    act(() => renderer!.unmount());
   });
 });
