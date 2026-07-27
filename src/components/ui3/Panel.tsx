@@ -360,9 +360,14 @@ export function PanelEntry({
 }: PanelEntryProps) {
   return (
     <div className="flex items-center h-[32px] px-[8px] gap-[4px] group">
-      {/* Drag handle */}
-      {draggable && (
-        <span className="shrink-0 flex items-center justify-center size-[16px] opacity-0 group-hover:opacity-40 cursor-grab text-c-icon">
+      {/* Drag handle — the 16px column is always reserved so content alignment stays
+          fixed; the grip glyph and grab cursor appear only when `draggable`, i.e. a
+          stack with more than one reorderable item. */}
+      <span className={clsx(
+        "shrink-0 flex items-center justify-center size-[16px]",
+        draggable && "opacity-0 group-hover:opacity-40 cursor-grab text-c-icon",
+      )}>
+        {draggable && (
           <svg width="6" height="10" viewBox="0 0 6 10" fill="none">
             <circle cx="1.5" cy="2" r="1" fill="currentColor" />
             <circle cx="4.5" cy="2" r="1" fill="currentColor" />
@@ -371,8 +376,8 @@ export function PanelEntry({
             <circle cx="1.5" cy="8" r="1" fill="currentColor" />
             <circle cx="4.5" cy="8" r="1" fill="currentColor" />
           </svg>
-        </span>
-      )}
+        )}
+      </span>
 
       {/* Content */}
       <div className="flex-1 min-w-0">{children}</div>
