@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useId, type MutableRefObject, type ReactNode } from "react";
 import { clsx } from "clsx";
-import { ChevronDown, Minus } from "lucide-react";
+import { ChevronDown, Eye, EyeOff, Minus } from "lucide-react";
 import { Tooltip } from "./Tooltip";
 
 // ─── ScrollArea ───────────────────────────────────────────────────────────────
@@ -359,7 +359,12 @@ export function PanelEntry({
   removeLabel = "Remove",
 }: PanelEntryProps) {
   return (
-    <div className="flex items-center h-[32px] px-[8px] gap-[4px] group">
+    // Anatomy mirrors the Fill/Stroke rows exactly: no left inset, a 16px grip
+    // column flush to the panel edge, fluid content, then an 8px-padded action
+    // cluster and a 16px right gutter. This drops the extra ~12px of left inset
+    // the old `px-[8px] gap-[4px]` shell added so the Effects dropdown lines up
+    // with (and spans the same width as) the other stackable rows (#500).
+    <div className="flex items-center h-[32px] pr-[16px] group">
       {/* Drag handle — the 16px column is always reserved so content alignment stays
           fixed; the grip glyph and grab cursor appear only when `draggable`, i.e. a
           stack with more than one reorderable item. */}
@@ -384,40 +389,31 @@ export function PanelEntry({
           top-aligned by its line-box strut, matching the grip/eye/minus (#490). */}
       <div className="flex-1 min-w-0 flex items-center">{children}</div>
 
-      {/* Eye toggle — adjacent to Remove, matching Fill/Stroke stack anatomy. */}
-      <button
-        aria-label={visible ? hideLabel : showLabel}
-        onClick={onToggleVisible}
-        className="shrink-0 flex items-center justify-center size-[24px] rounded-c-sm text-c-icon hover:bg-c-bg-hover"
-      >
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          {visible ? (
-            <>
-              <path d="M7 3C4 3 1.5 7 1.5 7S4 11 7 11s5.5-4 5.5-4S10 3 7 3z"
-                stroke="currentColor" strokeWidth="1.2" fill="none" />
-              <circle cx="7" cy="7" r="1.5" fill="currentColor" />
-            </>
-          ) : (
-            <>
-              <path d="M7 3C4 3 1.5 7 1.5 7S4 11 7 11s5.5-4 5.5-4S10 3 7 3z"
-                stroke="currentColor" strokeWidth="1.2" fill="none" strokeOpacity="0.3" />
-              <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-            </>
-          )}
-        </svg>
-      </button>
+      {/* Action cluster — 8px lead + 4px gap, matching the Fill/Stroke gutter. */}
+      <div className="shrink-0 flex items-center gap-[4px] pl-[8px]">
+        {/* Eye toggle — canonical lucide Eye/EyeOff (size 16, strokeWidth 1.5),
+            identical to the Fill/Stroke visibility icon, replacing the hand-rolled
+            14px SVG that read as a mismatched glyph on the Effects row (#500). */}
+        <button
+          aria-label={visible ? hideLabel : showLabel}
+          onClick={onToggleVisible}
+          className="shrink-0 flex items-center justify-center size-[24px] rounded-c-sm text-c-icon hover:bg-c-bg-hover"
+        >
+          {visible ? <Eye size={16} strokeWidth={1.5} /> : <EyeOff size={16} strokeWidth={1.5} />}
+        </button>
 
-      {/* Remove */}
-      <button
-        aria-label={removeLabel}
-        onClick={onRemove}
-        className="shrink-0 flex items-center justify-center size-[24px] rounded-c-sm text-c-icon opacity-0 group-hover:opacity-100 hover:bg-c-bg-hover"
-      >
-        {/* DS Minus (mirrors ColorDialog StopRow remove) — a symmetric 24-viewBox
-            glyph guarantees the bar is centred in the button, replacing the
-            hand-rolled 12x12 path that read short/off next to the eye toggle. */}
-        <Minus size={14} strokeWidth={1.5} />
-      </button>
+        {/* Remove */}
+        <button
+          aria-label={removeLabel}
+          onClick={onRemove}
+          className="shrink-0 flex items-center justify-center size-[24px] rounded-c-sm text-c-icon opacity-0 group-hover:opacity-100 hover:bg-c-bg-hover"
+        >
+          {/* DS Minus (mirrors ColorDialog StopRow remove) — a symmetric 24-viewBox
+              glyph guarantees the bar is centred in the button, replacing the
+              hand-rolled 12x12 path that read short/off next to the eye toggle. */}
+          <Minus size={14} strokeWidth={1.5} />
+        </button>
+      </div>
     </div>
   );
 }

@@ -5,8 +5,9 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("./InspectorDialog", () => ({
   COMPACT_INSPECTOR_DIALOG_WIDTH: 240,
+  TYPE_SETTINGS_INSPECTOR_SIDE_OFFSET: 208,
   InspectorDialog: ({ children, trigger, ...props }: { children: ReactNode; trigger?: ReactElement } & Record<string, unknown>) => (
-    <div data-dialog={String(props.ariaLabel)} data-width={String(props.width)} data-elevation={String(props.elevation)}>
+    <div data-dialog={String(props.ariaLabel)} data-width={String(props.width)} data-side-offset={String(props.sideOffset)} data-elevation={String(props.elevation)}>
       {trigger}
       {children}
     </div>
@@ -45,6 +46,8 @@ describe("TypeSettingsDialog", () => {
     );
     expect(html).toContain('data-dialog="Type settings"');
     expect(html).toContain('data-width="240"');
+    // Anchored clear of the inspector via the far-right-trigger offset (#499).
+    expect(html).toContain('data-side-offset="208"');
     expect(html).toContain('data-elevation="400"');
     // Both existing metrics survive.
     expect(html).toContain('aria-label="Type settings line height"');
