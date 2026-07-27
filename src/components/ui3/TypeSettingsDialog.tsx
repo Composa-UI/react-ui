@@ -4,8 +4,12 @@ import { clsx } from "clsx";
 import { InspectorDialog, COMPACT_INSPECTOR_DIALOG_WIDTH } from "./InspectorDialog";
 import { NumericInput } from "./Input";
 import { PanelFieldRow } from "./Panel";
+import { iconForSemantic } from "./IconSemantics";
 
 const FONT = "font-[family-name:var(--composa-font-family)]";
+
+const LineHeightIcon = iconForSemantic("line-height");
+const LetterSpacingIcon = iconForSemantic("letter-spacing");
 
 export interface TypeSettingsDialogProps {
   open: boolean;
@@ -55,7 +59,7 @@ export function TypeSettingsDialog({
           left={
             <NumericInput
               ariaLabel="Type settings line height"
-              iconLead={<span className={FONT}>↕</span>}
+              iconLead={<LineHeightIcon data-icon-semantic="line-height" size={16} strokeWidth={1.5} />}
               value={value.lineHeight}
               min={0}
               onChange={lineHeight => onChange?.({ lineHeight })}
@@ -64,7 +68,7 @@ export function TypeSettingsDialog({
           right={
             <NumericInput
               ariaLabel="Type settings letter spacing"
-              iconLead={<span className={FONT}>AV</span>}
+              iconLead={<LetterSpacingIcon data-icon-semantic="letter-spacing" size={16} strokeWidth={1.5} />}
               value={value.letterSpacing}
               suffix="%"
               onChange={letterSpacing => onChange?.({ letterSpacing })}

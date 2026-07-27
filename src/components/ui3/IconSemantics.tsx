@@ -43,6 +43,8 @@ import {
   ProposedLayoutVerticalCenter,
   ProposedLayoutVerticalLeft,
   ProposedLayoutVerticalRight,
+  ProposedLetterSpacing,
+  ProposedLineHeight,
   ProposedOpacity,
   ProposedPanelLeftRightDashed,
   ProposedPanelTopBottomDashed,
@@ -82,6 +84,8 @@ export type ComposaIconSemantic =
   | "text-align-top"
   | "text-align-center"
   | "text-align-bottom"
+  | "letter-spacing"
+  | "line-height"
   | "resize-to-fit"
   | "absolute-position"
   | "rotation"
@@ -132,6 +136,8 @@ export const composaIconSemantics = {
   "text-align-top": ArrowUpToLine,
   "text-align-center": ProposedArrowUpDownToLine,
   "text-align-bottom": ArrowDownToLine,
+  "letter-spacing": ProposedLetterSpacing,
+  "line-height": ProposedLineHeight,
   "resize-to-fit": Shrink,
   "absolute-position": ProposedScanSquare,
   rotation: ProposedAngle,

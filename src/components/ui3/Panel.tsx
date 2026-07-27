@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useId, type MutableRefObject, type ReactNode } from "react";
 import { clsx } from "clsx";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Minus } from "lucide-react";
 import { Tooltip } from "./Tooltip";
 
 // ─── ScrollArea ───────────────────────────────────────────────────────────────
@@ -411,9 +411,10 @@ export function PanelEntry({
         onClick={onRemove}
         className="shrink-0 flex items-center justify-center size-[24px] rounded-c-sm text-c-icon opacity-0 group-hover:opacity-100 hover:bg-c-bg-hover"
       >
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <path d="M2 6h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
+        {/* DS Minus (mirrors ColorDialog StopRow remove) — a symmetric 24-viewBox
+            glyph guarantees the bar is centred in the button, replacing the
+            hand-rolled 12x12 path that read short/off next to the eye toggle. */}
+        <Minus size={14} strokeWidth={1.5} />
       </button>
     </div>
   );
