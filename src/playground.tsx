@@ -24,6 +24,8 @@ import { AlignmentControl, type AlignmentValue } from "./components/ui3/Alignmen
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./components/ui3/LayerTypeIcon";
 import { AnchoredInspectorOverlay } from "./components/ui3/AnchoredInspectorOverlay";
 import { InspectorDialog } from "./components/ui3/InspectorDialog";
+import { ExportDialog, type ExportSettingsValue } from "./components/ui3/ExportDialog";
+import { FontPickerDialog, type FontEntry } from "./components/ui3/FontPickerDialog";
 import { Menu, MenuRow, PopoverMenu } from "./components/ui3/Menu";
 import { AgentPanel, type AgentConversation, type AgentConversationSummary } from "./components/ui3/AgentPanel";
 import { UserBubble } from "./components/ui3/UserBubble";
@@ -711,6 +713,12 @@ export default function Playground() {
   ]);
   const [selectedLayerContracts, setSelectedLayerContracts] = useState<string[]>(["title"]);
   const [layerSelectionAnchor, setLayerSelectionAnchor] = useState("title");
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportDialogValue, setExportDialogValue] = useState<ExportSettingsValue>({
+    suffix: "", colorProfile: "sRGB (same as file)", imageResampling: "Detailed", ignoreOverlappingLayers: true,
+  });
+  const [fontPickerOpen, setFontPickerOpen] = useState(false);
+  const [fontPickerValue, setFontPickerValue] = useState("Inter");
   const [elementContract, setElementContract] = useState<{
     typography: ElementTypographySettings; layout: ElementLayoutSettings; fills: ElementFillSetting[]; strokes: ElementStrokeSetting[]; effects: ElementEffectSetting[];
   }>({
@@ -1169,6 +1177,92 @@ export default function Playground() {
           typography={elementContract.typography}
           strokes={elementContract.strokes}
           effects={elementContract.effects} />
+      </div>
+    );
+  }
+
+  if (view === "export-dialog-anchor" || view === "fontpicker-dialog-anchor") {
+    // Mirrors the #499 app-like context (full-width overlay boundary + fluid
+    // canvas + inspector docked hard-right) so a new dialog's clearance to the
+    // LEFT of the inspector is measurable. The trigger sits in the inspector's
+    // far-right action gutter; the panel carries BOTH `.composa-inspector` (the
+    // e2e locator) and `data-composa-inspector-surface` (the anchor edge), so the
+    // surface-anchored dialog must land clear of the panel at ANY width.
+    const params = new URLSearchParams(window.location.search);
+    const dark = params.get("theme") === "dark";
+    const widthOverride = Number(params.get("w"));
+    const isExport = view === "export-dialog-anchor";
+    const fonts: FontEntry[] = [
+      { name: "Inter", stack: "'Inter', sans-serif" },
+      { name: "Inria Serif", stack: "'Inria Serif', serif" },
+      { name: "Roboto", stack: "'Roboto', sans-serif" },
+      { name: "Playfair Display", stack: "'Playfair Display', serif" },
+      { name: "Space Grotesk", stack: "'Space Grotesk', sans-serif" },
+      { name: "DM Serif Display", stack: "'DM Serif Display', serif" },
+      { name: "Lato", stack: "'Lato', sans-serif" },
+      { name: "Poppins", stack: "'Poppins', sans-serif" },
+      { name: "Merriweather", stack: "'Merriweather', serif" },
+      { name: "Source Serif 4", stack: "'Source Serif 4', serif" },
+    ];
+    return (
+      <div
+        data-composa-mode={dark ? "dark" : undefined}
+        data-composa-overlay-boundary
+        style={{ height: "100vh", width: "100vw", display: "flex", background: dark ? "#1e1e1e" : "#e6e6e6" }}
+      >
+        {Number.isFinite(widthOverride) && widthOverride > 0 && (
+          <style>{`.composa-inspector{width:${widthOverride}px !important;}`}</style>
+        )}
+        <div style={{ flex: 1, minWidth: 0 }} />
+        <div
+          data-composa-inspector-surface
+          className="composa-inspector"
+          style={{ width: 240, flexShrink: 0, height: "100%", display: "flex", flexDirection: "column", background: dark ? "#2c2c2c" : "#ffffff", borderLeft: "1px solid rgba(0,0,0,0.1)" }}
+        >
+          <div style={{ display: "flex", justifyContent: "flex-end", padding: 8 }}>
+            {/* 24px action slot at the panel's far-right gutter — the InspectorDialog
+                trigger span is `w-full`, so this box makes the trigger a real
+                far-right action button (mirroring the inspector's action gutter). */}
+            <div style={{ width: 24, height: 24 }}>
+            {isExport ? (
+              <ExportDialog
+                open={exportDialogOpen}
+                onClose={() => setExportDialogOpen(false)}
+                value={exportDialogValue}
+                onChange={patch => setExportDialogValue(value => ({ ...value, ...patch }))}
+                trigger={
+                  <button
+                    type="button"
+                    aria-label="Export"
+                    onClick={() => setExportDialogOpen(open => !open)}
+                    style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 5 }}
+                  >
+                    ⇧
+                  </button>
+                }
+              />
+            ) : (
+              <FontPickerDialog
+                open={fontPickerOpen}
+                onClose={() => setFontPickerOpen(false)}
+                fonts={fonts}
+                value={fontPickerValue}
+                onSelect={name => { setFontPickerValue(name); setFontPickerOpen(false); }}
+                trigger={
+                  <button
+                    type="button"
+                    aria-label="Fonts"
+                    onClick={() => setFontPickerOpen(open => !open)}
+                    style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 5 }}
+                  >
+                    Aa
+                  </button>
+                }
+              />
+            )}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
