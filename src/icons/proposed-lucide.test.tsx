@@ -16,6 +16,8 @@ import {
   ProposedLayoutVerticalCenter,
   ProposedLayoutVerticalLeft,
   ProposedLayoutVerticalRight,
+  ProposedLetterSpacing,
+  ProposedLineHeight,
   ProposedOpacity,
   ProposedScanSquare,
   proposedLucideMetadata,
@@ -39,6 +41,8 @@ const icons = [
   ProposedLayoutVerticalLeft,
   ProposedLayoutVerticalRight,
   ProposedScanSquare,
+  ProposedLetterSpacing,
+  ProposedLineHeight,
 ];
 
 describe("proposed Lucide icon boundary", () => {

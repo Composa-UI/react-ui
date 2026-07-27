@@ -77,7 +77,10 @@ function Handle({
 
   return (
     <div
-      className="absolute top-0 pointer-events-none z-10"
+      // Vertically centered on the track (top-1/2 + -translate-y-1/2) rather than
+      // pinned to top-0 — keeps the handle centred regardless of track height and
+      // matches the delta-marker / step-dot positioning in this component.
+      className="absolute top-1/2 -translate-y-1/2 pointer-events-none z-10"
       style={{ left, width: THUMB, height: THUMB, filter: HANDLE_SHADOW }}
     >
       {/* Outer SVG circle — focus ring via inner stroke (r shrinks to keep 16px bounds) */}

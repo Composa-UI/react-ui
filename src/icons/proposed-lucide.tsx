@@ -24,6 +24,8 @@ export const proposedLucideMetadata = {
   layoutVerticalLeft: { pr: 4548, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4548", replacementImport: "LayoutVerticalLeft" },
   layoutVerticalRight: { pr: 4548, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4548", replacementImport: "LayoutVerticalRight" },
   scanSquare: { pr: 4550, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4550", replacementImport: "ScanSquare" },
+  letterSpacing: { pr: 3038, sourceUrl: "https://github.com/lucide-icons/lucide/pull/3038", replacementImport: "LetterSpacing" },
+  lineHeight: { pr: 3039, sourceUrl: "https://github.com/lucide-icons/lucide/pull/3039", replacementImport: "LineHeight" },
 } as const satisfies Record<string, ProposedLucideMetadata>;
 
 // TODO(lucide-pr-4541): replace with lucide-react LayoutHorizontal after upstream merge.
@@ -178,4 +180,22 @@ export const ProposedScanSquare = createLucideIcon("ProposedScanSquare", [
   ["path", { d: "M21 17v2a2 2 0 0 1-2 2h-2", key: "bottom-right" }],
   ["path", { d: "M7 21H5a2 2 0 0 1-2-2v-2", key: "bottom-left" }],
   ["rect", { width: "8", height: "8", x: "8", y: "8", rx: "1", key: "square" }],
+]);
+
+// TODO(lucide-pr-3038): replace with lucide-react LetterSpacing after upstream merge.
+// Owner-proposed large-A variant (a-arrow-up family): two vertical bars + capital A.
+export const ProposedLetterSpacing = createLucideIcon("ProposedLetterSpacing", [
+  ["path", { d: "M3 2v20", key: "bar-left" }],
+  ["path", { d: "M21 2v20", key: "bar-right" }],
+  ["path", { d: "m7.5 17 4.039-9.69a.5.5 0 0 1 .923 0L16.5 17", key: "a-stroke" }],
+  ["path", { d: "M8.804 14h6.392", key: "a-bar" }],
+]);
+
+// TODO(lucide-pr-3039): replace with lucide-react LineHeight after upstream merge.
+// Owner-proposed large-A variant (a-arrow-up family): two horizontal bars + capital A.
+export const ProposedLineHeight = createLucideIcon("ProposedLineHeight", [
+  ["path", { d: "M2 3h20", key: "bar-top" }],
+  ["path", { d: "M2 21h20", key: "bar-bottom" }],
+  ["path", { d: "m7.5 17 4.039-9.69a.5.5 0 0 1 .923 0L16.5 17", key: "a-stroke" }],
+  ["path", { d: "M8.804 14h6.392", key: "a-bar" }],
 ]);

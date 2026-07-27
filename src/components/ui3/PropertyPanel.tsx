@@ -138,6 +138,8 @@ const BlendModeIcon = iconForSemantic("blend-mode");
 const AbsolutePositionIcon = iconForSemantic("absolute-position");
 const RotationIcon = iconForSemantic("rotation");
 const OpacityIcon = iconForSemantic("opacity");
+const LineHeightIcon = iconForSemantic("line-height");
+const LetterSpacingIcon = iconForSemantic("letter-spacing");
 const LayoutFreeformIcon = iconForSemantic("layout-freeform");
 const LayoutHorizontalIcon = iconForSemantic("layout-horizontal");
 const LayoutVerticalIcon = iconForSemantic("layout-vertical");
@@ -1184,11 +1186,11 @@ function TypographySection({ value, onChange, stylesAvailable }: { value?: Eleme
           <div className="flex items-end gap-[8px] pl-[16px] pr-[16px] pt-[6px]">
             <div className="flex-1 min-w-0">
               <div className={subLabel}>Line height</div>
-              <NumericInput iconLead={<span className={FONT}>↕</span>} value={settings.lineHeight} onChange={lineHeight => update({ lineHeight })} min={0} />
+              <NumericInput iconLead={<LineHeightIcon data-icon-semantic="line-height" size={16} strokeWidth={1.5} />} value={settings.lineHeight} onChange={lineHeight => update({ lineHeight })} min={0} />
             </div>
             <div className="flex-1 min-w-0">
               <div className={subLabel}>Letter spacing</div>
-              <NumericInput iconLead={<span className={FONT}>AV</span>} value={settings.letterSpacing} onChange={letterSpacing => update({ letterSpacing })} suffix="%" />
+              <NumericInput iconLead={<LetterSpacingIcon data-icon-semantic="letter-spacing" size={16} strokeWidth={1.5} />} value={settings.letterSpacing} onChange={letterSpacing => update({ letterSpacing })} suffix="%" />
             </div>
             <div className="shrink-0 min-w-[24px]" />
           </div>
