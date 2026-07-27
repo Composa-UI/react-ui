@@ -1,4 +1,5 @@
 import { clsx } from "clsx";
+import type { ReactNode } from "react";
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const BG = "#1e1e1e";
@@ -37,10 +38,17 @@ interface NotificationProps {
   message: string;
   /** One or two actions. Two renders stacked vertically. */
   actions?: [NotificationAction] | [NotificationAction, NotificationAction];
+  /**
+   * Leading glyph, rendered in the fixed 24px icon slot (white, to read on the
+   * dark pill). Defaults to the generic component diamond. Pass a contextual
+   * icon so the toast's iconography matches how the same subject is shown
+   * elsewhere (e.g. a video toast reuses the timeline's video glyph).
+   */
+  icon?: ReactNode;
   className?: string;
 }
 
-export function Notification({ message, actions = [{ label: "Action" }], className }: NotificationProps) {
+export function Notification({ message, actions = [{ label: "Action" }], icon, className }: NotificationProps) {
   const [primary, secondary] = actions;
 
   return (
@@ -54,8 +62,8 @@ export function Notification({ message, actions = [{ label: "Action" }], classNa
     >
       {/* Content: icon + message */}
       <div className="flex gap-[4px] items-center pr-[4px] w-[212px] py-[8px]">
-        <span className="shrink-0 flex items-center justify-center size-[24px]">
-          <ComponentIcon />
+        <span className="shrink-0 flex items-center justify-center size-[24px] text-white">
+          {icon ?? <ComponentIcon />}
         </span>
         <p className={clsx(TEXT_MSG, "text-white overflow-hidden")}>
           {message}
