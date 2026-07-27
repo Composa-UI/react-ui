@@ -1450,7 +1450,7 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
             onRemove={() => remove(effect.id)}
           >
             <EffectDetailsDialog open={activeStackDialog === `effect:${effect.id}`} value={effect}
-              trigger={<Dropdown value={effect.type} onClick={() => onActiveStackDialogChange(`effect:${effect.id}`)} />}
+              trigger={<Dropdown value={effect.type} fullWidth onClick={() => onActiveStackDialogChange(`effect:${effect.id}`)} />}
               capabilities={capabilities}
               onChange={patch => update(effect.id, patch)} onClose={() => onActiveStackDialogChange(null)} />
           </PanelEntry>
@@ -1493,7 +1493,10 @@ function ExportSection({ settings, targetName = "selection", onAdd, onRemove, on
     >
       {exports.map(exp => (
         <div key={exp.id} className="group/row flex items-center h-[32px] pr-[16px]">
-          <DragGutter />
+          {/* Single-item stacks have nothing to reorder, so suppress the grip while
+              keeping the 16px inset column — same grip-only-when->1 rule already
+              applied to Fill/Stroke/Effects (#460b, #501). */}
+          <DragGutter grip={exports.length > 1} />
           <div className="flex-1 min-w-0 flex items-center gap-[4px]">
             <div className="w-[54px] shrink-0"><NumericInput value={exp.scale} min={0.01} step={0.25} suffix="×" onChange={scale => update(exp.id, { scale })} /></div>
             <div className="flex-1 min-w-0"><InputField value={exp.suffix} placeholder="Suffix" onChange={suffix => update(exp.id, { suffix })} /></div>

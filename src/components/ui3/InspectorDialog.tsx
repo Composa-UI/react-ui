@@ -11,6 +11,13 @@ export const EFFECTS_INSPECTOR_DIALOG_SIDE_OFFSET = 48;
 // The stroke settings action sits 7px farther into its row than the Effects
 // trigger. Compensate so both dialogs land on the same 8px inspector gutter.
 export const STROKE_SETTINGS_INSPECTOR_SIDE_OFFSET = 41;
+// The Type settings trigger is a 24px action button in the Alignment row's
+// far-right action gutter — unlike the Effects/Stroke triggers, which sit at
+// the row's left. Its left edge lands at panel.right − 40 (16px row pad + 24px
+// button), so a left-anchored 240px dialog needs a larger compensating offset to
+// clear the full 240px inspector: 40 + (240 − 8) = 208 leaves the same approved
+// 8px gutter between the dialog's right edge and the inspector's left edge (#499).
+export const TYPE_SETTINGS_INSPECTOR_SIDE_OFFSET = 208;
 export const INSPECTOR_DIALOG_DRAG_HANDLE_SELECTOR = "[data-composa-inspector-dialog-drag-handle]";
 
 export interface InspectorDialogProps {

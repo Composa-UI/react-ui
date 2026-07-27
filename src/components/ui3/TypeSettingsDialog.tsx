@@ -10,7 +10,11 @@ import {
   X,
 } from "lucide-react";
 import { clsx } from "clsx";
-import { InspectorDialog, COMPACT_INSPECTOR_DIALOG_WIDTH } from "./InspectorDialog";
+import {
+  InspectorDialog,
+  COMPACT_INSPECTOR_DIALOG_WIDTH,
+  TYPE_SETTINGS_INSPECTOR_SIDE_OFFSET,
+} from "./InspectorDialog";
 import { NumericInput } from "./Input";
 import { SegmentedControlGroup, SegmentedControlItem } from "./SegmentedControl";
 import { Slider } from "./Slider";
@@ -156,40 +160,18 @@ function ChoiceGroup<T extends string>({
 
 /* ─── Preview ────────────────────────────────────────────────────────────── */
 
-const CASE_TRANSFORM: Record<TextCase, string> = {
-  none: "none",
-  upper: "uppercase",
-  lower: "lowercase",
-  title: "capitalize",
-};
-
-function PreviewBox({ value }: { value: TypeSettingsValue }) {
-  const decoration = value.decoration ?? "none";
-  const textCase = value.textCase ?? "none";
-  const weight = value.weight ?? NAMED_WEIGHTS.regular;
-  const textAlign = value.align === "justify" ? "justify" : value.align;
+/**
+ * Static preview affordance. It shows the fixed word "Preview" as a plain label
+ * and deliberately does NOT render the selected text with its applied type
+ * styles — the box names the surface, it is not a live sample (#499).
+ */
+function PreviewBox() {
   return (
     <div
       aria-hidden
-      className="flex h-[72px] items-center rounded-c-md bg-c-bg-secondary px-[12px]"
-      style={{ justifyContent: value.align === "center" ? "center" : value.align === "right" ? "flex-end" : "flex-start" }}
+      className="flex h-[72px] items-center justify-center rounded-c-md bg-c-bg-secondary px-[12px]"
     >
-      <span
-        className="truncate text-c-text-secondary"
-        style={{
-          fontFamily: value.fontFamily ? `'${value.fontFamily}', sans-serif` : undefined,
-          fontWeight: weight,
-          fontSize: 16,
-          lineHeight: value.lineHeight ? `${value.lineHeight}px` : undefined,
-          letterSpacing: value.letterSpacing ? `${value.letterSpacing / 100}em` : undefined,
-          textAlign,
-          textTransform: CASE_TRANSFORM[textCase] as never,
-          textDecorationLine:
-            decoration === "underline" ? "underline" : decoration === "strikethrough" ? "line-through" : "none",
-        }}
-      >
-        Preview
-      </span>
+      <span className={clsx(FONT, "text-[16px] font-[450] leading-[24px] text-c-text-secondary")}>Preview</span>
     </div>
   );
 }
@@ -258,6 +240,7 @@ export function TypeSettingsDialog({
       trigger={trigger}
       ariaLabel="Type settings"
       width={COMPACT_INSPECTOR_DIALOG_WIDTH}
+      sideOffset={TYPE_SETTINGS_INSPECTOR_SIDE_OFFSET}
       elevation={400}
     >
       <div className="flex h-[40px] items-center border-b border-c-border pl-[16px] pr-[8px]">
@@ -274,7 +257,7 @@ export function TypeSettingsDialog({
 
       {/* Preview */}
       <div className="px-[12px] pt-[12px]">
-        <PreviewBox value={value} />
+        <PreviewBox />
       </div>
 
       {/* Alignment / vertical / decoration / case */}
