@@ -27,6 +27,13 @@ const LEFT_W = 297;       // track-list width
 const ROW_LAYER = 28;
 const ROW_PROP = 28;      // raised from 24 → contains the 20px bar with 4px above/below
 const ROW_BLOCK = 56;     // master-view lane height — two-row header ([icon][label][+] + [vis][solo][mute][lock], Figma 2-4060) over the centred 20px clip bar
+// Accepted MIME prefixes per master lane, used to type the file-drop target
+// (`useLaneFileDrop`): the Video lane accepts image + video, the Audio lane accepts
+// audio. An audio file dragged over the Video lane therefore does not highlight,
+// and vice-versa. Kept here (not in the host) so the drop affordance is typed by the
+// DS component that owns the lane; the host still re-checks kind before placing.
+const VIDEO_LANE_DROP_ACCEPT = ["image/", "video/"] as const;
+const AUDIO_LANE_DROP_ACCEPT = ["audio/"] as const;
 const RIGHT_OVERLAY_W = 148; // zoom slider + collapse control + padding/border
 const BLUE = "#0d99ff";
 // Playhead treatment (Composa#344): false = the original DISCONNECTED look (pentagon
@@ -1362,10 +1369,82 @@ function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onC
   );
 }
 
-function BaseVideoTrack({ clips, header, viewport, plotWidth, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
+// Master-lane file-drop target. The empty region of a lane is the live "dropzone"
+// affordance (motion-mental-model → "Media: asset, instance, dropzone") — no
+// persisted placeholder clip. A file dragged over the lane body highlights it only
+// when the payload matches the lane's accepted MIME prefixes, and on drop hands the
+// matching files to the host, which imports→places an instance clip at the playhead.
+// Hooks are called unconditionally (rules-of-hooks); the returned handlers are inert
+// when the lane has no accept list or no `onDropFiles`, so an unwired lane is a plain
+// pan surface. Bookkeeping via an enter/leave depth counter avoids flicker as the
+// drag crosses child clip blocks.
+// Whether a drag payload should light up a lane typed to `accept` (MIME prefixes).
+// `fileItemTypes` are the MIME types of the drag's file items (empty string when the
+// browser withholds them mid-drag); `hasFilePayload` is whether the drag carries files
+// at all. With no per-item types we fall back to the presence of a file payload so a
+// valid drag still highlights (the drop handler + host re-check kind before placing).
+// Pure + exported for unit tests; an audio file over the Video lane returns false.
+export function laneDropPayloadAccepted(accept: readonly string[], fileItemTypes: readonly string[], hasFilePayload: boolean): boolean {
+  if (fileItemTypes.length === 0) return hasFilePayload;
+  return fileItemTypes.some(type => type === "" || accept.some(prefix => type.startsWith(prefix)));
+}
+
+// The subset of dropped files a lane typed to `accept` will hand to the host. An
+// empty-type file is kept (the host resolves kind by extension). Pure + exported.
+export function laneDropAcceptedFiles<T extends { type: string }>(accept: readonly string[], files: readonly T[]): T[] {
+  return files.filter(file => file.type === "" || accept.some(prefix => file.type.startsWith(prefix)));
+}
+
+function useLaneFileDrop(accept: readonly string[] | undefined, onDropFiles?: (files: File[]) => void) {
+  const [dragActive, setDragActive] = useState(false);
+  const depth = useRef(0);
+  const enabled = !!accept && !!onDropFiles;
+  const payloadAccepted = (dt: DataTransfer | null): boolean => {
+    if (!accept || !dt) return false;
+    const fileItems = Array.from(dt.items ?? []).filter(item => item.kind === "file");
+    return laneDropPayloadAccepted(accept, fileItems.map(item => item.type), Array.from(dt.types ?? []).includes("Files"));
+  };
+  const reset = () => { depth.current = 0; setDragActive(false); };
+  const handlers = enabled ? {
+    onDragEnter: (event: React.DragEvent) => {
+      if (!payloadAccepted(event.dataTransfer)) return;
+      event.preventDefault();
+      depth.current += 1;
+      setDragActive(true);
+    },
+    onDragOver: (event: React.DragEvent) => {
+      if (!payloadAccepted(event.dataTransfer)) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+    },
+    onDragLeave: () => { depth.current = Math.max(0, depth.current - 1); if (depth.current === 0) setDragActive(false); },
+    onDrop: (event: React.DragEvent) => {
+      event.preventDefault();
+      reset();
+      const files = laneDropAcceptedFiles(accept!, Array.from(event.dataTransfer.files ?? []));
+      if (files.length) onDropFiles!(files);
+    },
+  } : {};
+  return { dragActive: enabled && dragActive, handlers };
+}
+
+// Dashed highlight + hint painted over a lane while a matching file is dragged over
+// it. Non-interactive so it never intercepts the drop or the pan surface beneath.
+function LaneDropOverlay({ hint }: { hint: string }) {
+  return (
+    <div aria-hidden className="absolute inset-[3px] z-20 flex items-center justify-center rounded-[6px] border border-dashed border-c-border-selected-strong bg-c-bg-brand/10 pointer-events-none">
+      <span className={clsx(FONT, "text-[11px] font-[450] text-c-text-secondary")}>{hint}</span>
+    </div>
+  );
+}
+
+function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDropFiles, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
   clips: BaseClipBlock[];
   header: MasterLaneHeaderProps;
   viewport: TimelineViewport; plotWidth: number;
+  accept?: readonly string[];
+  dropHint?: string;
+  onDropFiles?: (files: File[]) => void;
   onSelect?: (id: string) => void;
   onOpen?: (id: string) => void;
   onMove?: (id: string, startMs: number) => void;
@@ -1390,6 +1469,7 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, onSelect, onOpen, 
     onGestureEnd?.({ kind: "base-clip", id: active.id, action: active.kind === "start" ? "trim-start" : active.kind === "end" ? "trim-end" : "move" }, { cancelled });
   };
   const escapeOwnership = useGestureEscapeOwnership(() => finish(true));
+  const { dragActive, handlers: dropHandlers } = useLaneFileDrop(accept, onDropFiles);
   const update = (event: React.PointerEvent, clip: BaseClipBlock) => {
     const active = drag.current;
     if (!active || active.id !== clip.id) return;
@@ -1401,7 +1481,8 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, onSelect, onOpen, 
   return (
     <div className="flex" style={{ height: ROW_BLOCK }}>
       <MasterLaneHeader {...header} />
-      <div data-timeline-pan-surface className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Base video track" : "Base video track (empty)"}>
+      <div {...dropHandlers} data-timeline-pan-surface data-lane-drop-active={dragActive || undefined} className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Base video track" : "Base video track (empty)"}>
+        {dragActive && <LaneDropOverlay hint={dropHint ?? "Drop media here"} />}
         {clips.map(clip => {
           const left = percent(clip.range[0], viewport);
           const width = percentWidth(clip.range[0], clip.range[1], viewport);
@@ -1465,10 +1546,13 @@ function AudioLaneWaveform({ id, peaks, active }: { id: string; peaks?: number[]
   );
 }
 
-function AudioTrack({ clips, header, viewport, plotWidth, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
+function AudioTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDropFiles, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
   clips: AudioClipBlock[];
   header: MasterLaneHeaderProps;
   viewport: TimelineViewport; plotWidth: number;
+  accept?: readonly string[];
+  dropHint?: string;
+  onDropFiles?: (files: File[]) => void;
   onSelect?: (id: string) => void;
   onOpen?: (id: string) => void;
   onMove?: (id: string, startMs: number) => void;
@@ -1493,6 +1577,7 @@ function AudioTrack({ clips, header, viewport, plotWidth, onSelect, onOpen, onMo
     onGestureEnd?.({ kind: "audio-clip", id: active.id, action: active.kind === "start" ? "trim-start" : active.kind === "end" ? "trim-end" : "move" }, { cancelled });
   };
   const escapeOwnership = useGestureEscapeOwnership(() => finish(true));
+  const { dragActive, handlers: dropHandlers } = useLaneFileDrop(accept, onDropFiles);
   const update = (event: React.PointerEvent, clip: AudioClipBlock) => {
     const active = drag.current;
     if (!active || active.id !== clip.id) return;
@@ -1504,7 +1589,8 @@ function AudioTrack({ clips, header, viewport, plotWidth, onSelect, onOpen, onMo
   return (
     <div className="flex" style={{ height: ROW_BLOCK }}>
       <MasterLaneHeader {...header} />
-      <div data-timeline-pan-surface className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Audio track" : "Audio track (empty)"}>
+      <div {...dropHandlers} data-timeline-pan-surface data-lane-drop-active={dragActive || undefined} className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Audio track" : "Audio track (empty)"}>
+        {dragActive && <LaneDropOverlay hint={dropHint ?? "Drop audio here"} />}
         {clips.map(clip => {
           const left = percent(clip.range[0], viewport);
           const width = percentWidth(clip.range[0], clip.range[1], viewport);
@@ -1599,6 +1685,7 @@ export function Timeline({
   onGestureEnd,
   laneControls,
   onLaneAdd,
+  onLaneDropFiles,
   onLaneVisibilityToggle,
   onLaneSoloToggle,
   onLaneMuteToggle,
@@ -1678,6 +1765,13 @@ export function Timeline({
   laneControls?: Partial<Record<MasterLane, MasterLaneControlState>>;
   /** `+` add affordance per master lane (slides → composition; video/audio → clip). Omit to render the `+` disabled. */
   onLaneAdd?: (lane: MasterLane) => void;
+  /**
+   * Files dropped onto a master lane body (Video accepts image/video, Audio accepts
+   * audio; typed by the DS, re-checked by the host). The host imports each file to a
+   * `MediaAsset` and places an instance clip at the playhead — the drop is the
+   * "dropzone" gesture in one motion. Omit to leave the lanes as plain pan surfaces.
+   */
+  onLaneDropFiles?: (lane: MasterLane, files: File[]) => void;
   /** Toggle a master lane's visibility (eye). Presentation-only unless the host maps it to real state. */
   onLaneVisibilityToggle?: (lane: MasterLane) => void;
   /** Toggle a master lane's solo ("S"). */
@@ -1932,8 +2026,8 @@ export function Timeline({
         {master ? (
           <>
             <BlockTrack header={laneHeaderProps("slides", <PenTool size={16} strokeWidth={1.5} />, "Slides")} blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
-            <BaseVideoTrack header={laneHeaderProps("video", <Clapperboard size={16} strokeWidth={1.5} />, "Video")} clips={baseClips} viewport={viewport} plotWidth={plotWidth} onSelect={onClipSelect} onOpen={onClipOpen} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
-            <AudioTrack header={laneHeaderProps("audio", <AudioLines size={16} strokeWidth={1.5} />, "Audio")} clips={audioClips} viewport={viewport} plotWidth={plotWidth} onSelect={onAudioClipSelect} onOpen={onAudioClipOpen} onMove={onAudioClipMove} onTrim={onAudioClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <BaseVideoTrack header={laneHeaderProps("video", <Clapperboard size={16} strokeWidth={1.5} />, "Video")} clips={baseClips} viewport={viewport} plotWidth={plotWidth} accept={VIDEO_LANE_DROP_ACCEPT} dropHint="Drop image or video here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("video", files) : undefined} onSelect={onClipSelect} onOpen={onClipOpen} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <AudioTrack header={laneHeaderProps("audio", <AudioLines size={16} strokeWidth={1.5} />, "Audio")} clips={audioClips} viewport={viewport} plotWidth={plotWidth} accept={AUDIO_LANE_DROP_ACCEPT} dropHint="Drop audio here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("audio", files) : undefined} onSelect={onAudioClipSelect} onOpen={onAudioClipOpen} onMove={onAudioClipMove} onTrim={onAudioClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
           </>
         ) : (
           <>
