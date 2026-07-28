@@ -26,6 +26,8 @@ export const proposedLucideMetadata = {
   scanSquare: { pr: 4550, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4550", replacementImport: "ScanSquare" },
   letterSpacing: { pr: 3038, sourceUrl: "https://github.com/lucide-icons/lucide/pull/3038", replacementImport: "LetterSpacing" },
   lineHeight: { pr: 3039, sourceUrl: "https://github.com/lucide-icons/lucide/pull/3039", replacementImport: "LineHeight" },
+  squareText: { pr: 4609, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4609", replacementImport: "SquareText" },
+  textMargins: { pr: 4610, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4610", replacementImport: "TextMargins" },
 } as const satisfies Record<string, ProposedLucideMetadata>;
 
 // TODO(lucide-pr-4541): replace with lucide-react LayoutHorizontal after upstream merge.
@@ -189,6 +191,27 @@ export const ProposedLetterSpacing = createLucideIcon("ProposedLetterSpacing", [
   ["path", { d: "M21 2v20", key: "bar-right" }],
   ["path", { d: "m7.5 17 4.039-9.69a.5.5 0 0 1 .923 0L16.5 17", key: "a-stroke" }],
   ["path", { d: "M8.804 14h6.392", key: "a-bar" }],
+]);
+
+// TODO(lucide-pr-4609): replace with lucide-react SquareText after upstream merge.
+// Text-resizing "fixed size" glyph (owner ask): a solid square with three text
+// lines — the fully bounded text box.
+export const ProposedSquareText = createLucideIcon("ProposedSquareText", [
+  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "frame" }],
+  ["path", { d: "M7 8h8", key: "line-1" }],
+  ["path", { d: "M7 12h10", key: "line-2" }],
+  ["path", { d: "M7 16h6", key: "line-3" }],
+]);
+
+// TODO(lucide-pr-4610): replace with lucide-react TextMargins after upstream merge.
+// Text-resizing "auto height" glyph (owner ask): text bounded left and right by
+// two vertical rules — fixed width, height flows.
+export const ProposedTextMargins = createLucideIcon("ProposedTextMargins", [
+  ["path", { d: "M3 3v18", key: "left" }],
+  ["path", { d: "M21 3v18", key: "right" }],
+  ["path", { d: "M7 8h8", key: "line-1" }],
+  ["path", { d: "M7 12h10", key: "line-2" }],
+  ["path", { d: "M7 16h6", key: "line-3" }],
 ]);
 
 // TODO(lucide-pr-3039): replace with lucide-react LineHeight after upstream merge.

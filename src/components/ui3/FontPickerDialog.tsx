@@ -140,8 +140,9 @@ type AccessState = "idle" | "loading" | "granted" | "denied";
 /* ─── Installed-fonts access explainer ───────────────────────────────────── */
 
 /**
- * Explainer step mirroring the owner's shared "Need to use the desktop app or
- * installed fonts?" dialog (Figma Editor-Study `306-4`). Reflows the reference's
+ * Explainer step mirroring the owner's shared installed-fonts dialog (Figma
+ * Editor-Study `306-4`). Header drops the reference's "desktop app" wording —
+ * Composa has no desktop app (owner). Reflows the reference's
  * side-by-side icon/body into the compact 240px anchored surface. Continue
  * requests the browser's local-font permission via the injected loader.
  */
@@ -158,7 +159,7 @@ function installedFontsAccessScreen({
       /* Header — title + close (first child, doubles as the drag handle) */
       <div key="header" className="flex min-h-[40px] shrink-0 items-start gap-[4px] border-b border-c-border pl-[16px] pr-[8px] pt-[12px]">
         <span className={clsx(FONT, "min-w-0 flex-1 text-[11px] font-[550] leading-[16px] text-c-text")}>
-          Need to use the desktop app or installed fonts?
+          Need to use installed fonts?
         </span>
         <button
           type="button"

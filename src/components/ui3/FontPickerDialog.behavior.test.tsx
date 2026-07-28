@@ -169,7 +169,7 @@ describe("FontPickerDialog — installed-fonts access", () => {
 
     // Open the explainer — mirrors the owner's shared Figma 306-4 dialog.
     act(() => buttonWithText(renderer, "Use installed fonts").props.onClick());
-    expect(renderer.root.findAll(n => n.children?.[0] === "Need to use the desktop app or installed fonts?").length).toBe(1);
+    expect(renderer.root.findAll(n => n.children?.[0] === "Need to use installed fonts?").length).toBe(1);
 
     // Continue → request local fonts → back to the list with the granted font merged.
     await act(async () => { buttonWithText(renderer, "Continue").props.onClick(); });

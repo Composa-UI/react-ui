@@ -13,6 +13,7 @@ import {
   ArrowRightFromLine, Columns2, Grid2x2,
 } from "lucide-react";
 import { CirclesFour } from "@phosphor-icons/react";
+import { ProposedSquareText, ProposedTextMargins } from "../../icons/proposed-lucide";
 import {
   PanelSection, PanelFieldRow, PanelFullRow, PanelRow,
   IconButtonRow, PanelActionBtn, PanelEntry, ScrollArea, type IconBtn,
@@ -520,15 +521,17 @@ const TEXT_SIZING_LABELS: Record<TextSizingMode, string> = {
 };
 
 // Icon segments for the text-resizing control (owner ask: icons, not text
-// labels). Refined to the owner's exact glyph description (#460):
-//   auto-width  → an arrow-from-a-line glyph      (ArrowRightFromLine)
-//   auto-height → two vertical bars with a line   (Columns2)
-//   fixed-size  → a square with inner lines        (Grid2x2)
-// The word labels are kept as each segment's ariaLabel for accessibility.
+// labels). Owner-specified glyphs, updated to the exact Lucide icons he linked:
+//   auto-width  → an arrow-from-a-line glyph               (ArrowRightFromLine)
+//   auto-height → text bounded by two vertical rules       (text-margins, lucide#4610)
+//   fixed-size  → a solid text box                          (square-text, lucide#4609)
+// text-margins / square-text aren't in lucide-react yet, so they render via the
+// proposed-lucide shims (auto-replaced on upstream merge). Word labels are kept
+// as each segment's ariaLabel for accessibility.
 const TEXT_SIZING_ICONS: Record<TextSizingMode, ReactNode> = {
   "auto-width": <ArrowRightFromLine size={16} strokeWidth={1.5} />,
-  "auto-height": <Columns2 size={16} strokeWidth={1.5} />,
-  "fixed-size": <Grid2x2 size={16} strokeWidth={1.5} />,
+  "auto-height": <ProposedTextMargins size={16} strokeWidth={1.5} />,
+  "fixed-size": <ProposedSquareText size={16} strokeWidth={1.5} />,
 };
 
 function TextSizingModeField({

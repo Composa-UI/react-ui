@@ -1577,11 +1577,11 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
             <span aria-label={`Trim start of ${clip.name}`} role="slider" aria-valuemin={0} aria-valuemax={clip.range[1]} aria-valuenow={clip.range[0]} tabIndex={0}
               onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "start", Math.min(clip.range[1], Math.max(0, clip.range[0] + (event.key === "ArrowLeft" ? -100 : 100))), timelineClipTrimDetail("keyboard", viewport, plotWidth)); } }}
               onPointerDown={event => begin(event, clip, "start")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
-              className="absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
+              className={clsx("absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full cursor-ew-resize", clip.selected ? "bg-white" : "bg-c-icon-secondary")} />
             <span aria-label={`Trim end of ${clip.name}`} role="slider" aria-valuemin={clip.range[0]} aria-valuemax={Number.MAX_SAFE_INTEGER} aria-valuenow={clip.range[1]} tabIndex={0}
               onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "end", Math.max(clip.range[0], clip.range[1] + (event.key === "ArrowLeft" ? -100 : 100)), timelineClipTrimDetail("keyboard", viewport, plotWidth)); } }}
               onPointerDown={event => begin(event, clip, "end")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
-              className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
+              className={clsx("absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full cursor-ew-resize", clip.selected ? "bg-white" : "bg-c-icon-secondary")} />
             <span className={clsx(FONT, "relative text-[11px] font-[450] truncate", clip.thumbnail || clip.tint ? "text-white" : "text-c-text-secondary")}>{clip.name}</span>
           </div>;
         })}
@@ -1652,7 +1652,7 @@ function AudioLaneWaveform({ id, peaks, active }: { id: string; peaks?: number[]
   return (
     <div ref={ref} aria-hidden className="absolute inset-0 flex items-center justify-between gap-[1px] px-[6px] opacity-70 pointer-events-none">
       {values.map((value, index) => (
-        <span key={index} className={clsx("min-w-[1px] max-w-[2px] flex-1 rounded-full", active ? "bg-c-text" : "bg-c-icon-secondary")}
+        <span key={index} className={clsx("min-w-[1px] max-w-[2px] flex-1 rounded-full", active ? "bg-white" : "bg-c-icon-secondary")}
           style={{ height: `${Math.max(8, Math.round(value * 100))}%` }} />
       ))}
     </div>
@@ -1717,21 +1717,23 @@ function AudioTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDr
               }
             }}
             onPointerDown={event => begin(event, clip, "move")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
-            className={clsx("absolute inset-y-[4px] rounded-[4px] flex flex-col justify-center gap-[2px] px-[8px] py-[5px] overflow-hidden border bg-c-bg-secondary",
-              clip.selected ? "border-c-border-selected-strong" : "border-c-border")}
+            className={clsx("absolute inset-y-[4px] rounded-[4px] flex flex-col justify-center gap-[2px] px-[8px] py-[5px] overflow-hidden border",
+              // Selection mirrors the local (slide) timeline bar (owner): blue fill
+              // + strong border; the name, waveform, and trim handles go white on it.
+              clip.selected ? "border-c-border-selected-strong bg-c-bg-brand" : "border-c-border bg-c-bg-secondary")}
             style={{ left, width }}>
             {/* vertical stack (owner): clip name on top, waveform below — not the old
                 side-by-side (name overlaid on a full-bleed waveform). */}
-            <span className={clsx(FONT, "relative z-10 shrink-0 text-[11px] font-[450] truncate leading-none", clip.selected ? "text-c-text" : "text-c-text-secondary")}>{clip.name}</span>
+            <span className={clsx(FONT, "relative z-10 shrink-0 text-[11px] font-[450] truncate leading-none", clip.selected ? "text-white" : "text-c-text-secondary")}>{clip.name}</span>
             <div className="relative flex-1 min-h-0 w-full"><AudioLaneWaveform id={clip.id} peaks={clip.waveform} active={clip.selected} /></div>
             <span aria-label={`Trim start of ${clip.name}`} role="slider" aria-valuemin={0} aria-valuemax={clip.range[1]} aria-valuenow={clip.range[0]} tabIndex={0}
               onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "start", Math.min(clip.range[1], Math.max(0, clip.range[0] + (event.key === "ArrowLeft" ? -100 : 100))), timelineClipTrimDetail("keyboard", viewport, plotWidth)); } }}
               onPointerDown={event => begin(event, clip, "start")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
-              className="absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize z-10" />
+              className={clsx("absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full cursor-ew-resize z-10", clip.selected ? "bg-white" : "bg-c-icon-secondary")} />
             <span aria-label={`Trim end of ${clip.name}`} role="slider" aria-valuemin={clip.range[0]} aria-valuemax={Number.MAX_SAFE_INTEGER} aria-valuenow={clip.range[1]} tabIndex={0}
               onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "end", Math.max(clip.range[0], clip.range[1] + (event.key === "ArrowLeft" ? -100 : 100)), timelineClipTrimDetail("keyboard", viewport, plotWidth)); } }}
               onPointerDown={event => begin(event, clip, "end")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
-              className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize z-10" />
+              className={clsx("absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full cursor-ew-resize z-10", clip.selected ? "bg-white" : "bg-c-icon-secondary")} />
           </div>;
         })}
       </div>
