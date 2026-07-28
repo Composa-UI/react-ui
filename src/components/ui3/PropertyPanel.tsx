@@ -161,6 +161,8 @@ const FONT = "font-[family-name:var(--composa-font-family)]";
 const BODY = clsx(FONT, "text-[11px] font-[450] leading-[16px] tracking-[0.055px] text-c-text");
 const SUBLABEL = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary");
 const SettingsIcon = iconForSemantic("settings");
+// Blend mode reads as a droplet (owner ask) — the glyph is defined once in the
+// icon-semantics map (blend-mode → Droplet); the trigger + collapsed row share it.
 const BlendModeIcon = iconForSemantic("blend-mode");
 const AbsolutePositionIcon = iconForSemantic("absolute-position");
 const RotationIcon = iconForSemantic("rotation");
@@ -497,33 +499,26 @@ function TextSizingModeField({
   disabled?: boolean;
   onChange?: (mode: TextSizingMode) => void;
 }) {
-  const renderedLabel = value === "mixed" ? "Mixed" : value ? TEXT_SIZING_LABELS[value] : "Text resizing";
+  // Persistent mode selection → segmented control (property-panel.md §Segmented:
+  // "2–5 mutually exclusive inline options … used for persistent mode selection").
+  // "mixed" (or no value yet) shows no active segment, matching the DS mixed rule.
   return (
     <PanelFieldRow
       label="Text resizing"
       reserveRightSlot={false}
       left={
-        <PopoverMenu
-          directTrigger
-          trigger={<Dropdown
-            ariaLabel={`Text resizing: ${renderedLabel}`}
-            value={renderedLabel}
-            fullWidth
-            disabled={disabled || !onChange}
-          />}
-        >
-          {close => <Menu minWidth={190}>
-            {availableModes.map(mode => (
-              <MenuRow
-                key={mode}
-                type="checkmark"
-                label={TEXT_SIZING_LABELS[mode]}
-                checked={value === mode}
-                onClick={() => { onChange?.(mode); close(); }}
-              />
-            ))}
-          </Menu>}
-        </PopoverMenu>
+        <SegmentedControl
+          className="w-full"
+          ariaLabel="Text resizing"
+          segments={availableModes.map(mode => ({
+            value: mode,
+            label: TEXT_SIZING_LABELS[mode],
+            ariaLabel: TEXT_SIZING_LABELS[mode],
+          }))}
+          value={value === "mixed" || value === undefined ? "" : value}
+          onChange={next => onChange?.(next as TextSizingMode)}
+          disabled={disabled || !onChange}
+        />
       }
     />
   );
@@ -1659,89 +1654,13 @@ function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = 
 }
 
 // ─── Project mode sections (inspector-project-mode.md) ───────────────────────
-// Active when nothing is selected. Header label "Project"; body = Canvas,
-// Master timeline, Export (stub).
-
-// Canvas §Canvas — Aspect ratio (segmented, Custom trailing), Dimensions W|H (px),
-// Frame rate (dropdown). Presets are presentational here; Custom just unlocks the
-// segmented state visually.
-function CanvasSection({
-  width = 1920,
-  height = 1080,
-  frameRate = 30,
-  onWidthChange,
-  onHeightChange,
-  onFrameRateChange,
-  widthControlled = false, heightControlled = false, frameRateControlled = false,
-}: {
-  width?: number;
-  height?: number;
-  frameRate?: ProjectFrameRate;
-  onWidthChange?: (value: number) => void;
-  onHeightChange?: (value: number) => void;
-  onFrameRateChange?: (value: ProjectFrameRate) => void;
-  widthControlled?: boolean; heightControlled?: boolean; frameRateControlled?: boolean;
-}) {
-  const [aspect, setAspect] = useState("16:9");
-  const [internalWidth, setInternalWidth] = useState(width);
-  const [internalHeight, setInternalHeight] = useState(height);
-  const [internalFrameRate, setInternalFrameRate] = useState<ProjectFrameRate>(frameRate);
-  const renderedWidth = widthControlled ? width : internalWidth;
-  const renderedHeight = heightControlled ? height : internalHeight;
-  const renderedFrameRate = frameRateControlled ? frameRate : internalFrameRate;
-  const aspectOptions = ["16:9", "9:16", "1:1", "4:3", "Custom"];
-  return (
-    <PanelSection title="Canvas">
-      {/* Aspect ratio — dropdown (full width) */}
-      <PanelFieldRow
-        label="Aspect ratio"
-        reserveRightSlot={false}
-        left={
-          <PopoverMenu align="right" trigger={<Dropdown value={aspect} fullWidth />}>
-            {(close) => (
-              <Menu minWidth={140}>
-                {aspectOptions.map((o) => (
-                  <MenuRow key={o} type="simple" label={o} onClick={() => { setAspect(o); close(); }} />
-                ))}
-              </Menu>
-            )}
-          </PopoverMenu>
-        }
-      />
-
-      {/* Dimensions — W | H numeric (px) */}
-      <PanelFieldRow
-        label="Dimensions"
-        reserveRightSlot={false}
-        left={
-          <NumericInput
-            iconLead={<span className={FONT}>W</span>}
-            value={renderedWidth}
-            onChange={value => { if (!widthControlled) setInternalWidth(value); onWidthChange?.(value); }}
-            min={1}
-            suffix="px"
-          />
-        }
-        right={
-          <NumericInput
-            iconLead={<span className={FONT}>H</span>}
-            value={renderedHeight}
-            onChange={value => { if (!heightControlled) setInternalHeight(value); onHeightChange?.(value); }}
-            min={1}
-            suffix="px"
-          />
-        }
-      />
-
-      {/* Frame rate — dropdown (full width) */}
-      <PanelFieldRow
-        label="Frame rate"
-        reserveRightSlot={false}
-        left={<ChoiceDropdown value={String(renderedFrameRate)} options={["24", "25", "30", "60"]} labels={{ "24": "24 fps", "25": "25 fps", "30": "30 fps", "60": "60 fps" }} onChange={value => { const next = Number(value) as ProjectFrameRate; if (!frameRateControlled) setInternalFrameRate(next); onFrameRateChange?.(next); }} />}
-      />
-    </PanelSection>
-  );
-}
+// Active when nothing is selected. Header label "Project" (+ the canvas-size /
+// frame-rate control on the right); body = Master timeline, Export (stub).
+//
+// The Canvas section (Aspect ratio · Dimensions · Frame rate) no longer lives in
+// the project inspector body: those controls were folded into the top-right
+// ProjectCanvasSizeControl dropdown (owner ask), so aspect (presets), dimensions
+// (Custom W/H) and frame rate are authored from that single control instead.
 
 // Master timeline §Master timeline — Total duration (s), Playhead (s).
 function MasterTimelineSection({
@@ -2706,22 +2625,50 @@ const PROJECT_CANVAS_PRESETS: ReadonlyArray<ProjectCanvasSize & { label: string 
   { label: "Portrait 9:16", width: 1080, height: 1920 },
 ];
 
+const PROJECT_FRAME_RATE_OPTIONS = ["24", "25", "30", "60"] as const;
+const PROJECT_FRAME_RATE_LABELS: Record<string, string> = { "24": "24 fps", "25": "25 fps", "30": "30 fps", "60": "60 fps" };
+
+// The project's canvas size AND frame rate live together in this single top-right
+// control (owner ask: the project inspector no longer carries a Canvas section).
+// Presets stand in for aspect ratio; Custom exposes W/H; frame rate is folded in
+// as its own row so the whole "Canvas" concern is authored from one dropdown.
 function ProjectCanvasSizeControl({
   width,
   height,
+  frameRate,
   onChange,
   onCustomRequest,
+  onFrameRateChange,
 }: {
   width: number;
   height: number;
+  frameRate?: ProjectFrameRate;
   onChange?: (size: ProjectCanvasSize) => void;
   onCustomRequest?: () => void;
+  onFrameRateChange?: (value: ProjectFrameRate) => void;
 }) {
   const currentPreset = PROJECT_CANVAS_PRESETS.find(preset => preset.width === width && preset.height === height);
   const currentLabel = currentPreset?.label ?? `${formatNumericDisplay(width)} × ${formatNumericDisplay(height)}`;
   const [customEditing, setCustomEditing] = useState(false);
   const [customWidth, setCustomWidth] = useState(width);
   const [customHeight, setCustomHeight] = useState(height);
+  const [customFrameRate, setCustomFrameRate] = useState<ProjectFrameRate>(frameRate ?? 30);
+  const showFrameRate = frameRate !== undefined;
+  // Only the frame-rate control varies in width; a fixed minWidth keeps the menu
+  // from jumping when the user drops into Custom editing (owner ask #4).
+  const frameRateField = (
+    <ChoiceDropdown
+      ariaLabel="Frame rate"
+      value={String(customEditing ? customFrameRate : frameRate ?? 30)}
+      options={[...PROJECT_FRAME_RATE_OPTIONS]}
+      labels={PROJECT_FRAME_RATE_LABELS}
+      onChange={value => {
+        const next = Number(value) as ProjectFrameRate;
+        if (customEditing) setCustomFrameRate(next);
+        onFrameRateChange?.(next);
+      }}
+    />
+  );
   return (
     <PopoverMenu
       align="right"
@@ -2730,7 +2677,7 @@ function ProjectCanvasSizeControl({
         ariaLabel={`Project canvas size: ${currentLabel}`}
         value={currentLabel}
         stroke={false}
-        disabled={!onChange && !onCustomRequest}
+        disabled={!onChange && !onCustomRequest && !onFrameRateChange}
       />}
     >
       {close => <Menu minWidth={190}>
@@ -2758,28 +2705,30 @@ function ProjectCanvasSizeControl({
               } else {
                 setCustomWidth(width);
                 setCustomHeight(height);
+                setCustomFrameRate(frameRate ?? 30);
                 setCustomEditing(true);
               }
             }}
           />
         ) : (
+          // Vertical stack (owner ask #4): W, then H, then Frame rate — each a
+          // full-width field — so the menu keeps its width instead of widening.
           <div className="flex flex-col gap-[8px] px-[8px] py-[6px]" aria-label="Custom project canvas size">
-            <div className="flex items-center gap-[4px]">
-              <NumericInput
-                ariaLabel="Custom canvas width"
-                iconLead={<span className={FONT}>W</span>}
-                value={customWidth}
-                min={1}
-                onChange={setCustomWidth}
-              />
-              <NumericInput
-                ariaLabel="Custom canvas height"
-                iconLead={<span className={FONT}>H</span>}
-                value={customHeight}
-                min={1}
-                onChange={setCustomHeight}
-              />
-            </div>
+            <NumericInput
+              ariaLabel="Custom canvas width"
+              iconLead={<span className={FONT}>W</span>}
+              value={customWidth}
+              min={1}
+              onChange={setCustomWidth}
+            />
+            <NumericInput
+              ariaLabel="Custom canvas height"
+              iconLead={<span className={FONT}>H</span>}
+              value={customHeight}
+              min={1}
+              onChange={setCustomHeight}
+            />
+            {showFrameRate && frameRateField}
             <div className="flex justify-end gap-[4px]">
               <Button variant="Ghost" size="small" label="Cancel" onClick={() => setCustomEditing(false)} />
               <Button
@@ -2788,6 +2737,7 @@ function ProjectCanvasSizeControl({
                 label="Apply"
                 onClick={() => {
                   onChange?.({ width: Math.max(1, customWidth), height: Math.max(1, customHeight) });
+                  onFrameRateChange?.(customFrameRate);
                   setCustomEditing(false);
                   close();
                 }}
@@ -2795,6 +2745,13 @@ function ProjectCanvasSizeControl({
             </div>
           </div>
         )}
+        {!customEditing && showFrameRate && [
+          <MenuRow key="frame-rate-divider" type="divider" />,
+          <div key="frame-rate-field" className="flex flex-col gap-[4px] px-[8px] py-[6px]" aria-label="Project frame rate">
+            <div className={SUBLABEL}>Frame rate</div>
+            {frameRateField}
+          </div>,
+        ]}
       </Menu>}
     </PopoverMenu>
   );
@@ -2806,16 +2763,20 @@ function InspectorTabs({
   panelPrefix,
   projectWidth,
   projectHeight,
+  projectFrameRate,
   onProjectCanvasSizeChange,
   onCustomProjectCanvasSizeRequest,
+  onProjectFrameRateChange,
 }: {
   value: string;
   onChange: (value: string) => void;
   panelPrefix: "slide" | "element";
   projectWidth: number;
   projectHeight: number;
+  projectFrameRate?: ProjectFrameRate;
   onProjectCanvasSizeChange?: (size: ProjectCanvasSize) => void;
   onCustomProjectCanvasSizeRequest?: () => void;
+  onProjectFrameRateChange?: (value: ProjectFrameRate) => void;
 }) {
   return (
     <div className="flex items-center gap-[4px]">
@@ -2831,8 +2792,10 @@ function InspectorTabs({
       <ProjectCanvasSizeControl
         width={projectWidth}
         height={projectHeight}
+        frameRate={projectFrameRate}
         onChange={onProjectCanvasSizeChange}
         onCustomRequest={onCustomProjectCanvasSizeRequest}
+        onFrameRateChange={onProjectFrameRateChange}
       />
     </div>
   );
@@ -3193,14 +3156,22 @@ export function PropertyPanel(props: PropertyPanelProps) {
           Active when nothing is selected. Static "Project" header, no tabs. */}
       {mode === "project" && (
         <ScrollArea>
-          {/* Panel header — static "Project" label */}
-          <div className="h-[40px] flex items-center px-[16px] border-b border-c-border">
-            <span className={clsx(FONT, "text-[11px] font-[550] text-c-text")}>{projectName}</span>
+          {/* Panel header — static "Project" label + the canvas-size/frame-rate
+              control on the right. The Canvas section no longer lives in the
+              project inspector body: its aspect (presets), dimensions (Custom
+              W/H) and frame rate are all authored from this one dropdown. */}
+          <div className="h-[40px] flex items-center gap-[8px] px-[16px] border-b border-c-border">
+            <span className={clsx(FONT, "text-[11px] font-[550] text-c-text flex-1 min-w-0")}>{projectName}</span>
+            <ProjectCanvasSizeControl
+              width={projectWidth}
+              height={projectHeight}
+              frameRate={projectFrameRate}
+              onChange={changeProjectCanvasSize}
+              onCustomRequest={onCustomProjectCanvasSizeRequest}
+              onFrameRateChange={onProjectFrameRateChange}
+            />
           </div>
 
-          <CanvasSection width={projectWidth} height={projectHeight} frameRate={projectFrameRate}
-            widthControlled={props.projectWidth !== undefined} heightControlled={props.projectHeight !== undefined} frameRateControlled={props.projectFrameRate !== undefined}
-            onWidthChange={onProjectWidthChange} onHeightChange={onProjectHeightChange} onFrameRateChange={onProjectFrameRateChange} />
           <MasterTimelineSection totalDuration={projectDuration} playhead={projectPlayhead}
             durationControlled={props.projectDuration !== undefined} playheadControlled={props.projectPlayhead !== undefined}
             onTotalDurationChange={onProjectDurationChange} onPlayheadChange={onProjectPlayheadChange} />
@@ -3220,8 +3191,10 @@ export function PropertyPanel(props: PropertyPanelProps) {
               panelPrefix="slide"
               projectWidth={projectWidth}
               projectHeight={projectHeight}
+              projectFrameRate={projectFrameRate}
               onProjectCanvasSizeChange={changeProjectCanvasSize}
               onCustomProjectCanvasSizeRequest={onCustomProjectCanvasSizeRequest}
+              onProjectFrameRateChange={onProjectFrameRateChange}
             />
           </div>
 
@@ -3366,8 +3339,10 @@ export function PropertyPanel(props: PropertyPanelProps) {
           panelPrefix="element"
           projectWidth={projectWidth}
           projectHeight={projectHeight}
+          projectFrameRate={projectFrameRate}
           onProjectCanvasSizeChange={changeProjectCanvasSize}
           onCustomProjectCanvasSizeRequest={onCustomProjectCanvasSizeRequest}
+          onProjectFrameRateChange={onProjectFrameRateChange}
         />
       </div>
 

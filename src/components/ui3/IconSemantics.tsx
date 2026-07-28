@@ -12,7 +12,7 @@ import {
   AlignStartVertical,
   ArrowDownToLine,
   ArrowUpToLine,
-  Blend,
+  Droplet,
   LayoutGrid,
   Component,
   Frame,
@@ -163,7 +163,9 @@ export const composaIconSemantics = {
   "absolute-position": ProposedScanSquare,
   rotation: ProposedAngle,
   opacity: ProposedOpacity,
-  "blend-mode": Blend,
+  // Blend mode reads as a droplet per owner ask — the semantic name stays
+  // "blend-mode" (its meaning), the glyph is Droplet (mirrors layout-wrap → grid).
+  "blend-mode": Droplet,
   "fill-video": SquarePlay,
   "sizing-fixed": Square,
   "sizing-hug": Shrink,
