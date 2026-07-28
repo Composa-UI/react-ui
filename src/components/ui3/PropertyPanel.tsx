@@ -1096,8 +1096,10 @@ function AppearanceSection({
         </>
       }
     >
-      {/* Opacity + Corner radius — each labeled; reserved slot holds the independent-corners toggle */}
-      <div className="flex items-end gap-[8px] pl-[16px] pr-[16px] pt-[3px]">
+      {/* Opacity + Corner radius — each labeled; reserved slot holds the independent-corners toggle.
+          pb-[4px] matches the PanelFieldRow bottom inset used by sibling sections (Position, etc.)
+          so Appearance's below-control spacing is not short when it is the section's last row (#460). */}
+      <div className="flex items-end gap-[8px] pl-[16px] pr-[16px] pt-[3px] pb-[4px]">
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Opacity</div>
           <NumericInput ariaLabel="Opacity" iconLead={<OpacityIcon data-icon-semantic="opacity" size={16} strokeWidth={1.5} />} value={opacity} onChange={onOpacityChange} min={0} max={100} suffix="%" mixed={opacityMixed} keyframe={opacityKeyframe} />
@@ -1281,16 +1283,19 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, 
         </>
       }
     >
-      {/* Entry = base ColorInput + eye + minus icon buttons on the right (matches ours) */}
+      {/* Entry = ColorInput summary + the shared PanelEntry grip/eye/remove anatomy,
+          so Fill · Stroke · Effects render through ONE row primitive (#460). */}
       {fills.map(fill => (
-        <div key={fill.id} draggable={!!onReorder && fills.length > 1} onDragStart={event => event.dataTransfer.setData("text/plain", fill.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), fill.id); }} className="group/row flex items-center pr-[16px] h-[32px]">
-          <DragGutter grip={fills.length > 1} />
-          {/* flex items-center: the dialog trigger wraps the swatch in an
-              inline-flex span; a plain block cell would give it a line box whose
-              baseline strut top-aligns the 24px swatch and lifts its centre ~3px
-              above the grip/eye/minus baseline (#490). Centering the cell keeps
-              every row element on one baseline. */}
-          <div className="flex-1 min-w-0 flex items-center">
+        <div key={fill.id} draggable={!!onReorder && fills.length > 1} onDragStart={event => event.dataTransfer.setData("text/plain", fill.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), fill.id); }}>
+          <PanelEntry
+            draggable={fills.length > 1}
+            visible={fill.visible}
+            hideLabel="Hide"
+            showLabel="Show"
+            removeLabel="Remove fill"
+            onToggleVisible={() => toggleFill(fill.id)}
+            onRemove={() => removeFill(fill.id)}
+          >
             <ColorDialog
               capabilities={capabilities}
               open={activeStackDialog === `fill-color:${fill.id}`}
@@ -1307,15 +1312,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, 
               hex={fill.color.replace("#", "")}
               onHexChange={color => updateFill(fill.id, { color: `#${color.replace(/^#/, "")}` })}
             />
-          </div>
-          <div className="shrink-0 flex items-center gap-[4px] pl-[8px]">
-            <PanelActionBtn
-              icon={fill.visible ? <Eye size={16} strokeWidth={1.5} /> : <EyeOff size={16} strokeWidth={1.5} />}
-              label={fill.visible ? "Hide" : "Show"}
-              onClick={() => toggleFill(fill.id)}
-            />
-            <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove fill" onClick={() => removeFill(fill.id)} />
-          </div>
+          </PanelEntry>
         </div>
       ))}
     </PanelSection>
@@ -1355,37 +1352,33 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
     >
       {strokes.map(stroke => (
         <div key={stroke.id} draggable={!!onReorder && strokes.length > 1} onDragStart={event => event.dataTransfer.setData("text/plain", stroke.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), stroke.id); }} className="pb-[2px]">
-          {/* Row 1 — color + eye + minus (same as Fill) */}
-          <div className="group/row flex items-center pr-[16px] h-[32px]">
-            <DragGutter grip={strokes.length > 1} />
-            {/* flex items-center — same baseline fix as the Fill row (#490). */}
-            <div className="flex-1 min-w-0 flex items-center">
-              <ColorDialog
-                capabilities={capabilities}
-                open={activeStackDialog === `stroke-color:${stroke.id}`}
-                onClose={() => onActiveStackDialogChange(null)}
-                trigger={<ColorInput
-                  ariaLabel="Stroke color"
-                  fullWidth
-                  color={stroke.color}
-                  opacity={stroke.opacity}
-                  onColorChange={color => update(stroke.id, { color })}
-                  onOpacityChange={opacity => update(stroke.id, { opacity })}
-                  onSwatchClick={() => onActiveStackDialogChange(`stroke-color:${stroke.id}`)}
-                />}
-                hex={stroke.color.replace("#", "")}
-                onHexChange={color => update(stroke.id, { color: `#${color.replace(/^#/, "")}` })}
-              />
-            </div>
-            <div className="shrink-0 flex items-center gap-[4px] pl-[8px]">
-              <PanelActionBtn
-                icon={stroke.visible ? <Eye size={16} strokeWidth={1.5} /> : <EyeOff size={16} strokeWidth={1.5} />}
-                label={stroke.visible ? "Hide" : "Show"}
-                onClick={() => toggle(stroke.id)}
-              />
-              <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove stroke" onClick={() => remove(stroke.id)} />
-            </div>
-          </div>
+          {/* Row 1 — color summary through the shared PanelEntry primitive (#460). */}
+          <PanelEntry
+            draggable={strokes.length > 1}
+            visible={stroke.visible}
+            hideLabel="Hide"
+            showLabel="Show"
+            removeLabel="Remove stroke"
+            onToggleVisible={() => toggle(stroke.id)}
+            onRemove={() => remove(stroke.id)}
+          >
+            <ColorDialog
+              capabilities={capabilities}
+              open={activeStackDialog === `stroke-color:${stroke.id}`}
+              onClose={() => onActiveStackDialogChange(null)}
+              trigger={<ColorInput
+                ariaLabel="Stroke color"
+                fullWidth
+                color={stroke.color}
+                opacity={stroke.opacity}
+                onColorChange={color => update(stroke.id, { color })}
+                onOpacityChange={opacity => update(stroke.id, { opacity })}
+                onSwatchClick={() => onActiveStackDialogChange(`stroke-color:${stroke.id}`)}
+              />}
+              hex={stroke.color.replace("#", "")}
+              onHexChange={color => update(stroke.id, { color: `#${color.replace(/^#/, "")}` })}
+            />
+          </PanelEntry>
           {/* Row 2 — Position · Weight · settings · sides */}
           <div className="flex items-end gap-[8px] px-[16px] pb-[4px]">
             <div className="flex-1 min-w-0">
@@ -1465,7 +1458,7 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
             onRemove={() => remove(effect.id)}
           >
             <EffectDetailsDialog open={activeStackDialog === `effect:${effect.id}`} value={effect}
-              trigger={<Dropdown value={effect.type} fullWidth onClick={() => onActiveStackDialogChange(`effect:${effect.id}`)} />}
+              trigger={<Dropdown value={effect.type} hug ariaLabel={`Effect type: ${effect.type}`} onClick={() => onActiveStackDialogChange(`effect:${effect.id}`)} />}
               capabilities={capabilities}
               onChange={patch => update(effect.id, patch)} onClose={() => onActiveStackDialogChange(null)} />
           </PanelEntry>
