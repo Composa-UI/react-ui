@@ -21,6 +21,7 @@ import { Tooltip, TooltipProvider } from "./components/ui3/Tooltip";
 import { ComposaModeProvider } from "./components/ui3/useComposaMode";
 import { SegmentedControl } from "./components/ui3/SegmentedControl";
 import { Dial } from "./components/ui3/Dial";
+import { ColorWheel } from "./components/ui3/ColorWheel";
 import { AlignmentControl, type AlignmentValue } from "./components/ui3/AlignmentControl";
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./components/ui3/LayerTypeIcon";
 import { AnchoredInspectorOverlay } from "./components/ui3/AnchoredInspectorOverlay";
@@ -1180,6 +1181,24 @@ export default function Playground() {
         onClipTrimOutChange={trimOut => setClipContract(value => ({ ...value, trimOut }))}
         clipSpeed={clipContract.speed} onClipSpeedChange={speed => setClipContract(value => ({ ...value, speed }))}
         onReplaceClip={() => console.info("Replace video")} onDeleteClip={() => console.info("Delete clip")} />
+    </div>;
+  }
+
+  if (view === "color-wheel") {
+    const dark = new URLSearchParams(window.location.search).get("theme") === "dark";
+    return <div data-composa-mode={dark ? "dark" : undefined} style={{ height: "100vh", width: "100vw", display: "flex", gap: 48, alignItems: "center", justifyContent: "center", background: dark ? "#1e1e1e" : "#e6e6e6" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+        <ColorWheel ariaLabel="Shadows color wheel" defaultHue={210} defaultSaturation={0.35} />
+        <span style={{ fontSize: 11 }}>Shadows</span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+        <ColorWheel ariaLabel="Midtones color wheel" size={160} />
+        <span style={{ fontSize: 11 }}>Midtones</span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+        <ColorWheel ariaLabel="Highlights color wheel" defaultHue={40} defaultSaturation={0.6} />
+        <span style={{ fontSize: 11 }}>Highlights</span>
+      </div>
     </div>;
   }
 

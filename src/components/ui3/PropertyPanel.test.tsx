@@ -85,10 +85,12 @@ describe("Audio Clip inspector semantics", () => {
     for (const title of ["Equalizer", "Denoise", "De-hum", "Reverb", "Compressor", "Loudness"]) {
       expect(html).toContain(`>${title}</span>`);
     }
-    // Effect sections start collapsed (toggle off) — no dials until enabled.
-    for (const label of ["Enable equalizer", "Enable de-hum", "Enable reverb", "Enable loudness"]) {
+    // Effect sections are opened with a "+" (Composa's add pattern), not a
+    // header switch — collapsed until added, no dials until then.
+    for (const label of ["Add equalizer", "Add de-hum", "Add reverb", "Add loudness"]) {
       expect(html).toContain(`aria-label="${label}"`);
     }
+    expect(html).not.toContain("Enable equalizer");
   });
 });
 

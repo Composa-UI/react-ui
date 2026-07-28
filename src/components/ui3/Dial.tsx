@@ -76,6 +76,13 @@ export interface DialProps {
   size?: DialSize;
   /** Hide the label+value NumericInput row and render the knob alone. */
   hideValue?: boolean;
+  /**
+   * Where the label sits relative to the knob. "bottom" (default) keeps the
+   * label with the value field beneath the knob. "top" places the label ABOVE
+   * the knob and leaves only the value field below — the inspector knob-row
+   * layout (label → dial → value), matching the Sequence audio reference.
+   */
+  labelPlacement?: "top" | "bottom";
   onChange?: (value: number) => void;
   className?: string;
 }
@@ -107,6 +114,7 @@ export function Dial({
   suffix,
   size = "medium",
   hideValue = false,
+  labelPlacement = "bottom",
   onChange,
   className,
 }: DialProps) {
@@ -210,8 +218,16 @@ export function Dial({
 
   const valueText = suffix ? `${current} ${suffix}` : String(current);
 
+  const topLabel = labelPlacement === "top" && !hideValue && label;
+
   return (
     <div className={clsx("flex flex-col items-center gap-[6px]", disabled && "opacity-30", className)}>
+      {/* ── Label above the knob (inspector knob-row layout) ─────────────────── */}
+      {topLabel && (
+        <label htmlFor={id} className={clsx("text-c-text-secondary", LABEL_T[size], FONT)}>
+          {label}
+        </label>
+      )}
       {/* ── Knob ────────────────────────────────────────────────────────────── */}
       <div
         role="slider"
@@ -264,7 +280,7 @@ export function Dial({
       {/* ── Label + typed-entry value (reuses DS NumericInput) ─────────────────── */}
       {!hideValue && (
         <div className="flex flex-col items-center gap-[2px] w-full">
-          {label && (
+          {label && labelPlacement === "bottom" && (
             <label htmlFor={id} className={clsx("text-c-text-secondary", LABEL_T[size], FONT)}>
               {label}
             </label>

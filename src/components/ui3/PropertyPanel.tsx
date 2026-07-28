@@ -41,7 +41,6 @@ import {
 import { EasingInspectorSection, type EasingInspectorSectionProps, type EasingInspectorValue } from "./EasingInspectorSection";
 import { Dial } from "./Dial";
 import { Slider } from "./Slider";
-import { Switch } from "./Switch";
 import { ColorAdjustmentsDialog, type ColorAdjustmentGroup } from "./ColorAdjustmentsDialog";
 import type { EasingApplyScope } from "./easing";
 import { iconForSemantic } from "./IconSemantics";
@@ -2223,15 +2222,62 @@ function ClipPlaybackSection({ speed = 1, onSpeedChange, controlled = false }: {
   );
 }
 
-// ─── Video inspector sections (effects-mental-model.md) ───────────────────────
-// Shown for a selected video clip, below the Source/Timeline/Trim/Playback block.
-// Blend maps to a document field where the host supplies one; Color grading and
-// Chroma keying are the WebGL colour pipeline (later) and render at defaults.
+// ─── Video / Audio inspector sections (effects-mental-model.md) ───────────────
+// STRUCTURE ONLY, mapped to the owner's Sequence reference. Composa conventions:
+// sections are opened with a "+" (like adding a fill/stroke/effect), never a
+// header switch; every input/slider row leaves space for one trailing control
+// (Design-tab rhythm); knob rows read label → dial → value; dial groups are a
+// 2×2 grid. Blend/Volume map to host fields; colour grading and audio DSP are a
+// later WebGL / Web-Audio effort and carry no invented engine schema.
+
+const AV_SUBLABEL = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary");
+
+// A section that is added with "+" and removed with "−" (Composa's add pattern),
+// replacing the header switch. Empty (not added) → muted header + Add button.
+function ToggleableSection({ title, addLabel, children }: { title: string; addLabel: string; children: ReactNode }) {
+  const [added, setAdded] = useState(false);
+  return (
+    <PanelSection
+      title={title}
+      landmark
+      muted={!added}
+      rightActions={added
+        ? <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label={`Remove ${title.toLowerCase()}`} onClick={() => setAdded(false)} />
+        : <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label={addLabel} onClick={() => setAdded(true)} />}
+    >
+      {added && children}
+    </PanelSection>
+  );
+}
+
+// Label + slider + trailing value field (one reserved trailing control).
+function PanelSliderRow({ label, defaultValue = 0, min = 0, max = 100, step = 1, suffix, disabled = false, gradient, bipolar = false, value, onChange }: {
+  label: string; defaultValue?: number; min?: number; max?: number; step?: number; suffix?: string;
+  disabled?: boolean; gradient?: string; bipolar?: boolean; value?: number; onChange?: (value: number) => void;
+}) {
+  const [internal, setInternal] = useState(defaultValue);
+  const v = value ?? internal;
+  const set = (n: number) => { if (value === undefined) setInternal(n); onChange?.(n); };
+  return (
+    <div className="flex flex-col gap-[3px] px-[16px] py-[6px]">
+      <span className={AV_SUBLABEL}>{label}</span>
+      <div className="flex items-center gap-[8px]">
+        <div className="min-w-0 flex-1">
+          <Slider value={v} min={min} max={max} step={step} disabled={disabled} onChange={set}
+            showDelta={bipolar} handleVariant={bipolar ? "stroke" : "fill"}
+            trackVariant={gradient ? "gradient" : "default"} trackGradient={gradient} />
+        </div>
+        <div className="w-[52px] shrink-0">
+          <NumericInput ariaLabel={`${label} value`} value={v} min={min} max={max} step={step} suffix={suffix} size="small" disabled={disabled} onChange={set} scrub />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const CLIP_BLEND_LABELS = Object.fromEntries(CLIP_BLEND_MODES.map(m => [m, m])) as Record<ClipBlendMode, string>;
 
-// Blend — how the clip composites onto what is beneath it. Wired when the host
-// passes `clipBlendMode` + `onClipBlendModeChange`; uncontrolled demo otherwise.
+// Blend — composite mode. Always present (no add/remove); maps to a host field.
 function ClipBlendSection({ mode = "Normal", onModeChange, controlled = false }: {
   mode?: ClipBlendMode; onModeChange?: (value: ClipBlendMode) => void; controlled?: boolean;
 }) {
@@ -2239,21 +2285,18 @@ function ClipBlendSection({ mode = "Normal", onModeChange, controlled = false }:
   const rendered = controlled ? mode : internal;
   return (
     <PanelSection title="Blend" landmark>
-      <DualField
-        leftLabel="Mode"
+      <PanelFieldRow
+        label="Mode"
         left={<ChoiceDropdown ariaLabel="Blend mode" value={rendered} options={CLIP_BLEND_MODES} labels={CLIP_BLEND_LABELS} onChange={value => { if (!controlled) setInternal(value); onModeChange?.(value); }} />}
-        rightLabel=""
-        right={<span />}
       />
     </PanelSection>
   );
 }
 
-// Color — toggle + Conversion/Look LUT menus inline; the deep adjustment groups
-// (Light, Color, Color Wheels, Creative) open as dedicated dialogs (basic inline,
-// custom → dialog). Structure only; unwired until the colour engine lands.
-const CONVERSION_LUTS = ["None", "Rec.709", "Rec.2020", "sRGB", "Log → Rec.709", "ACES"] as const;
-const LOOK_LUTS = ["None", "Neutral", "Cinematic", "Teal & Orange", "Bleach Bypass", "Vintage Film"] as const;
+// Color — added with "+"; Conversion-LUT + Look-LUT menus, then the four deep
+// adjustment groups each opening a dedicated anchored dialog (reference order).
+const CONVERSION_LUTS = ["None", "Apple Log", "Rec.709", "Rec.2020", "Log → Rec.709", "ACES"] as const;
+const LOOK_LUTS = ["None", "Analog Indie", "Neutral", "Cinematic", "Teal & Orange", "Vintage Film"] as const;
 const ADJUSTMENT_GROUPS: { group: ColorAdjustmentGroup; label: string }[] = [
   { group: "light", label: "Light adjustments" },
   { group: "color", label: "Color adjustments" },
@@ -2261,196 +2304,125 @@ const ADJUSTMENT_GROUPS: { group: ColorAdjustmentGroup; label: string }[] = [
   { group: "creative", label: "Creative adjustments" },
 ];
 
-function ClipColorSection() {
-  const [enabled, setEnabled] = useState(false);
-  const [conversion, setConversion] = useState<string>("None");
-  const [look, setLook] = useState<string>("None");
+function ClipColorBody() {
+  const [conversion, setConversion] = useState<string>("Apple Log");
+  const [look, setLook] = useState<string>("Analog Indie");
   const [openGroup, setOpenGroup] = useState<ColorAdjustmentGroup | null>(null);
-  const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
   const lutLabels = (opts: readonly string[]) => Object.fromEntries(opts.map(o => [o, o])) as Record<string, string>;
-
   return (
-    <PanelSection
-      title="Color"
-      landmark
-      muted={!enabled}
-      rightActions={<Switch label="Enable color" checked={enabled} onCheckedChange={setEnabled} size="compact" />}
-    >
-      {enabled && (
-        <>
-          <DualField
-            leftLabel="Conversion LUT"
-            left={<ChoiceDropdown ariaLabel="Conversion LUT" value={conversion} options={CONVERSION_LUTS} labels={lutLabels(CONVERSION_LUTS)} onChange={setConversion} />}
-            rightLabel="Look LUT"
-            right={<ChoiceDropdown ariaLabel="Look LUT" value={look} options={LOOK_LUTS} labels={lutLabels(LOOK_LUTS)} onChange={setLook} />}
-          />
-          {ADJUSTMENT_GROUPS.map(({ group, label }) => (
-            <div key={group} className="flex items-center gap-[8px] px-[16px] pb-[4px] h-[40px]">
-              <div className="flex-1 min-w-0 flex flex-col">
-                <span className={subLabel}>{label}</span>
-                <ColorAdjustmentsDialog
-                  group={group}
-                  enabled={enabled}
-                  open={openGroup === group}
-                  onClose={() => setOpenGroup(null)}
-                  trigger={<Dropdown ariaLabel={`${label}: Default`} value="Default" fullWidth onClick={() => setOpenGroup(group)} />}
-                />
-              </div>
-            </div>
-          ))}
-        </>
-      )}
-    </PanelSection>
+    <>
+      <PanelFieldRow label="Conversion LUT"
+        left={<ChoiceDropdown ariaLabel="Conversion LUT" value={conversion} options={CONVERSION_LUTS} labels={lutLabels(CONVERSION_LUTS)} onChange={setConversion} />} />
+      <PanelFieldRow label="Look LUT"
+        left={<ChoiceDropdown ariaLabel="Look LUT" value={look} options={LOOK_LUTS} labels={lutLabels(LOOK_LUTS)} onChange={setLook} />} />
+      {ADJUSTMENT_GROUPS.map(({ group, label }) => (
+        <PanelFieldRow key={group} label={label}
+          left={<ColorAdjustmentsDialog group={group} enabled open={openGroup === group} onClose={() => setOpenGroup(null)}
+            trigger={<Dropdown ariaLabel={`${label}: Default`} value="Default" fullWidth onClick={() => setOpenGroup(group)} />} />} />
+      ))}
+    </>
   );
 }
 
-// Chroma Key — Key color + Threshold. Structure only (unwired).
-function ClipChromaKeySection() {
-  const [enabled, setEnabled] = useState(false);
+// Chroma key — added with "+"; Key colour swatch + hex, then Threshold %.
+function ChromaKeyBody() {
   const [color, setColor] = useState("#00FF00");
   const [colorDialogOpen, setColorDialogOpen] = useState(false);
   const [threshold, setThreshold] = useState(50);
   return (
-    <PanelSection
-      title="Chroma key"
-      landmark
-      muted={!enabled}
-      rightActions={<Switch label="Enable chroma key" checked={enabled} onCheckedChange={setEnabled} size="compact" />}
-    >
-      {enabled && (
-        <>
-          <PanelFieldRow
-            label="Key color"
-            reserveRightSlot={false}
-            left={
-              <ColorDialog
-                open={colorDialogOpen}
-                onClose={() => setColorDialogOpen(false)}
-                trigger={<ColorInput ariaLabel="Key color" fullWidth color={color} opacity={100} onColorChange={setColor} onSwatchClick={() => setColorDialogOpen(true)} />}
-                hex={color.replace("#", "")}
-                onHexChange={value => setColor(`#${value.replace(/^#/, "")}`)}
-              />
-            }
+    <>
+      <PanelFieldRow label="Key color"
+        left={
+          <ColorDialog
+            open={colorDialogOpen}
+            onClose={() => setColorDialogOpen(false)}
+            trigger={<ColorInput ariaLabel="Key color" fullWidth color={color} opacity={100} onColorChange={setColor} onSwatchClick={() => setColorDialogOpen(true)} />}
+            hex={color.replace("#", "")}
+            onHexChange={value => setColor(`#${value.replace(/^#/, "")}`)}
           />
-          <PanelFullRow label="Threshold" height={40}>
-            <Slider value={threshold} min={0} max={100} onChange={setThreshold} />
-          </PanelFullRow>
-        </>
-      )}
-    </PanelSection>
+        } />
+      <PanelSliderRow label="Threshold" defaultValue={50} min={0} max={100} suffix="%" value={threshold} onChange={setThreshold} />
+    </>
   );
 }
 
 // ─── Audio inspector sections (effects-mental-model.md) ───────────────────────
-// A distinct "audio-clip" inspector mode. STRUCTURE ONLY: Volume maps to a host
-// field when supplied; the EQ / Denoise / De-hum / Reverb / Compressor / Loudness
-// controls render at sensible defaults and are unwired until the Web-Audio DSP
-// pipeline lands (no invented engine schema).
+// A distinct "audio-clip" inspector mode. Volume is host-wired; the effect
+// sections are added with "+" and structural (unwired) until the DSP lands.
 
-// A wrapped grid of Dials — the shared knob-row layout for audio effect groups.
+// Wrapped 2×2 grid of Dials — the shared knob-row layout (label above the knob).
 function DialGrid({ children }: { children: ReactNode }) {
-  return <div className="flex flex-wrap gap-x-[8px] gap-y-[12px] px-[16px] pt-[4px] pb-[8px]">{children}</div>;
+  return <div className="grid grid-cols-2 gap-x-[8px] gap-y-[14px] px-[16px] pt-[10px] pb-[12px] justify-items-center">{children}</div>;
 }
 
 function AudioVolumeSection({ volume = 100, onVolumeChange, controlled = false }: {
   volume?: number; onVolumeChange?: (value: number) => void; controlled?: boolean;
 }) {
-  const [internal, setInternal] = useState(volume);
-  const rendered = controlled ? volume : internal;
   return (
     <PanelSection title="Volume" landmark>
-      <PanelFullRow label={`Level — ${Math.round(rendered)}%`} height={40}>
-        <Slider value={rendered} min={0} max={200} onChange={value => { if (!controlled) setInternal(value); onVolumeChange?.(value); }} />
-      </PanelFullRow>
+      <PanelSliderRow label="Level" defaultValue={100} min={0} max={200} suffix="%"
+        value={controlled ? volume : undefined} onChange={onVolumeChange} />
     </PanelSection>
   );
 }
 
 const EQ_PRESETS = ["Flat", "Voice", "Music", "Bass boost", "Treble boost", "Podcast"] as const;
 const EQ_BANDS = ["Low", "Low-mid", "Mid", "High-mid", "High"] as const;
+const menuLabels = (opts: readonly string[]) => Object.fromEntries(opts.map(o => [o, o])) as Record<string, string>;
 
 function AudioEqualizerSection() {
-  const [enabled, setEnabled] = useState(false);
   const [preset, setPreset] = useState<string>("Flat");
   const [band, setBand] = useState<string>("Mid");
-  const labels = (opts: readonly string[]) => Object.fromEntries(opts.map(o => [o, o])) as Record<string, string>;
   return (
-    <PanelSection title="Equalizer" landmark muted={!enabled}
-      rightActions={<Switch label="Enable equalizer" checked={enabled} onCheckedChange={setEnabled} size="compact" />}>
-      {enabled && (
-        <DualField
-          leftLabel="Preset"
-          left={<ChoiceDropdown ariaLabel="Equalizer preset" value={preset} options={EQ_PRESETS} labels={labels(EQ_PRESETS)} onChange={setPreset} />}
-          rightLabel="Band"
-          right={<ChoiceDropdown ariaLabel="Equalizer band" value={band} options={EQ_BANDS} labels={labels(EQ_BANDS)} onChange={setBand} />}
-        />
-      )}
-    </PanelSection>
+    <ToggleableSection title="Equalizer" addLabel="Add equalizer">
+      <PanelFieldRow label="Preset"
+        left={<ChoiceDropdown ariaLabel="Equalizer preset" value={preset} options={EQ_PRESETS} labels={menuLabels(EQ_PRESETS)} onChange={setPreset} />} />
+      <PanelFieldRow label="Band"
+        left={<ChoiceDropdown ariaLabel="Equalizer band" value={band} options={EQ_BANDS} labels={menuLabels(EQ_BANDS)} onChange={setBand} />} />
+    </ToggleableSection>
   );
 }
 
 function AudioDenoiseSection() {
-  const [enabled, setEnabled] = useState(false);
-  const [threshold, setThreshold] = useState(40);
   return (
-    <PanelSection title="Denoise" landmark muted={!enabled}
-      rightActions={<Switch label="Enable denoise" checked={enabled} onCheckedChange={setEnabled} size="compact" />}>
-      {enabled && (
-        <PanelFullRow label="Threshold" height={40}>
-          <Slider value={threshold} min={0} max={100} onChange={setThreshold} />
-        </PanelFullRow>
-      )}
-    </PanelSection>
+    <ToggleableSection title="Denoise" addLabel="Add denoise">
+      <PanelSliderRow label="Threshold" defaultValue={40} min={0} max={100} suffix="%" />
+    </ToggleableSection>
   );
 }
 
 const DEHUM_FREQUENCIES = ["50 Hz", "60 Hz", "100 Hz", "120 Hz"] as const;
 
 function AudioDeHumSection() {
-  const [enabled, setEnabled] = useState(false);
   const [baseFreq, setBaseFreq] = useState<string>("60 Hz");
-  const labels = Object.fromEntries(DEHUM_FREQUENCIES.map(o => [o, o])) as Record<string, string>;
   return (
-    <PanelSection title="De-hum" landmark muted={!enabled}
-      rightActions={<Switch label="Enable de-hum" checked={enabled} onCheckedChange={setEnabled} size="compact" />}>
-      {enabled && (
-        <>
-          <DualField
-            leftLabel="Base frequency"
-            left={<ChoiceDropdown ariaLabel="Base frequency" value={baseFreq} options={DEHUM_FREQUENCIES} labels={labels} onChange={setBaseFreq} />}
-            rightLabel=""
-            right={<span />}
-          />
-          <DialGrid>
-            <Dial size="small" label="Frequency" defaultValue={60} min={20} max={500} suffix="Hz" />
-            <Dial size="small" label="Harmonics" defaultValue={4} min={0} max={12} />
-            <Dial size="small" label="Sharpness" defaultValue={50} min={0} max={100} suffix="%" />
-            <Dial size="small" label="Depth" defaultValue={50} min={0} max={100} suffix="%" />
-            <Dial size="small" label="De-hiss" defaultValue={0} min={0} max={100} suffix="%" />
-            <Dial size="small" label="Hiss sens." defaultValue={50} min={0} max={100} suffix="%" />
-          </DialGrid>
-        </>
-      )}
-    </PanelSection>
+    <ToggleableSection title="De-hum" addLabel="Add de-hum">
+      <PanelFieldRow label="Base frequency"
+        left={<ChoiceDropdown ariaLabel="Base frequency" value={baseFreq} options={DEHUM_FREQUENCIES} labels={menuLabels(DEHUM_FREQUENCIES)} onChange={setBaseFreq} />} />
+      <DialGrid>
+        <Dial size="small" labelPlacement="top" label="Frequency" defaultValue={60} min={20} max={500} suffix="Hz" />
+        <Dial size="small" labelPlacement="top" label="Harmonics" defaultValue={4} min={0} max={12} />
+        <Dial size="small" labelPlacement="top" label="Sharpness" defaultValue={50} min={0} max={100} suffix="%" />
+        <Dial size="small" labelPlacement="top" label="Depth" defaultValue={50} min={0} max={100} suffix="%" />
+        <Dial size="small" labelPlacement="top" label="De-hiss" defaultValue={0} min={0} max={100} suffix="%" />
+        <Dial size="small" labelPlacement="top" label="Hiss sens." defaultValue={50} min={0} max={100} suffix="%" />
+      </DialGrid>
+    </ToggleableSection>
   );
 }
 
 function AudioReverbSection() {
-  const [enabled, setEnabled] = useState(false);
   return (
-    <PanelSection title="Reverb" landmark muted={!enabled}
-      rightActions={<Switch label="Enable reverb" checked={enabled} onCheckedChange={setEnabled} size="compact" />}>
-      {enabled && (
-        <DialGrid>
-          <Dial size="small" label="Mix" defaultValue={20} min={0} max={100} suffix="%" />
-          <Dial size="small" label="Size" defaultValue={50} min={0} max={100} suffix="%" />
-          <Dial size="small" label="Decay" defaultValue={40} min={0} max={100} suffix="%" />
-          <Dial size="small" label="Damping" defaultValue={50} min={0} max={100} suffix="%" />
-          <Dial size="small" label="Pre-delay" defaultValue={20} min={0} max={200} suffix="ms" />
-          <Dial size="small" label="Width" defaultValue={100} min={0} max={100} suffix="%" />
-        </DialGrid>
-      )}
-    </PanelSection>
+    <ToggleableSection title="Reverb" addLabel="Add reverb">
+      <DialGrid>
+        <Dial size="small" labelPlacement="top" label="Mix" defaultValue={20} min={0} max={100} suffix="%" />
+        <Dial size="small" labelPlacement="top" label="Size" defaultValue={50} min={0} max={100} suffix="%" />
+        <Dial size="small" labelPlacement="top" label="Decay" defaultValue={40} min={0} max={100} suffix="%" />
+        <Dial size="small" labelPlacement="top" label="Damping" defaultValue={50} min={0} max={100} suffix="%" />
+        <Dial size="small" labelPlacement="top" label="Pre-delay" defaultValue={20} min={0} max={200} suffix="ms" />
+        <Dial size="small" labelPlacement="top" label="Width" defaultValue={100} min={0} max={100} suffix="%" />
+      </DialGrid>
+    </ToggleableSection>
   );
 }
 
@@ -2458,49 +2430,30 @@ const COMPRESSOR_MODES = ["Off", "Gentle", "Vocal", "Punchy", "Limiter"] as cons
 const COMPRESSOR_CHARACTERISTICS = ["Clean", "Warm", "Vintage", "Optical", "FET"] as const;
 
 function AudioCompressorSection() {
-  const [enabled, setEnabled] = useState(false);
   const [compMode, setCompMode] = useState<string>("Gentle");
   const [character, setCharacter] = useState<string>("Clean");
-  const [threshold, setThreshold] = useState(60);
-  const [ratio, setRatio] = useState(30);
-  const labels = (opts: readonly string[]) => Object.fromEntries(opts.map(o => [o, o])) as Record<string, string>;
   return (
-    <PanelSection title="Compressor" landmark muted={!enabled}
-      rightActions={<Switch label="Enable compressor" checked={enabled} onCheckedChange={setEnabled} size="compact" />}>
-      {enabled && (
-        <>
-          <DualField
-            leftLabel="Mode"
-            left={<ChoiceDropdown ariaLabel="Compressor mode" value={compMode} options={COMPRESSOR_MODES} labels={labels(COMPRESSOR_MODES)} onChange={setCompMode} />}
-            rightLabel="Characteristics"
-            right={<ChoiceDropdown ariaLabel="Compressor characteristics" value={character} options={COMPRESSOR_CHARACTERISTICS} labels={labels(COMPRESSOR_CHARACTERISTICS)} onChange={setCharacter} />}
-          />
-          <PanelFullRow label="Threshold" height={40}>
-            <Slider value={threshold} min={0} max={100} onChange={setThreshold} />
-          </PanelFullRow>
-          <PanelFullRow label="Ratio" height={40}>
-            <Slider value={ratio} min={0} max={100} onChange={setRatio} />
-          </PanelFullRow>
-        </>
-      )}
-    </PanelSection>
+    <ToggleableSection title="Compressor" addLabel="Add compressor">
+      <PanelFieldRow label="Mode"
+        left={<ChoiceDropdown ariaLabel="Compressor mode" value={compMode} options={COMPRESSOR_MODES} labels={menuLabels(COMPRESSOR_MODES)} onChange={setCompMode} />} />
+      <PanelFieldRow label="Characteristics"
+        left={<ChoiceDropdown ariaLabel="Compressor characteristics" value={character} options={COMPRESSOR_CHARACTERISTICS} labels={menuLabels(COMPRESSOR_CHARACTERISTICS)} onChange={setCharacter} />} />
+      <PanelSliderRow label="Threshold" defaultValue={60} min={0} max={100} suffix="%" />
+      <PanelSliderRow label="Ratio" defaultValue={30} min={0} max={100} suffix="%" />
+    </ToggleableSection>
   );
 }
 
 function AudioLoudnessSection() {
-  const [enabled, setEnabled] = useState(false);
   return (
-    <PanelSection title="Loudness" landmark muted={!enabled}
-      rightActions={<Switch label="Enable loudness" checked={enabled} onCheckedChange={setEnabled} size="compact" />}>
-      {enabled && (
-        <DialGrid>
-          <Dial size="small" label="Target" defaultValue={-14} min={-36} max={0} suffix="LUFS" />
-          <Dial size="small" label="Gain" defaultValue={0} min={-24} max={24} suffix="dB" />
-          <Dial size="small" label="True peak" defaultValue={-1} min={-9} max={0} suffix="dB" />
-          <Dial size="small" label="Range" defaultValue={7} min={0} max={20} suffix="LU" />
-        </DialGrid>
-      )}
-    </PanelSection>
+    <ToggleableSection title="Loudness" addLabel="Add loudness">
+      <DialGrid>
+        <Dial size="small" labelPlacement="top" label="Target" defaultValue={-14} min={-36} max={0} suffix="LUFS" />
+        <Dial size="small" labelPlacement="top" label="Gain" defaultValue={0} min={-24} max={24} suffix="dB" />
+        <Dial size="small" labelPlacement="top" label="True peak" defaultValue={-1} min={-9} max={0} suffix="dB" />
+        <Dial size="small" labelPlacement="top" label="Range" defaultValue={7} min={0} max={20} suffix="LU" />
+      </DialGrid>
+    </ToggleableSection>
   );
 }
 
@@ -3340,8 +3293,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
           {/* Effect sections (effects-mental-model.md). Blend maps to a host field;
               Color grading + Chroma keying are the later WebGL colour pipeline. */}
           <ClipBlendSection mode={clipBlendMode} controlled={props.clipBlendMode !== undefined} onModeChange={onClipBlendModeChange} />
-          <ClipColorSection />
-          <ClipChromaKeySection />
+          <ToggleableSection title="Color" addLabel="Add color"><ClipColorBody /></ToggleableSection>
+          <ToggleableSection title="Chroma key" addLabel="Add chroma key"><ChromaKeyBody /></ToggleableSection>
         </ScrollArea>
       )}
 
