@@ -1,6 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { shouldActivateTimelineTrackKey, shouldBeginTimelineMiddlePan, shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, timelineDurationBarProjection, timelineDurationBarTargetRange, timelineTimeAtClientX, timelineTrackExpansionForKey, timelineTrackNavigationIndex, Timeline, type Track } from "./Timeline";
+import { laneDropAcceptedFiles, laneDropPayloadAccepted, shouldActivateTimelineTrackKey, shouldBeginTimelineMiddlePan, shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, timelineDurationBarProjection, timelineDurationBarTargetRange, timelineTimeAtClientX, timelineTrackExpansionForKey, timelineTrackNavigationIndex, Timeline, type Track } from "./Timeline";
+
+const VIDEO_ACCEPT = ["image/", "video/"] as const;
+const AUDIO_ACCEPT = ["audio/"] as const;
 
 const numericTrack: Track = { id: "hero", name: "Hero", type: "frame", props: [
   { id: "opacity", name: "Opacity", keyframes: [500, 900] },
@@ -552,5 +555,38 @@ describe("Timeline shared scrollbar anatomy", () => {
     expect(html.match(/data-timeline-pan-surface/g)?.length).toBeGreaterThanOrEqual(3);
     expect(html).toContain("data-composa-scroll-viewport");
     expect(html).not.toMatch(/data-timeline-pan-surface[^>]*>[^<]*Hero/);
+  });
+});
+
+describe("master lane file-drop typing (Phase 3)", () => {
+  it("highlights a lane only when a file item matches its accepted MIME prefixes", () => {
+    // Video lane accepts image/video; audio does not light it up (and vice-versa).
+    expect(laneDropPayloadAccepted(VIDEO_ACCEPT, ["video/mp4"], true)).toBe(true);
+    expect(laneDropPayloadAccepted(VIDEO_ACCEPT, ["image/png"], true)).toBe(true);
+    expect(laneDropPayloadAccepted(VIDEO_ACCEPT, ["audio/mpeg"], true)).toBe(false);
+    expect(laneDropPayloadAccepted(AUDIO_ACCEPT, ["audio/wav"], true)).toBe(true);
+    expect(laneDropPayloadAccepted(AUDIO_ACCEPT, ["video/mp4"], true)).toBe(false);
+  });
+
+  it("falls back to the file-payload signal when per-item MIME is withheld mid-drag", () => {
+    expect(laneDropPayloadAccepted(AUDIO_ACCEPT, [], true)).toBe(true);
+    expect(laneDropPayloadAccepted(AUDIO_ACCEPT, [], false)).toBe(false);
+    // An empty item type (browser withholding) is treated as a candidate to highlight.
+    expect(laneDropPayloadAccepted(VIDEO_ACCEPT, [""], true)).toBe(true);
+  });
+
+  it("hands the host only the files a lane accepts, keeping empty-type files for extension resolution", () => {
+    const files = [{ type: "audio/mpeg" }, { type: "video/mp4" }, { type: "image/png" }, { type: "" }];
+    expect(laneDropAcceptedFiles(AUDIO_ACCEPT, files)).toEqual([{ type: "audio/mpeg" }, { type: "" }]);
+    expect(laneDropAcceptedFiles(VIDEO_ACCEPT, files)).toEqual([{ type: "video/mp4" }, { type: "image/png" }, { type: "" }]);
+  });
+
+  it("wires a typed file-drop target onto both media lanes when the host supplies onLaneDropFiles", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={2_000} onLaneDropFiles={() => undefined} />);
+    // Both media lane bodies remain pan surfaces; the drop overlay is drag-state only,
+    // so it is absent at rest — the resting markup must not leak a highlight.
+    expect(html).not.toContain("data-lane-drop-active");
+    expect(html).toContain("Base video track");
+    expect(html).toContain("Audio track");
   });
 });
