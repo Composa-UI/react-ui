@@ -2277,16 +2277,18 @@ function PanelSliderRow({ label, defaultValue = 0, min = 0, max = 100, step = 1,
 
 const CLIP_BLEND_LABELS = Object.fromEntries(CLIP_BLEND_MODES.map(m => [m, m])) as Record<ClipBlendMode, string>;
 
-// Blend — composite mode. Always present (no add/remove); maps to a host field.
+// Appearance — the clip's composite blend mode. Always present (no add/remove);
+// maps to a host field. Section header reads "Appearance"; the control is the
+// "Blend mode" chooser (owner feedback: Blend → Appearance / Blend mode).
 function ClipBlendSection({ mode = "Normal", onModeChange, controlled = false }: {
   mode?: ClipBlendMode; onModeChange?: (value: ClipBlendMode) => void; controlled?: boolean;
 }) {
   const [internal, setInternal] = useState<ClipBlendMode>(mode);
   const rendered = controlled ? mode : internal;
   return (
-    <PanelSection title="Blend" landmark>
+    <PanelSection title="Appearance" landmark>
       <PanelFieldRow
-        label="Mode"
+        label="Blend mode"
         left={<ChoiceDropdown ariaLabel="Blend mode" value={rendered} options={CLIP_BLEND_MODES} labels={CLIP_BLEND_LABELS} onChange={value => { if (!controlled) setInternal(value); onModeChange?.(value); }} />}
       />
     </PanelSection>
@@ -2308,6 +2310,12 @@ function ClipColorBody() {
   const [conversion, setConversion] = useState<string>("Apple Log");
   const [look, setLook] = useState<string>("Analog Indie");
   const [openGroup, setOpenGroup] = useState<ColorAdjustmentGroup | null>(null);
+  // Per-group "modified" state so each collapsed row shows the real value (the
+  // group's current state) rather than a constant "Default". Guarded so a
+  // no-change report never re-renders (avoids a report → render loop).
+  const [modifiedGroups, setModifiedGroups] = useState<Partial<Record<ColorAdjustmentGroup, boolean>>>({});
+  const setGroupModified = (group: ColorAdjustmentGroup) => (modified: boolean) =>
+    setModifiedGroups(state => (state[group] === modified ? state : { ...state, [group]: modified }));
   const lutLabels = (opts: readonly string[]) => Object.fromEntries(opts.map(o => [o, o])) as Record<string, string>;
   return (
     <>
@@ -2315,11 +2323,15 @@ function ClipColorBody() {
         left={<ChoiceDropdown ariaLabel="Conversion LUT" value={conversion} options={CONVERSION_LUTS} labels={lutLabels(CONVERSION_LUTS)} onChange={setConversion} />} />
       <PanelFieldRow label="Look LUT"
         left={<ChoiceDropdown ariaLabel="Look LUT" value={look} options={LOOK_LUTS} labels={lutLabels(LOOK_LUTS)} onChange={setLook} />} />
-      {ADJUSTMENT_GROUPS.map(({ group, label }) => (
-        <PanelFieldRow key={group} label={label}
-          left={<ColorAdjustmentsDialog group={group} enabled open={openGroup === group} onClose={() => setOpenGroup(null)}
-            trigger={<Dropdown ariaLabel={`${label}: Default`} value="Default" fullWidth onClick={() => setOpenGroup(group)} />} />} />
-      ))}
+      {ADJUSTMENT_GROUPS.map(({ group, label }) => {
+        const stateLabel = modifiedGroups[group] ? "Modified" : "Default";
+        return (
+          <PanelFieldRow key={group} label={label}
+            left={<ColorAdjustmentsDialog group={group} enabled open={openGroup === group} onClose={() => setOpenGroup(null)}
+              onModifiedChange={setGroupModified(group)}
+              trigger={<Dropdown ariaLabel={`${label}: ${stateLabel}`} value={stateLabel} fullWidth onClick={() => setOpenGroup(group)} />} />} />
+        );
+      })}
     </>
   );
 }
@@ -3290,8 +3302,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onDurationChange={onClipDurationChange} />
           <ClipTrimSection trimIn={clipTrimIn} trimOut={clipTrimOut} controlled={props.clipTrimIn !== undefined || props.clipTrimOut !== undefined} onTrimInChange={onClipTrimInChange} onTrimOutChange={onClipTrimOutChange} />
           <ClipPlaybackSection speed={clipSpeed} controlled={props.clipSpeed !== undefined} onSpeedChange={onClipSpeedChange} />
-          {/* Effect sections (effects-mental-model.md). Blend maps to a host field;
-              Color grading + Chroma keying are the later WebGL colour pipeline. */}
+          {/* Effect sections (effects-mental-model.md). Appearance (blend mode)
+              maps to a host field; Color grading + Chroma keying are the later
+              WebGL colour pipeline. */}
           <ClipBlendSection mode={clipBlendMode} controlled={props.clipBlendMode !== undefined} onModeChange={onClipBlendModeChange} />
           <ToggleableSection title="Color" addLabel="Add color"><ClipColorBody /></ToggleableSection>
           <ToggleableSection title="Chroma key" addLabel="Add chroma key"><ChromaKeyBody /></ToggleableSection>

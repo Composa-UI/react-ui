@@ -60,10 +60,10 @@ describe("Video Clip inspector semantics", () => {
     const html = renderToStaticMarkup(<PropertyPanel mode="video-clip" clipStart={2} clipDuration={3}
       clipTrimIn={0} clipTrimOut={3} clipSpeed={1} />);
 
-    // Source/Timeline/Trim/Playback + the effect sections (Blend/Color/Chroma key).
+    // Source/Timeline/Trim/Playback + the effect sections (Appearance/Color/Chroma key).
     expect(html.match(/role="region"/g)).toHaveLength(7);
-    for (const title of ["Source", "Timeline", "Trim", "Playback", "Blend", "Color", "Chroma key"]) expect(html).toContain(`>${title}</span>`);
-    // Blend mode maps to a host field; render the composite-mode trigger.
+    for (const title of ["Source", "Timeline", "Trim", "Playback", "Appearance", "Color", "Chroma key"]) expect(html).toContain(`>${title}</span>`);
+    // Appearance section: the composite blend-mode trigger maps to a host field.
     expect(html).toContain('aria-label="Blend mode: Normal"');
     for (const name of ["Start", "End", "Duration", "Trim in", "Trim out", "Volume"]) {
       expect(html).toContain(`aria-label="${name}"`);
