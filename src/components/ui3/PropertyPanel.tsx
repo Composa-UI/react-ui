@@ -10,6 +10,7 @@ import {
   Minus, EyeOff, AlignJustify, Maximize, ChevronDown, Ruler,
   MoveHorizontal, MoveVertical, Play, Pause,
   Image as ImageIcon, Clock, SquareSquare,
+  ArrowRightFromLine, Columns2, Grid2x2,
 } from "lucide-react";
 import { CirclesFour } from "@phosphor-icons/react";
 import {
@@ -492,15 +493,15 @@ const TEXT_SIZING_LABELS: Record<TextSizingMode, string> = {
 };
 
 // Icon segments for the text-resizing control (owner ask: icons, not text
-// labels). These mirror Figma's text auto-resize glyphs:
-//   auto-width  → horizontal resize arrows (box grows/shrinks on the X axis)
-//   auto-height → vertical resize arrows   (box grows/shrinks on the Y axis)
-//   fixed-size  → a fixed bounding box     (neither axis auto-resizes)
+// labels). Refined to the owner's exact glyph description (#460):
+//   auto-width  → an arrow-from-a-line glyph      (ArrowRightFromLine)
+//   auto-height → two vertical bars with a line   (Columns2)
+//   fixed-size  → a square with inner lines        (Grid2x2)
 // The word labels are kept as each segment's ariaLabel for accessibility.
 const TEXT_SIZING_ICONS: Record<TextSizingMode, ReactNode> = {
-  "auto-width": <MoveHorizontal size={16} strokeWidth={1.5} />,
-  "auto-height": <MoveVertical size={16} strokeWidth={1.5} />,
-  "fixed-size": <Square size={16} strokeWidth={1.5} />,
+  "auto-width": <ArrowRightFromLine size={16} strokeWidth={1.5} />,
+  "auto-height": <Columns2 size={16} strokeWidth={1.5} />,
+  "fixed-size": <Grid2x2 size={16} strokeWidth={1.5} />,
 };
 
 function TextSizingModeField({
@@ -1468,7 +1469,7 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
             onRemove={() => remove(effect.id)}
           >
             <EffectDetailsDialog open={activeStackDialog === `effect:${effect.id}`} value={effect}
-              trigger={<Dropdown value={effect.type} hug ariaLabel={`Effect type: ${effect.type}`} onClick={() => onActiveStackDialogChange(`effect:${effect.id}`)} />}
+              trigger={<Dropdown value={effect.type} fullWidth ariaLabel={`Effect type: ${effect.type}`} onClick={() => onActiveStackDialogChange(`effect:${effect.id}`)} />}
               capabilities={capabilities}
               onChange={patch => update(effect.id, patch)} onClose={() => onActiveStackDialogChange(null)} />
           </PanelEntry>

@@ -56,6 +56,17 @@ describe("AssetsPanel — type filter is a dropdown, not a segmented control", (
       expect(html).toContain(`>${labels[filter]}</span>`);
     });
   });
+
+  it("is a borderless, label-only trigger matching the canvas-size control (#460)", () => {
+    const html = renderToStaticMarkup(<AssetsPanel assets={ASSETS} filter="images" />);
+    const triggerTag = html.match(/<button[^>]*aria-label="Filter by type"[^>]*>/)?.[0] ?? "";
+    expect(triggerTag).not.toBe("");
+    // Borderless: stroke={false} omits the ring-1 ring-inset border entirely.
+    expect(triggerTag).not.toContain("ring-1");
+    // Label-only: no leading kind icon slot in the trigger, so the Volume2/Film/
+    // Image glyph does not paint alongside the label (menu rows still carry icons).
+    expect(triggerTag).not.toContain("bg-c-bg-secondary");
+  });
 });
 
 describe("AssetsPanel — filtering", () => {

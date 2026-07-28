@@ -37,7 +37,6 @@ const FILTER_OPTIONS: { value: AssetFilter; label: string; icon?: React.ReactNod
   { value: "audio", label: "Audio", icon: <Volume2 size={14} strokeWidth={1.75} /> },
 ];
 const FILTER_LABELS = Object.fromEntries(FILTER_OPTIONS.map((o) => [o.value, o.label])) as Record<AssetFilter, string>;
-const FILTER_ICONS = Object.fromEntries(FILTER_OPTIONS.map((o) => [o.value, o.icon])) as Record<AssetFilter, React.ReactNode>;
 
 export interface AssetItem {
   id: string;
@@ -419,17 +418,18 @@ export function AssetsPanel({
         </FieldShell>
 
         {/* Type filter — a dropdown (not a segmented control): with Audio added
-            the four options crowd the 240px panel, so a menu-pick reads cleaner. */}
+            the four options crowd the 240px panel, so a menu-pick reads cleaner.
+            Borderless, label-only trigger matching the top-right canvas-size
+            control (ProjectCanvasSizeControl): no container stroke, no leading
+            icon — just the label + chevron (owner ask #460). */}
         <PopoverMenu
           align="left"
-          className="w-full"
+          className="w-fit"
           trigger={
             <Dropdown
               ariaLabel="Filter by type"
               value={FILTER_LABELS[activeFilter]}
-              leadingIcon={FILTER_ICONS[activeFilter]}
-              size="large"
-              fullWidth
+              stroke={false}
             />
           }
         >

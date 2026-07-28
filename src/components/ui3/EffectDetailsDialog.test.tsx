@@ -50,4 +50,20 @@ describe("EffectDetailsDialog", () => {
     expect(html).toContain('aria-label="Position Y"');
     expect(html.match(/min-w-0 flex-1/g)?.length).toBeGreaterThanOrEqual(4);
   });
+
+  it("hugs the effect-type dropdown in the dialog header (not fill), keeping eye/close right-aligned (#460)", () => {
+    const html = renderToStaticMarkup(
+      <EffectDetailsDialog
+        open
+        value={{ type: "Drop shadow", visible: true }}
+        trigger={<button type="button">Open effect</button>}
+        onClose={() => undefined}
+      />,
+    );
+
+    // The type dropdown sizes to its content (hug → w-auto max-w-full), not fill.
+    expect(html).toContain("w-auto max-w-full");
+    // The trailing eye + close controls stay pinned right via the mr-auto spacer.
+    expect(html).toContain("mr-auto");
+  });
 });
