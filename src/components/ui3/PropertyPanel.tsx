@@ -39,6 +39,10 @@ import {
   type StrokeStyle,
 } from "./StrokeSettingsDialog";
 import { EasingInspectorSection, type EasingInspectorSectionProps, type EasingInspectorValue } from "./EasingInspectorSection";
+import { Dial } from "./Dial";
+import { Slider } from "./Slider";
+import { Switch } from "./Switch";
+import { ColorAdjustmentsDialog, type ColorAdjustmentGroup } from "./ColorAdjustmentsDialog";
 import type { EasingApplyScope } from "./easing";
 import { iconForSemantic } from "./IconSemantics";
 import { AutoLayoutSpacingIcon } from "./AutoLayoutSpacingIcon";
@@ -48,7 +52,15 @@ import { TypeSettingsDialog } from "./TypeSettingsDialog";
 
 export type ElementType = "text" | "frame" | "frame-auto" | "shape" | "component" | "group";
 
-export type PanelMode = "project" | "slide" | "element" | "video-clip";
+export type PanelMode = "project" | "slide" | "element" | "video-clip" | "audio-clip";
+
+// ─── Video / Audio inspector types (effects-mental-model.md) ──────────────────
+// The AV inspectors are STRUCTURE ONLY: controls render at sensible defaults and
+// map to the document model where a field exists (Blend, Volume). Colour grading
+// and audio DSP are a later WebGL/Web-Audio effort — those controls render but do
+// not process signal, and carry no invented engine schema.
+export type ClipBlendMode = "Normal" | "Add" | "Subtract" | "Reverse subtract";
+export const CLIP_BLEND_MODES: ClipBlendMode[] = ["Normal", "Add", "Subtract", "Reverse subtract"];
 
 export type SlideBackgroundType = "solid" | "gradient" | "image" | "video";
 export type SlideTransitionType = "none" | "fade" | "push" | "slide" | "wipe";
@@ -2211,6 +2223,287 @@ function ClipPlaybackSection({ speed = 1, onSpeedChange, controlled = false }: {
   );
 }
 
+// ─── Video inspector sections (effects-mental-model.md) ───────────────────────
+// Shown for a selected video clip, below the Source/Timeline/Trim/Playback block.
+// Blend maps to a document field where the host supplies one; Color grading and
+// Chroma keying are the WebGL colour pipeline (later) and render at defaults.
+
+const CLIP_BLEND_LABELS = Object.fromEntries(CLIP_BLEND_MODES.map(m => [m, m])) as Record<ClipBlendMode, string>;
+
+// Blend — how the clip composites onto what is beneath it. Wired when the host
+// passes `clipBlendMode` + `onClipBlendModeChange`; uncontrolled demo otherwise.
+function ClipBlendSection({ mode = "Normal", onModeChange, controlled = false }: {
+  mode?: ClipBlendMode; onModeChange?: (value: ClipBlendMode) => void; controlled?: boolean;
+}) {
+  const [internal, setInternal] = useState<ClipBlendMode>(mode);
+  const rendered = controlled ? mode : internal;
+  return (
+    <PanelSection title="Blend" landmark>
+      <DualField
+        leftLabel="Mode"
+        left={<ChoiceDropdown ariaLabel="Blend mode" value={rendered} options={CLIP_BLEND_MODES} labels={CLIP_BLEND_LABELS} onChange={value => { if (!controlled) setInternal(value); onModeChange?.(value); }} />}
+        rightLabel=""
+        right={<span />}
+      />
+    </PanelSection>
+  );
+}
+
+// Color — toggle + Conversion/Look LUT menus inline; the deep adjustment groups
+// (Light, Color, Color Wheels, Creative) open as dedicated dialogs (basic inline,
+// custom → dialog). Structure only; unwired until the colour engine lands.
+const CONVERSION_LUTS = ["None", "Rec.709", "Rec.2020", "sRGB", "Log → Rec.709", "ACES"] as const;
+const LOOK_LUTS = ["None", "Neutral", "Cinematic", "Teal & Orange", "Bleach Bypass", "Vintage Film"] as const;
+const ADJUSTMENT_GROUPS: { group: ColorAdjustmentGroup; label: string }[] = [
+  { group: "light", label: "Light adjustments" },
+  { group: "color", label: "Color adjustments" },
+  { group: "wheels", label: "Color wheels" },
+  { group: "creative", label: "Creative adjustments" },
+];
+
+function ClipColorSection() {
+  const [enabled, setEnabled] = useState(false);
+  const [conversion, setConversion] = useState<string>("None");
+  const [look, setLook] = useState<string>("None");
+  const [openGroup, setOpenGroup] = useState<ColorAdjustmentGroup | null>(null);
+  const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
+  const lutLabels = (opts: readonly string[]) => Object.fromEntries(opts.map(o => [o, o])) as Record<string, string>;
+
+  return (
+    <PanelSection
+      title="Color"
+      landmark
+      muted={!enabled}
+      rightActions={<Switch label="Enable color" checked={enabled} onCheckedChange={setEnabled} size="compact" />}
+    >
+      {enabled && (
+        <>
+          <DualField
+            leftLabel="Conversion LUT"
+            left={<ChoiceDropdown ariaLabel="Conversion LUT" value={conversion} options={CONVERSION_LUTS} labels={lutLabels(CONVERSION_LUTS)} onChange={setConversion} />}
+            rightLabel="Look LUT"
+            right={<ChoiceDropdown ariaLabel="Look LUT" value={look} options={LOOK_LUTS} labels={lutLabels(LOOK_LUTS)} onChange={setLook} />}
+          />
+          {ADJUSTMENT_GROUPS.map(({ group, label }) => (
+            <div key={group} className="flex items-center gap-[8px] px-[16px] pb-[4px] h-[40px]">
+              <div className="flex-1 min-w-0 flex flex-col">
+                <span className={subLabel}>{label}</span>
+                <ColorAdjustmentsDialog
+                  group={group}
+                  enabled={enabled}
+                  open={openGroup === group}
+                  onClose={() => setOpenGroup(null)}
+                  trigger={<Dropdown ariaLabel={`${label}: Default`} value="Default" fullWidth onClick={() => setOpenGroup(group)} />}
+                />
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+    </PanelSection>
+  );
+}
+
+// Chroma Key — Key color + Threshold. Structure only (unwired).
+function ClipChromaKeySection() {
+  const [enabled, setEnabled] = useState(false);
+  const [color, setColor] = useState("#00FF00");
+  const [colorDialogOpen, setColorDialogOpen] = useState(false);
+  const [threshold, setThreshold] = useState(50);
+  return (
+    <PanelSection
+      title="Chroma key"
+      landmark
+      muted={!enabled}
+      rightActions={<Switch label="Enable chroma key" checked={enabled} onCheckedChange={setEnabled} size="compact" />}
+    >
+      {enabled && (
+        <>
+          <PanelFieldRow
+            label="Key color"
+            reserveRightSlot={false}
+            left={
+              <ColorDialog
+                open={colorDialogOpen}
+                onClose={() => setColorDialogOpen(false)}
+                trigger={<ColorInput ariaLabel="Key color" fullWidth color={color} opacity={100} onColorChange={setColor} onSwatchClick={() => setColorDialogOpen(true)} />}
+                hex={color.replace("#", "")}
+                onHexChange={value => setColor(`#${value.replace(/^#/, "")}`)}
+              />
+            }
+          />
+          <PanelFullRow label="Threshold" height={40}>
+            <Slider value={threshold} min={0} max={100} onChange={setThreshold} />
+          </PanelFullRow>
+        </>
+      )}
+    </PanelSection>
+  );
+}
+
+// ─── Audio inspector sections (effects-mental-model.md) ───────────────────────
+// A distinct "audio-clip" inspector mode. STRUCTURE ONLY: Volume maps to a host
+// field when supplied; the EQ / Denoise / De-hum / Reverb / Compressor / Loudness
+// controls render at sensible defaults and are unwired until the Web-Audio DSP
+// pipeline lands (no invented engine schema).
+
+// A wrapped grid of Dials — the shared knob-row layout for audio effect groups.
+function DialGrid({ children }: { children: ReactNode }) {
+  return <div className="flex flex-wrap gap-x-[8px] gap-y-[12px] px-[16px] pt-[4px] pb-[8px]">{children}</div>;
+}
+
+function AudioVolumeSection({ volume = 100, onVolumeChange, controlled = false }: {
+  volume?: number; onVolumeChange?: (value: number) => void; controlled?: boolean;
+}) {
+  const [internal, setInternal] = useState(volume);
+  const rendered = controlled ? volume : internal;
+  return (
+    <PanelSection title="Volume" landmark>
+      <PanelFullRow label={`Level — ${Math.round(rendered)}%`} height={40}>
+        <Slider value={rendered} min={0} max={200} onChange={value => { if (!controlled) setInternal(value); onVolumeChange?.(value); }} />
+      </PanelFullRow>
+    </PanelSection>
+  );
+}
+
+const EQ_PRESETS = ["Flat", "Voice", "Music", "Bass boost", "Treble boost", "Podcast"] as const;
+const EQ_BANDS = ["Low", "Low-mid", "Mid", "High-mid", "High"] as const;
+
+function AudioEqualizerSection() {
+  const [enabled, setEnabled] = useState(false);
+  const [preset, setPreset] = useState<string>("Flat");
+  const [band, setBand] = useState<string>("Mid");
+  const labels = (opts: readonly string[]) => Object.fromEntries(opts.map(o => [o, o])) as Record<string, string>;
+  return (
+    <PanelSection title="Equalizer" landmark muted={!enabled}
+      rightActions={<Switch label="Enable equalizer" checked={enabled} onCheckedChange={setEnabled} size="compact" />}>
+      {enabled && (
+        <DualField
+          leftLabel="Preset"
+          left={<ChoiceDropdown ariaLabel="Equalizer preset" value={preset} options={EQ_PRESETS} labels={labels(EQ_PRESETS)} onChange={setPreset} />}
+          rightLabel="Band"
+          right={<ChoiceDropdown ariaLabel="Equalizer band" value={band} options={EQ_BANDS} labels={labels(EQ_BANDS)} onChange={setBand} />}
+        />
+      )}
+    </PanelSection>
+  );
+}
+
+function AudioDenoiseSection() {
+  const [enabled, setEnabled] = useState(false);
+  const [threshold, setThreshold] = useState(40);
+  return (
+    <PanelSection title="Denoise" landmark muted={!enabled}
+      rightActions={<Switch label="Enable denoise" checked={enabled} onCheckedChange={setEnabled} size="compact" />}>
+      {enabled && (
+        <PanelFullRow label="Threshold" height={40}>
+          <Slider value={threshold} min={0} max={100} onChange={setThreshold} />
+        </PanelFullRow>
+      )}
+    </PanelSection>
+  );
+}
+
+const DEHUM_FREQUENCIES = ["50 Hz", "60 Hz", "100 Hz", "120 Hz"] as const;
+
+function AudioDeHumSection() {
+  const [enabled, setEnabled] = useState(false);
+  const [baseFreq, setBaseFreq] = useState<string>("60 Hz");
+  const labels = Object.fromEntries(DEHUM_FREQUENCIES.map(o => [o, o])) as Record<string, string>;
+  return (
+    <PanelSection title="De-hum" landmark muted={!enabled}
+      rightActions={<Switch label="Enable de-hum" checked={enabled} onCheckedChange={setEnabled} size="compact" />}>
+      {enabled && (
+        <>
+          <DualField
+            leftLabel="Base frequency"
+            left={<ChoiceDropdown ariaLabel="Base frequency" value={baseFreq} options={DEHUM_FREQUENCIES} labels={labels} onChange={setBaseFreq} />}
+            rightLabel=""
+            right={<span />}
+          />
+          <DialGrid>
+            <Dial size="small" label="Frequency" defaultValue={60} min={20} max={500} suffix="Hz" />
+            <Dial size="small" label="Harmonics" defaultValue={4} min={0} max={12} />
+            <Dial size="small" label="Sharpness" defaultValue={50} min={0} max={100} suffix="%" />
+            <Dial size="small" label="Depth" defaultValue={50} min={0} max={100} suffix="%" />
+            <Dial size="small" label="De-hiss" defaultValue={0} min={0} max={100} suffix="%" />
+            <Dial size="small" label="Hiss sens." defaultValue={50} min={0} max={100} suffix="%" />
+          </DialGrid>
+        </>
+      )}
+    </PanelSection>
+  );
+}
+
+function AudioReverbSection() {
+  const [enabled, setEnabled] = useState(false);
+  return (
+    <PanelSection title="Reverb" landmark muted={!enabled}
+      rightActions={<Switch label="Enable reverb" checked={enabled} onCheckedChange={setEnabled} size="compact" />}>
+      {enabled && (
+        <DialGrid>
+          <Dial size="small" label="Mix" defaultValue={20} min={0} max={100} suffix="%" />
+          <Dial size="small" label="Size" defaultValue={50} min={0} max={100} suffix="%" />
+          <Dial size="small" label="Decay" defaultValue={40} min={0} max={100} suffix="%" />
+          <Dial size="small" label="Damping" defaultValue={50} min={0} max={100} suffix="%" />
+          <Dial size="small" label="Pre-delay" defaultValue={20} min={0} max={200} suffix="ms" />
+          <Dial size="small" label="Width" defaultValue={100} min={0} max={100} suffix="%" />
+        </DialGrid>
+      )}
+    </PanelSection>
+  );
+}
+
+const COMPRESSOR_MODES = ["Off", "Gentle", "Vocal", "Punchy", "Limiter"] as const;
+const COMPRESSOR_CHARACTERISTICS = ["Clean", "Warm", "Vintage", "Optical", "FET"] as const;
+
+function AudioCompressorSection() {
+  const [enabled, setEnabled] = useState(false);
+  const [compMode, setCompMode] = useState<string>("Gentle");
+  const [character, setCharacter] = useState<string>("Clean");
+  const [threshold, setThreshold] = useState(60);
+  const [ratio, setRatio] = useState(30);
+  const labels = (opts: readonly string[]) => Object.fromEntries(opts.map(o => [o, o])) as Record<string, string>;
+  return (
+    <PanelSection title="Compressor" landmark muted={!enabled}
+      rightActions={<Switch label="Enable compressor" checked={enabled} onCheckedChange={setEnabled} size="compact" />}>
+      {enabled && (
+        <>
+          <DualField
+            leftLabel="Mode"
+            left={<ChoiceDropdown ariaLabel="Compressor mode" value={compMode} options={COMPRESSOR_MODES} labels={labels(COMPRESSOR_MODES)} onChange={setCompMode} />}
+            rightLabel="Characteristics"
+            right={<ChoiceDropdown ariaLabel="Compressor characteristics" value={character} options={COMPRESSOR_CHARACTERISTICS} labels={labels(COMPRESSOR_CHARACTERISTICS)} onChange={setCharacter} />}
+          />
+          <PanelFullRow label="Threshold" height={40}>
+            <Slider value={threshold} min={0} max={100} onChange={setThreshold} />
+          </PanelFullRow>
+          <PanelFullRow label="Ratio" height={40}>
+            <Slider value={ratio} min={0} max={100} onChange={setRatio} />
+          </PanelFullRow>
+        </>
+      )}
+    </PanelSection>
+  );
+}
+
+function AudioLoudnessSection() {
+  const [enabled, setEnabled] = useState(false);
+  return (
+    <PanelSection title="Loudness" landmark muted={!enabled}
+      rightActions={<Switch label="Enable loudness" checked={enabled} onCheckedChange={setEnabled} size="compact" />}>
+      {enabled && (
+        <DialGrid>
+          <Dial size="small" label="Target" defaultValue={-14} min={-36} max={0} suffix="LUFS" />
+          <Dial size="small" label="Gain" defaultValue={0} min={-24} max={24} suffix="dB" />
+          <Dial size="small" label="True peak" defaultValue={-1} min={-9} max={0} suffix="dB" />
+          <Dial size="small" label="Range" defaultValue={7} min={0} max={20} suffix="LU" />
+        </DialGrid>
+      )}
+    </PanelSection>
+  );
+}
+
 // ─── PropertyPanel ────────────────────────────────────────────────────────────
 
 export interface PropertyPanelProps {
@@ -2411,6 +2704,17 @@ export interface PropertyPanelProps {
   onClipSpeedChange?: (value: ClipSpeed) => void;
   onReplaceClip?: () => void;
   onDeleteClip?: () => void;
+  /** Video Clip · Blend — composite mode. Controlled when the callback is set. */
+  clipBlendMode?: ClipBlendMode;
+  onClipBlendModeChange?: (value: ClipBlendMode) => void;
+  /** Audio Clip mode — clip name + Volume are the only host-wired controls; the
+   *  remaining effect sections are structural (unwired) until the audio DSP lands. */
+  audioClipName?: string;
+  onAudioClipNameChange?: (value: string) => void;
+  audioVolume?: number;
+  onAudioVolumeChange?: (value: number) => void;
+  onReplaceAudio?: () => void;
+  onDeleteAudioClip?: () => void;
   className?: string;
 }
 
@@ -2771,6 +3075,14 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onClipSpeedChange,
   onReplaceClip,
   onDeleteClip,
+  clipBlendMode = "Normal",
+  onClipBlendModeChange,
+  audioClipName = "voiceover",
+  onAudioClipNameChange,
+  audioVolume = 100,
+  onAudioVolumeChange,
+  onReplaceAudio,
+  onDeleteAudioClip,
   className,
   } = props;
   const capabilities: Required<InspectorCapabilities> = {
@@ -3025,6 +3337,38 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onDurationChange={onClipDurationChange} />
           <ClipTrimSection trimIn={clipTrimIn} trimOut={clipTrimOut} controlled={props.clipTrimIn !== undefined || props.clipTrimOut !== undefined} onTrimInChange={onClipTrimInChange} onTrimOutChange={onClipTrimOutChange} />
           <ClipPlaybackSection speed={clipSpeed} controlled={props.clipSpeed !== undefined} onSpeedChange={onClipSpeedChange} />
+          {/* Effect sections (effects-mental-model.md). Blend maps to a host field;
+              Color grading + Chroma keying are the later WebGL colour pipeline. */}
+          <ClipBlendSection mode={clipBlendMode} controlled={props.clipBlendMode !== undefined} onModeChange={onClipBlendModeChange} />
+          <ClipColorSection />
+          <ClipChromaKeySection />
+        </ScrollArea>
+      )}
+
+      {/* ── AUDIO CLIP mode (effects-mental-model.md) ────────────────────────
+          A distinct inspector state for a selected audio clip. Volume is the
+          host-wired control; EQ / Denoise / De-hum / Reverb / Compressor /
+          Loudness are structural (unwired) until the audio DSP pipeline lands. */}
+      {mode === "audio-clip" && (
+        <ScrollArea>
+          <div className="h-[40px] flex items-center gap-[8px] px-[16px] border-b border-c-border">
+            <div className="flex-1 min-w-0">
+              <InputField value={audioClipName} onChange={value => onAudioClipNameChange?.(value)} placeholder="Audio clip name" />
+            </div>
+            <PopoverMenu align="right" trigger={<PanelActionBtn icon={<MoreHorizontal size={16} strokeWidth={1.5} />} label="Audio clip options" />}>
+              {close => <Menu minWidth={180}>
+                <MenuRow type="simple" label="Replace audio" onClick={() => { onReplaceAudio?.(); close(); }} />
+                <MenuRow type="simple" label="Delete clip" destructive onClick={() => { onDeleteAudioClip?.(); close(); }} />
+              </Menu>}
+            </PopoverMenu>
+          </div>
+          <AudioVolumeSection volume={audioVolume} controlled={props.audioVolume !== undefined} onVolumeChange={onAudioVolumeChange} />
+          <AudioEqualizerSection />
+          <AudioDenoiseSection />
+          <AudioDeHumSection />
+          <AudioReverbSection />
+          <AudioCompressorSection />
+          <AudioLoudnessSection />
         </ScrollArea>
       )}
 

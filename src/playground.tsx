@@ -1183,6 +1183,15 @@ export default function Playground() {
     </div>;
   }
 
+  if (view === "audio-clip-contract") {
+    return <div style={{ height: "100vh", width: "100vw", display: "flex", justifyContent: "flex-end", background: "#e6e6e6" }}>
+      <PropertyPanel mode="audio-clip" audioClipName="voiceover" audioVolume={100}
+        onAudioClipNameChange={name => console.info("rename audio clip", name)}
+        onAudioVolumeChange={value => console.info("audio volume", value)}
+        onReplaceAudio={() => console.info("Replace audio")} onDeleteAudioClip={() => console.info("Delete audio clip")} />
+    </div>;
+  }
+
   if (view === "project-contract") {
     return <div style={{ height: "100vh", width: "100vw", display: "flex", justifyContent: "flex-end", background: "#e6e6e6" }}>
       <PropertyPanel mode="project" projectName="Launch video" projectWidth={projectContract.width} projectHeight={projectContract.height}
