@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { clsx } from "clsx";
-import { Upload, Search, Image as ImageIcon, Film, Trash2, Plus, Pencil } from "lucide-react";
+import { Upload, Search, Image as ImageIcon, Film, Volume2, Trash2, Plus, Pencil } from "lucide-react";
 import { SegmentedControl } from "./SegmentedControl";
 import { FieldShell, InputField } from "./Input";
 import { Menu, MenuRow } from "./Menu";
@@ -21,9 +21,9 @@ const FONT = "font-[family-name:var(--composa-font-family)]";
 const LABEL = clsx(FONT, "text-[11px] font-[550] leading-[16px] text-c-text");
 const CAPTION = clsx(FONT, "text-[11px] font-[450] leading-[16px] text-c-text-secondary");
 
-export type AssetKind = "image" | "video";
+export type AssetKind = "image" | "video" | "audio";
 export type AssetStatus = "ready" | "uploading" | "error";
-export type AssetFilter = "all" | "images" | "videos";
+export type AssetFilter = "all" | "images" | "videos" | "audio";
 
 export interface AssetItem {
   id: string;
@@ -49,7 +49,7 @@ function TypeBadge({ kind }: { kind: AssetKind }) {
         "bg-c-bg-inverse text-c-text-on-inverse",
       )}
     >
-      {kind === "video" ? "VID" : "IMG"}
+      {kind === "video" ? "VID" : kind === "audio" ? "AUD" : "IMG"}
     </span>
   );
 }
@@ -104,8 +104,8 @@ function AssetCard({
         {/* type badge */}
         {!uploading && <TypeBadge kind={item.kind} />}
 
-        {/* duration (video) */}
-        {!uploading && !error && item.kind === "video" && item.duration && (
+        {/* duration (video / audio) */}
+        {!uploading && !error && (item.kind === "video" || item.kind === "audio") && item.duration && (
           <span
             className={clsx(
               FONT,
@@ -340,6 +340,7 @@ export function AssetsPanel({
     return assets.filter((a) => {
       if (activeFilter === "images" && a.kind !== "image") return false;
       if (activeFilter === "videos" && a.kind !== "video") return false;
+      if (activeFilter === "audio" && a.kind !== "audio") return false;
       if (activeQuery && !a.name.toLowerCase().includes(activeQuery.toLowerCase())) return false;
       return true;
     });
@@ -347,7 +348,7 @@ export function AssetsPanel({
 
   const hasAny = assets.length > 0;
   const insertAsset = (item: AssetItem) => {
-    if (item.kind === "video") onAddToTimeline?.(item.id);
+    if (item.kind === "video" || item.kind === "audio") onAddToTimeline?.(item.id);
     else onInsert?.(item.id);
   };
   const requestRename = (item: AssetItem) => {
@@ -405,6 +406,7 @@ export function AssetsPanel({
             { value: "all", label: "All" },
             { value: "images", label: "Images", icon: <ImageIcon size={13} strokeWidth={1.75} /> },
             { value: "videos", label: "Videos", icon: <Film size={13} strokeWidth={1.75} /> },
+            { value: "audio", label: "Audio", icon: <Volume2 size={13} strokeWidth={1.75} /> },
           ]}
         />
       </div>
@@ -429,7 +431,7 @@ export function AssetsPanel({
                   insertAsset(item)
                 }
                 onInsert={() => insertAsset(item)}
-                insertLabel={item.kind === "video" ? "Add to timeline" : "Insert on slide"}
+                insertLabel={item.kind === "video" || item.kind === "audio" ? "Add to timeline" : "Insert on slide"}
                 onDelete={() => requestDelete(item)}
                 onContextMenu={(e) => {
                   e.preventDefault();
@@ -451,8 +453,8 @@ export function AssetsPanel({
           <button type="button" aria-label="Close asset menu" className="fixed inset-0 z-20 cursor-default" onClick={() => setContextAsset(null)} />
           <div className="fixed z-30" style={{ left: contextAsset.x, top: contextAsset.y }}>
             <Menu minWidth={176}>
-              <MenuRow label={contextAsset.item.kind === "video" ? "Add to timeline" : "Insert on slide"}
-                leading={contextAsset.item.kind === "video" ? <Film size={14} /> : <Plus size={14} />}
+              <MenuRow label={contextAsset.item.kind === "video" || contextAsset.item.kind === "audio" ? "Add to timeline" : "Insert on slide"}
+                leading={contextAsset.item.kind === "video" ? <Film size={14} /> : contextAsset.item.kind === "audio" ? <Volume2 size={14} /> : <Plus size={14} />}
                 onClick={() => { insertAsset(contextAsset.item); setContextAsset(null); }} />
               <MenuRow label="Rename" leading={<Pencil size={14} />} onClick={() => requestRename(contextAsset.item)} />
               <MenuRow type="divider" />

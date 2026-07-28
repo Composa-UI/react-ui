@@ -18,7 +18,7 @@ import { EASING_PRESETS, easingControlPoints, easingPresetLabel, easingSvgPath, 
 //     (After-Effects / Figma-Slides style): transport + ms-ruler + track list +
 //     keyframe lanes. Componentized from the Figma export (node 2212-1693).
 //   • mode="master" — full-project strip: seconds-ruler + Compositions, Base video,
-//     and a deferred Audio track seam + transport.
+//     and an Audio lane (waveform clips) + transport.
 // Data-driven: tracks/blocks/keyframes/bars are positioned along a shared time→px
 // scale. The active accent (playhead, keyframes, zoom fill) is Figma blue #0d99ff.
 
@@ -147,6 +147,17 @@ export interface BaseClipBlock {
   thumbnail?: string;
   tint?: string;
 }
+// master-view audio clip — a clip on the Audio lane. Mirrors BaseClipBlock but
+// carries an optional normalized waveform (0..1 peaks) instead of a thumbnail.
+// When `waveform` is absent a deterministic stub waveform renders (real peak
+// extraction from the source asset is a later effort — see AudioLaneWaveform).
+export interface AudioClipBlock {
+  id: string;
+  name: string;
+  range: [number, number];
+  selected?: boolean;
+  waveform?: number[];
+}
 
 const DEMO_TRACKS: Track[] = [
   { name: "Top Buttons", type: "group", bar: [2600, 8000], props: [
@@ -191,7 +202,7 @@ export type TimelineGestureTarget =
   | { kind: "keyframe"; id: string; action: "move"; keyframe: KeyframeTarget }
   | { kind: "duration-bar"; id: string; action: TimelineDurationBarAction }
   | { kind: "preset-bar"; id: string; action: TimelineDurationBarAction }
-  | { kind: "slide-block" | "base-clip"; id: string; action: "move" | "trim-start" | "trim-end" };
+  | { kind: "slide-block" | "base-clip" | "audio-clip"; id: string; action: "move" | "trim-start" | "trim-end" };
 
 export function shouldClaimTimelineGestureEscape(key: string, gestureActive: boolean): boolean {
   return key === "Escape" && gestureActive;
@@ -1346,14 +1357,107 @@ function BaseVideoTrack({ clips, viewport, plotWidth, onSelect, onOpen, onMove, 
   );
 }
 
-function DeferredAudioTrack() {
+// Deterministic pseudo-random peaks so an audio clip always reads as a waveform
+// even before real peak extraction lands. Seeded off the clip id → stable across
+// renders (no flicker) and distinct per clip. STUB — replace `waveform` peaks with
+// decoded source audio when the extraction pipeline exists.
+function stubWaveformPeaks(seed: string, count: number): number[] {
+  let hash = 0;
+  for (let index = 0; index < seed.length; index++) hash = (hash * 31 + seed.charCodeAt(index)) | 0;
+  const peaks: number[] = [];
+  let state = hash || 1;
+  for (let index = 0; index < count; index++) {
+    state = (state * 1103515245 + 12345) & 0x7fffffff;
+    peaks.push(0.25 + (state / 0x7fffffff) * 0.75);
+  }
+  return peaks;
+}
+
+// Symmetric waveform bars centred on the clip's mid-line. Rendered as a
+// deterministic stub when no real peaks are supplied (see stubWaveformPeaks).
+function AudioLaneWaveform({ id, peaks, active }: { id: string; peaks?: number[]; active?: boolean }) {
+  const values = peaks && peaks.length ? peaks : stubWaveformPeaks(id, 40);
   return (
-    <div className="flex" style={{ height: ROW_BLOCK }} role="group" aria-label="Audio track (coming soon)" aria-disabled="true">
+    <div aria-hidden className="absolute inset-0 flex items-center justify-center gap-[1px] px-[6px] opacity-70 pointer-events-none">
+      {values.map((value, index) => (
+        <span key={index} className={clsx("w-[2px] rounded-full shrink-0", active ? "bg-c-text" : "bg-c-icon-secondary")}
+          style={{ height: `${Math.max(8, Math.round(value * 100))}%` }} />
+      ))}
+    </div>
+  );
+}
+
+function AudioTrack({ clips, viewport, plotWidth, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
+  clips: AudioClipBlock[];
+  viewport: TimelineViewport; plotWidth: number;
+  onSelect?: (id: string) => void;
+  onOpen?: (id: string) => void;
+  onMove?: (id: string, startMs: number) => void;
+  onTrim?: (id: string, edge: "start" | "end", timeMs: number, detail?: TimelineClipTrimDetail) => void;
+  onGestureStart?: (target: TimelineGestureTarget) => void;
+  onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
+}) {
+  const drag = useRef<{ id: string; kind: "move" | "start" | "end"; startX: number; range: [number, number] } | null>(null);
+  const begin = (event: React.PointerEvent, clip: AudioClipBlock, kind: "move" | "start" | "end") => {
+    if (!shouldBeginTimelinePointer(event.button, event.isPrimary)) return;
+    event.stopPropagation();
+    drag.current = { id: clip.id, kind, startX: event.clientX, range: clip.range };
+    escapeOwnership.claim();
+    onGestureStart?.({ kind: "audio-clip", id: clip.id, action: kind === "start" ? "trim-start" : kind === "end" ? "trim-end" : "move" });
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const finish = (cancelled: boolean) => {
+    const active = drag.current;
+    if (!active) return;
+    drag.current = null;
+    escapeOwnership.release();
+    onGestureEnd?.({ kind: "audio-clip", id: active.id, action: active.kind === "start" ? "trim-start" : active.kind === "end" ? "trim-end" : "move" }, { cancelled });
+  };
+  const escapeOwnership = useGestureEscapeOwnership(() => finish(true));
+  const update = (event: React.PointerEvent, clip: AudioClipBlock) => {
+    const active = drag.current;
+    if (!active || active.id !== clip.id) return;
+    const delta = Math.round((event.clientX - active.startX) / Math.max(1, plotWidth) * (viewport.endMs - viewport.startMs));
+    if (active.kind === "move") onMove?.(clip.id, Math.max(0, active.range[0] + delta));
+    if (active.kind === "start") onTrim?.(clip.id, "start", Math.min(active.range[1], Math.max(0, active.range[0] + delta)), timelineClipTrimDetail("pointer", viewport, plotWidth));
+    if (active.kind === "end") onTrim?.(clip.id, "end", Math.max(active.range[0], active.range[1] + delta), timelineClipTrimDetail("pointer", viewport, plotWidth));
+  };
+  return (
+    <div className="flex" style={{ height: ROW_BLOCK }}>
       <div className="shrink-0 flex items-center gap-[8px] pl-[8px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W }}>
         <Volume2 size={16} strokeWidth={1.5} className="text-c-icon-secondary shrink-0 opacity-60" />
         <span className={clsx(FONT, "text-[11px] font-[450] text-c-text-secondary truncate")}>Audio</span>
       </div>
-      <div data-timeline-pan-surface className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} />
+      <div data-timeline-pan-surface className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Audio track" : "Audio track (empty)"}>
+        {clips.map(clip => {
+          const left = percent(clip.range[0], viewport);
+          const width = percentWidth(clip.range[0], clip.range[1], viewport);
+          return <div key={clip.id} role="button" tabIndex={0} aria-pressed={clip.selected} aria-label={clip.name}
+            onClick={() => onSelect?.(clip.id)} onDoubleClick={() => onOpen?.(clip.id)}
+            onKeyDown={event => {
+              if (event.key === "Enter") { event.preventDefault(); onOpen?.(clip.id); }
+              else if (event.key === " ") { event.preventDefault(); onSelect?.(clip.id); }
+              else if (shouldClaimTimelineGestureEscape(event.key, drag.current?.id === clip.id)) {
+                event.preventDefault(); event.stopPropagation(); finish(true);
+              }
+            }}
+            onPointerDown={event => begin(event, clip, "move")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
+            className={clsx("absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-c-bg-secondary",
+              clip.selected ? "border-c-border-selected-strong" : "border-c-border")}
+            style={{ left, width }}>
+            <AudioLaneWaveform id={clip.id} peaks={clip.waveform} active={clip.selected} />
+            <span aria-label={`Trim start of ${clip.name}`} role="slider" aria-valuemin={0} aria-valuemax={clip.range[1]} aria-valuenow={clip.range[0]} tabIndex={0}
+              onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "start", Math.min(clip.range[1], Math.max(0, clip.range[0] + (event.key === "ArrowLeft" ? -100 : 100))), timelineClipTrimDetail("keyboard", viewport, plotWidth)); } }}
+              onPointerDown={event => begin(event, clip, "start")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
+              className="absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize z-10" />
+            <span aria-label={`Trim end of ${clip.name}`} role="slider" aria-valuemin={clip.range[0]} aria-valuemax={Number.MAX_SAFE_INTEGER} aria-valuenow={clip.range[1]} tabIndex={0}
+              onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "end", Math.max(clip.range[0], clip.range[1] + (event.key === "ArrowLeft" ? -100 : 100)), timelineClipTrimDetail("keyboard", viewport, plotWidth)); } }}
+              onPointerDown={event => begin(event, clip, "end")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
+              className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize z-10" />
+            <span className={clsx(FONT, "relative text-[11px] font-[450] truncate", clip.selected ? "text-c-text" : "text-c-text-secondary")}>{clip.name}</span>
+          </div>;
+        })}
+      </div>
     </div>
   );
 }
@@ -1362,6 +1466,7 @@ export function Timeline({
   mode = "slide",
   tracks = DEMO_TRACKS,
   blocks = DEMO_BLOCKS,
+  audioClips = [],
   baseClips = [],
   height = 320,
   duration = mode === "master" ? 20000 : 10000,
@@ -1410,6 +1515,10 @@ export function Timeline({
   onClipOpen,
   onClipMove,
   onClipTrim,
+  onAudioClipSelect,
+  onAudioClipOpen,
+  onAudioClipMove,
+  onAudioClipTrim,
   onGestureStart,
   onGestureEnd,
   revealKeyframe,
@@ -1421,6 +1530,7 @@ export function Timeline({
   tracks?: Track[];
   blocks?: SlideBlock[];
   baseClips?: BaseClipBlock[];
+  audioClips?: AudioClipBlock[];
   height?: number;
   duration?: number;
   frameRate?: TimelineFrameRate;
@@ -1476,6 +1586,10 @@ export function Timeline({
   onClipOpen?: (id: string) => void;
   onClipMove?: (id: string, startMs: number) => void;
   onClipTrim?: (id: string, edge: "start" | "end", timeMs: number, detail?: TimelineClipTrimDetail) => void;
+  onAudioClipSelect?: (id: string) => void;
+  onAudioClipOpen?: (id: string) => void;
+  onAudioClipMove?: (id: string, startMs: number) => void;
+  onAudioClipTrim?: (id: string, edge: "start" | "end", timeMs: number, detail?: TimelineClipTrimDetail) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
   /** One-shot request to minimally pan a selected or newly created keyframe into the time viewport. */
@@ -1713,7 +1827,7 @@ export function Timeline({
           <>
             <BlockTrack blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
             <BaseVideoTrack clips={baseClips} viewport={viewport} plotWidth={plotWidth} onSelect={onClipSelect} onOpen={onClipOpen} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
-            <DeferredAudioTrack />
+            <AudioTrack clips={audioClips} viewport={viewport} plotWidth={plotWidth} onSelect={onAudioClipSelect} onOpen={onAudioClipOpen} onMove={onAudioClipMove} onTrim={onAudioClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
           </>
         ) : (
           <>

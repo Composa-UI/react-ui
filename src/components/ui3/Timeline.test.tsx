@@ -455,13 +455,13 @@ describe("Timeline controlled reveal ownership", () => {
 });
 
 describe("Timeline master seams", () => {
-  it("renders the master audio seam and the white-thumb blue-fill zoom contract", () => {
+  it("renders the master audio lane and the white-thumb blue-fill zoom contract", () => {
     const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={20_000}
       viewport={{ startMs: 2_000, endMs: 12_000 }} />);
     expect(html).toContain(">Audio</span>");
-    expect(html).toContain('aria-label="Audio track (coming soon)"');
-    expect(html).toContain('role="group"');
-    expect(html).toContain('aria-disabled="true"');
+    // Audio lane is now a real, empty track (no longer a disabled "coming soon" seam).
+    expect(html).toContain('aria-label="Audio track (empty)"');
+    expect(html).not.toContain('aria-label="Audio track (coming soon)"');
     expect(html).toContain("data-timeline-zoom-track");
     expect(html).toContain("data-timeline-zoom-fill");
     expect(html).toContain("bg-c-bg-brand");
@@ -472,6 +472,21 @@ describe("Timeline master seams", () => {
     expect(html).toContain("[&amp;::-webkit-slider-runnable-track]:h-[2px]");
     expect(html).toContain("[&amp;::-webkit-slider-runnable-track]:rounded-[1px]");
     expect(html).toContain("[&amp;::-webkit-slider-thumb]:-mt-[5px]");
+  });
+
+  it("renders audio clips on the Audio lane with a waveform and selected state", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={20_000}
+      audioClips={[
+        { id: "audio-1", name: "voiceover", range: [1_000, 6_000], selected: true },
+        { id: "audio-2", name: "music", range: [7_000, 12_000] },
+      ]} />);
+    expect(html).toContain('aria-label="Audio track"');
+    expect(html).toContain('aria-label="voiceover"');
+    expect(html).toContain('aria-label="music"');
+    // selected clip carries the strong selection border; waveform bars render.
+    expect(html).toContain("border-c-border-selected-strong");
+    expect(html).toContain('aria-label="Trim start of voiceover"');
+    expect(html).toContain('aria-label="Trim end of music"');
   });
 });
 
