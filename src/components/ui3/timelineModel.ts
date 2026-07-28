@@ -291,6 +291,73 @@ export function tickTimes(viewport: TimelineViewport, widthPx: number): number[]
   return result;
 }
 
+// ── ruler unit selection (master seconds ↔ minutes) ──────────────────────────
+// At high zoom the master ruler reads in seconds ("1.50s"); when zoomed far out the
+// visible span crosses into minute territory and per-second labels become noise, so
+// the ruler switches to `m:ss` (e.g. "1:30"). The switch is keyed off the visible
+// span, not the absolute time, so the label unit tracks the zoom level. The default
+// threshold is one minute of visible span (owner-confirmable).
+export const MASTER_RULER_MINUTES_SPAN_MS = 60_000;
+
+export function timelineRulerUsesMinutes(spanMs: number, thresholdMs = MASTER_RULER_MINUTES_SPAN_MS): boolean {
+  return Number.isFinite(spanMs) && spanMs >= thresholdMs;
+}
+
+/** Formats one master-ruler tick: `m:ss` when zoomed far out, else seconds. */
+export function formatMasterRulerTick(timeMs: number, spanMs: number, thresholdMs = MASTER_RULER_MINUTES_SPAN_MS): string {
+  const ms = Number.isFinite(timeMs) ? timeMs : 0;
+  if (timelineRulerUsesMinutes(spanMs, thresholdMs)) {
+    const totalSeconds = Math.max(0, Math.round(ms / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
+  }
+  return `${Number((ms / 1000).toFixed(2))}s`;
+}
+
+// ── horizontal viewport scrollbar (time-axis pan affordance) ─────────────────
+// The timeline pans on shift-wheel / trackpad-x, but that is undiscoverable and
+// leaves no visible position indicator. This maps the viewport window onto a
+// horizontal scrollbar track so it can be read and dragged. The thumb width is the
+// visible fraction of the whole duration; its offset is the scroll position.
+export const TIMELINE_SCROLLBAR_MIN_THUMB_PX = 24;
+
+export function timelineScrollbarThumb(
+  viewport: TimelineViewport,
+  durationMs: number,
+  trackWidthPx: number,
+  minThumbPx = TIMELINE_SCROLLBAR_MIN_THUMB_PX,
+): { leftPx: number; widthPx: number; scrollable: boolean } {
+  const track = Math.max(0, trackWidthPx);
+  const duration = Math.max(1, durationMs);
+  const span = Math.min(duration, Math.max(0, viewport.endMs - viewport.startMs));
+  const rawWidth = (span / duration) * track;
+  const widthPx = Math.max(Math.min(minThumbPx, track), Math.min(track, rawWidth));
+  const maxLeft = Math.max(0, track - widthPx);
+  const scrollable = duration - span > 0.5;
+  const startFraction = scrollable ? viewport.startMs / (duration - span) : 0;
+  const leftPx = Math.max(0, Math.min(maxLeft, startFraction * maxLeft));
+  return { leftPx, widthPx, scrollable };
+}
+
+/** Pans the viewport for a horizontal-scrollbar thumb drag of `deltaPx` track pixels. */
+export function timelineScrollbarPan(
+  viewport: TimelineViewport,
+  deltaPx: number,
+  durationMs: number,
+  trackWidthPx: number,
+  minThumbPx = TIMELINE_SCROLLBAR_MIN_THUMB_PX,
+): TimelineViewport {
+  const duration = Math.max(1, durationMs);
+  const current = normalizeViewport(viewport, duration);
+  const span = current.endMs - current.startMs;
+  if (duration - span <= 0.5 || !Number.isFinite(deltaPx)) return current;
+  const { widthPx } = timelineScrollbarThumb(current, duration, trackWidthPx, minThumbPx);
+  const maxLeft = Math.max(1, Math.max(0, trackWidthPx) - widthPx);
+  const deltaStartMs = (deltaPx / maxLeft) * (duration - span);
+  return normalizeViewport({ startMs: current.startMs + deltaStartMs, endMs: current.endMs + deltaStartMs }, duration);
+}
+
 export function collectAggregateKeyframes(keys: AggregateKeyInput[], propertyCount: number): AggregateKeyframe[] {
   const byTime = new Map<number, AggregateKeyInput[]>();
   for (const key of keys) byTime.set(key.timeMs, [...(byTime.get(key.timeMs) ?? []), key]);
