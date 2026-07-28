@@ -4,7 +4,7 @@ import {
   RotateCw, FlipHorizontal2, FlipVertical2,
   Link2, Link2Off, MoreHorizontal,
   Maximize2, Minimize2, Plus, Eye, Square,
-  Rows2, Columns, WrapText,
+  Rows2, Columns,
   BookOpen,
   Crosshair, Grid3x3, ExternalLink, Unlink,
   Minus, EyeOff, AlignJustify, Maximize, ChevronDown, Ruler,
@@ -170,6 +170,7 @@ const LetterSpacingIcon = iconForSemantic("letter-spacing");
 const LayoutFreeformIcon = iconForSemantic("layout-freeform");
 const LayoutHorizontalIcon = iconForSemantic("layout-horizontal");
 const LayoutVerticalIcon = iconForSemantic("layout-vertical");
+const LayoutWrapIcon = iconForSemantic("layout-wrap");
 const AlignLeftIcon = iconForSemantic("align-left");
 const AlignCenterXIcon = iconForSemantic("align-center-x");
 const AlignRightIcon = iconForSemantic("align-right");
@@ -757,7 +758,7 @@ function LayoutFrameSection({
     { icon: <LayoutFreeformIcon data-icon-semantic="layout-freeform" size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
     { icon: <LayoutVerticalIcon data-icon-semantic="layout-vertical" size={S} strokeWidth={1.5} />, label: "Vertical", value: "v" },
     { icon: <LayoutHorizontalIcon data-icon-semantic="layout-horizontal" size={S} strokeWidth={1.5} />, label: "Horizontal", value: "h" },
-    { icon: <WrapText size={S} strokeWidth={1.5} />, label: "Wrap", value: "wrap" },
+    { icon: <LayoutWrapIcon data-icon-semantic="layout-wrap" size={S} strokeWidth={1.5} />, label: "Wrap", value: "wrap" },
   ];
 
   const handleFlowChange = (v: string) => {
@@ -876,7 +877,7 @@ function LayoutAutoSection({
     { icon: <LayoutFreeformIcon data-icon-semantic="layout-freeform" size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
     { icon: <LayoutVerticalIcon data-icon-semantic="layout-vertical" size={S} strokeWidth={1.5} />, label: "Vertical", value: "v" },
     { icon: <LayoutHorizontalIcon data-icon-semantic="layout-horizontal" size={S} strokeWidth={1.5} />, label: "Horizontal", value: "h" },
-    { icon: <WrapText size={S} strokeWidth={1.5} />, label: "Wrap",        value: "wrap" },
+    { icon: <LayoutWrapIcon data-icon-semantic="layout-wrap" size={S} strokeWidth={1.5} />, label: "Wrap",        value: "wrap" },
   ];
 
   const handleFlowChange = (v: string) => {
