@@ -54,6 +54,29 @@ describe("AnimatePanel — combined card groups an object's actions into one car
     act(() => renderer!.unmount());
   });
 
+  it("keeps the connector FLUSH to the cards — no vertical padding gap detaching the line", () => {
+    // Owner feedback: the line must TOUCH the cards (extend to the preceding card's bottom
+    // edge and the following card's top edge). A `py-*` on the connector wrapper would
+    // insert a gap so the line no longer meets the cards — guard against it in both
+    // variants (delayed "gap" pair + continuous line).
+    const gapHtml = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={TWO_PULSES} />);
+    const gapWrapper = gapHtml.match(/<div data-combined-connector="gap"[^>]*class="([^"]*)"/)?.[1] ?? "";
+    expect(gapWrapper).not.toMatch(/\bpy-/);
+    expect(gapWrapper).not.toMatch(/\bpt-/);
+    expect(gapWrapper).not.toMatch(/\bpb-/);
+
+    const continuous: ObjectAnimationItem[] = [
+      { id: "c1", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "0.6s", style: "pulse" },
+      { id: "c2", elementId: "logo", n: 2, name: "Logo", kind: "Action", duration: "0.6s", style: "pulse" },
+    ];
+    const contHtml = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={continuous} />);
+    const contWrapper = contHtml.match(/<div data-combined-connector="continuous"[^>]*class="([^"]*)"/)?.[1] ?? "";
+    expect(contWrapper).not.toBe(""); // the continuous connector wrapper must exist
+    expect(contWrapper).not.toMatch(/\bpy-/);
+    expect(contWrapper).not.toMatch(/\bpt-/);
+    expect(contWrapper).not.toMatch(/\bpb-/);
+  });
+
   it("keeps a single action on an object rendering EXACTLY as today (no combined chrome)", () => {
     const single: ObjectAnimationItem[] = [
       { id: "s1", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "0.6s", style: "pulse" },

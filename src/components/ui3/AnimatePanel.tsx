@@ -330,24 +330,29 @@ function CombinedAnimationCard({ elementId, rows, renderRow, onDelayBetweenChang
           <Fragment key={rowId(row)}>
             {k > 0 && (
               hasGap
-                // Delay present: the line runs out of the preceding card, breaks for the
-                // Between control, then continues into the following card.
+                // Delay present: the line runs FLUSH out of the preceding card's bottom
+                // edge, meets the Between control cleanly (line → control → line, all
+                // touching), then continues FLUSH into the following card's top edge. No
+                // vertical padding on the wrapper — a gap there would detach the line from
+                // the cards, so the two rows would stop reading as one connected unit.
                 ? (
-                  <div data-combined-connector="gap" className="flex flex-col py-[6px]">
-                    <ConnectorSegment className="h-[8px]" />
+                  <div data-combined-connector="gap" className="flex flex-col">
+                    <ConnectorSegment className="h-[10px]" />
                     <DelayBetweenRow
                       precedingId={rowId(preceding!)}
                       followingId={rowId(row)}
                       gapMs={gapMs}
                       onChange={onDelayBetweenChange}
                     />
-                    <ConnectorSegment className="h-[8px]" />
+                    <ConnectorSegment className="h-[10px]" />
                   </div>
                 )
-                // No delay: one continuous line between the two cards.
+                // No delay: one continuous line that TOUCHES both cards — flush to the
+                // preceding card's bottom edge and the following card's top edge (no
+                // padding gap), so the pair reads as a single connected unit.
                 : (
-                  <div data-combined-connector="continuous" className="flex justify-center py-[6px]">
-                    <ConnectorSegment className="h-[12px]" />
+                  <div data-combined-connector="continuous" className="flex justify-center">
+                    <ConnectorSegment className="h-[16px]" />
                   </div>
                 )
             )}
