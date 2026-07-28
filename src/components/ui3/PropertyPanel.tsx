@@ -122,6 +122,9 @@ export type ElementPaddingEdge = keyof ElementLayoutSettings["padding"];
 export type ElementSizingAxis = "width" | "height";
 export type ElementSizingMode = "fixed" | "hug" | "fill";
 export interface ElementSizingChange { mode: ElementSizingMode; value?: number; }
+/** A slide/composition's duration derivation: a pinned fixed length, or hug —
+ *  follow the composition's longest object-animation extent. */
+export type SlideDurationMode = "fixed" | "hug";
 export type ElementSizingConstraint = "min" | "max";
 export type TextSizingMode = "auto-width" | "auto-height" | "fixed-size";
 export type PositionPresentation = "combined" | "separate";
@@ -1814,6 +1817,8 @@ function SlideTimingSection({
   onStartChange,
   onEndChange,
   onDurationChange,
+  durationMode,
+  onDurationModeChange,
   controlled = false,
 }: {
   title?: string;
@@ -1823,12 +1828,19 @@ function SlideTimingSection({
   onStartChange?: (value: number) => void;
   onEndChange?: (value: number) => void;
   onDurationChange?: (value: number) => void;
+  /** Slide/composition duration mode. Absent keeps the plain numeric Duration
+   *  field (Video Clip Timeline mode and demo fallbacks never hug). */
+  durationMode?: SlideDurationMode;
+  onDurationModeChange?: (mode: SlideDurationMode) => void;
   controlled?: boolean;
 }) {
   const [internalStart, setInternalStart] = useState(start);
   const [internalEnd, setInternalEnd] = useState(end);
   const renderedStart = controlled ? start : internalStart;
   const renderedEnd = controlled ? end : internalEnd;
+  const renderedDuration = Math.max(0, renderedEnd - renderedStart);
+  const hugging = durationMode === "hug";
+  const commitDuration = (value: number) => { if (!controlled) setInternalEnd(renderedStart + value); onDurationChange?.(value); };
   return (
     <PanelSection title={title} landmark={landmark}>
       <PanelFieldRow
@@ -1859,14 +1871,38 @@ function SlideTimingSection({
         label="Duration"
         reserveRightSlot={false}
         left={
-          <NumericInput
-            ariaLabel="Duration"
-            iconLead={<span className={FONT}>↔</span>}
-            value={Math.max(0, renderedEnd - renderedStart)}
-            onChange={value => { if (!controlled) setInternalEnd(renderedStart + value); onDurationChange?.(value); }}
-            min={0}
-            suffix="s"
-          />
+          onDurationModeChange ? (
+            // Fixed/Hug combo — the Duration row analogue of the Dimensions
+            // SizingComboField. Hug follows the composition's longest action;
+            // editing the value (or picking Fixed) pins it to a fixed duration.
+            <NumericComboInput
+              dataMode={hugging ? "hug" : "fixed"}
+              ariaLabel="Duration"
+              dropdownAriaLabel={`Duration mode: ${hugging ? "Hug" : "Fixed"}`}
+              idleLabel={hugging ? "Hug" : undefined}
+              iconLead={<span className={FONT}>↔</span>}
+              value={renderedDuration}
+              onChange={value => { if (hugging) onDurationModeChange("fixed"); commitDuration(value); }}
+              min={0}
+              suffix={hugging ? undefined : "s"}
+              menu={close => (
+                <Menu minWidth={190}>
+                  <MenuRow type="checkmark" leading={<SizingFixedIcon data-icon-semantic="sizing-fixed" size={14} strokeWidth={1.5} />} label="Fixed duration" checked={!hugging} onClick={() => { onDurationModeChange("fixed"); close(); }} />
+                  <MenuRow type="checkmark" leading={<SizingHugIcon data-icon-semantic="sizing-hug" size={14} strokeWidth={1.5} />} label="Hug contents" checked={hugging} onClick={() => { onDurationModeChange("hug"); close(); }} />
+                </Menu>
+              )}
+              className="w-full"
+            />
+          ) : (
+            <NumericInput
+              ariaLabel="Duration"
+              iconLead={<span className={FONT}>↔</span>}
+              value={renderedDuration}
+              onChange={commitDuration}
+              min={0}
+              suffix="s"
+            />
+          )
         }
       />
     </PanelSection>
@@ -2334,6 +2370,10 @@ export interface PropertyPanelProps {
   slideDuration?: number;
   onSlideStartChange?: (value: number) => void;
   onSlideDurationChange?: (value: number) => void;
+  /** Slide/composition duration mode. Supplying onSlideDurationModeChange turns
+   *  the Duration field into a Fixed/Hug combo; omit it for the plain field. */
+  slideDurationMode?: SlideDurationMode;
+  onSlideDurationModeChange?: (mode: SlideDurationMode) => void;
   slideSkipped?: boolean;
   onSlideSkippedChange?: (value: boolean) => void;
   slideBackgroundType?: SlideBackgroundType;
@@ -2693,6 +2733,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
   slideDuration = 5,
   onSlideStartChange,
   onSlideDurationChange,
+  slideDurationMode,
+  onSlideDurationModeChange,
   slideSkipped = false,
   onSlideSkippedChange,
   slideBackgroundType,
@@ -2919,6 +2961,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onStartChange={onSlideStartChange}
             onEndChange={value => onSlideDurationChange?.(Math.max(0, value - slideStart))}
             onDurationChange={onSlideDurationChange}
+            durationMode={slideDurationMode}
+            onDurationModeChange={onSlideDurationModeChange}
           />
           <SlideBackgroundSection
             capabilities={capabilities}
