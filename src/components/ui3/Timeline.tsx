@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
 import { clsx } from "clsx";
-import { Play, Pause, Square, Circle, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, Layers, Clapperboard, AudioLines } from "lucide-react";
+import { Play, Pause, Square, Circle, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, Layers, SquarePlay, AudioLines } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { collectAggregateKeyframes, createTimelineEdgeDragController, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineAnchorRatioAtX, timelineDragDeltaMs, timelinePointerPanDelta, timelineScrollTop, timelineViewportChanged, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
 import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSelectionState";
-import { ScrollArea } from "./Panel";
+import { ScrollArea, IconButtonRow, type IconBtn } from "./Panel";
 import { Menu, MenuRow } from "./Menu";
-import { SegmentedControlGroup, SegmentedControlItem } from "./SegmentedControl";
 import { NumericInput } from "./Input";
 import { useComposaMode } from "./useComposaMode";
 import { EASING_PRESETS, easingControlPoints, easingPresetLabel, easingSvgPath, type EasingPreset, type NamedEasingPreset } from "./easing";
@@ -27,7 +26,7 @@ const FONT = "font-[family-name:var(--composa-font-family)]";
 const LEFT_W = 297;       // track-list width
 const ROW_LAYER = 28;
 const ROW_PROP = 28;      // raised from 24 → contains the 20px bar with 4px above/below
-const ROW_BLOCK = 56;     // master-view lane height — two-row header ([icon][label][+] + [vis][solo][mute][lock], Figma 2-4060) over the centred 20px clip bar
+const ROW_BLOCK = 56;     // master-view lane height — two-row header ([icon][label][+] + [vis][solo][mute][lock], Figma 2-4060); the lane's clip bar fills this row height (inset 4px)
 // Accepted MIME prefixes per master lane, used to type the file-drop target
 // (`useLaneFileDrop`): the Video lane accepts image + video, the Audio lane accepts
 // audio. An audio file dragged over the Video lane therefore does not highlight,
@@ -1220,60 +1219,64 @@ interface MasterLaneHeaderProps {
   onLockToggle?: () => void;
 }
 
-// Single toggle inside the lane's control GROUP. Reuses the DS SegmentedControlItem
-// (the same grouped/segmented primitive the Design-tab alignment control is built
-// on) so the four toggles read as ONE enclosed control, not four loose buttons.
-// A toggle whose handler is absent renders disabled (anatomy stays visible without
-// pretending to act); a wired toggle advertises its pressed state.
-function LaneControlSegment({ label, active, onClick, children }: {
-  label: string; active?: boolean; onClick?: () => void; children: React.ReactNode;
-}) {
-  return (
-    <SegmentedControlItem
-      selected={!!active}
-      aria-label={label}
-      aria-pressed={onClick ? active : undefined}
-      disabled={!onClick}
-      onClick={onClick}
-      icon={children}
-      className="!h-[20px] !w-[28px] !flex-none !px-0"
-    />
-  );
-}
-
 function MasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onSoloToggle, onMuteToggle, onLockToggle }: MasterLaneHeaderProps) {
   const visible = control?.visible ?? true;
   const solo = control?.solo ?? false;
   const muted = control?.muted ?? false;
   const locked = control?.locked ?? false;
+  // [visibility] [solo] [mute] [lock] as grouped icon buttons — the SAME DS
+  // primitive the Design-tab alignment control uses (`IconButtonRow`), not a
+  // SegmentedControl. Each is an independent toggle (`active` reflects its own
+  // pressed state); a toggle whose handler is absent renders disabled so the
+  // anatomy stays visible without pretending to act. Icons inherit the row's
+  // primary `text-c-icon` colour (not a muted/secondary token).
+  const controlButtons: IconBtn[] = [
+    {
+      icon: visible ? <Eye size={14} strokeWidth={1.5} /> : <EyeOff size={14} strokeWidth={1.5} />,
+      label: visible ? `Hide ${label}` : `Show ${label}`,
+      active: onVisibilityToggle ? !visible : undefined,
+      disabled: !onVisibilityToggle,
+      onClick: onVisibilityToggle,
+    },
+    {
+      icon: <span className={clsx(FONT, "text-[11px] font-[650] leading-none")}>S</span>,
+      label: solo ? `Unsolo ${label}` : `Solo ${label}`,
+      active: onSoloToggle ? solo : undefined,
+      disabled: !onSoloToggle,
+      onClick: onSoloToggle,
+    },
+    {
+      icon: muted ? <VolumeX size={14} strokeWidth={1.5} /> : <Volume2 size={14} strokeWidth={1.5} />,
+      label: muted ? `Unmute ${label}` : `Mute ${label}`,
+      active: onMuteToggle ? muted : undefined,
+      disabled: !onMuteToggle,
+      onClick: onMuteToggle,
+    },
+    {
+      icon: locked ? <Lock size={14} strokeWidth={1.5} /> : <LockOpen size={14} strokeWidth={1.5} />,
+      label: locked ? `Unlock ${label}` : `Lock ${label}`,
+      active: onLockToggle ? locked : undefined,
+      disabled: !onLockToggle,
+      onClick: onLockToggle,
+    },
+  ];
   return (
     <div className="shrink-0 flex flex-col justify-center gap-[6px] pl-[8px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, height: ROW_BLOCK }}>
-      {/* top row — [type icon] [label] [+ add] */}
+      {/* top row — [type icon] [label] [+ add]. Icons use the primary c-icon token. */}
       <div className="flex items-center gap-[6px]">
-        <span className={clsx("shrink-0 flex items-center", visible ? "text-c-icon-secondary" : "text-c-icon-secondary opacity-60")} aria-hidden>{icon}</span>
+        <span className={clsx("shrink-0 flex items-center", visible ? "text-c-icon" : "text-c-icon opacity-60")} aria-hidden>{icon}</span>
         <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate", visible ? "text-c-text" : "text-c-text-secondary")}>{label}</span>
         <button type="button" aria-label={`Add to ${label}`} disabled={!onAdd} onClick={onAdd}
-          className={clsx("shrink-0 size-[20px] rounded-c-sm flex items-center justify-center text-c-icon-secondary",
+          className={clsx("shrink-0 size-[20px] rounded-c-sm flex items-center justify-center text-c-icon",
             onAdd ? "hover:bg-c-bg-hover hover:text-c-text" : "opacity-40 cursor-default")}>
           <Plus size={14} strokeWidth={1.5} />
         </button>
       </div>
-      {/* control row — [visibility] [solo] [mute] [lock] as ONE grouped/segmented
-          control (same DS primitive as the Design-tab alignment control) */}
-      <SegmentedControlGroup role="group" aria-label={`${label} controls`} className="p-[1px]">
-        <LaneControlSegment label={visible ? `Hide ${label}` : `Show ${label}`} active={!visible} onClick={onVisibilityToggle}>
-          {visible ? <Eye size={14} strokeWidth={1.5} /> : <EyeOff size={14} strokeWidth={1.5} />}
-        </LaneControlSegment>
-        <LaneControlSegment label={solo ? `Unsolo ${label}` : `Solo ${label}`} active={solo} onClick={onSoloToggle}>
-          <span className={clsx(FONT, "text-[11px] font-[650] leading-none")}>S</span>
-        </LaneControlSegment>
-        <LaneControlSegment label={muted ? `Unmute ${label}` : `Mute ${label}`} active={muted} onClick={onMuteToggle}>
-          {muted ? <VolumeX size={14} strokeWidth={1.5} /> : <Volume2 size={14} strokeWidth={1.5} />}
-        </LaneControlSegment>
-        <LaneControlSegment label={locked ? `Unlock ${label}` : `Lock ${label}`} active={locked} onClick={onLockToggle}>
-          {locked ? <Lock size={14} strokeWidth={1.5} /> : <LockOpen size={14} strokeWidth={1.5} />}
-        </LaneControlSegment>
-      </SegmentedControlGroup>
+      {/* control row — grouped icon buttons (IconButtonRow, same as the Design-tab
+          alignment control), hugging their content (no `fill`, not full width). */}
+      <div role="group" aria-label={`${label} controls`}>
+        <IconButtonRow buttons={controlButtons} />
+      </div>
     </div>
   );
 }
@@ -1319,7 +1322,7 @@ function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onC
     if (active.kind === "end") onTrim?.(id, "end", Math.max(active.range[0], active.range[1] + delta));
   };
   return (
-    <div className="flex" style={{ height: ROW_BLOCK }}>
+    <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK }}>
       {/* left header — [icon][label][+] + [vis][solo][mute][lock] */}
       <MasterLaneHeader {...header} />
       {/* block lane */}
@@ -1358,7 +1361,7 @@ function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onC
               onPointerMove={event => update(event, b)}
               onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
               className={clsx(
-                "absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] flex items-center px-[10px] overflow-hidden border",
+                "absolute inset-y-[4px] rounded-[4px] flex items-center px-[10px] overflow-hidden border",
                 b.active
                   ? "bg-[#0d99ff]/20 border-[#0d99ff]"
                   : "bg-c-bg-secondary border-c-border",
@@ -1487,7 +1490,7 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
     if (active.kind === "end") onTrim?.(clip.id, "end", Math.max(active.range[0], active.range[1] + delta), timelineClipTrimDetail("pointer", viewport, plotWidth));
   };
   return (
-    <div className="flex" style={{ height: ROW_BLOCK }}>
+    <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK }}>
       <MasterLaneHeader {...header} />
       <div {...dropHandlers} data-timeline-pan-surface data-lane-drop-active={dragActive || undefined} className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Base video track" : "Base video track (empty)"}>
         {dragActive && <LaneDropOverlay hint={dropHint ?? "Drop media here"} />}
@@ -1505,7 +1508,7 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
               }
             }}
             onPointerDown={event => begin(event, clip, "move")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
-            className={clsx("absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-c-bg-secondary",
+            className={clsx("absolute inset-y-[4px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-c-bg-secondary",
               clip.selected ? "border-c-border-selected-strong" : "border-c-border")}
             style={{ left, width, backgroundColor: !clip.thumbnail && !tintIsImage ? clip.tint : undefined, backgroundImage: clip.thumbnail ? `linear-gradient(rgba(0,0,0,.25),rgba(0,0,0,.25)),url(${clip.thumbnail})` : tintIsImage ? clip.tint : undefined, backgroundSize: "cover", backgroundPosition: "center" }}>
             <span aria-label={`Trim start of ${clip.name}`} role="slider" aria-valuemin={0} aria-valuemax={clip.range[1]} aria-valuenow={clip.range[0]} tabIndex={0}
@@ -1595,7 +1598,7 @@ function AudioTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDr
     if (active.kind === "end") onTrim?.(clip.id, "end", Math.max(active.range[0], active.range[1] + delta), timelineClipTrimDetail("pointer", viewport, plotWidth));
   };
   return (
-    <div className="flex" style={{ height: ROW_BLOCK }}>
+    <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK }}>
       <MasterLaneHeader {...header} />
       <div {...dropHandlers} data-timeline-pan-surface data-lane-drop-active={dragActive || undefined} className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Audio track" : "Audio track (empty)"}>
         {dragActive && <LaneDropOverlay hint={dropHint ?? "Drop audio here"} />}
@@ -1612,7 +1615,7 @@ function AudioTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDr
               }
             }}
             onPointerDown={event => begin(event, clip, "move")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
-            className={clsx("absolute top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-c-bg-secondary",
+            className={clsx("absolute inset-y-[4px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-c-bg-secondary",
               clip.selected ? "border-c-border-selected-strong" : "border-c-border")}
             style={{ left, width }}>
             <AudioLaneWaveform id={clip.id} peaks={clip.waveform} active={clip.selected} />
@@ -2037,7 +2040,7 @@ export function Timeline({
         {master ? (
           <>
             <BlockTrack header={laneHeaderProps("slides", <Layers size={16} strokeWidth={1.5} />, "Compositions")} blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
-            <BaseVideoTrack header={laneHeaderProps("video", <Clapperboard size={16} strokeWidth={1.5} />, "Video")} clips={baseClips} viewport={viewport} plotWidth={plotWidth} accept={VIDEO_LANE_DROP_ACCEPT} dropHint="Drop image or video here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("video", files) : undefined} onSelect={onClipSelect} onOpen={onClipOpen} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <BaseVideoTrack header={laneHeaderProps("video", <SquarePlay size={16} strokeWidth={1.5} />, "Video")} clips={baseClips} viewport={viewport} plotWidth={plotWidth} accept={VIDEO_LANE_DROP_ACCEPT} dropHint="Drop image or video here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("video", files) : undefined} onSelect={onClipSelect} onOpen={onClipOpen} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
             <AudioTrack header={laneHeaderProps("audio", <AudioLines size={16} strokeWidth={1.5} />, "Audio")} clips={audioClips} viewport={viewport} plotWidth={plotWidth} accept={AUDIO_LANE_DROP_ACCEPT} dropHint="Drop audio here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("audio", files) : undefined} onSelect={onAudioClipSelect} onOpen={onAudioClipOpen} onMove={onAudioClipMove} onTrim={onAudioClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
           </>
         ) : (
