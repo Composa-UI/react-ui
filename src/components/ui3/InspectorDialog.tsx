@@ -10,9 +10,15 @@ export const COMPACT_INSPECTOR_DIALOG_WIDTH = 240;
  * This compensated offset yields the approved 8px visual gutter at the panel edge.
  */
 export const EFFECTS_INSPECTOR_DIALOG_SIDE_OFFSET = 48;
-// The stroke settings action sits 7px farther into its row than the Effects
-// trigger. Compensate so both dialogs land on the same 8px inspector gutter.
-export const STROKE_SETTINGS_INSPECTOR_SIDE_OFFSET = 41;
+// The stroke settings trigger sits inline in the Stroke row, deeper than the
+// Effects trigger. A fixed trigger-relative offset (previously 41) had to encode
+// BOTH the trigger inset AND the panel width, so it silently overlapped the
+// inspector whenever either drifted (#502) — the same failure #499 fixed for
+// Type settings. StrokeSettingsDialog now anchors its side axis to the inspector
+// surface's LEFT edge (`COMPOSA_INSPECTOR_SURFACE_SELECTOR`), so this offset is
+// just the approved 8px gutter and the dialog lands clear of the inspector
+// regardless of where the trigger sits or how wide the panel is.
+export const STROKE_SETTINGS_INSPECTOR_SIDE_OFFSET = 8;
 // The Type settings trigger is a 24px action button in the Alignment row's
 // far-right action gutter — unlike the Effects/Stroke triggers, which sit at the
 // row's left. A fixed trigger-relative offset therefore has to encode BOTH the

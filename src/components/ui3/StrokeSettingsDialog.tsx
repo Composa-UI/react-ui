@@ -1,14 +1,14 @@
-import { FlipHorizontal, X } from "lucide-react";
+import { X } from "lucide-react";
 import { type ReactElement, type ReactNode } from "react";
 import { Dropdown } from "./Dropdown";
 import {
   COMPACT_INSPECTOR_DIALOG_WIDTH,
+  COMPOSA_INSPECTOR_SURFACE_SELECTOR,
   InspectorDialog,
   STROKE_SETTINGS_INSPECTOR_SIDE_OFFSET,
 } from "./InspectorDialog";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { SegmentedControlGroup, SegmentedControlItem } from "./SegmentedControl";
-import { Tooltip } from "./Tooltip";
 
 export type StrokeStyle = "solid" | "dashed" | "dotted";
 export type StrokeJoin = "miter" | "round" | "bevel";
@@ -54,12 +54,23 @@ const CAP_LABELS: Record<StrokeCap, string> = {
 const CAP_OPTIONS = Object.keys(CAP_LABELS) as StrokeCap[];
 
 const LABEL = "w-[72px] shrink-0 text-[11px] leading-[16px] font-[450] text-c-text-secondary";
-const DISABLED_TAB_EXPLANATIONS = {
-  Dynamic: "Dynamic stroke behavior needs an approved engine and persistence contract.",
-  Brush: "Brush strokes need an approved engine and persistence contract.",
-} as const;
-const PROFILE_EXPLANATION = "Width profiles and profile flipping are not supported by the current document model.";
-const MITER_EXPLANATION = "Editable miter angle is not supported by the current document model.";
+
+// Capability boundary (owner ask D, #502): this dialog exposes ONLY the stroke
+// properties the engine actually applies on BOTH the live canvas
+// (`CanvasObjectPaint` → strokeDasharray/strokeLinejoin/strokeLinecap) and the
+// raster export (`export.ts` → setLineDash/lineJoin/lineCap): dash style
+// (solid/dashed/dotted), line join (miter/round/bevel), and line cap
+// (none/round/square). Everything the reference design showed but the document
+// model does not carry is deliberately NOT rendered here rather than shipped
+// inert:
+//   • the Basic · Dynamic · Brush tab strip — only Basic is implemented, so
+//     there is no tab strip at all (see the commented reference block below to
+//     restore it when Dynamic/Brush gain an approved engine + persistence
+//     contract);
+//   • the Width profile picker + flip — the `Stroke` model carries no
+//     width-profile field;
+//   • the editable Miter angle — the model carries no miter limit/angle. The
+//     Miter *join* itself IS honored, only the editable angle was unsupported.
 
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {
   return <div className="flex min-h-[32px] items-center gap-[8px]">
@@ -120,15 +131,6 @@ function ChoiceGroup<T extends string>({
   </SegmentedControlGroup>;
 }
 
-function DisabledTab({ label }: { label: keyof typeof DISABLED_TAB_EXPLANATIONS }) {
-  const explanation = DISABLED_TAB_EXPLANATIONS[label];
-  return <Tooltip label={explanation} direction="TopCenter">
-    <span className="flex flex-1" title={explanation}>
-      <SegmentedControlItem className="w-full" selected={false} disabled label={label} aria-label={`${label}: unavailable`} />
-    </span>
-  </Tooltip>;
-}
-
 export function StrokeSettingsDialog({
   open,
   trigger,
@@ -146,7 +148,13 @@ export function StrokeSettingsDialog({
     trigger={trigger}
     ariaLabel="Stroke settings"
     width={COMPACT_INSPECTOR_DIALOG_WIDTH}
+    // Overlap fix (owner ask C, #502/#499): anchor the side axis to the inspector
+    // surface's LEFT edge and use the plain 8px gutter, exactly like the
+    // Type/Effects/Color/Export dialogs. The prior trigger-relative magic offset
+    // (41) encoded the trigger inset AND the panel width, so it silently
+    // overlapped the inspector whenever either drifted.
     sideOffset={STROKE_SETTINGS_INSPECTOR_SIDE_OFFSET}
+    anchorSurfaceSelector={COMPOSA_INSPECTOR_SURFACE_SELECTOR}
     elevation={400}
     // The trigger is a 24px icon button that sits inline in the Stroke row next to
     // the flex-1 "Position"/"Weight" columns. InspectorDialog's default trigger
@@ -163,15 +171,22 @@ export function StrokeSettingsDialog({
       </button>
     </div>
 
-    <div className="px-[16px] pt-[12px]">
-      <SegmentedControlGroup role="tablist" aria-label="Stroke settings tabs" className="w-full p-[1px]">
-        <SegmentedControlItem role="tab" aria-selected selected label="Basic" />
-        <DisabledTab label="Dynamic" />
-        <DisabledTab label="Brush" />
-      </SegmentedControlGroup>
-    </div>
+    {/*
+      Reference tab strip (Basic · Dynamic · Brush) intentionally NOT rendered.
+      Only Basic is engine-backed, so its fields render directly with no tab
+      strip. Restore this block when Dynamic/Brush gain an approved engine +
+      persistence contract (re-add the DisabledTab helper + explanations too):
 
-    <div className="flex flex-col gap-[4px] p-[12px]">
+        <div className="px-[16px] pt-[12px]">
+          <SegmentedControlGroup role="tablist" aria-label="Stroke settings tabs" className="w-full p-[1px]">
+            <SegmentedControlItem role="tab" aria-selected selected label="Basic" />
+            <DisabledTab label="Dynamic" />
+            <DisabledTab label="Brush" />
+          </SegmentedControlGroup>
+        </div>
+    */}
+
+    <div className="flex flex-col gap-[4px] p-[12px] pt-[16px]">
       <FieldRow label="Style">
         <PopoverMenu directTrigger align="right" className="w-full" trigger={
           <Dropdown
@@ -196,29 +211,11 @@ export function StrokeSettingsDialog({
         </PopoverMenu>
       </FieldRow>
 
-      <FieldRow label="Width profile">
-        <Tooltip label={PROFILE_EXPLANATION} direction="TopCenter">
-          <div className="flex min-w-0 gap-[4px]" title={PROFILE_EXPLANATION}>
-            <Dropdown ariaLabel="Width profile: unavailable" value="Uniform" disabled fullWidth />
-            <button type="button" aria-label="Flip width profile: unavailable" disabled
-              className="flex size-[24px] shrink-0 items-center justify-center rounded-c-md text-c-icon-tertiary">
-              <FlipHorizontal size={16} strokeWidth={1.5} />
-            </button>
-          </div>
-        </Tooltip>
-      </FieldRow>
-
       <FieldRow label="Join">
         <ChoiceGroup ariaLabel="Join" options={JOIN_OPTIONS} labels={JOIN_LABELS} value={value.join}
           mixed={value.joinMixed} disabled={editDisabled} preview={join => <JoinPreview join={join} />}
           onChange={join => onChange?.({ join })} />
       </FieldRow>
-
-      {value.join === "miter" && !value.joinMixed && <FieldRow label="Miter angle">
-        <Tooltip label={MITER_EXPLANATION} direction="TopCenter">
-          <div title={MITER_EXPLANATION}><Dropdown ariaLabel="Miter angle: unavailable" value="Not supported" disabled fullWidth /></div>
-        </Tooltip>
-      </FieldRow>}
 
       <FieldRow label="Cap">
         <ChoiceGroup ariaLabel="Cap" options={CAP_OPTIONS} labels={CAP_LABELS} value={value.cap}
