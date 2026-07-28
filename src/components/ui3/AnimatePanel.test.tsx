@@ -25,11 +25,33 @@ describe("AnimatePanel — combined card groups an object's actions into one car
     expect(units[0]!.kind).toBe("combined");
 
     const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={TWO_PULSES} />);
-    // Exactly one combined card for the object, and both action rows live inside it.
+    // Exactly one combined group for the object, and both action rows belong to it.
     expect(html.match(/data-combined-card-element-id="logo"/g)).toHaveLength(1);
     expect(html).toContain('data-animation-card-id="p1"');
     expect(html).toContain('data-animation-card-id="p2"');
-    expect(html).toContain(">2 actions<");
+    // Owner feedback: no heavy container, no group header / "N actions" label.
+    expect(html).not.toContain(">2 actions<");
+    // The relationship is carried by a connector line instead.
+    expect(html).toContain("data-combined-connector");
+  });
+
+  it("renders the group WITHOUT a heavy container box (no border / overflow-hidden wrapper)", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={TWO_PULSES} />); });
+    const wrapper = renderer!.root.findAll(node => node.props["data-combined-card-element-id"] === "logo")[0]!;
+    const className = String(wrapper.props.className);
+    expect(className).not.toMatch(/\bborder\b/);
+    expect(className).not.toMatch(/overflow-hidden/);
+    act(() => renderer!.unmount());
+  });
+
+  it("connects the two cards with a vertical line, with the delay control IN THE GAP", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={TWO_PULSES} />); });
+    // The connector for a delayed pair is the "gap" variant and contains the delay control.
+    const gapConnector = renderer!.root.findAll(node => node.props["data-combined-connector"] === "gap")[0]!;
+    expect(gapConnector.findAll(node => node.props["data-delay-between-following"] === "p2")).toHaveLength(1);
+    act(() => renderer!.unmount());
   });
 
   it("keeps a single action on an object rendering EXACTLY as today (no combined chrome)", () => {
@@ -93,9 +115,12 @@ describe("AnimatePanel — 'delay between' is the signed start-to-start gap (loc
       { id: "p2", elementId: "logo", n: 2, name: "Logo", kind: "Action", duration: "0.8s", style: "pulse" },
     ];
     const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={noStart} />);
-    // Still one combined card, but no derived delay control without start data.
+    // Still one combined group, but no derived delay control without start data.
     expect(html).toContain('data-combined-card-element-id="logo"');
     expect(html).not.toContain("data-delay-between-following");
+    // The connector line is CONTINUOUS (no gap variant) when there is no delay control.
+    expect(html).toContain('data-combined-connector="continuous"');
+    expect(html).not.toContain('data-combined-connector="gap"');
   });
 });
 

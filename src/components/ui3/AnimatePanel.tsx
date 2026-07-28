@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { clsx } from "clsx";
-import { Plus, Trash2, MonitorPlay, Clock, ArrowRight, ArrowDown, Type, Play, GripVertical, Layers } from "lucide-react";
+import { Plus, Trash2, MonitorPlay, Clock, ArrowRight, ArrowDown, Type, Play, GripVertical } from "lucide-react";
 import { PanelSection, PanelActionBtn, ScrollArea } from "./Panel";
 import { Dropdown } from "./Dropdown";
 import { ComboInput, NumericInput } from "./Input";
@@ -225,10 +225,15 @@ function DurationPill({ duration, kind }: { duration: string; kind: AnimKind }) 
 }
 
 // ── Combined card (multiple actions on ONE object) ─────────────────────────────────
-// When an object carries more than one action they collapse into a single combined
-// card whose children are per-action rows (motion-mental-model.md: "The combined card,
-// and the one signed gap"). N same-object cards each labelled "1" was the bug this
-// replaces. Objects with a single action (or no shared elementId) render unchanged.
+// When an object carries more than one action, its per-action cards render as normal
+// action cards (NOT boxed in a heavy container) and a thin VERTICAL CONNECTOR LINE
+// links them — that line is what now communicates "these are the same object" (owner
+// feedback: the container grouping felt too heavy; no bordered box, no group header /
+// "N actions" label). When a "delay between" is present the connector breaks around the
+// Between control (line from the preceding card → Between → line into the following
+// card); with no delay the line is continuous. N same-object cards each labelled "1" was
+// the bug this replaces. Objects with a single action (or no shared elementId) render
+// unchanged (a plain card, no connector).
 interface AnimationRowRef { item: ObjectAnimationItem; index: number; }
 type AnimationUnit =
   | { kind: "single"; row: AnimationRowRef }
@@ -271,6 +276,12 @@ function DelayBetweenRow({ precedingId, followingId, gapMs, onChange }: {
   );
 }
 
+/** A vertical segment of the connector line, using the DS border token. Centered on the
+ *  card column so it reads as a single line running through the stack. */
+function ConnectorSegment({ className }: { className?: string }) {
+  return <div aria-hidden className={clsx("w-px self-center bg-c-border", className)} />;
+}
+
 function CombinedAnimationCard({ elementId, rows, renderRow, onDelayBetweenChange }: {
   elementId: string;
   rows: AnimationRowRef[];
@@ -280,43 +291,53 @@ function CombinedAnimationCard({ elementId, rows, renderRow, onDelayBetweenChang
   // Two-tier selection: an object selection lights EVERY row (no focused sibling); a
   // single-action (focused) selection lights ONLY that row. A lit sibling next to a
   // focused row reads as "also selected" and is wrong — so focus suppresses sibling tint.
+  // No container box or header now — the connector line alone carries the grouping, so
+  // the wrapper is a bare flex column (crucially, no `overflow-hidden`: that used to clip
+  // the hover-revealed reorder drag handle sitting at `-left-[16px]`).
   const groupFocused = rows.some(row => row.item.focused);
   const groupSelected = rows.some(row => row.item.selected);
-  const objectName = rows[0]?.item.name ?? "";
   const rowId = (row: AnimationRowRef) => row.item.id ?? String(row.index);
   return (
     <div
       data-combined-card-element-id={elementId}
       data-animation-card-state={groupFocused ? "focused" : groupSelected ? "selected" : "neutral"}
-      className="rounded-c-md border border-c-border overflow-hidden flex flex-col"
+      className="flex flex-col"
     >
-      <div className={clsx(FONT, "h-[28px] flex items-center gap-[8px] px-[8px] bg-c-bg-secondary border-b border-c-border")}>
-        <Layers size={12} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" />
-        <span className="flex-1 min-w-0 truncate text-[11px] text-c-text text-left">{objectName}</span>
-        <span className="shrink-0 text-[9px] text-c-text-secondary">{rows.length} actions</span>
-      </div>
-      <div className="flex flex-col gap-[8px] p-[8px]">
-        {rows.map((row, k) => {
-          const tint = groupFocused ? !!row.item.focused : !!row.item.selected;
-          const preceding = rows[k - 1];
-          const hasGap = k > 0 && preceding !== undefined
-            && Number.isFinite(preceding.item.startMs) && Number.isFinite(row.item.startMs);
-          const gapMs = hasGap ? (row.item.startMs! - preceding!.item.startMs!) : 0;
-          return (
-            <Fragment key={rowId(row)}>
-              {hasGap && (
-                <DelayBetweenRow
-                  precedingId={rowId(preceding!)}
-                  followingId={rowId(row)}
-                  gapMs={gapMs}
-                  onChange={onDelayBetweenChange}
-                />
-              )}
-              {renderRow(row.item, row.index, tint)}
-            </Fragment>
-          );
-        })}
-      </div>
+      {rows.map((row, k) => {
+        const tint = groupFocused ? !!row.item.focused : !!row.item.selected;
+        const preceding = rows[k - 1];
+        const hasGap = k > 0 && preceding !== undefined
+          && Number.isFinite(preceding.item.startMs) && Number.isFinite(row.item.startMs);
+        const gapMs = hasGap ? (row.item.startMs! - preceding!.item.startMs!) : 0;
+        return (
+          <Fragment key={rowId(row)}>
+            {k > 0 && (
+              hasGap
+                // Delay present: the line runs out of the preceding card, breaks for the
+                // Between control, then continues into the following card.
+                ? (
+                  <div data-combined-connector="gap" className="flex flex-col py-[6px]">
+                    <ConnectorSegment className="h-[8px]" />
+                    <DelayBetweenRow
+                      precedingId={rowId(preceding!)}
+                      followingId={rowId(row)}
+                      gapMs={gapMs}
+                      onChange={onDelayBetweenChange}
+                    />
+                    <ConnectorSegment className="h-[8px]" />
+                  </div>
+                )
+                // No delay: one continuous line between the two cards.
+                : (
+                  <div data-combined-connector="continuous" className="flex justify-center py-[6px]">
+                    <ConnectorSegment className="h-[12px]" />
+                  </div>
+                )
+            )}
+            {renderRow(row.item, row.index, tint)}
+          </Fragment>
+        );
+      })}
     </div>
   );
 }
