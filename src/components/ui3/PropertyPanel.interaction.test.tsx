@@ -148,6 +148,25 @@ describe("Inspector capability controls", () => {
     // No dropdown/menu trigger for text resizing — the control is fully inline.
     expect(renderer!.root.findAllByType(PopoverMenu)
       .some(item => item.props.trigger?.props?.ariaLabel?.startsWith("Text resizing:"))).toBe(false);
+    // Owner ask: the segments carry icons, not text labels — each segment
+    // button renders an svg child rather than a text-label node.
+    const iconSegment = group.findAll(node => node.props?.["aria-label"] === "Auto width" && node.type === "button")[0];
+    expect(iconSegment.findAllByType("svg").length).toBeGreaterThan(0);
+    act(() => renderer!.unmount());
+  });
+
+  it("caps the blend-mode menu height so the long list scrolls instead of growing unbounded", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel elementType="shape" blendMode="Normal" />); });
+    const blendPopover = renderer!.root.findAllByType(PopoverMenu).find(item => {
+      const trigger = item.props.trigger?.props ?? {};
+      return trigger.label === "Blend mode" || trigger.ariaLabel?.startsWith("Blend mode");
+    });
+    expect(blendPopover).toBeTruthy();
+    // The PopoverMenu content render-prop returns the shared blend Menu, which
+    // must carry a fixed max-height so its overflow scrolls (owner ask #504).
+    const menuEl = blendPopover!.props.children(() => undefined);
+    expect(menuEl.props.maxHeight).toBe(280);
     act(() => renderer!.unmount());
   });
 

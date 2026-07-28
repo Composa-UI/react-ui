@@ -1,6 +1,33 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { MenuRow } from "./Menu";
+import { Menu, MenuRow } from "./Menu";
+
+describe("Menu", () => {
+  it("grows unbounded (no scroll) when no maxHeight is given", () => {
+    const html = renderToStaticMarkup(
+      <Menu>
+        <MenuRow label="One" onClick={() => undefined} />
+      </Menu>,
+    );
+    expect(html).toContain("overflow-hidden");
+    expect(html).not.toContain("overflow-y-auto");
+    expect(html).not.toMatch(/max-height/i);
+  });
+
+  it("caps its height and scrolls the overflow when maxHeight is set", () => {
+    const html = renderToStaticMarkup(
+      <Menu maxHeight={280}>
+        <MenuRow label="One" onClick={() => undefined} />
+      </Menu>,
+    );
+    // Fixed max-height on the container + vertical scroll for the overflow,
+    // while horizontal overflow stays clipped to preserve the rounded corners.
+    expect(html).toMatch(/max-height:\s*280px/);
+    expect(html).toContain("overflow-y-auto");
+    expect(html).toContain("overflow-x-hidden");
+    expect(html).not.toMatch(/\boverflow-hidden\b/);
+  });
+});
 
 describe("MenuRow", () => {
   it("exposes checked state only through checked-capable menu roles", () => {

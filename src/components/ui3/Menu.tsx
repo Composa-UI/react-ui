@@ -290,10 +290,18 @@ export function MenuRow({
 interface MenuProps {
   children: ReactNode;
   minWidth?: number;
+  /**
+   * Cap the menu height. When set and the content overflows, the menu clips to
+   * this height and scrolls vertically (rather than growing unbounded) — used
+   * by long lists like the blend-mode menu. Horizontal overflow stays clipped
+   * so the rounded corners are preserved.
+   */
+  maxHeight?: number;
   className?: string;
 }
 
-export function Menu({ children, minWidth = 160, className }: MenuProps) {
+export function Menu({ children, minWidth = 160, maxHeight, className }: MenuProps) {
+  const scrollable = maxHeight != null;
   return (
     // data-composa-mode="dark" forces all token classes to resolve to dark
     // values. Menu bg is always #1f1f1f (--color-bg-menu) in both modes —
@@ -302,12 +310,16 @@ export function Menu({ children, minWidth = 160, className }: MenuProps) {
       data-composa-mode="dark"
       role="menu"
       className={clsx(
-        "inline-flex flex-col py-[8px] rounded-c-lg overflow-hidden",
+        "inline-flex flex-col py-[8px] rounded-c-lg",
+        // A capped menu scrolls its own overflow; otherwise nothing overflows
+        // and overflow-hidden keeps the rounded corners crisp.
+        scrollable ? "overflow-y-auto overflow-x-hidden" : "overflow-hidden",
         "shadow-c-400 ring-1 ring-inset ring-c-border-translucent",
         className,
       )}
       style={{
         minWidth,
+        maxHeight,
         backgroundColor: "var(--color-bg-menu)",
       }}
     >
