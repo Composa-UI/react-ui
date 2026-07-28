@@ -47,6 +47,7 @@ import type { EasingApplyScope } from "./easing";
 import { iconForSemantic } from "./IconSemantics";
 import { AutoLayoutSpacingIcon } from "./AutoLayoutSpacingIcon";
 import { TypeSettingsDialog } from "./TypeSettingsDialog";
+import { FontPickerDialog, type FontEntry } from "./FontPickerDialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1267,7 +1268,7 @@ function StyleInput({ chit, value, onClick }: { chit: ReactNode; value: string; 
   );
 }
 
-function TypographySection({ value, onChange, stylesAvailable }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean }) {
+function TypographySection({ value, onChange, stylesAvailable, fonts }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean; fonts?: ReadonlyArray<FontEntry> }) {
   const [internal, setInternal] = useState<ElementTypographySettings>({ fontFamily: "Inter", fontWeight: "Medium", fontSize: 11, lineHeight: 16, letterSpacing: 0, align: "left", verticalAlign: "top", decoration: "none", textCase: "none", weight: 500, styleName: "Title · 96/120" });
   const settings = value ?? internal;
   const update = (patch: Partial<ElementTypographySettings>) => { if (!value) setInternal(current => ({ ...current, ...patch })); onChange?.(patch); };
@@ -1283,6 +1284,7 @@ function TypographySection({ value, onChange, stylesAvailable }: { value?: Eleme
     { icon: <TextAlignCenterIcon data-icon-semantic="text-align-center" size={S} strokeWidth={1.5} />, label: "Middle", onClick: () => update({ verticalAlign: "middle" }) },
     { icon: <TextAlignBottomIcon data-icon-semantic="text-align-bottom" size={S} strokeWidth={1.5} />, label: "Bottom", onClick: () => update({ verticalAlign: "bottom" }) },
   ];
+  const [fontPickerOpen, setFontPickerOpen] = useState(false);
   const [typeSettingsOpen, setTypeSettingsOpen] = useState(false);
   const typeSettingsTrigger = (
     <PanelActionBtn
@@ -1310,9 +1312,27 @@ function TypographySection({ value, onChange, stylesAvailable }: { value?: Eleme
         </div>
       ) : (
         <>
-          {/* Font family — dropdown + reserved right slot */}
+          {/* Font family — opens the searchable Font Picker dialog (§9.5) */}
           <div className="flex items-center gap-[8px] pl-[16px] pr-[16px] pt-[3px]">
-            <div className="flex-1 min-w-0"><ChoiceDropdown value={settings.fontFamily} options={["Inter", "Whyte", "Roboto Mono"]} labels={{ Inter: "Inter", Whyte: "Whyte", "Roboto Mono": "Roboto Mono" }} onChange={fontFamily => update({ fontFamily })} /></div>
+            <div className="flex-1 min-w-0">
+              <FontPickerDialog
+                open={fontPickerOpen}
+                onClose={() => setFontPickerOpen(false)}
+                fonts={fonts}
+                value={settings.fontFamily}
+                onSelect={fontFamily => { update({ fontFamily }); setFontPickerOpen(false); }}
+                trigger={
+                  <Dropdown
+                    aria-haspopup="dialog"
+                    ariaLabel={`Font: ${settings.fontFamily}`}
+                    value={settings.fontFamily}
+                    fullWidth
+                    state={fontPickerOpen ? "active" : "default"}
+                    onClick={() => setFontPickerOpen(true)}
+                  />
+                }
+              />
+            </div>
             <div className="shrink-0 min-w-[24px]" />
           </div>
 
@@ -2598,6 +2618,9 @@ export interface PropertyPanelProps {
   spatialSelectionLayout?: SpatialSelectionLayoutControl;
   typography?: ElementTypographySettings;
   onTypographyChange?: (patch: Partial<ElementTypographySettings>) => void;
+  /** Host-provided font roster for the Typography Font Picker. Defaults to the
+   * DS bundled/web-safe roster (BUNDLED_FONTS) when omitted. */
+  fonts?: ReadonlyArray<FontEntry>;
   fills?: ElementFillSetting[];
   onAddFill?: () => void; onUpdateFill?: (id: string, patch: Partial<Omit<ElementFillSetting, "id">>) => void; onToggleFill?: (id: string, visible: boolean) => void; onReorderFill?: (id: string, targetId: string) => void; onRemoveFill?: (id: string) => void;
   strokes?: ElementStrokeSetting[];
@@ -3051,7 +3074,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   layout, onLayoutChange, onSizingChange, onSizingConstraintChange, onApplySizingVariable,
   textSizingMode, availableTextSizingModes, textSizingModeDisabled = false, onTextSizingModeChange,
   positionPresentation = "separate", onPositionPresentationChange,
-  onAutoLayoutSettingsRequest, typography, onTypographyChange,
+  onAutoLayoutSettingsRequest, typography, onTypographyChange, fonts,
   fills, onAddFill, onUpdateFill, onToggleFill, onReorderFill, onRemoveFill,
   strokes, strokeReadOnly = false, onAddStroke, onUpdateStroke, onToggleStroke, onReorderStroke, onRemoveStroke,
   effects, onAddEffect, onUpdateEffect, onToggleEffect, onReorderEffect, onRemoveEffect,
@@ -3535,7 +3558,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <AppearanceSection opacity={opacity} blendMode={blendMode} cornerRadius={cornerRadius} opacityMixed={opacityMixed} cornerRadiusMixed={cornerRadiusMixed} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} />
 
           {/* Typography — text only */}
-          {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} />}
+          {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} fonts={fonts} />}
 
           {/* Stackable sections */}
           <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill} capabilities={capabilities}
