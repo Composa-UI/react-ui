@@ -1238,7 +1238,9 @@ function GridTrackEditor({ axis, tracks, onChange }: { axis: "row" | "column"; t
               ariaLabel={`${label} ${index + 1} size`}
               dropdownAriaLabel={`${label} ${index + 1} sizing mode: ${track.mode === "hug" ? "Hug" : "Fixed"}`}
               iconLead={axis === "column" ? <Columns2 size={16} strokeWidth={1.5} /> : <Rows2 size={16} strokeWidth={1.5} />}
-              readOnlyLabel={track.mode === "hug" ? "Hug" : undefined}
+              // Hug shows a "Hug" idle label but stays type-to-convert (Figma parity):
+              // typing a px value on a hug track atomically switches it to Fixed.
+              idleLabel={track.mode === "hug" ? "Hug" : undefined}
               value={track.mode === "fixed" ? track.size : undefined}
               defaultValue={track.size || 100}
               onChange={size => setTrack(index, { mode: "fixed", size })}
