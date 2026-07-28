@@ -488,6 +488,53 @@ describe("Timeline master seams", () => {
     expect(html).toContain('aria-label="Trim start of voiceover"');
     expect(html).toContain('aria-label="Trim end of music"');
   });
+
+  it("renders the Figma lane header anatomy — [icon][label][+] + [vis][solo][mute][lock]", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={20_000}
+      onLaneAdd={() => undefined} onLaneVisibilityToggle={() => undefined}
+      onLaneSoloToggle={() => undefined} onLaneMuteToggle={() => undefined} onLaneLockToggle={() => undefined} />);
+    // Figma-refreshed labels (Slides / Video / Audio), sentence case.
+    expect(html).toContain(">Slides</span>");
+    expect(html).toContain(">Video</span>");
+    expect(html).toContain(">Audio</span>");
+    // `+` add affordance per lane.
+    expect(html).toContain('aria-label="Add to Slides"');
+    expect(html).toContain('aria-label="Add to Video"');
+    expect(html).toContain('aria-label="Add to Audio"');
+    // Four-control row per lane (resting labels: Hide / Solo / Mute / Lock).
+    expect(html).toContain('aria-label="Hide Slides"');
+    expect(html).toContain('aria-label="Solo Video"');
+    expect(html).toContain('aria-label="Mute Audio"');
+    expect(html).toContain('aria-label="Lock Slides"');
+    // Wired controls advertise their pressed state (resting = false).
+    expect(html).toContain('aria-pressed="false"');
+  });
+
+  it("renders lane header controls disabled when the host wires no handlers", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={20_000} />);
+    // Affordances stay visible so the anatomy reads, but are disabled + un-pressed.
+    expect(html).toContain('aria-label="Add to Slides"');
+    expect(html).toContain('aria-label="Hide Video"');
+    expect(html).toMatch(/aria-label="Add to Slides"[^>]*disabled/);
+    // Unwired toggles omit aria-pressed (they assert nothing about state).
+    expect(html).toMatch(/aria-label="Lock Audio"[^>]*disabled/);
+  });
+
+  it("reflects per-lane control state and engaged labels from laneControls", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={20_000}
+      laneControls={{ video: { visible: false, muted: true, locked: true, solo: true } }}
+      onLaneVisibilityToggle={() => undefined} onLaneMuteToggle={() => undefined}
+      onLaneLockToggle={() => undefined} onLaneSoloToggle={() => undefined} />);
+    // Hidden lane flips the eye affordance to "Show" and marks it pressed.
+    expect(html).toContain('aria-label="Show Video"');
+    expect(html).toContain('aria-label="Unmute Video"');
+    expect(html).toContain('aria-label="Unlock Video"');
+    expect(html).toContain('aria-label="Unsolo Video"');
+    // Engaged controls advertise aria-pressed="true".
+    expect(html).toContain('aria-pressed="true"');
+    // Untouched lanes keep resting labels.
+    expect(html).toContain('aria-label="Hide Slides"');
+  });
 });
 
 describe("Timeline shared scrollbar anatomy", () => {
