@@ -1,18 +1,21 @@
 import { useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { clsx } from "clsx";
 import { Upload, Search, Image as ImageIcon, Film, Volume2, Trash2, Plus, Pencil } from "lucide-react";
-import { SegmentedControl } from "./SegmentedControl";
+import { Dropdown } from "./Dropdown";
 import { FieldShell, InputField } from "./Input";
-import { Menu, MenuRow } from "./Menu";
+import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { Modal, ModalBody, ModalFooter, ModalHeader, MODAL_WIDTHS } from "./Dialog";
 import { Button } from "./Button";
+import { Waveform } from "./Waveform";
 
 // ─── Assets pane ──────────────────────────────────────────────────────────────
 // Left-panel content shown when the Assets nav-rail icon is active — replaces the
 // Composition view (Slides + Layers). Stores/organizes uploaded media per-project.
 // Componentized to spec (docs/composa/specs/assets-pane.md): header + Upload,
-// search field, type filter (All · Images · Videos), 2-col thumbnail grid,
-// per-card badge/duration/name, hover quick-actions, empty state, drop overlay.
+// search field, type filter (All · Images · Videos · Audio) as a dropdown,
+// 2-col thumbnail grid, per-card badge/duration/name, hover quick-actions,
+// empty state, drop overlay. Audio cards render a waveform (a colour swatch
+// reads wrong for sound) instead of a solid tint.
 //
 // Light theme by default (c-* tokens); flips to dark under [data-composa-mode="dark"].
 // Presentational: fully controlled with callbacks — no upload/DnD side effects here.
@@ -24,6 +27,17 @@ const CAPTION = clsx(FONT, "text-[11px] font-[450] leading-[16px] text-c-text-se
 export type AssetKind = "image" | "video" | "audio";
 export type AssetStatus = "ready" | "uploading" | "error";
 export type AssetFilter = "all" | "images" | "videos" | "audio";
+
+// Type-filter options (shared by the dropdown trigger + its menu). Icons match
+// the per-kind badges; "All" has no icon.
+const FILTER_OPTIONS: { value: AssetFilter; label: string; icon?: React.ReactNode }[] = [
+  { value: "all", label: "All" },
+  { value: "images", label: "Images", icon: <ImageIcon size={14} strokeWidth={1.75} /> },
+  { value: "videos", label: "Videos", icon: <Film size={14} strokeWidth={1.75} /> },
+  { value: "audio", label: "Audio", icon: <Volume2 size={14} strokeWidth={1.75} /> },
+];
+const FILTER_LABELS = Object.fromEntries(FILTER_OPTIONS.map((o) => [o.value, o.label])) as Record<AssetFilter, string>;
+const FILTER_ICONS = Object.fromEntries(FILTER_OPTIONS.map((o) => [o.value, o.icon])) as Record<AssetFilter, React.ReactNode>;
 
 export interface AssetItem {
   id: string;
@@ -94,9 +108,14 @@ function AssetCard({
         <button type="button" aria-label={item.name} aria-pressed={selected}
           onClick={onSelect} onDoubleClick={onDoubleClick} onContextMenu={onContextMenu}
           className="absolute inset-0 z-[1] size-full outline-none" />
-        {/* preview */}
+        {/* preview — image/video use the thumb or a tint fallback; audio draws a
+            waveform (a solid colour swatch reads wrong for sound). */}
         {item.thumb ? (
           <img alt="" src={item.thumb} className="absolute inset-0 size-full object-cover" />
+        ) : item.kind === "audio" ? (
+          <div className="absolute inset-0 flex items-center bg-c-bg-secondary px-[12px] py-[16px] text-c-icon-secondary">
+            <Waveform seed={item.id || item.name} />
+          </div>
         ) : (
           <div className="absolute inset-0" style={{ background: item.tint ?? "var(--color-c-bg-secondary)" }} />
         )}
@@ -399,16 +418,37 @@ export function AssetsPanel({
           />
         </FieldShell>
 
-        <SegmentedControl
-          value={activeFilter}
-          onChange={(v) => setFilter(v as AssetFilter)}
-          segments={[
-            { value: "all", label: "All" },
-            { value: "images", label: "Images", icon: <ImageIcon size={13} strokeWidth={1.75} /> },
-            { value: "videos", label: "Videos", icon: <Film size={13} strokeWidth={1.75} /> },
-            { value: "audio", label: "Audio", icon: <Volume2 size={13} strokeWidth={1.75} /> },
-          ]}
-        />
+        {/* Type filter — a dropdown (not a segmented control): with Audio added
+            the four options crowd the 240px panel, so a menu-pick reads cleaner. */}
+        <PopoverMenu
+          align="left"
+          className="w-full"
+          trigger={
+            <Dropdown
+              ariaLabel="Filter by type"
+              value={FILTER_LABELS[activeFilter]}
+              leadingIcon={FILTER_ICONS[activeFilter]}
+              size="large"
+              fullWidth
+            />
+          }
+        >
+          {(close) => (
+            <Menu minWidth={160}>
+              {FILTER_OPTIONS.map((opt) => (
+                <MenuRow
+                  key={opt.value}
+                  type="checkmark"
+                  selectionRole="radio"
+                  checked={opt.value === activeFilter}
+                  leading={opt.icon}
+                  label={opt.label}
+                  onClick={() => { setFilter(opt.value); close(); }}
+                />
+              ))}
+            </Menu>
+          )}
+        </PopoverMenu>
       </div>
 
       {/* Body — grid / empty */}
