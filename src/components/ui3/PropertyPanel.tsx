@@ -50,7 +50,7 @@ import { TypeSettingsDialog } from "./TypeSettingsDialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type ElementType = "text" | "frame" | "frame-auto" | "shape" | "component" | "group";
+export type ElementType = "text" | "frame" | "frame-auto" | "frame-grid" | "shape" | "component" | "group";
 
 export type PanelMode = "project" | "slide" | "element" | "video-clip" | "audio-clip";
 
@@ -102,9 +102,30 @@ export interface ElementTypographySettings {
   lineHeightMixed?: boolean;
   letterSpacingMixed?: boolean;
 }
+// Grid track/model mirror of the engine's GridProperties (grid-and-wrap-spec §3).
+// Phase A: fixed/hug tracks, two gaps, per-axis item + content alignment. `fr`,
+// spans, and auto-placement are Phase B.
+export type GridTrackMode = "fixed" | "hug";
+export interface ElementGridTrack { mode: GridTrackMode; size: number; }
+export type GridItemAlign = "start" | "center" | "end" | "stretch";
+export type GridContentAlign = "start" | "center" | "end";
+export interface ElementGridSettings {
+  rows: ElementGridTrack[];
+  columns: ElementGridTrack[];
+  rowGap: number;
+  columnGap: number;
+  justifyItems: GridItemAlign;
+  alignItems: GridItemAlign;
+  justifyContent: GridContentAlign;
+  alignContent: GridContentAlign;
+}
+
 export interface ElementLayoutSettings {
   // Wrap is a horizontal-only modifier (Figma parity), not a peer flow direction.
-  mode: "none" | "horizontal" | "vertical"; gap: number | "auto";
+  // `grid` is a distinct 2D layout mode (§5 Reading A); wrap and grid never coexist.
+  mode: "none" | "horizontal" | "vertical" | "grid"; gap: number | "auto";
+  /** 2D grid track model — present only when `mode === "grid"`. */
+  grid?: ElementGridSettings;
   /** Horizontal-only wrap modifier. */
   wrap?: boolean;
   /** Cross-axis gap between wrapped rows. Meaningful only while wrapping. */
@@ -755,6 +776,8 @@ interface LayoutFrameProps {
   /** Auto-layout is reached from here two ways: the "+" button, or moving Flow
    * off its first ("Freeform") option. Both call this. */
   onEnableAutoLayout?: () => void;
+  /** Grid is a distinct layout type (Reading A), entered via its own action. */
+  onEnableGrid?: () => void;
   spatialSelectionLayout?: SpatialSelectionLayoutControl;
 }
 
@@ -764,6 +787,7 @@ function LayoutFrameSection({
   onWidthChange, onHeightChange, onClipContentChange,
   sizing,
   onEnableAutoLayout,
+  onEnableGrid,
   spatialSelectionLayout,
 }: LayoutFrameProps) {
   // Plain frame defaults to Freeform (no auto-layout yet) — NOT "v", which would
@@ -789,6 +813,7 @@ function LayoutFrameSection({
       rightActions={
         <>
           <PanelActionBtn icon={<Maximize2 size={16} strokeWidth={1.5} />} label="Resize to fit" />
+          <PanelActionBtn icon={<Grid2x2 size={16} strokeWidth={1.5} />} label="Add grid" onClick={onEnableGrid} />
           <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add auto-layout" onClick={onEnableAutoLayout} />
         </>
       }
@@ -842,6 +867,8 @@ interface LayoutAutoProps {
   onAlignChange?: (value: string) => void;
   onClipContentChange?: (value: boolean) => void;
   onAutoLayoutSettingsRequest?: () => void;
+  /** Switch this frame to the distinct Grid layout type (Reading A). */
+  onEnableGrid?: () => void;
   sizing?: Omit<DimensionSizingFieldsProps, "width" | "height" | "widthMode" | "heightMode">;
   spatialSelectionLayout?: SpatialSelectionLayoutControl;
 }
@@ -875,7 +902,7 @@ function LayoutAutoSection({
   canvasStackingMixed = false,
   settingsBaselineApplicable,
   settingsDisabled = false,
-  onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onAutoLayoutSettingsRequest, sizing, spatialSelectionLayout,
+  onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onAutoLayoutSettingsRequest, onEnableGrid, sizing, spatialSelectionLayout,
 }: LayoutAutoProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const controlled = flowMode !== undefined;
@@ -994,7 +1021,9 @@ function LayoutAutoSection({
   );
 
   const settingsValue = {
-    mode: flowMode ?? (renderedFlow === "h" ? "horizontal" : renderedFlow === "v" ? "vertical" : "none"),
+    // Grid never renders this auto-layout section (it has its own), so coerce it
+    // away to satisfy the auto-layout settings contract.
+    mode: (flowMode === "grid" ? "none" : flowMode) ?? (renderedFlow === "h" ? "horizontal" : renderedFlow === "v" ? "vertical" : "none"),
     textBaseline: textBaselineMixed ? "mixed" : textBaseline,
     strokeSizing: strokeSizingMixed ? "mixed" : strokeSizing,
     canvasStacking: canvasStackingMixed ? "mixed" : canvasStacking,
@@ -1017,7 +1046,7 @@ function LayoutAutoSection({
   );
 
   return (
-    <PanelSection title="Auto layout">
+    <PanelSection title="Auto layout" rightActions={onEnableGrid && <PanelActionBtn icon={<Grid2x2 size={16} strokeWidth={1.5} />} label="Switch to grid" onClick={onEnableGrid} />}>
       <div role="group" aria-label="Flow" className="flex items-start gap-[8px] px-[16px] pt-[8px]">
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Flow</div>
@@ -1150,6 +1179,200 @@ function LayoutAutoSection({
       {/* Clip content */}
       <PanelFullRow height={28}>
         <Checkbox checked={controlled ? clipContent : undefined} defaultChecked={clipContent} onChange={onClipContentChange} label="Clip content" />
+      </PanelFullRow>
+    </PanelSection>
+  );
+}
+
+// ─── Section: Layout — Grid (grid-and-wrap-spec §3 / §5 Reading A) ─────────────
+// FLAGGED FOR OWNER REVIEW — track-editor layout choices (see PR body):
+//  • Grid is a DISTINCT layout type (Reading A): entered from the "Grid" action in
+//    the plain-frame / auto-layout Layout header; its own section replaces the flow
+//    controls. Wrap and Grid never coexist.
+//  • Columns and Rows are each an explicit vertical list of track editors; each track
+//    is a NumericComboInput whose menu picks Fixed(px)/Hug (no `fr` — Phase B). A
+//    per-track "–" removes; an "Add column/row" button appends a Hug track.
+//  • Two gaps (Column gap / Row gap) reuse the wrap section's linked-pair idiom.
+//  • Item alignment reuses the 3×3 AlignmentControl (justify/align items → cell
+//    placement). `stretch` is NOT on the 3×3 — it is reached via a child's Fill
+//    sizing (Phase A). Content alignment is a second 3×3 (justify/align content →
+//    track-block placement in a larger frame). Owner may prefer a distribute-style
+//    control; the mapping to the engine model is the load-bearing part.
+
+const gridItemsCode = (grid: ElementGridSettings): AlignmentValue => {
+  const h = grid.justifyItems === "center" ? "c" : grid.justifyItems === "end" ? "r" : "l";
+  const v = grid.alignItems === "center" ? "m" : grid.alignItems === "end" ? "b" : "t";
+  return `${v}${h}` as AlignmentValue;
+};
+const gridContentCode = (grid: ElementGridSettings): AlignmentValue => {
+  const h = grid.justifyContent === "center" ? "c" : grid.justifyContent === "end" ? "r" : "l";
+  const v = grid.alignContent === "center" ? "m" : grid.alignContent === "end" ? "b" : "t";
+  return `${v}${h}` as AlignmentValue;
+};
+const codeToItems = (code: AlignmentValue) => ({
+  justifyItems: (code[1] === "c" ? "center" : code[1] === "r" ? "end" : "start") as GridItemAlign,
+  alignItems: (code[0] === "m" ? "center" : code[0] === "b" ? "end" : "start") as GridItemAlign,
+});
+const codeToContent = (code: AlignmentValue) => ({
+  justifyContent: (code[1] === "c" ? "center" : code[1] === "r" ? "end" : "start") as GridContentAlign,
+  alignContent: (code[0] === "m" ? "center" : code[0] === "b" ? "end" : "start") as GridContentAlign,
+});
+
+function GridTrackEditor({ axis, tracks, onChange }: { axis: "row" | "column"; tracks: ElementGridTrack[]; onChange: (tracks: ElementGridTrack[]) => void }) {
+  const label = axis === "column" ? "Column" : "Row";
+  const setTrack = (index: number, next: ElementGridTrack) => onChange(tracks.map((track, i) => (i === index ? next : track)));
+  const removeTrack = (index: number) => { if (tracks.length <= 1) return; onChange(tracks.filter((_, i) => i !== index)); };
+  const trackMenu = (index: number, track: ElementGridTrack) => (close: () => void) => (
+    <Menu minWidth={140}>
+      <MenuRow type="checkmark" label="Fixed" checked={track.mode === "fixed"} onClick={() => { setTrack(index, { mode: "fixed", size: track.size || 100 }); close(); }} />
+      <MenuRow type="checkmark" label="Hug" checked={track.mode === "hug"} onClick={() => { setTrack(index, { mode: "hug", size: track.size }); close(); }} />
+    </Menu>
+  );
+  return (
+    <div className="flex flex-col gap-[4px]" role="group" aria-label={`${label} tracks`}>
+      {tracks.map((track, index) => (
+        <div key={index} className="flex items-center gap-[4px]">
+          <div className="flex-1 min-w-0">
+            <NumericComboInput
+              dataMode={track.mode}
+              ariaLabel={`${label} ${index + 1} size`}
+              dropdownAriaLabel={`${label} ${index + 1} sizing mode: ${track.mode === "hug" ? "Hug" : "Fixed"}`}
+              iconLead={axis === "column" ? <Columns2 size={16} strokeWidth={1.5} /> : <Rows2 size={16} strokeWidth={1.5} />}
+              readOnlyLabel={track.mode === "hug" ? "Hug" : undefined}
+              value={track.mode === "fixed" ? track.size : undefined}
+              defaultValue={track.size || 100}
+              onChange={size => setTrack(index, { mode: "fixed", size })}
+              min={0}
+              suffix="px"
+              menu={trackMenu(index, track)}
+              className="w-full"
+            />
+          </div>
+          <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label={`Remove ${label.toLowerCase()} ${index + 1}`} disabled={tracks.length <= 1} onClick={() => removeTrack(index)} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+interface LayoutGridProps {
+  width?: number; height?: number;
+  grid: ElementGridSettings;
+  widthMode?: "fixed" | "hug" | "fill";
+  heightMode?: "fixed" | "hug" | "fill";
+  paddingTop?: number; paddingRight?: number; paddingBottom?: number; paddingLeft?: number;
+  paddingDisabled?: boolean;
+  clipContent?: boolean;
+  sizing?: Omit<DimensionSizingFieldsProps, "width" | "height" | "widthMode" | "heightMode">;
+  spatialSelectionLayout?: SpatialSelectionLayoutControl;
+  onLayoutChange?: (patch: Partial<ElementLayoutSettings>) => void;
+  onPaddingChange?: (value: ElementLayoutSettings["padding"], changedEdges: readonly ElementPaddingEdge[]) => void;
+  onClipContentChange?: (value: boolean) => void;
+}
+
+function LayoutGridSection({
+  width = 0, height = 0, grid,
+  widthMode = "fixed", heightMode = "fixed",
+  paddingTop = 0, paddingRight = 0, paddingBottom = 0, paddingLeft = 0, paddingDisabled = false,
+  clipContent = false,
+  sizing, spatialSelectionLayout,
+  onLayoutChange, onPaddingChange, onClipContentChange,
+}: LayoutGridProps) {
+  const [gapsLinked, setGapsLinked] = useState(grid.rowGap === grid.columnGap);
+  const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
+  const emitGrid = (patch: Partial<ElementGridSettings>) => onLayoutChange?.({ grid: { ...grid, ...patch } });
+  const emitColumnGap = (value: number) => {
+    const next = Math.max(0, value);
+    emitGrid(gapsLinked ? { columnGap: next, rowGap: next } : { columnGap: next });
+  };
+  const emitRowGap = (value: number) => {
+    const next = Math.max(0, value);
+    emitGrid(gapsLinked ? { columnGap: next, rowGap: next } : { rowGap: next });
+  };
+  const toggleGapsLinked = () => {
+    const next = !gapsLinked;
+    setGapsLinked(next);
+    if (next && grid.columnGap !== grid.rowGap) emitGrid({ rowGap: grid.columnGap });
+  };
+
+  return (
+    <PanelSection
+      title="Grid"
+      rightActions={
+        <>
+          <PanelActionBtn icon={<Maximize2 size={16} strokeWidth={1.5} />} label="Resize to fit" />
+          <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove grid" onClick={() => onLayoutChange?.({ mode: "none" })} />
+        </>
+      }
+    >
+      {/* Columns */}
+      <div className="flex items-start gap-[8px] px-[16px] pt-[8px]">
+        <div className="flex-1 min-w-0">
+          <div className={subLabel}>Columns</div>
+          <GridTrackEditor axis="column" tracks={grid.columns} onChange={columns => emitGrid({ columns })} />
+        </div>
+        <div className="shrink-0 pt-[17px]">
+          <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add column" onClick={() => emitGrid({ columns: [...grid.columns, { mode: "hug", size: 100 }] })} />
+        </div>
+      </div>
+
+      {/* Rows */}
+      <div className="flex items-start gap-[8px] px-[16px] pt-[8px]">
+        <div className="flex-1 min-w-0">
+          <div className={subLabel}>Rows</div>
+          <GridTrackEditor axis="row" tracks={grid.rows} onChange={rows => emitGrid({ rows })} />
+        </div>
+        <div className="shrink-0 pt-[17px]">
+          <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add row" onClick={() => emitGrid({ rows: [...grid.rows, { mode: "hug", size: 100 }] })} />
+        </div>
+      </div>
+
+      {/* Two gaps — column + row, linked idiom (same as wrap's two gaps). */}
+      <div role="group" aria-label="Grid gaps" className="flex items-start gap-[8px] px-[16px] pt-[8px]">
+        <div className="flex-1 min-w-0">
+          <div className={subLabel}>Column gap</div>
+          <NumericInput ariaLabel="Column gap" iconLead={<AutoLayoutSpacingIcon kind="gap" axis="horizontal" />} value={grid.columnGap} defaultValue={grid.columnGap} onChange={emitColumnGap} min={0} suffix="px" className="w-full" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className={subLabel}>Row gap</div>
+          <NumericInput ariaLabel="Row gap" iconLead={<AutoLayoutSpacingIcon kind="gap" axis="vertical" />} value={grid.rowGap} defaultValue={grid.rowGap} onChange={emitRowGap} min={0} suffix="px" className="w-full" />
+        </div>
+        <div className="shrink-0 pt-[17px]">
+          <PanelActionBtn icon={gapsLinked ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />} label={gapsLinked ? "Unlink column and row gap" : "Link column and row gap"} active={gapsLinked} onClick={toggleGapsLinked} />
+        </div>
+      </div>
+
+      {/* Alignment — item placement within cells (left) and track-block placement
+          within the frame (right). Two 3×3 controls (flagged). */}
+      <div className="flex items-start gap-[16px] px-[16px] pt-[8px] pb-[4px]">
+        <div className="shrink-0">
+          <div className={subLabel}>Align items</div>
+          <AlignmentControl value={gridItemsCode(grid)} onChange={code => emitGrid(codeToItems(code))} />
+        </div>
+        <div className="shrink-0">
+          <div className={subLabel}>Align content</div>
+          <AlignmentControl value={gridContentCode(grid)} onChange={code => emitGrid(codeToContent(code))} />
+        </div>
+      </div>
+
+      {/* Padding (combined) */}
+      <div className="px-[16px] pt-[4px] pb-[4px]">
+        <div className={subLabel}>Padding</div>
+        <div className="flex items-center gap-[4px]">
+          <div className="flex-1 min-w-0">
+            <NumericInput ariaLabel="Vertical padding" iconLead={<AutoLayoutSpacingIcon kind="padding" axis="vertical" />} value={paddingTop} defaultValue={paddingTop} disabled={paddingDisabled} onChange={vertical => onPaddingChange?.({ top: vertical, right: paddingRight, bottom: vertical, left: paddingLeft }, ["top", "bottom"])} min={0} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <NumericInput ariaLabel="Horizontal padding" iconLead={<AutoLayoutSpacingIcon kind="padding" axis="horizontal" />} value={paddingLeft} defaultValue={paddingLeft} disabled={paddingDisabled} onChange={horizontal => onPaddingChange?.({ top: paddingTop, right: horizontal, bottom: paddingBottom, left: horizontal }, ["right", "left"])} min={0} />
+          </div>
+        </div>
+      </div>
+
+      <DimensionSizingFields {...sizing} width={width} height={height} widthMode={widthMode} heightMode={heightMode} />
+      <SpatialSelectionLayoutFields value={spatialSelectionLayout} />
+
+      <PanelFullRow height={28}>
+        <Checkbox checked={onClipContentChange ? clipContent : undefined} defaultChecked={clipContent} onChange={onClipContentChange} label="Clip content" />
       </PanelFullRow>
     </PanelSection>
   );
@@ -3191,13 +3414,16 @@ export function PropertyPanel(props: PropertyPanelProps) {
 
   // Auto-layout is reachable from a plain frame two ways: the Layout header's "+"
   // button, or moving Flow off its first ("Freeform") option — both just flip this.
-  const isFrameLike = elementType === "frame" || elementType === "frame-auto";
+  const isFrameLike = elementType === "frame" || elementType === "frame-auto" || elementType === "frame-grid";
   const [autoLayoutOn, setAutoLayoutOn] = useState(elementType === "frame-auto");
   const controlledAutoLayout = layout ? layout.mode !== "none" : undefined;
   useEffect(() => setAutoLayoutOn(elementType === "frame-auto"), [elementType]);
   const resolvedAutoLayout = controlledAutoLayout ?? autoLayoutOn;
-  const isFrame = isFrameLike && !resolvedAutoLayout;
-  const isAutoLayout = isFrameLike && resolvedAutoLayout;
+  // Grid is a distinct layout type (Reading A): it preempts the plain-frame and
+  // auto-layout sections. Driven by the live layout mode when present, else the type.
+  const isGrid = isFrameLike && (layout ? layout.mode === "grid" : elementType === "frame-grid");
+  const isFrame = isFrameLike && !resolvedAutoLayout && !isGrid;
+  const isAutoLayout = isFrameLike && resolvedAutoLayout && !isGrid;
 
   const emitSizing = (axis: ElementSizingAxis, change: ElementSizingChange) => {
     if (onSizingChange) { onSizingChange(axis, change); return; }
@@ -3238,6 +3464,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
     text: "Text",
     frame: "Frame",
     "frame-auto": "Frame",
+    "frame-grid": "Frame",
     shape: "Rectangle",
     component: "Component",
     group: "Group",
@@ -3499,8 +3726,20 @@ export function PropertyPanel(props: PropertyPanelProps) {
           />
 
           {/* Layout — polymorphic */}
-          {(isFrame)       && <LayoutFrameSection width={width} height={height} sizing={sizingContract} spatialSelectionLayout={props.spatialSelectionLayout} clipContent={layout?.clipsContent} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onClipContentChange={onLayoutChange ? value => onLayoutChange({ clipsContent: value }) : undefined} onEnableAutoLayout={() => { setAutoLayoutOn(true); onLayoutChange?.({ mode: "vertical" }); }} />}
+          {(isFrame)       && <LayoutFrameSection width={width} height={height} sizing={sizingContract} spatialSelectionLayout={props.spatialSelectionLayout} clipContent={layout?.clipsContent} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onClipContentChange={onLayoutChange ? value => onLayoutChange({ clipsContent: value }) : undefined} onEnableAutoLayout={() => { setAutoLayoutOn(true); onLayoutChange?.({ mode: "vertical" }); }} onEnableGrid={onLayoutChange ? () => onLayoutChange({ mode: "grid" }) : undefined} />}
+          {(isGrid)        && layout?.grid && <LayoutGridSection width={width} height={height}
+            grid={layout.grid}
+            widthMode={layout?.widthMode} heightMode={layout?.heightMode}
+            paddingTop={layout?.padding.top} paddingRight={layout?.padding.right} paddingBottom={layout?.padding.bottom} paddingLeft={layout?.padding.left}
+            paddingDisabled={layout?.paddingDisabled}
+            clipContent={layout?.clipsContent}
+            sizing={sizingContract}
+            spatialSelectionLayout={props.spatialSelectionLayout}
+            onLayoutChange={onLayoutChange}
+            onPaddingChange={props.onPaddingChange ?? (onLayoutChange ? padding => onLayoutChange({ padding }) : undefined)}
+            onClipContentChange={onLayoutChange ? clipsContent => onLayoutChange({ clipsContent }) : undefined} />}
           {(isAutoLayout)  && <LayoutAutoSection width={width} height={height}
+            onEnableGrid={onLayoutChange ? () => onLayoutChange({ mode: "grid" }) : undefined}
             flowMode={layout?.mode}
             wrap={layout?.wrap} rowGap={layout?.rowGap}
             gap={layout?.gap} paddingTop={layout?.padding.top} paddingRight={layout?.padding.right} paddingBottom={layout?.padding.bottom} paddingLeft={layout?.padding.left}
