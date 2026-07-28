@@ -28,6 +28,8 @@ export * from "./components/ui3/Dial";
 export * from "./components/ui3/Dialog";
 export * from "./components/ui3/Dropdown";
 export * from "./components/ui3/EffectDetailsDialog";
+export * from "./components/ui3/ColorAdjustmentsDialog";
+export * from "./components/ui3/ColorWheel";
 export * from "./components/ui3/ExportDialog";
 export * from "./components/ui3/FontPickerDialog";
 export * from "./components/ui3/AutoLayoutSettingsDialog";

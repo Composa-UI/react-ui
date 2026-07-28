@@ -60,8 +60,11 @@ describe("Video Clip inspector semantics", () => {
     const html = renderToStaticMarkup(<PropertyPanel mode="video-clip" clipStart={2} clipDuration={3}
       clipTrimIn={0} clipTrimOut={3} clipSpeed={1} />);
 
-    expect(html.match(/role="region"/g)).toHaveLength(4);
-    for (const title of ["Source", "Timeline", "Trim", "Playback"]) expect(html).toContain(`>${title}</span>`);
+    // Source/Timeline/Trim/Playback + the effect sections (Blend/Color/Chroma key).
+    expect(html.match(/role="region"/g)).toHaveLength(7);
+    for (const title of ["Source", "Timeline", "Trim", "Playback", "Blend", "Color", "Chroma key"]) expect(html).toContain(`>${title}</span>`);
+    // Blend mode maps to a host field; render the composite-mode trigger.
+    expect(html).toContain('aria-label="Blend mode: Normal"');
     for (const name of ["Start", "End", "Duration", "Trim in", "Trim out", "Volume"]) {
       expect(html).toContain(`aria-label="${name}"`);
     }
@@ -70,6 +73,24 @@ describe("Video Clip inspector semantics", () => {
     expect(speedTrigger).toContain('aria-haspopup="menu"');
     expect(speedTrigger).toContain('aria-expanded="false"');
     expect(html).toMatch(/aria-label="Volume"[^>]*disabled=""/);
+  });
+});
+
+describe("Audio Clip inspector semantics", () => {
+  it("renders Volume plus the toggled effect sections", () => {
+    const html = renderToStaticMarkup(<PropertyPanel mode="audio-clip" audioVolume={100} />);
+
+    // Volume is the host-wired section; the rest are structural toggles.
+    expect(html).toContain(">Volume</span>");
+    for (const title of ["Equalizer", "Denoise", "De-hum", "Reverb", "Compressor", "Loudness"]) {
+      expect(html).toContain(`>${title}</span>`);
+    }
+    // Effect sections are opened with a "+" (Composa's add pattern), not a
+    // header switch — collapsed until added, no dials until then.
+    for (const label of ["Add equalizer", "Add de-hum", "Add reverb", "Add loudness"]) {
+      expect(html).toContain(`aria-label="${label}"`);
+    }
+    expect(html).not.toContain("Enable equalizer");
   });
 });
 
