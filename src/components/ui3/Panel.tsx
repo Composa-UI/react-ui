@@ -359,18 +359,18 @@ export function PanelEntry({
   removeLabel = "Remove",
 }: PanelEntryProps) {
   return (
-    // Anatomy mirrors the Fill/Stroke rows exactly: no left inset, a 16px grip
-    // column flush to the panel edge, fluid content, then an 8px-padded action
-    // cluster and a 16px right gutter. This drops the extra ~12px of left inset
-    // the old `px-[8px] gap-[4px]` shell added so the Effects dropdown lines up
-    // with (and spans the same width as) the other stackable rows (#500).
-    <div className="flex items-center h-[32px] pr-[16px] group">
+    // Canonical stackable-entry anatomy shared by Fill · Stroke · Effects · Export:
+    // no left inset, a 16px grip column flush to the panel edge, fluid content,
+    // then an 8px-padded action cluster (eye + remove) and a 16px right gutter.
+    // `group/row` is the named group the grip and any hover-reveal affordances key
+    // off, matching the Fill/Stroke rows so the whole file shares one convention.
+    <div className="flex items-center h-[32px] pr-[16px] group/row">
       {/* Drag handle — the 16px column is always reserved so content alignment stays
           fixed; the grip glyph and grab cursor appear only when `draggable`, i.e. a
           stack with more than one reorderable item. */}
       <span className={clsx(
         "shrink-0 flex items-center justify-center size-[16px]",
-        draggable && "opacity-0 group-hover:opacity-40 cursor-grab text-c-icon",
+        draggable && "opacity-0 group-hover/row:opacity-40 cursor-grab text-c-icon",
       )}>
         {draggable && (
           <svg width="6" height="10" viewBox="0 0 6 10" fill="none">
@@ -389,30 +389,22 @@ export function PanelEntry({
           top-aligned by its line-box strut, matching the grip/eye/minus (#490). */}
       <div className="flex-1 min-w-0 flex items-center">{children}</div>
 
-      {/* Action cluster — 8px lead + 4px gap, matching the Fill/Stroke gutter. */}
+      {/* Action cluster — eye + remove rendered through the shared PanelActionBtn so
+          every stackable section uses ONE visibility/remove control: identical 24px
+          hit target, rounded-c-md corner, 16px lucide glyph, and always-visible
+          remove. This replaces the bespoke rounded-c-sm / 14px-minus / hover-only
+          remove buttons the Effects row used, reconciling it with Fill/Stroke (#460). */}
       <div className="shrink-0 flex items-center gap-[4px] pl-[8px]">
-        {/* Eye toggle — canonical lucide Eye/EyeOff (size 16, strokeWidth 1.5),
-            identical to the Fill/Stroke visibility icon, replacing the hand-rolled
-            14px SVG that read as a mismatched glyph on the Effects row (#500). */}
-        <button
-          aria-label={visible ? hideLabel : showLabel}
+        <PanelActionBtn
+          icon={visible ? <Eye size={16} strokeWidth={1.5} /> : <EyeOff size={16} strokeWidth={1.5} />}
+          label={visible ? hideLabel : showLabel}
           onClick={onToggleVisible}
-          className="shrink-0 flex items-center justify-center size-[24px] rounded-c-sm text-c-icon hover:bg-c-bg-hover"
-        >
-          {visible ? <Eye size={16} strokeWidth={1.5} /> : <EyeOff size={16} strokeWidth={1.5} />}
-        </button>
-
-        {/* Remove */}
-        <button
-          aria-label={removeLabel}
+        />
+        <PanelActionBtn
+          icon={<Minus size={16} strokeWidth={1.5} />}
+          label={removeLabel}
           onClick={onRemove}
-          className="shrink-0 flex items-center justify-center size-[24px] rounded-c-sm text-c-icon opacity-0 group-hover:opacity-100 hover:bg-c-bg-hover"
-        >
-          {/* DS Minus (mirrors ColorDialog StopRow remove) — a symmetric 24-viewBox
-              glyph guarantees the bar is centred in the button, replacing the
-              hand-rolled 12x12 path that read short/off next to the eye toggle. */}
-          <Minus size={14} strokeWidth={1.5} />
-        </button>
+        />
       </div>
     </div>
   );

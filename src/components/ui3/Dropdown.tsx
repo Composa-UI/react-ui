@@ -17,6 +17,7 @@ interface DropdownProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "v
   stroke?: boolean;           // whether to show a border (default true)
   editable?: boolean;         // combo-style (type-to-edit) — only these highlight the value text when active
   fullWidth?: boolean;        // fill the container instead of the fixed 117px
+  hug?: boolean;              // size to content (with ellipsis truncation) instead of the fixed 117px or full width
   leadingIcon?: ReactNode;    // optional icon slot (large size only)
   onClick?: MouseEventHandler<HTMLButtonElement>;
   className?: string;
@@ -35,6 +36,7 @@ export function Dropdown({
   stroke = true,
   editable = false,
   fullWidth = false,
+  hug = false,
   leadingIcon,
   onClick,
   onBlur,
@@ -80,7 +82,11 @@ export function Dropdown({
         h,
         ring,
         !stroke && "w-auto",
-        stroke && !fullWidth && "w-[117px]",
+        // Width: hug (size to content, capped at the row so long names ellipsis)
+        // wins over the fixed 117px; fullWidth still fills the row. `max-w-full`
+        // keeps a hugging dropdown from overflowing a constrained row.
+        stroke && hug && "w-auto max-w-full",
+        stroke && !hug && !fullWidth && "w-[117px]",
         fullWidth && "w-full",
         size === "large" && stroke && leadingIcon ? "pr-[4px]" :
         size === "large" && !stroke && leadingIcon ? "pr-[4px]" :
