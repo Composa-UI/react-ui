@@ -20,6 +20,8 @@ import {
   ProposedLineHeight,
   ProposedOpacity,
   ProposedScanSquare,
+  ProposedSquareText,
+  ProposedTextMargins,
   proposedLucideMetadata,
 } from "./proposed-lucide";
 
@@ -43,6 +45,8 @@ const icons = [
   ProposedScanSquare,
   ProposedLetterSpacing,
   ProposedLineHeight,
+  ProposedSquareText,
+  ProposedTextMargins,
 ];
 
 describe("proposed Lucide icon boundary", () => {

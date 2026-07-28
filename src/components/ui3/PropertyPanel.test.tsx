@@ -182,15 +182,15 @@ describe("Inspector context projections", () => {
     expect(html).not.toContain(">Auto width</span>");
     expect(html).not.toContain(">Auto height</span>");
     expect(html).not.toContain(">Fixed size</span>");
-    // Owner ask (#460): each segment carries the specific refined glyph —
+    // Owner ask: each segment carries the specific glyph he linked —
     //   auto-width  → arrow-from-a-line (arrow-right-from-line)
-    //   auto-height → two vertical bars with a line between (columns-2)
-    //   fixed-size  → a square with inner lines (grid-2x2)
+    //   auto-height → text bounded by two vertical rules (text-margins, lucide#4610)
+    //   fixed-size  → a solid text box (square-text, lucide#4609)
     const widthSegment = html.match(/<button[^>]*aria-label="Auto width"[\s\S]*?<\/button>/)?.[0] ?? "";
     const heightSegment = html.match(/<button[^>]*aria-label="Auto height"[\s\S]*?<\/button>/)?.[0] ?? "";
     expect(widthSegment).toContain("lucide-arrow-right-from-line");
-    expect(heightSegment).toContain("lucide-columns-2");
-    expect(fixedSegment).toContain("lucide-grid-2x2");
+    expect(heightSegment).toContain("lucide-proposed-text-margins");
+    expect(fixedSegment).toContain("lucide-proposed-square-text");
     expect(html).toContain('aria-label="Project canvas size: HD 16:9"');
     expect(html).not.toContain("Composition canvas size");
   });

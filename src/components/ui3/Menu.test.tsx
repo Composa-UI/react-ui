@@ -20,12 +20,15 @@ describe("Menu", () => {
         <MenuRow label="One" onClick={() => undefined} />
       </Menu>,
     );
-    // Fixed max-height on the container + vertical scroll for the overflow,
-    // while horizontal overflow stays clipped to preserve the rounded corners.
+    // Fixed max-height on the container (clipped for crisp rounded corners); the
+    // overflow scrolls inside our ScrollArea overlay-thumb viewport with the native
+    // scrollbar hidden — owner rule: every scrolling surface uses the overlay thumb,
+    // never a native scrollbar.
     expect(html).toMatch(/max-height:\s*280px/);
+    expect(html).toContain("overflow-hidden");
+    expect(html).toContain("data-composa-scroll-viewport");
     expect(html).toContain("overflow-y-auto");
-    expect(html).toContain("overflow-x-hidden");
-    expect(html).not.toMatch(/\boverflow-hidden\b/);
+    expect(html).toContain("scrollbar-width:none");
   });
 });
 

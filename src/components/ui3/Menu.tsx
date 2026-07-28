@@ -3,6 +3,7 @@ import { type FocusEventHandler, type MouseEventHandler, type ReactElement, type
 import { Check, ChevronRight, Minus } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { useComposaMode } from "./useComposaMode";
+import { ScrollArea } from "./Panel";
 
 // ─── Menu ─────────────────────────────────────────────────────────────────────
 // Figma menus are always dark regardless of app mode. We apply
@@ -310,10 +311,12 @@ export function Menu({ children, minWidth = 160, maxHeight, className }: MenuPro
       data-composa-mode="dark"
       role="menu"
       className={clsx(
-        "inline-flex flex-col py-[8px] rounded-c-lg",
-        // A capped menu scrolls its own overflow; otherwise nothing overflows
-        // and overflow-hidden keeps the rounded corners crisp.
-        scrollable ? "overflow-y-auto overflow-x-hidden" : "overflow-hidden",
+        // Always overflow-hidden for crisp rounded corners. A capped menu scrolls
+        // via ScrollArea (our overlay thumb — never a native scrollbar; owner
+        // rule: all scrolling surfaces use the overlay thumb); its py-[8px] moves
+        // onto the scroll content so it scrolls with the rows.
+        "inline-flex flex-col rounded-c-lg overflow-hidden",
+        !scrollable && "py-[8px]",
         "shadow-c-400 ring-1 ring-inset ring-c-border-translucent",
         className,
       )}
@@ -323,7 +326,9 @@ export function Menu({ children, minWidth = 160, maxHeight, className }: MenuPro
         backgroundColor: "var(--color-bg-menu)",
       }}
     >
-      {children}
+      {scrollable
+        ? <ScrollArea contentClassName="py-[8px]">{children}</ScrollArea>
+        : children}
     </div>
   );
 }
