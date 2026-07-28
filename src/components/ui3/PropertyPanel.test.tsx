@@ -208,6 +208,9 @@ describe("Auto-layout gap control", () => {
     expect(freeform).toBeLessThan(vertical);
     expect(html.match(/aria-label="Auto-layout settings"/g)).toHaveLength(1);
     expect(html).toContain('data-icon-semantic="layout-freeform"');
+    // Wrap remains a Wrap *mode* (DEC-008: not a Grid document mode) but the
+    // flow cell adopts the grid glyph per owner direction (#459).
+    expect(html).toContain('data-icon-semantic="layout-wrap"');
   });
 
   it("renders menu-backed W/H modes and the shared min/max grid", () => {
@@ -258,6 +261,8 @@ describe("Plain-frame flow contract", () => {
     expect(freeform).toBeLessThan(vertical);
     expect(vertical).toBeLessThan(horizontal);
     expect(horizontal).toBeLessThan(wrap);
+    // Wrap cell uses the grid glyph (grid visual treatment) while staying Wrap.
+    expect(html).toContain('data-icon-semantic="layout-wrap"');
   });
 });
 

@@ -1,4 +1,4 @@
-import { AlignCenter, AlignLeft, AlignRight, Settings2 } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, LayoutGrid, Settings2 } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { composaIconSemantics, iconForSemantic } from "./IconSemantics";
@@ -77,6 +77,16 @@ describe("settings icon semantics", () => {
     ] as const) {
       expect(iconForSemantic(semantic)).toBe(composaIconSemantics[semantic]);
     }
+  });
+
+  it("dresses the Wrap flow mode with the grid glyph while keeping it distinct from the Freeform/H/V flow icons (#459/DEC-008)", () => {
+    // Wrap is Composa's single multi-line auto-layout *mode* (not a Grid
+    // document mode). Per owner #459 its flow cell uses the Lucide grid glyph
+    // because a wrapped layout reads as a grid; the semantic name stays "wrap".
+    expect(composaIconSemantics["layout-wrap"]).toBe(LayoutGrid);
+    expect(composaIconSemantics["layout-wrap"]).not.toBe(composaIconSemantics["layout-freeform"]);
+    expect(composaIconSemantics["layout-wrap"]).not.toBe(composaIconSemantics["layout-horizontal"]);
+    expect(composaIconSemantics["layout-wrap"]).not.toBe(composaIconSemantics["layout-vertical"]);
   });
 
   it("wires Typography horizontal alignment to paragraph text-align glyphs, distinct from the vertical group and the object-align row (#495)", () => {

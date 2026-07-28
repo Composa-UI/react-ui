@@ -67,6 +67,7 @@ export type ComposaIconSemantic =
   | "layout-freeform"
   | "layout-horizontal"
   | "layout-vertical"
+  | "layout-wrap"
   | "gap-horizontal"
   | "gap-vertical"
   | "padding-top"
@@ -122,6 +123,12 @@ export const composaIconSemantics = {
   "layout-freeform": ProposedLayoutFreeform,
   "layout-horizontal": ProposedLayoutHorizontal,
   "layout-vertical": ProposedLayoutVertical,
+  // Wrap stays a Wrap *mode* (single multi-line auto-layout mode, per DEC-008 —
+  // NOT a Grid document mode). It only borrows the grid *glyph*: a wrapped
+  // multi-line layout reads as a grid, and the owner's annotated inspector
+  // (#459) requests `layout-grid` for this cell. Semantic name keeps the mode
+  // distinct from its glyph.
+  "layout-wrap": LayoutGrid,
   "gap-horizontal": ProposedGapHorizontal,
   "gap-vertical": ProposedGapVertical,
   "padding-top": PanelTopDashed,
