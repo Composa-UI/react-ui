@@ -93,3 +93,69 @@ describe("ComboInput focus contract", () => {
     expect(locked).not.toContain('aria-label="Variable font size"');
   });
 });
+
+describe("NumericInput — whole-field scrub (opt-in `scrub`)", () => {
+  function scrubEvent(clientX: number, shiftKey = false) {
+    return {
+      clientX,
+      shiftKey,
+      pointerId: 1,
+      preventDefault: vi.fn(),
+      currentTarget: { setPointerCapture: vi.fn() },
+    };
+  }
+  const field = (renderer: ReturnType<typeof create>) => renderer.root.findByProps({ role: "spinbutton" });
+
+  it("changes the value on horizontal drag with the shared step + rounding (delta/2 · step)", () => {
+    const onChange = vi.fn();
+    let r: ReturnType<typeof create>;
+    act(() => { r = create(<NumericInput ariaLabel="V" scrub value={10} step={1} onChange={onChange} />); });
+    act(() => field(r!).props.onPointerDown(scrubEvent(100)));
+    // +40px → Math.round(40/2)=20 · step 1 → 10 + 20 = 30. (Same math as the iconLead scrub.)
+    act(() => field(r!).props.onPointerMove(scrubEvent(140)));
+    expect(onChange).toHaveBeenLastCalledWith(30);
+    act(() => field(r!).props.onPointerUp(scrubEvent(140)));
+    act(() => r!.unmount());
+  });
+
+  it("Shift multiplies the step by 10 (matches the other numeric inputs)", () => {
+    const onChange = vi.fn();
+    let r: ReturnType<typeof create>;
+    act(() => { r = create(<NumericInput ariaLabel="V" scrub value={10} step={1} onChange={onChange} />); });
+    act(() => field(r!).props.onPointerDown(scrubEvent(100)));
+    // +4px → round(4/2)=2 · step 1 · 10 = 20 → 10 + 20 = 30.
+    act(() => field(r!).props.onPointerMove(scrubEvent(104, true)));
+    expect(onChange).toHaveBeenLastCalledWith(30);
+    act(() => r!.unmount());
+  });
+
+  it("clamps the scrubbed value at min and max", () => {
+    const onChangeMax = vi.fn();
+    let rMax: ReturnType<typeof create>;
+    act(() => { rMax = create(<NumericInput ariaLabel="V" scrub value={10} step={1} max={25} onChange={onChangeMax} />); });
+    act(() => field(rMax!).props.onPointerDown(scrubEvent(100)));
+    act(() => field(rMax!).props.onPointerMove(scrubEvent(140))); // +20 → 30 → clamp 25
+    expect(onChangeMax).toHaveBeenLastCalledWith(25);
+    act(() => rMax!.unmount());
+
+    const onChangeMin = vi.fn();
+    let rMin: ReturnType<typeof create>;
+    act(() => { rMin = create(<NumericInput ariaLabel="V" scrub value={10} step={1} min={5} onChange={onChangeMin} />); });
+    act(() => field(rMin!).props.onPointerDown(scrubEvent(100)));
+    act(() => field(rMin!).props.onPointerMove(scrubEvent(20))); // -80 → round(-40) → -30 → clamp 5
+    expect(onChangeMin).toHaveBeenLastCalledWith(5);
+    act(() => rMin!.unmount());
+  });
+
+  it("attaches scrub pointer handlers only when `scrub` is set", () => {
+    let plain: ReturnType<typeof create>;
+    act(() => { plain = create(<NumericInput ariaLabel="V" value={10} onChange={() => {}} />); });
+    expect(field(plain!).props.onPointerDown).toBeUndefined();
+    act(() => plain!.unmount());
+
+    let scrubbable: ReturnType<typeof create>;
+    act(() => { scrubbable = create(<NumericInput ariaLabel="V" scrub value={10} onChange={() => {}} />); });
+    expect(typeof field(scrubbable!).props.onPointerDown).toBe("function");
+    act(() => scrubbable!.unmount());
+  });
+});

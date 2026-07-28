@@ -17,6 +17,17 @@ function pointerEvent(clientY: number, shiftKey = false) {
 function keyEvent(key: string, shiftKey = false) {
   return { key, shiftKey, preventDefault: vi.fn() };
 }
+// Horizontal scrub across the value field (drag-to-scrub). Mirrors NumericInput's
+// iconLead scrub: value += Math.round((clientX - startX) / 2) · step · (shift ? 10 : 1).
+function scrubEvent(clientX: number, shiftKey = false) {
+  return {
+    clientX,
+    shiftKey,
+    pointerId: 1,
+    preventDefault: vi.fn(),
+    currentTarget: { setPointerCapture: vi.fn() },
+  };
+}
 
 function knob(root: ReactTestInstance) {
   return root.find(node => node.props.role === "slider");
@@ -167,5 +178,49 @@ describe("Dial — reset + typed entry", () => {
   it("hideValue omits the typed-entry field", () => {
     const r = render(<Dial label="Bare" value={10} min={0} max={100} hideValue onChange={() => {}} />);
     expect(r.root.findAll(node => node.props.role === "spinbutton")).toHaveLength(0);
+  });
+});
+
+describe("Dial — value-field horizontal scrub", () => {
+  it("increases the value on a rightward drag across the value field (same step + rounding as the other inputs)", () => {
+    const onChange = vi.fn();
+    const r = render(<Dial label="Freq" defaultValue={50} min={0} max={100} step={1} onChange={onChange} />);
+    act(() => { valueField(r.root).props.onPointerDown(scrubEvent(100)); });
+    // +40px → Math.round(40/2)=20 · step 1 → 50 + 20 = 70.
+    act(() => { valueField(r.root).props.onPointerMove(scrubEvent(140)); });
+    expect(onChange).toHaveBeenLastCalledWith(70);
+    act(() => { valueField(r.root).props.onPointerUp(scrubEvent(140)); });
+  });
+
+  it("decreases on a leftward drag", () => {
+    const onChange = vi.fn();
+    const r = render(<Dial label="Freq" defaultValue={50} min={0} max={100} step={1} onChange={onChange} />);
+    act(() => { valueField(r.root).props.onPointerDown(scrubEvent(100)); });
+    act(() => { valueField(r.root).props.onPointerMove(scrubEvent(60)); }); // -40 → -20 → 30
+    expect(onChange).toHaveBeenLastCalledWith(30);
+  });
+
+  it("Shift = ×10 step, matching the inspector's other numeric fields", () => {
+    const onChange = vi.fn();
+    const r = render(<Dial label="Freq" defaultValue={50} min={0} max={200} step={1} onChange={onChange} />);
+    act(() => { valueField(r.root).props.onPointerDown(scrubEvent(100)); });
+    act(() => { valueField(r.root).props.onPointerMove(scrubEvent(104, true)); }); // round(4/2)=2 ·1·10 = 20 → 70
+    expect(onChange).toHaveBeenLastCalledWith(70);
+  });
+
+  it("clamps the scrubbed value at max", () => {
+    const onChange = vi.fn();
+    const r = render(<Dial label="Freq" value={90} min={0} max={100} step={1} onChange={onChange} />);
+    act(() => { valueField(r.root).props.onPointerDown(scrubEvent(100)); });
+    act(() => { valueField(r.root).props.onPointerMove(scrubEvent(200)); }); // +50 → 140 → clamp 100
+    expect(onChange).toHaveBeenLastCalledWith(100);
+  });
+
+  it("clamps the scrubbed value at min", () => {
+    const onChange = vi.fn();
+    const r = render(<Dial label="Freq" value={10} min={5} max={100} step={1} onChange={onChange} />);
+    act(() => { valueField(r.root).props.onPointerDown(scrubEvent(100)); });
+    act(() => { valueField(r.root).props.onPointerMove(scrubEvent(0)); }); // -50 → -40 → clamp 5
+    expect(onChange).toHaveBeenLastCalledWith(5);
   });
 });

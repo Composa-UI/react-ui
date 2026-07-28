@@ -257,6 +257,11 @@ export interface NumericInputProps extends NumericEditSessionCallbacks {
   iconLead?: ReactNode;       // scrubber label (e.g. "W", "X", or an icon)
   /** Keep the canonical 24px leading-icon column even when no glyph is shown. */
   reserveLeadingSlot?: boolean;
+  /** Make the whole field a horizontal drag-scrub surface (same ew-resize idiom,
+   *  sensitivity, step + clamp as the iconLead scrub). For compact fields with no
+   *  leading glyph — e.g. the Dial's value row — where the input itself is the grab
+   *  target. A plain click still focuses for typing; a horizontal drag scrubs. */
+  scrub?: boolean;
   value?: number;
   defaultValue?: number;
   min?: number;
@@ -282,6 +287,7 @@ export function NumericInput({
   ariaLabel,
   iconLead,
   reserveLeadingSlot = false,
+  scrub = false,
   value,
   defaultValue = 0,
   min,
@@ -397,8 +403,21 @@ export function NumericInput({
     setScrubbing(false);
     finishSession(true);
   }, [finishSession]);
+
+  // Whole-field scrub (opt-in). Same idiom as the iconLead handle, applied to the
+  // input itself for compact fields with no leading glyph (e.g. the Dial). We
+  // preventDefault to keep focus off the input so the value updates live while
+  // scrubbing; onLabelPointerUp then focuses on a no-move click so typing works.
+  const onInputPointerDown = (e: React.PointerEvent<HTMLInputElement>) => {
+    if (disabled || focused) return; // already typing → leave caret/selection alone
+    e.preventDefault();
+    beginSession();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    scrubStart.current = { x: e.clientX, value: current };
+    setScrubbing(true);
+  };
   useEffect(() => {
-    if (!scrubbing) return;
+    if (!scrubbing || typeof document === "undefined") return;
     const onEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
@@ -490,6 +509,13 @@ export function NumericInput({
             }
           }}
           onKeyDown={onKeyDown}
+          {...(scrub && {
+            onPointerDown: onInputPointerDown,
+            onPointerMove: onLabelPointerMove,
+            onPointerUp: onLabelPointerUp,
+            onPointerCancel: cancelScrub,
+            onLostPointerCapture: cancelScrub,
+          })}
           onFocus={e => { setDraft(String(current)); beginSession(); setFocused(true); e.target.select(); }}
           onBlur={() => {
             if (cancelBlurCommit.current) cancelBlurCommit.current = false;
@@ -507,6 +533,7 @@ export function NumericInput({
             "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
             iconLead || reserveLeadingSlot ? "pl-[26px]" : "pl-[8px]",
             (suffix || dropdown || keyframe) ? "pr-[2px]" : "pr-[8px]",
+            scrub && !disabled && !focused && "cursor-ew-resize touch-none select-none",
             disabled && "cursor-not-allowed",
           )}
         />

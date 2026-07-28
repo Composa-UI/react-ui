@@ -21,7 +21,10 @@ import { NumericInput } from "./Input";
 //
 // Typed entry reuses the DS `NumericInput` primitive rendered under the knob as
 // the label+value row, so typed edits, formatting, and a11y match every other
-// inspector control.
+// inspector control. That value field is also a horizontal drag-scrub surface
+// (`scrub`) — dragging across it left/right changes the value with the same
+// ew-resize idiom, step and clamp as the inspector's other numeric fields; a
+// plain click still focuses it for typing. (Vertical knob drag is unchanged.)
 //
 // Theming: DS CSS variables only (light + [data-composa-mode="dark"]); no hex.
 
@@ -278,6 +281,7 @@ export function Dial({
               size="small"
               disabled={disabled}
               onChange={commit}
+              scrub
             />
           </div>
         </div>

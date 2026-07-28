@@ -64,6 +64,47 @@ test.describe("Dial — audio inspector rotary knob", () => {
     await expect(dial).toHaveAttribute("aria-valuenow", "100");
   });
 
+  test("horizontal drag across the value field scrubs the dial (same idiom as the other numeric inputs)", async ({ page }) => {
+    // "Reverb" starts at 50%. Its value field under the knob is a scrub surface.
+    const dial = page.getByRole("slider", { name: "Reverb" }).first();
+    const field = page.getByRole("spinbutton", { name: "Reverb value" }).first();
+    await expect(dial).toHaveAttribute("aria-valuenow", "50");
+
+    const box = await field.boundingBox();
+    if (!box) throw new Error("Value field not visible");
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+
+    // Drag right ~40px → value increases (rightward = increase).
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx + 40, cy, { steps: 8 });
+    await page.mouse.up();
+    const after = Number(await dial.getAttribute("aria-valuenow"));
+    expect(after).toBeGreaterThan(50);
+
+    // Drag far left → decreases and clamps at min (0, never negative).
+    const box2 = await field.boundingBox();
+    if (!box2) throw new Error("Value field not visible");
+    const sx = box2.x + box2.width / 2;
+    const sy = box2.y + box2.height / 2;
+    await page.mouse.move(sx, sy);
+    await page.mouse.down();
+    await page.mouse.move(sx - 400, sy, { steps: 12 });
+    await page.mouse.up();
+    await expect(dial).toHaveAttribute("aria-valuenow", "0");
+  });
+
+  test("a plain click on the value field still focuses it for typing (scrub does not hijack clicks)", async ({ page }) => {
+    const dial = page.getByRole("slider", { name: "Loudness" }).first();
+    const field = page.getByRole("spinbutton", { name: "Loudness value" }).first();
+    await field.click();
+    await expect(field).toBeFocused();
+    await field.fill("");
+    await page.keyboard.type("42");
+    await expect(dial).toHaveAttribute("aria-valuenow", "42");
+  });
+
   test("typed entry via the DS NumericInput field updates the dial", async ({ page }) => {
     const dial = page.getByRole("slider", { name: "Reverb" }).first();
     const field = page.getByRole("spinbutton", { name: "Reverb value" }).first();

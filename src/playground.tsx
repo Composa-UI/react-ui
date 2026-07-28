@@ -702,6 +702,9 @@ function SlidesFixture() {
 // ?view=dial — rotary knob for the audio inspector. A row of dials at different
 // values in light + dark, plus a labelled "De-hum" group (Frequency / Harmonics
 // / Sharpness / Depth) matching the Sequence audio-inspector study.
+// Interactions: vertical drag on the knob, AND horizontal drag-scrub across the
+// value field under it (same ew-resize idiom as the position/scale/size inputs;
+// a plain click focuses the field for typing).
 function DialFixture({ mode }: { mode: "light" | "dark" }) {
   const [dehum, setDehum] = useState({ frequency: 60, harmonics: 4, sharpness: 35, depth: 72 });
   const [reverb, setReverb] = useState(50);
