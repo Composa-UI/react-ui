@@ -490,6 +490,17 @@ describe("Timeline master seams", () => {
     expect(html).toContain("border-c-border-selected-strong");
     expect(html).toContain('aria-label="Trim start of voiceover"');
     expect(html).toContain('aria-label="Trim end of music"');
+    // The clip bar fills the full track-row height (inset 4px), not the old
+    // centred 20px block.
+    expect(html).toContain("absolute inset-y-[4px] rounded-[4px]");
+    expect(html).not.toContain("top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-c-bg-secondary");
+  });
+
+  it("delineates each master lane row with a horizontal divider (header + track)", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={20_000} />);
+    // Each of the three lane rows (Compositions / Video / Audio) carries a
+    // bottom divider spanning the header column and the track area.
+    expect(html.match(/class="flex border-b border-c-border"/g)?.length).toBe(3);
   });
 
   it("renders the Figma lane header anatomy — [icon][label][+] + [vis][solo][mute][lock]", () => {
@@ -504,6 +515,9 @@ describe("Timeline master seams", () => {
     // The compositions lane uses the layers glyph, not the pen-tool.
     expect(html).toContain("lucide-layers");
     expect(html).not.toContain("lucide-pen-tool");
+    // The Video lane uses the square-play glyph (not the clapperboard).
+    expect(html).toContain("lucide-square-play");
+    expect(html).not.toContain("lucide-clapperboard");
     // `+` add affordance per lane.
     expect(html).toContain('aria-label="Add to Compositions"');
     expect(html).toContain('aria-label="Add to Video"');
@@ -513,9 +527,12 @@ describe("Timeline master seams", () => {
     expect(html).toContain('aria-label="Solo Video"');
     expect(html).toContain('aria-label="Mute Audio"');
     expect(html).toContain('aria-label="Lock Compositions"');
-    // The four toggles read as ONE grouped/segmented control (same DS primitive as
-    // the Design-tab alignment control), not four loose buttons.
-    expect(html).toContain("data-composa-segmented-surface");
+    // The four toggles are grouped icon buttons built on the SAME DS primitive as
+    // the Design-tab alignment control (IconButtonRow), NOT a SegmentedControl.
+    expect(html).toContain("data-composa-icon-button-row");
+    expect(html).not.toContain("data-composa-segmented-surface");
+    // The control group hugs its content (no `fill` → not full-width).
+    expect(html).not.toMatch(/data-composa-icon-button-row[^>]*w-full/);
     // Wired controls advertise their pressed state (resting = false).
     expect(html).toContain('aria-pressed="false"');
   });

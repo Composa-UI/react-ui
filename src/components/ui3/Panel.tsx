@@ -237,6 +237,10 @@ export interface IconBtn {
   icon: ReactNode;
   label: string;
   value?: string;
+  /** Independent pressed/toggle state. When defined the button reflects its own
+   *  on/off (selected bg + `aria-pressed`), decoupled from the group's single
+   *  `value` — used for rows of independent toggles (e.g. lane vis/solo/mute/lock). */
+  active?: boolean;
   disabled?: boolean;
   onClick?: () => void;
 }
@@ -261,16 +265,20 @@ export function IconButtonRow({
   const btnW = Math.floor((width - (buttons.length - 1)) / buttons.length);
 
   return (
-    <div className={clsx("flex items-center", fill && "w-full")} style={{ gap: 1 }}>
+    <div data-composa-icon-button-row className={clsx("flex items-center", fill && "w-full")} style={{ gap: 1 }}>
       {buttons.map((btn, i) => {
         const isFirst = i === 0;
         const isLast  = i === buttons.length - 1;
-        const isActive = value !== undefined && btn.value === value;
+        // A button either carries its own toggle state (`active`, independent) or
+        // participates in the group's single-select `value`. Independent toggles
+        // also advertise `aria-pressed`; single-select buttons stay unpressed.
+        const isActive = btn.active ?? (value !== undefined && btn.value === value);
 
         return (
           <button
             key={btn.label}
             aria-label={btn.label}
+            aria-pressed={btn.active === undefined ? undefined : btn.active}
             disabled={btn.disabled}
             onClick={() => {
               btn.onClick?.();
