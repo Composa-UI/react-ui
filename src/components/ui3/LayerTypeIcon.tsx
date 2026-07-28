@@ -2,7 +2,7 @@ import { clsx } from "clsx";
 import { iconForSemantic, type ComposaIconSemantic } from "./IconSemantics";
 
 export type LayerIconType = "frame" | "group" | "text" | "component" | "instance" | "image" | "shape" | "line";
-export type LayerAutoLayoutMode = "none" | "horizontal" | "vertical" | "wrap";
+export type LayerAutoLayoutMode = "none" | "horizontal" | "vertical";
 
 export interface LayerTypeIconProps {
   type: LayerIconType;
@@ -17,7 +17,6 @@ export interface LayerTypeIconProps {
 export function LayerTypeIcon({ type, autoLayoutMode = "none", size = 16, strokeWidth = 1.5, tone = "primary", className }: LayerTypeIconProps) {
   const semantic: ComposaIconSemantic = type === "frame" && autoLayoutMode === "horizontal" ? "auto-layout-horizontal-center"
     : type === "frame" && autoLayoutMode === "vertical" ? "auto-layout-vertical-center"
-    : type === "frame" && autoLayoutMode === "wrap" ? "auto-layout-frame"
     : type === "frame" ? "frame"
     : type === "group" ? "group-compatibility"
     : type === "text" ? "text"

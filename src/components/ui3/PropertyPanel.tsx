@@ -102,7 +102,12 @@ export interface ElementTypographySettings {
   letterSpacingMixed?: boolean;
 }
 export interface ElementLayoutSettings {
-  mode: "none" | "horizontal" | "vertical" | "wrap"; gap: number | "auto";
+  // Wrap is a horizontal-only modifier (Figma parity), not a peer flow direction.
+  mode: "none" | "horizontal" | "vertical"; gap: number | "auto";
+  /** Horizontal-only wrap modifier. */
+  wrap?: boolean;
+  /** Cross-axis gap between wrapped rows. Meaningful only while wrapping. */
+  rowGap?: number;
   padding: { top: number; right: number; bottom: number; left: number };
   align: string; widthMode: "fixed" | "hug" | "fill"; heightMode: "fixed" | "hug" | "fill"; clipsContent: boolean;
   positioning?: "auto" | "absolute";
@@ -764,11 +769,12 @@ function LayoutFrameSection({
   // already imply vertical auto-layout while this is the "no auto-layout" section.
   const [flow, setFlow] = useState("none");
 
+  // Wrap is not a peer flow option (it is a horizontal-only modifier reached from the
+  // auto-layout section). The plain-frame control only enters/leaves auto layout.
   const flowBtns: IconBtn[] = [
     { icon: <LayoutFreeformIcon data-icon-semantic="layout-freeform" size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
     { icon: <LayoutVerticalIcon data-icon-semantic="layout-vertical" size={S} strokeWidth={1.5} />, label: "Vertical", value: "v" },
     { icon: <LayoutHorizontalIcon data-icon-semantic="layout-horizontal" size={S} strokeWidth={1.5} />, label: "Horizontal", value: "h" },
-    { icon: <LayoutWrapIcon data-icon-semantic="layout-wrap" size={S} strokeWidth={1.5} />, label: "Wrap", value: "wrap" },
   ];
 
   const handleFlowChange = (v: string) => {
@@ -810,6 +816,8 @@ function LayoutFrameSection({
 interface LayoutAutoProps {
   width?: number; height?: number;
   flowMode?: ElementLayoutSettings["mode"];
+  wrap?: boolean;
+  rowGap?: number;
   widthMode?: "fixed" | "hug" | "fill";
   heightMode?: "fixed" | "hug" | "fill";
   gap?: number | "auto";
@@ -838,16 +846,19 @@ interface LayoutAutoProps {
 }
 
 export function reconcileAutoLayoutGap(
-  mode: ElementLayoutSettings["mode"],
+  wrap: boolean,
   gap: number | "auto",
   lastFixedGap: number,
 ): number | "auto" {
-  return mode === "wrap" && gap === "auto" ? lastFixedGap : gap;
+  // Auto item-gap distribution is unavailable while wrapping — fall back to the last fixed gap.
+  return wrap && gap === "auto" ? lastFixedGap : gap;
 }
 
 function LayoutAutoSection({
   width = 240, height = 0,
   flowMode,
+  wrap: wrapProp,
+  rowGap: rowGapProp,
   widthMode = "hug", heightMode = "fill",
   gap: gapProp,
   paddingTop = 16, paddingRight = 0, paddingBottom = 8, paddingLeft = 0,
@@ -875,6 +886,15 @@ function LayoutAutoSection({
   const [internalGap, setInternalGap] = useState<number | "auto">(gapProp ?? 0);
   const renderedGap = gapControlled ? gapProp : internalGap;
   const [lastFixedGap, setLastFixedGap] = useState(typeof renderedGap === "number" ? renderedGap : 0);
+  // Wrap is a horizontal-only modifier; the row gap is the wrapped cross-axis spacing.
+  const wrapControlled = wrapProp !== undefined;
+  const [internalWrap, setInternalWrap] = useState(!!wrapProp);
+  const wrapping = renderedFlow === "h" && (wrapControlled ? !!wrapProp : internalWrap);
+  const rowGapControlled = rowGapProp !== undefined;
+  const [internalRowGap, setInternalRowGap] = useState(rowGapProp ?? (typeof renderedGap === "number" ? renderedGap : 0));
+  const renderedRowGap = rowGapControlled ? rowGapProp : internalRowGap;
+  // Item and row gaps start linked (they migrate equal); unlink once the user diverges them.
+  const [gapsLinked, setGapsLinked] = useState(true);
   const [indivPadding, setIndivPadding] = useState(false);
   const paddingSidesDiffer = paddingTop !== paddingRight || paddingTop !== paddingBottom || paddingTop !== paddingLeft;
   const paddingHasMixedSide = paddingTopMixed || paddingRightMixed || paddingBottomMixed || paddingLeftMixed;
@@ -883,26 +903,66 @@ function LayoutAutoSection({
 
   // Freeform is the explicit "disable auto layout" action and remains distinct
   // from the trailing Auto-layout Settings entry point.
+  // Flow is Horizontal / Vertical (+ Freeform). Wrap is a trailing toggle on Horizontal.
   const flowBtns: IconBtn[] = [
     { icon: <LayoutFreeformIcon data-icon-semantic="layout-freeform" size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
     { icon: <LayoutVerticalIcon data-icon-semantic="layout-vertical" size={S} strokeWidth={1.5} />, label: "Vertical", value: "v" },
     { icon: <LayoutHorizontalIcon data-icon-semantic="layout-horizontal" size={S} strokeWidth={1.5} />, label: "Horizontal", value: "h" },
-    { icon: <LayoutWrapIcon data-icon-semantic="layout-wrap" size={S} strokeWidth={1.5} />, label: "Wrap",        value: "wrap" },
   ];
 
   const handleFlowChange = (v: string) => {
     setFlow(v);
-    const mode = v === "h" ? "horizontal" : v === "v" ? "vertical" : v as "none" | "wrap";
-    const reconciledGap = reconcileAutoLayoutGap(mode, renderedGap, lastFixedGap);
+    const mode = v === "h" ? "horizontal" : v === "v" ? "vertical" : "none";
+    // Wrap only survives on Horizontal; leaving Horizontal clears it.
+    const nextWrap = mode === "horizontal" ? (wrapControlled ? !!wrapProp : internalWrap) : false;
+    const reconciledGap = reconcileAutoLayoutGap(nextWrap, renderedGap, lastFixedGap);
     const nextGap = reconciledGap === renderedGap ? undefined : reconciledGap;
     if (nextGap !== undefined && !gapControlled) setInternalGap(nextGap);
     onLayoutChange?.({ mode, ...(nextGap === undefined ? {} : { gap: nextGap }) });
   };
 
+  const toggleWrap = () => {
+    const next = !wrapping;
+    if (!wrapControlled) setInternalWrap(next);
+    // Entering wrap coerces an Auto item gap back to a fixed number.
+    const reconciledGap = reconcileAutoLayoutGap(next, renderedGap, lastFixedGap);
+    const gapPatch = reconciledGap === renderedGap ? {} : { gap: reconciledGap };
+    if (!gapControlled && "gap" in gapPatch) setInternalGap(reconciledGap);
+    onLayoutChange?.({ wrap: next, ...gapPatch });
+  };
+
   const emitGap = (value: number | "auto") => {
     if (!gapControlled) setInternalGap(value);
     if (typeof value === "number") setLastFixedGap(value);
+    // While wrapping with the gaps linked, the row gap tracks the item gap.
+    if (wrapping && gapsLinked && typeof value === "number") {
+      if (!rowGapControlled) setInternalRowGap(value);
+      onLayoutChange?.({ gap: value, rowGap: value });
+      return;
+    }
     onLayoutChange?.({ gap: value });
+  };
+
+  const emitRowGap = (value: number) => {
+    const next = Math.max(0, value);
+    if (!rowGapControlled) setInternalRowGap(next);
+    if (gapsLinked && typeof renderedGap === "number") {
+      if (!gapControlled) setInternalGap(next);
+      setLastFixedGap(next);
+      onLayoutChange?.({ gap: next, rowGap: next });
+      return;
+    }
+    onLayoutChange?.({ rowGap: next });
+  };
+
+  const toggleGapsLinked = () => {
+    const next = !gapsLinked;
+    setGapsLinked(next);
+    // Re-linking snaps the row gap to the item gap.
+    if (next && typeof renderedGap === "number" && renderedGap !== renderedRowGap) {
+      if (!rowGapControlled) setInternalRowGap(renderedGap);
+      onLayoutChange?.({ rowGap: renderedGap });
+    }
   };
 
   useEffect(() => {
@@ -921,7 +981,7 @@ function LayoutAutoSection({
         checked={gapMode === "fixed"}
         onClick={() => { emitGap(lastFixedGap); close(); }}
       />
-      {renderedFlow !== "wrap" && (
+      {!wrapping && (
         <MenuRow
           type="checkmark"
           label="Auto"
@@ -933,7 +993,7 @@ function LayoutAutoSection({
   );
 
   const settingsValue = {
-    mode: flowMode ?? (renderedFlow === "h" ? "horizontal" : renderedFlow === "v" ? "vertical" : "wrap"),
+    mode: flowMode ?? (renderedFlow === "h" ? "horizontal" : renderedFlow === "v" ? "vertical" : "none"),
     textBaseline: textBaselineMixed ? "mixed" : textBaseline,
     strokeSizing: strokeSizingMixed ? "mixed" : strokeSizing,
     canvasStacking: canvasStackingMixed ? "mixed" : canvasStacking,
@@ -967,9 +1027,18 @@ function LayoutAutoSection({
             className="w-full"
           />
         </div>
-        {/* Reserved trailing slot — matches the Alignment/Gap row's 24px settings-button
-            column so the Flow control aligns instead of running edge-to-edge. */}
-        <div className="shrink-0 w-[24px]" aria-hidden="true" />
+        {/* Trailing slot — Wrap is a modifier on Horizontal (Figma parity), shown here as a
+            toggle beside the flow options. It matches the Alignment/Gap row's 24px column. */}
+        <div className="shrink-0 w-[24px] pt-[17px]">
+          {renderedFlow === "h" && (
+            <PanelActionBtn
+              icon={<LayoutWrapIcon data-icon-semantic="layout-wrap" size={16} strokeWidth={1.5} />}
+              label="Wrap"
+              active={wrapping}
+              onClick={toggleWrap}
+            />
+          )}
+        </div>
       </div>
 
       {/* Alignment and Gap are the paired authoring row. Wrap intentionally
@@ -1001,6 +1070,34 @@ function LayoutAutoSection({
         </div>
         <div className="shrink-0 pt-[17px]">{settingsTriggerButton}</div>
       </div>
+
+      {/* Row gap — the wrapped cross-axis spacing between rows (Figma's second gap).
+          Only present while wrapping. The link toggle keeps it equal to the item gap. */}
+      {wrapping && (
+        <div role="group" aria-label="Row gap" className="flex items-start gap-[8px] px-[16px] pb-[4px]">
+          <div className="flex-1 min-w-0">
+            <div className={subLabel}>Row gap</div>
+            <NumericInput
+              ariaLabel="Row gap"
+              iconLead={<AutoLayoutSpacingIcon kind="gap" axis="vertical" />}
+              value={renderedRowGap}
+              defaultValue={renderedRowGap}
+              onChange={emitRowGap}
+              min={0}
+              suffix="px"
+              className="w-full"
+            />
+          </div>
+          <div className="shrink-0 pt-[17px]">
+            <PanelActionBtn
+              icon={gapsLinked ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />}
+              label={gapsLinked ? "Unlink item and row gap" : "Link item and row gap"}
+              active={gapsLinked}
+              onClick={toggleGapsLinked}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Padding — cross layout. Combined (default): Vertical + Horizontal, two
           fields. Expanded (toggle): all four sides independently. */}
@@ -3404,6 +3501,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           {(isFrame)       && <LayoutFrameSection width={width} height={height} sizing={sizingContract} spatialSelectionLayout={props.spatialSelectionLayout} clipContent={layout?.clipsContent} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onClipContentChange={onLayoutChange ? value => onLayoutChange({ clipsContent: value }) : undefined} onEnableAutoLayout={() => { setAutoLayoutOn(true); onLayoutChange?.({ mode: "vertical" }); }} />}
           {(isAutoLayout)  && <LayoutAutoSection width={width} height={height}
             flowMode={layout?.mode}
+            wrap={layout?.wrap} rowGap={layout?.rowGap}
             gap={layout?.gap} paddingTop={layout?.padding.top} paddingRight={layout?.padding.right} paddingBottom={layout?.padding.bottom} paddingLeft={layout?.padding.left}
             paddingTopMixed={layout?.paddingTopMixed} paddingRightMixed={layout?.paddingRightMixed}
             paddingBottomMixed={layout?.paddingBottomMixed} paddingLeftMixed={layout?.paddingLeftMixed}

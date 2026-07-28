@@ -228,20 +228,19 @@ describe("Auto-layout gap control", () => {
     expect(html).toContain('aria-haspopup="menu"');
     expect(html).toContain("lucide-proposed-gap-horizontal");
     expect(html).not.toContain('aria-label="Gap settings"');
+    const freeform = html.indexOf('aria-label="Freeform"');
     const vertical = html.indexOf('aria-label="Vertical"');
     const horizontal = html.indexOf('aria-label="Horizontal"');
-    const wrap = html.indexOf('aria-label="Wrap"');
-    expect(vertical).toBeGreaterThan(-1);
-    expect(vertical).toBeLessThan(horizontal);
-    expect(horizontal).toBeLessThan(wrap);
-    const freeform = html.indexOf('aria-label="Freeform"');
     expect(freeform).toBeGreaterThan(-1);
     expect(freeform).toBeLessThan(vertical);
+    expect(vertical).toBeLessThan(horizontal);
+    // Wrap is a horizontal-only modifier (Figma parity, grid-and-wrap-spec §5 Reading A):
+    // a trailing toggle beside the Horizontal flow option, not a fourth flow segment.
+    const wrap = html.indexOf('aria-label="Wrap"');
+    expect(wrap).toBeGreaterThan(horizontal);
+    expect(html).toContain('data-icon-semantic="layout-wrap"');
     expect(html.match(/aria-label="Auto-layout settings"/g)).toHaveLength(1);
     expect(html).toContain('data-icon-semantic="layout-freeform"');
-    // Wrap remains a Wrap *mode* (DEC-008: not a Grid document mode) but the
-    // flow cell adopts the grid glyph per owner direction (#459).
-    expect(html).toContain('data-icon-semantic="layout-wrap"');
   });
 
   it("renders menu-backed W/H modes and the shared min/max grid", () => {
@@ -274,26 +273,36 @@ describe("Auto-layout gap control", () => {
     expect(html).toMatch(/data-composa-numeric-combo="auto"[\s\S]*?>Auto<\/span>/);
   });
 
-  it("atomically restores the last numeric gap when entering Wrap from Auto", () => {
-    expect(reconcileAutoLayoutGap("wrap", "auto", 18)).toBe(18);
-    expect(reconcileAutoLayoutGap("horizontal", "auto", 18)).toBe("auto");
-    expect(reconcileAutoLayoutGap("wrap", 12, 18)).toBe(12);
+  it("atomically restores the last numeric gap when enabling Wrap from Auto", () => {
+    expect(reconcileAutoLayoutGap(true, "auto", 18)).toBe(18);
+    expect(reconcileAutoLayoutGap(false, "auto", 18)).toBe("auto");
+    expect(reconcileAutoLayoutGap(true, 12, 18)).toBe(12);
+  });
+
+  it("exposes a row gap field and the item/row link toggle only while wrapping", () => {
+    const plain = renderToStaticMarkup(<PropertyPanel elementType="frame-auto" layout={{ ...layout, wrap: false }} />);
+    expect(plain).not.toContain('aria-label="Row gap"');
+
+    const wrapped = renderToStaticMarkup(<PropertyPanel elementType="frame-auto" layout={{ ...layout, wrap: true, rowGap: 24 }} />);
+    expect(wrapped).toContain('role="group" aria-label="Row gap"');
+    expect(wrapped).toContain('aria-label="Row gap"');
+    // The link toggle keeps item + row gap in sync (Figma's linked/unlinked pair).
+    expect(wrapped).toMatch(/aria-label="(Unlink|Link) item and row gap"/);
   });
 });
 
 describe("Plain-frame flow contract", () => {
-  it("orders Freeform, Vertical, Horizontal, then Wrap", () => {
+  it("orders Freeform, Vertical, Horizontal and omits Wrap as a flow segment", () => {
     const html = renderToStaticMarkup(<PropertyPanel elementType="frame" />);
     const freeform = html.indexOf('aria-label="Freeform"');
     const vertical = html.indexOf('aria-label="Vertical"');
     const horizontal = html.indexOf('aria-label="Horizontal"');
-    const wrap = html.indexOf('aria-label="Wrap"');
     expect(freeform).toBeGreaterThan(-1);
     expect(freeform).toBeLessThan(vertical);
     expect(vertical).toBeLessThan(horizontal);
-    expect(horizontal).toBeLessThan(wrap);
-    // Wrap cell uses the grid glyph (grid visual treatment) while staying Wrap.
-    expect(html).toContain('data-icon-semantic="layout-wrap"');
+    // A plain (non-auto-layout) frame has no Wrap control — wrap is a horizontal-only
+    // modifier reached from the auto-layout section, not a flow segment here.
+    expect(html).not.toContain('aria-label="Wrap"');
   });
 });
 
