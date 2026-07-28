@@ -1832,6 +1832,7 @@ function SlideTimingSection({
   durationMode,
   onDurationModeChange,
   controlled = false,
+  reserveTrailingSlot = false,
 }: {
   title?: string;
   landmark?: boolean;
@@ -1845,6 +1846,12 @@ function SlideTimingSection({
   durationMode?: SlideDurationMode;
   onDurationModeChange?: (mode: SlideDurationMode) => void;
   controlled?: boolean;
+  /** Reserve the Design-tab trailing-icon column (24px + 8px gap) so the
+   *  slide/composition inspector's Range and Duration fields line up with the
+   *  Position/Scale/Opacity fields. When set, Duration is also pinned to a
+   *  single column (a half-width spacer fills the second column). The video-clip
+   *  Timeline usage leaves this false and stays edge-to-edge as before. */
+  reserveTrailingSlot?: boolean;
 }) {
   const [internalStart, setInternalStart] = useState(start);
   const [internalEnd, setInternalEnd] = useState(end);
@@ -1857,7 +1864,7 @@ function SlideTimingSection({
     <PanelSection title={title} landmark={landmark}>
       <PanelFieldRow
         label="Range"
-        reserveRightSlot={false}
+        reserveRightSlot={reserveTrailingSlot}
         left={
           <NumericInput
             ariaLabel="Start"
@@ -1881,7 +1888,11 @@ function SlideTimingSection({
       />
       <PanelFieldRow
         label="Duration"
-        reserveRightSlot={false}
+        reserveRightSlot={reserveTrailingSlot}
+        // Pin Duration to a single column in the slide/comp inspector: a
+        // half-width spacer fills the second column so the control lines up
+        // under Start (Range's left column) instead of spanning full width.
+        right={reserveTrailingSlot ? <span aria-hidden className="block" /> : undefined}
         left={
           onDurationModeChange ? (
             // Fixed/Hug combo — the Duration row analogue of the Dimensions
@@ -2012,7 +2023,6 @@ function SlideBackgroundSection({
           fill-type tabs (not text-labeled) */}
       <PanelFieldRow
         label="Fill type"
-        reserveRightSlot={false}
         left={
           <SegmentedControl
             segments={fillSegments}
@@ -2029,7 +2039,7 @@ function SlideBackgroundSection({
 
       {/* Control below switches on the selected fill type */}
       {fillType === "solid" && (
-        <div className="flex items-center px-[16px] h-[32px]">
+        <div className="flex items-center px-[16px] h-[32px] gap-[8px]">
           <div className="flex-1 min-w-0">
             <ColorDialog
               capabilities={capabilities}
@@ -2064,10 +2074,14 @@ function SlideBackgroundSection({
               }}
             />
           </div>
+          {/* Reserve the Design-tab trailing-icon column so the Background
+              hex/opacity field aligns with Range/Duration and the Position/
+              Scale/Opacity fields above. */}
+          <div aria-hidden className="shrink-0 flex items-center justify-end min-w-[24px]" />
         </div>
       )}
       {fillType === "gradient" && (
-        <div className="flex items-center px-[16px] h-[32px]">
+        <div className="flex items-center px-[16px] h-[32px] gap-[8px]">
           <div className="flex-1 min-w-0">
             <ColorDialog
               capabilities={capabilities}
@@ -2088,10 +2102,14 @@ function SlideBackgroundSection({
               }}
             />
           </div>
+          {/* Reserve the Design-tab trailing-icon column so the Background
+              hex/opacity field aligns with Range/Duration and the Position/
+              Scale/Opacity fields above. */}
+          <div aria-hidden className="shrink-0 flex items-center justify-end min-w-[24px]" />
         </div>
       )}
       {(fillType === "image" || fillType === "video") && (
-        <div className="flex items-center px-[16px] h-[32px]">
+        <div className="flex items-center px-[16px] h-[32px] gap-[8px]">
           <div className="flex-1 min-w-0">
             {/* Same ColorInput row as Solid/Gradient — only the chit + label change */}
             <ColorDialog
@@ -2113,6 +2131,10 @@ function SlideBackgroundSection({
               }}
             />
           </div>
+          {/* Reserve the Design-tab trailing-icon column so the Background
+              hex/opacity field aligns with Range/Duration and the Position/
+              Scale/Opacity fields above. */}
+          <div aria-hidden className="shrink-0 flex items-center justify-end min-w-[24px]" />
         </div>
       )}
     </PanelSection>
@@ -3233,6 +3255,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           {/* Slide template first, ahead of Timing (user's preferred order). */}
           {capabilities.templates && <TemplateStyleSection />}
           <SlideTimingSection
+            reserveTrailingSlot
             start={slideStart}
             end={slideStart + slideDuration}
             controlled={props.slideStart !== undefined || props.slideDuration !== undefined}
