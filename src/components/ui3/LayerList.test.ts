@@ -57,7 +57,6 @@ describe("LayerList drag root normalization", () => {
   it.each([
     ["horizontal", "auto-layout-horizontal-center"],
     ["vertical", "auto-layout-vertical-center"],
-    ["wrap", "auto-layout-frame"],
   ] as const)("uses the stateful auto-layout glyph while retaining %s mode semantics", (autoLayoutMode, semantic) => {
     const html = renderToStaticMarkup(createElement(LayerTypeIcon, { type: "frame", autoLayoutMode }));
     expect(html).toContain(`data-icon-semantic="${semantic}"`);

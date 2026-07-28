@@ -113,7 +113,6 @@ const ISSUE_67_ICON_ROWS: { label: string; type: LayerIconType; autoLayoutMode?:
   { label: "Plain frame", type: "frame" },
   { label: "Horizontal auto layout", type: "frame", autoLayoutMode: "horizontal", state: "selected" },
   { label: "Vertical auto layout", type: "frame", autoLayoutMode: "vertical" },
-  { label: "Wrap auto layout", type: "frame", autoLayoutMode: "wrap" },
   { label: "Text", type: "text" },
   { label: "Image", type: "image", tone: "secondary", state: "disabled" },
   { label: "Shape", type: "shape" },

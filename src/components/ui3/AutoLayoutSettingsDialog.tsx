@@ -7,7 +7,7 @@ import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { Tooltip } from "./Tooltip";
 
 export interface AutoLayoutSettingsValue {
-  mode: "none" | "horizontal" | "vertical" | "wrap";
+  mode: "none" | "horizontal" | "vertical";
   textBaseline: boolean | "mixed";
   strokeSizing: "excluded" | "included" | "mixed";
   canvasStacking: "first-on-top" | "last-on-top" | "mixed";
