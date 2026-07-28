@@ -261,17 +261,21 @@ export function buildAnimationUnits(anims: ObjectAnimationItem[]): AnimationUnit
 /** The signed start-to-start "delay between" two consecutive actions in a combined card.
  *  gap=0 fire together · gap>0 stagger · gap<0 overlap. Never clamped — `min` is left unset
  *  so the numeric field accepts negatives (motion-mental-model.md: "Gap is measured
- *  start-to-start (locked)"). */
+ *  start-to-start (locked)"). Owner refinement: no leading label — a compact, value-hugging
+ *  field centered in the connector gap, reading like `600ms between` (trailing text). */
 function DelayBetweenRow({ precedingId, followingId, gapMs, onChange }: {
   precedingId: string; followingId: string; gapMs: number;
   onChange?: ObjectAnimationCallbacks["onDelayBetweenChange"];
 }) {
+  // FieldShell is `w-full`, so the compact width is imposed by a fixed-width wrapper
+  // (the field fills it) and the whole thing is centered in the connector gap.
   return (
-    <div data-delay-between-preceding={precedingId} data-delay-between-following={followingId} className="pl-[2px]">
-      <LabeledRow label="Delay between">
-        <NumericInput value={gapMs} suffix="ms" commitOnBlur className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />}
+    <div data-delay-between-preceding={precedingId} data-delay-between-following={followingId} className="flex justify-center">
+      <div className="w-[124px]">
+        <NumericInput ariaLabel="Delay between" value={gapMs} suffix="ms between" commitOnBlur
+          iconLead={<Clock size={16} strokeWidth={1.5} />}
           onChange={ms => onChange?.(precedingId, followingId, ms)} />
-      </LabeledRow>
+      </div>
     </div>
   );
 }
@@ -488,9 +492,10 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
             >
               {/* Drag handle — the reorder control. Rendered as a hover-revealed overlay
                   in the panel's own left padding (negative offset) so it reserves NO
-                  horizontal space: the number + card sit FLUSH at the container's left
-                  edge at rest, and the grip appears on hover without shifting the card. */}
-              <button type="button" draggable={!!callbacks?.onReorder} aria-label={`Drag ${a.name} animation`} className="hidden group-hover:flex absolute -left-[16px] top-[26px] size-[16px] items-center justify-center cursor-grab text-c-icon-secondary"
+                  horizontal space: the card sits FLUSH at the container's left edge at
+                  rest, and the grip appears on hover (vertically centered on the 32px card)
+                  without shifting the card. Owner refinement: no build-order number label. */}
+              <button type="button" draggable={!!callbacks?.onReorder} aria-label={`Drag ${a.name} animation`} className="hidden group-hover:flex absolute -left-[16px] top-[8px] size-[16px] items-center justify-center cursor-grab text-c-icon-secondary"
                 onDragStart={event => {
                   setDragged(id);
                   setDropTarget(null);
@@ -500,9 +505,6 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                 onDragEnd={() => { setDragged(null); setDropTarget(null); }}>
                 <GripVertical size={14} />
               </button>
-              {/* Build-order number sits ON TOP of the card, aligned with the card's
-                  left edge, so the card can take the full available width. */}
-              <div className={clsx(FONT, "h-[16px] flex items-center pl-[2px] text-[9px] font-[450] leading-[14px] tracking-[0.045px] text-c-text-secondary")}>{a.n}</div>
               {dragged && dragged !== id && (
                 <div
                   role="group"
