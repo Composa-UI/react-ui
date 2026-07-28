@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { type ReactElement, type ReactNode, useState } from "react";
+import { type ReactElement, type ReactNode, useEffect, useRef, useState } from "react";
 import { Slider } from "./Slider";
 import { NumericInput } from "./Input";
 import { SegmentedControl } from "./SegmentedControl";
@@ -95,17 +95,47 @@ const WHEEL_SLIDERS: SliderControl[] = [
 
 const ROW_LABEL = "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary";
 
+const controlDefault = (control: SliderControl) => (control.bipolar ? 0 : control.min);
+
+// The sliders that make up each group's "modified" signal. The parent surfaces a
+// compact indicator on the collapsed inspector row from these values, so the
+// dialog's value state lives on the always-mounted wrapper (the anchored body
+// unmounts on close), not inside the body components.
+const GROUP_SLIDER_CONTROLS: Record<ColorAdjustmentGroup, SliderControl[]> = {
+  light: LIGHT_CONTROLS,
+  color: COLOR_CONTROLS,
+  wheels: WHEEL_SLIDERS,
+  creative: [...CREATIVE_TOP, ...CREATIVE_BOTTOM],
+};
+
+/** True when any of a group's controls deviates from its neutral default. */
+export function colorAdjustmentGroupModified(
+  group: ColorAdjustmentGroup,
+  values: Record<string, number>,
+  noise?: string,
+): boolean {
+  if (GROUP_SLIDER_CONTROLS[group].some(c => values[c.key] !== undefined && values[c.key] !== controlDefault(c))) return true;
+  if (group === "creative" && noise !== undefined && noise !== "off") return true;
+  return false;
+}
+
 // One slider row with the Design-tab layout: label, then the slider with a
 // trailing value-field slot (space reserved for one trailing element).
-function SliderRow({ control, disabled }: { control: SliderControl; disabled: boolean }) {
-  const defaultValue = control.bipolar ? 0 : control.min;
+// Controlled by the dialog so the collapsed row can reflect real values.
+function SliderRow({ control, disabled, value, onChange }: {
+  control: SliderControl; disabled: boolean; value?: number; onChange?: (v: number) => void;
+}) {
+  const defaultValue = controlDefault(control);
+  const [internal, setInternal] = useState(defaultValue);
+  const v = value ?? internal;
+  const set = (n: number) => { if (value === undefined) setInternal(n); onChange?.(n); };
   return (
     <div className="flex flex-col gap-[3px] py-[4px]">
       <span className={ROW_LABEL}>{control.label}</span>
       <div className="flex items-center gap-[8px]">
         <div className="min-w-0 flex-1">
           <Slider
-            defaultValue={defaultValue}
+            value={v}
             min={control.min}
             max={control.max}
             step={control.step ?? 1}
@@ -114,12 +144,13 @@ function SliderRow({ control, disabled }: { control: SliderControl; disabled: bo
             handleVariant={control.bipolar ? "stroke" : "fill"}
             trackVariant={control.gradient ? "gradient" : "default"}
             trackGradient={control.gradient}
+            onChange={set}
           />
         </div>
         <div className="w-[52px] shrink-0">
-          <NumericInput ariaLabel={`${control.label} value`} defaultValue={defaultValue}
+          <NumericInput ariaLabel={`${control.label} value`} value={v}
             min={control.min} max={control.max} step={control.step ?? 1} suffix={control.suffix}
-            size="small" disabled={disabled} scrub />
+            size="small" disabled={disabled} onChange={set} scrub />
         </div>
       </div>
     </div>
@@ -133,6 +164,12 @@ export interface ColorAdjustmentsDialogProps {
   onClose: () => void;
   /** When false the controls render disabled (Color section not added). */
   enabled?: boolean;
+  /**
+   * Reports whether the group deviates from its neutral defaults, so the
+   * collapsed inspector row can show a real "Modified" state instead of a
+   * constant "Default". Fires on every change to the group's controls.
+   */
+  onModifiedChange?: (modified: boolean) => void;
 }
 
 function Header({ title, onClose }: { title: string; onClose: () => void }) {
@@ -147,7 +184,13 @@ function Header({ title, onClose }: { title: string; onClose: () => void }) {
   );
 }
 
-function WheelsBody({ disabled }: { disabled: boolean }) {
+interface BodyProps {
+  disabled: boolean;
+  values: Record<string, number>;
+  onValueChange: (key: string, value: number) => void;
+}
+
+function WheelsBody({ disabled, values, onValueChange }: BodyProps) {
   const [tab, setTab] = useState("midtones");
   return (
     <div className="flex flex-col gap-[8px] p-[12px]">
@@ -156,30 +199,35 @@ function WheelsBody({ disabled }: { disabled: boolean }) {
         <ColorWheel ariaLabel={`${tab} color wheel`} size={140} disabled={disabled} />
       </div>
       <div className="flex flex-col gap-[2px]">
-        {WHEEL_SLIDERS.map(control => <SliderRow key={control.key} control={control} disabled={disabled} />)}
+        {WHEEL_SLIDERS.map(control => <SliderRow key={control.key} control={control} disabled={disabled}
+          value={values[control.key]} onChange={v => onValueChange(control.key, v)} />)}
       </div>
     </div>
   );
 }
 
-function CreativeBody({ disabled }: { disabled: boolean }) {
-  const [noise, setNoise] = useState("off");
+function CreativeBody({ disabled, values, onValueChange, noise, onNoiseChange }: BodyProps & {
+  noise: string; onNoiseChange: (value: string) => void;
+}) {
   return (
     <div className="flex flex-col gap-[2px] p-[12px]">
-      {CREATIVE_TOP.map(control => <SliderRow key={control.key} control={control} disabled={disabled} />)}
+      {CREATIVE_TOP.map(control => <SliderRow key={control.key} control={control} disabled={disabled}
+        value={values[control.key]} onChange={v => onValueChange(control.key, v)} />)}
       <div className="flex flex-col gap-[3px] py-[4px]">
         <span className={ROW_LABEL}>Noise type</span>
-        <SegmentedControl ariaLabel="Noise type" segments={NOISE_TYPES} value={noise} onChange={setNoise} disabled={disabled} />
+        <SegmentedControl ariaLabel="Noise type" segments={NOISE_TYPES} value={noise} onChange={onNoiseChange} disabled={disabled} />
       </div>
-      {CREATIVE_BOTTOM.map(control => <SliderRow key={control.key} control={control} disabled={disabled} />)}
+      {CREATIVE_BOTTOM.map(control => <SliderRow key={control.key} control={control} disabled={disabled}
+        value={values[control.key]} onChange={v => onValueChange(control.key, v)} />)}
     </div>
   );
 }
 
-function ListBody({ controls, disabled }: { controls: SliderControl[]; disabled: boolean }) {
+function ListBody({ controls, disabled, values, onValueChange }: BodyProps & { controls: SliderControl[] }) {
   return (
     <div className="flex flex-col gap-[2px] p-[12px]">
-      {controls.map(control => <SliderRow key={control.key} control={control} disabled={disabled} />)}
+      {controls.map(control => <SliderRow key={control.key} control={control} disabled={disabled}
+        value={values[control.key]} onChange={v => onValueChange(control.key, v)} />)}
     </div>
   );
 }
@@ -190,13 +238,26 @@ export function ColorAdjustmentsDialog({
   trigger,
   onClose,
   enabled = true,
+  onModifiedChange,
 }: ColorAdjustmentsDialogProps) {
   const disabled = !enabled;
   const title = GROUP_TITLES[group];
+
+  // Value state lives here (the wrapper is always mounted; the anchored body is
+  // not) so the collapsed inspector row reflects real edits across open/close.
+  const [values, setValues] = useState<Record<string, number>>({});
+  const [noise, setNoise] = useState("off");
+  const setValue = (key: string, value: number) => setValues(state => ({ ...state, [key]: value }));
+
+  const modified = colorAdjustmentGroupModified(group, values, noise);
+  const onModifiedChangeRef = useRef(onModifiedChange);
+  onModifiedChangeRef.current = onModifiedChange;
+  useEffect(() => { onModifiedChangeRef.current?.(modified); }, [modified]);
+
   let body: ReactNode;
-  if (group === "wheels") body = <WheelsBody disabled={disabled} />;
-  else if (group === "creative") body = <CreativeBody disabled={disabled} />;
-  else body = <ListBody controls={group === "light" ? LIGHT_CONTROLS : COLOR_CONTROLS} disabled={disabled} />;
+  if (group === "wheels") body = <WheelsBody disabled={disabled} values={values} onValueChange={setValue} />;
+  else if (group === "creative") body = <CreativeBody disabled={disabled} values={values} onValueChange={setValue} noise={noise} onNoiseChange={setNoise} />;
+  else body = <ListBody controls={group === "light" ? LIGHT_CONTROLS : COLOR_CONTROLS} disabled={disabled} values={values} onValueChange={setValue} />;
 
   return (
     <InspectorDialog
