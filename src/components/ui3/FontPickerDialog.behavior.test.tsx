@@ -42,9 +42,13 @@ function buttonWithText(renderer: ReactTestRenderer, text: string): ReactTestIns
 }
 
 describe("FontPickerDialog — roster, search, select", () => {
-  it("falls back to the bundled roster when no fonts prop is given", () => {
+  it("falls back to the bundled roster when no fonts / google / installed sources apply", () => {
     let renderer!: ReactTestRenderer;
-    act(() => { renderer = create(<FontPickerDialog open onClose={vi.fn()} trigger={trigger} onSelect={vi.fn()} />); });
+    act(() => {
+      renderer = create(
+        <FontPickerDialog open onClose={vi.fn()} trigger={trigger} onSelect={vi.fn()} enableGoogleFonts={false} installedSupported={false} />,
+      );
+    });
     const names = fontRowNames(renderer);
     expect(names).toContain("Inter");
     expect(names).toContain("Georgia");
@@ -54,7 +58,7 @@ describe("FontPickerDialog — roster, search, select", () => {
 
   it("filters the list by the search query", () => {
     let renderer!: ReactTestRenderer;
-    act(() => { renderer = create(<FontPickerDialog open onClose={vi.fn()} trigger={trigger} onSelect={vi.fn()} />); });
+    act(() => { renderer = create(<FontPickerDialog open onClose={vi.fn()} trigger={trigger} onSelect={vi.fn()} enableGoogleFonts={false} />); });
     act(() => byAria(renderer, "Search fonts").props.onChange({ target: { value: "geor" } }));
     const names = fontRowNames(renderer);
     expect(names).toEqual(["Georgia"]);
@@ -63,7 +67,7 @@ describe("FontPickerDialog — roster, search, select", () => {
 
   it("shows an empty state when nothing matches", () => {
     let renderer!: ReactTestRenderer;
-    act(() => { renderer = create(<FontPickerDialog open onClose={vi.fn()} trigger={trigger} onSelect={vi.fn()} />); });
+    act(() => { renderer = create(<FontPickerDialog open onClose={vi.fn()} trigger={trigger} onSelect={vi.fn()} enableGoogleFonts={false} />); });
     act(() => byAria(renderer, "Search fonts").props.onChange({ target: { value: "zzzznope" } }));
     expect(fontRowNames(renderer)).toEqual([]);
     expect(renderer.root.findAll(n => n.children?.[0] === "No fonts found").length).toBe(1);
@@ -73,7 +77,7 @@ describe("FontPickerDialog — roster, search, select", () => {
   it("fires onSelect with the chosen font name", () => {
     const onSelect = vi.fn();
     let renderer!: ReactTestRenderer;
-    act(() => { renderer = create(<FontPickerDialog open onClose={vi.fn()} trigger={trigger} value="Inter" onSelect={onSelect} />); });
+    act(() => { renderer = create(<FontPickerDialog open onClose={vi.fn()} trigger={trigger} value="Inter" onSelect={onSelect} enableGoogleFonts={false} />); });
     const georgiaRow = renderer.root.find(
       node => node.type === "button" && typeof node.props["aria-pressed"] === "boolean"
         && node.findAll(n => n.children?.[0] === "Georgia").length > 0,
@@ -81,6 +85,49 @@ describe("FontPickerDialog — roster, search, select", () => {
     act(() => georgiaRow.props.onClick());
     expect(onSelect).toHaveBeenCalledOnce();
     expect(onSelect).toHaveBeenCalledWith("Georgia");
+    act(() => renderer.unmount());
+  });
+});
+
+describe("FontPickerDialog — Google Fonts suite", () => {
+  it("merges the full Google Fonts suite into the searchable list and caps the visible rows", () => {
+    const loadFont = vi.fn();
+    let renderer!: ReactTestRenderer;
+    act(() => { renderer = create(<FontPickerDialog open onClose={vi.fn()} trigger={trigger} onSelect={vi.fn()} loadFont={loadFont} installedSupported={false} />); });
+    // Bundled brand fonts lead; the list is capped and nudges searching for the rest.
+    const names = fontRowNames(renderer);
+    expect(names[0]).toBe("Inter");
+    expect(names.length).toBe(60);
+    expect(renderer.root.findAll(n => typeof n.children?.[0] === "string" && n.children[0].startsWith("Showing 60 of ")).length).toBe(1);
+    // The on-screen Google rows get their webfont stylesheet requested.
+    expect(loadFont).toHaveBeenCalled();
+    act(() => renderer.unmount());
+  });
+
+  it("finds a Google family by search and loads its webfont on select", () => {
+    const loadFont = vi.fn();
+    const onSelect = vi.fn();
+    let renderer!: ReactTestRenderer;
+    act(() => { renderer = create(<FontPickerDialog open onClose={vi.fn()} trigger={trigger} onSelect={onSelect} loadFont={loadFont} installedSupported={false} />); });
+    act(() => byAria(renderer, "Search fonts").props.onChange({ target: { value: "Lobster" } }));
+    const names = fontRowNames(renderer);
+    expect(names).toContain("Lobster");
+    const lobster = renderer.root.find(
+      node => node.type === "button" && typeof node.props["aria-pressed"] === "boolean"
+        && node.findAll(n => n.children?.[0] === "Lobster").length > 0,
+    );
+    act(() => lobster.props.onClick());
+    expect(loadFont).toHaveBeenCalledWith("Lobster");
+    expect(onSelect).toHaveBeenCalledWith("Lobster");
+    act(() => renderer.unmount());
+  });
+
+  it("omits the Google suite when disabled (graceful — bundled only)", () => {
+    let renderer!: ReactTestRenderer;
+    act(() => { renderer = create(<FontPickerDialog open onClose={vi.fn()} trigger={trigger} onSelect={vi.fn()} enableGoogleFonts={false} installedSupported={false} />); });
+    const names = fontRowNames(renderer);
+    expect(names.length).toBe(BUNDLED_FONTS.length);
+    expect(names).not.toContain("Lobster");
     act(() => renderer.unmount());
   });
 });
