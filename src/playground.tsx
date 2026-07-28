@@ -351,13 +351,18 @@ function CombinedCardFixture({ mode }: { mode: "light" | "dark" }) {
   const overlap = params.get("overlap") === "1";
   const focus = params.get("focus") === "1";
   const [gapMs, setGapMs] = useState(overlap ? -300 : 500);
+  // Mixed list so the UNIT numbering is visible: a combined card counts as ONE number,
+  // a standalone action takes the next. Expect: "1" on the combined Logo card (two rows,
+  // one number), "2" on the continuous-connector Title card, "3" on the standalone Caption.
   const anims: ObjectAnimationItem[] = [
-    // Same object, with start times → the connector breaks for a "Delay between" control.
+    // Unit 1 — same object, with start times → the connector breaks for a "Delay between".
     { id: "p1", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "1.2s", buildDuration: "1200ms", style: "pulse", startMs: 0, selected: true, focused: false },
     { id: "p2", elementId: "logo", n: 2, name: "Logo", kind: "Action", duration: "0.8s", buildDuration: "800ms", style: "pulse", startMs: gapMs, selected: true, focused: focus },
-    // Same object, no start times → a continuous connector line, no delay control.
+    // Unit 2 — same object, no start times → a continuous connector line, no delay control.
     { id: "q1", elementId: "title", n: 3, name: "Title", kind: "Action", duration: "0.6s", buildDuration: "600ms", style: "jiggle", selected: true },
     { id: "q2", elementId: "title", n: 4, name: "Title", kind: "Action", duration: "0.6s", buildDuration: "600ms", style: "jiggle", selected: true },
+    // Unit 3 — a STANDALONE action (its own object, one action) → its own next number.
+    { id: "r1", elementId: "caption", n: 5, name: "Caption", kind: "In", duration: "0.4s", buildDuration: "400ms", style: "fade-in", selected: true },
   ];
   return (
     <section data-composa-mode={mode === "dark" ? "dark" : undefined} className="w-[280px] overflow-visible rounded-c-lg bg-c-bg text-c-text shadow-c-200">

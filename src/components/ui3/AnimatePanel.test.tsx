@@ -54,6 +54,29 @@ describe("AnimatePanel — combined card groups an object's actions into one car
     act(() => renderer!.unmount());
   });
 
+  it("keeps the connector FLUSH to the cards — no vertical padding gap detaching the line", () => {
+    // Owner feedback: the line must TOUCH the cards (extend to the preceding card's bottom
+    // edge and the following card's top edge). A `py-*` on the connector wrapper would
+    // insert a gap so the line no longer meets the cards — guard against it in both
+    // variants (delayed "gap" pair + continuous line).
+    const gapHtml = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={TWO_PULSES} />);
+    const gapWrapper = gapHtml.match(/<div data-combined-connector="gap"[^>]*class="([^"]*)"/)?.[1] ?? "";
+    expect(gapWrapper).not.toMatch(/\bpy-/);
+    expect(gapWrapper).not.toMatch(/\bpt-/);
+    expect(gapWrapper).not.toMatch(/\bpb-/);
+
+    const continuous: ObjectAnimationItem[] = [
+      { id: "c1", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "0.6s", style: "pulse" },
+      { id: "c2", elementId: "logo", n: 2, name: "Logo", kind: "Action", duration: "0.6s", style: "pulse" },
+    ];
+    const contHtml = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={continuous} />);
+    const contWrapper = contHtml.match(/<div data-combined-connector="continuous"[^>]*class="([^"]*)"/)?.[1] ?? "";
+    expect(contWrapper).not.toBe(""); // the continuous connector wrapper must exist
+    expect(contWrapper).not.toMatch(/\bpy-/);
+    expect(contWrapper).not.toMatch(/\bpt-/);
+    expect(contWrapper).not.toMatch(/\bpb-/);
+  });
+
   it("keeps a single action on an object rendering EXACTLY as today (no combined chrome)", () => {
     const single: ObjectAnimationItem[] = [
       { id: "s1", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "0.6s", style: "pulse" },
@@ -72,6 +95,57 @@ describe("AnimatePanel — combined card groups an object's actions into one car
     ];
     const units = buildAnimationUnits(distinct);
     expect(units.every(unit => unit.kind === "single")).toBe(true);
+  });
+});
+
+// ── Unit-level numbering: one number per unit (combined card = ONE number) ──────────
+// #78 over-corrected and dropped ALL numbers. The owner wants numbers back, but at the
+// UNIT level: a standalone action gets its own number and a combined card carries a
+// SINGLE number for the whole card — not one per action-row inside it.
+describe("AnimatePanel — object-animations number by UNIT (combined card = one number)", () => {
+  // Two actions on `logo` collapse into one combined card (unit 1); a standalone action
+  // on `caption` is the next unit (unit 2).
+  const MIXED: ObjectAnimationItem[] = [
+    { id: "p1", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "1.2s", style: "pulse", buildDuration: "1200ms", startMs: 0 },
+    { id: "p2", elementId: "logo", n: 2, name: "Logo", kind: "Action", duration: "0.8s", style: "pulse", buildDuration: "800ms", startMs: 500 },
+    { id: "r1", elementId: "caption", n: 3, name: "Caption", kind: "In", duration: "0.4s", style: "fade-in", buildDuration: "400ms" },
+  ];
+
+  const unitNumbers = (renderer: ReturnType<typeof create>) =>
+    renderer.root
+      .findAll(node => node.props["data-animation-unit-number"] !== undefined)
+      .map(node => node.props["data-animation-unit-number"] as number);
+
+  it("emits exactly ONE number per unit — a combined card is a single index, not per-row", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={MIXED} />); });
+    // Two units (combined logo + standalone caption) → two numbers, "1" then "2".
+    expect(unitNumbers(renderer!)).toEqual([1, 2]);
+    // The combined card (two rows) contributed exactly one number, not two.
+    const combined = renderer!.root.findAll(node => node.props["data-combined-card-element-id"] === "logo")[0]!;
+    expect(combined.findAll(node => node.props["data-animation-unit-number"] !== undefined)).toHaveLength(0);
+    act(() => renderer!.unmount());
+  });
+
+  it("numbers a combined card as ONE index in static markup — [combined, standalone] → 1, 2", () => {
+    const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={MIXED} />);
+    // The two-row combined card yields a single unit number; there is no per-row number.
+    expect(html.match(/data-animation-unit-number="1"/g)).toHaveLength(1);
+    expect(html.match(/data-animation-unit-number="2"/g)).toHaveLength(1);
+    // Exactly two unit numbers total for two units (one combined + one standalone).
+    expect(html.match(/data-animation-unit-number=/g)).toHaveLength(2);
+  });
+
+  it("numbers each standalone action in a distinct-object list sequentially", () => {
+    const distinct: ObjectAnimationItem[] = [
+      { id: "a", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "0.6s", style: "pulse" },
+      { id: "b", elementId: "title", n: 2, name: "Title", kind: "In", duration: "0.4s", style: "fade-in" },
+      { id: "c", elementId: "body", n: 3, name: "Body", kind: "Action", duration: "0.5s", style: "jiggle" },
+    ];
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={distinct} />); });
+    expect(unitNumbers(renderer!)).toEqual([1, 2, 3]);
+    act(() => renderer!.unmount());
   });
 });
 
