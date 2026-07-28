@@ -2100,8 +2100,13 @@ export function Timeline({
         </div>
       </div>
 
-      {/* body */}
-      <ScrollArea className="relative" viewportRef={scrollViewportRef}>
+      {/* body — `contentClassName="relative"` makes the scroll CONTENT (the full
+          lanes region, `min-h-full`) the positioning context for the playhead line
+          below, so the line spans every lane's full height (`scrollHeight`), not just
+          the visible viewport. Without it the line's `top-0 bottom-0` resolved against
+          the scroll viewport's client height and came up short whenever the lanes
+          overflowed (master view) — and stayed short under vertical scroll. */}
+      <ScrollArea className="relative" contentClassName="relative" viewportRef={scrollViewportRef}>
         {master ? (
           <>
             <BlockTrack header={laneHeaderProps("slides", <Layers size={16} strokeWidth={1.5} />, "Compositions")} blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
@@ -2138,7 +2143,11 @@ export function Timeline({
             </div>
           </>
         )}
-        {/* shared playhead line spanning the body — above the keyframe diamonds (Composa#320) */}
+        {/* shared playhead line spanning the FULL lanes region — above the keyframe
+            diamonds (Composa#320). The wrapper's `top-0 bottom-0` resolves against the
+            relatively-positioned scroll content (see `contentClassName` above), so it
+            spans header-ruler-bottom through the last lane at any scroll position and in
+            the empty/null state, instead of only the visible viewport height. */}
         <div className="absolute top-0 bottom-0 right-0 z-20 overflow-hidden pointer-events-none" style={{ left: LEFT_W }}>
           <div className="absolute top-0 bottom-0 w-px" style={{ left: percent(playhead, viewport), backgroundColor: autoKeyframe ? "#ff3b30" : BLUE }} />
         </div>
