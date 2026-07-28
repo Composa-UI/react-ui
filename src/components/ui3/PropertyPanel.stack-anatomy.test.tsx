@@ -16,7 +16,8 @@ import {
 // These lock the *canonical* anatomy the rest of the inspector already uses:
 //  - Fill · Stroke · Effects entries render through ONE shared row primitive
 //    (PanelEntry) so their grip / eye / remove controls stay identical (#460).
-//  - The Effects type selector hugs its content rather than filling the row (#460).
+//  - The Effects type selector (inspector) reserves the row's trailing slot by
+//    filling the content column rather than hugging its content (#460).
 //  - Opacity renders a trailing `%` suffix and reserves its leading-icon slot (#449).
 //  - Width/Height sizing shows its mode in the trigger and its menu keeps the
 //    leading-icon column and the checkmark column as separate slots (#449).
@@ -74,13 +75,13 @@ describe("#460 — Fill/Stroke/Effects share one canonical entry anatomy", () =>
     act(() => renderer.unmount());
   });
 
-  it("hugs the Effects type selector instead of filling the row width", () => {
+  it("reserves the row's trailing slot on the Effects type selector by filling the content column, not hugging", () => {
     const renderer = renderPanel();
     const effectDropdown = renderer.root
       .findAllByType(Dropdown)
       .find(node => node.props.ariaLabel?.startsWith("Effect type:"))!;
-    expect(effectDropdown.props.hug).toBe(true);
-    expect(effectDropdown.props.fullWidth).toBeFalsy();
+    expect(effectDropdown.props.fullWidth).toBe(true);
+    expect(effectDropdown.props.hug).toBeFalsy();
     act(() => renderer.unmount());
   });
 });
