@@ -1606,14 +1606,53 @@ function stubWaveformPeaks(seed: string, count: number): number[] {
   return peaks;
 }
 
-// Symmetric waveform bars centred on the clip's mid-line. Rendered as a
-// deterministic stub when no real peaks are supplied (see stubWaveformPeaks).
+// Resample a normalized peak series to exactly `count` bars by averaging each
+// output bar over its slice of the source (so widening/narrowing the clip
+// re-buckets the same audio instead of cropping it). Used to fit real decoded
+// peaks to the zoom-derived bar count; the stub generates `count` directly.
+function resamplePeaks(peaks: number[], count: number): number[] {
+  if (count <= 0 || peaks.length === 0) return [];
+  if (peaks.length === count) return peaks;
+  return Array.from({ length: count }, (_, index) => {
+    const start = Math.floor((index / count) * peaks.length);
+    const end = Math.max(start + 1, Math.floor(((index + 1) / count) * peaks.length));
+    let sum = 0;
+    for (let i = start; i < end; i++) sum += peaks[i];
+    return sum / (end - start);
+  });
+}
+
+// One waveform bar per ~3px of clip width (2px bar + 1px gap), so the bars keep
+// a constant density and fill the whole bar as the clip is zoomed — not a fixed
+// count clustered in the middle (the pre-zoom stub).
+const WAVEFORM_BAR_PITCH = 3;
+
+// Symmetric waveform bars centred on the clip's mid-line, filling the clip's
+// full width. The bar count tracks the clip's rendered pixel width (measured via
+// ResizeObserver) so the waveform stays full-bleed and reads with constant
+// density at every zoom level. Real peaks (when they land) are resampled to that
+// count; otherwise a deterministic stub of the same count renders.
 function AudioLaneWaveform({ id, peaks, active }: { id: string; peaks?: number[]; active?: boolean }) {
-  const values = peaks && peaks.length ? peaks : stubWaveformPeaks(id, 40);
+  const ref = useRef<HTMLDivElement>(null);
+  const [barCount, setBarCount] = useState(40);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const width = el.clientWidth;
+      if (width > 0) setBarCount(Math.max(1, Math.round(width / WAVEFORM_BAR_PITCH)));
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const values = peaks && peaks.length ? resamplePeaks(peaks, barCount) : stubWaveformPeaks(id, barCount);
   return (
-    <div aria-hidden className="absolute inset-0 flex items-center justify-center gap-[1px] px-[6px] opacity-70 pointer-events-none">
+    <div ref={ref} aria-hidden className="absolute inset-0 flex items-center justify-between gap-[1px] px-[6px] opacity-70 pointer-events-none">
       {values.map((value, index) => (
-        <span key={index} className={clsx("w-[2px] rounded-full shrink-0", active ? "bg-c-text" : "bg-c-icon-secondary")}
+        <span key={index} className={clsx("min-w-[1px] max-w-[2px] flex-1 rounded-full", active ? "bg-c-text" : "bg-c-icon-secondary")}
           style={{ height: `${Math.max(8, Math.round(value * 100))}%` }} />
       ))}
     </div>
