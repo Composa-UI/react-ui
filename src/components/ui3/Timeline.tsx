@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
 import { clsx } from "clsx";
-import { Play, Pause, Square, Circle, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Film, Volume2 } from "lucide-react";
+import { Play, Pause, Square, Circle, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, PenTool, Clapperboard, AudioLines } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { collectAggregateKeyframes, createTimelineEdgeDragController, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineAnchorRatioAtX, timelineDragDeltaMs, timelinePointerPanDelta, timelineScrollTop, timelineViewportChanged, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
@@ -26,7 +26,7 @@ const FONT = "font-[family-name:var(--composa-font-family)]";
 const LEFT_W = 297;       // track-list width
 const ROW_LAYER = 28;
 const ROW_PROP = 28;      // raised from 24 → contains the 20px bar with 4px above/below
-const ROW_BLOCK = 32;     // master-view slide/video block-track row height (compact — contains 20px bar)
+const ROW_BLOCK = 56;     // master-view lane height — two-row header ([icon][label][+] + [vis][solo][mute][lock], Figma 2-4060) over the centred 20px clip bar
 const RIGHT_OVERLAY_W = 148; // zoom slider + collapse control + padding/border
 const BLUE = "#0d99ff";
 // Playhead treatment (Composa#344): false = the original DISCONNECTED look (pentagon
@@ -157,6 +157,20 @@ export interface AudioClipBlock {
   range: [number, number];
   selected?: boolean;
   waveform?: number[];
+}
+
+// ── master lane headers (Figma 2-4060) ──────────────────────────────────────────
+// The three master lanes ("Slides", "Video", "Audio"). Used to disambiguate the
+// shared header control callbacks (`onLaneAdd`, `onLaneVisibilityToggle`, …).
+export type MasterLane = "slides" | "video" | "audio";
+// Per-lane header control state. Every field defaults to its "resting" value
+// (visible, not soloed/muted/locked) when a lane is absent from `laneControls`.
+// These are presentation flags: the host decides what, if anything, they mean.
+export interface MasterLaneControlState {
+  visible?: boolean;   // default true  — eye/eye-off
+  solo?: boolean;      // default false — "S"
+  muted?: boolean;     // default false — speaker/speaker-off
+  locked?: boolean;    // default false — padlock
 }
 
 const DEMO_TRACKS: Track[] = [
@@ -1181,9 +1195,78 @@ function SecondRuler({ viewport, width }: { viewport: TimelineViewport; width: n
   );
 }
 
-// ── master track rows: "Slides" block track + "Base video" placeholder ──────────────
-function BlockTrack({ blocks, viewport, plotWidth, onSelect, onOpen, onContextMenu, onMove, onTrim, onGestureStart, onGestureEnd }: {
+// ── master lane header (Figma 2-4060) ───────────────────────────────────────────
+// Shared left-column header for every master lane: a `[type icon] [label] [+ add]`
+// top row over a `[visibility] [solo] [mute] [lock]` control row. The controls are
+// presentation toggles reflecting `control`; a callback is only wired when the host
+// supplies the corresponding handler — otherwise the affordance renders disabled so
+// the anatomy stays visible without pretending to do something.
+interface MasterLaneHeaderProps {
+  icon: React.ReactNode;
+  label: string;
+  control?: MasterLaneControlState;
+  onAdd?: () => void;
+  onVisibilityToggle?: () => void;
+  onSoloToggle?: () => void;
+  onMuteToggle?: () => void;
+  onLockToggle?: () => void;
+}
+
+function LaneControlButton({ label, active, onClick, children }: {
+  label: string; active?: boolean; onClick?: () => void; children: React.ReactNode;
+}) {
+  return (
+    <button type="button" aria-label={label} aria-pressed={onClick ? active : undefined} disabled={!onClick} onClick={onClick}
+      className={clsx(
+        "size-[20px] rounded-c-sm flex items-center justify-center shrink-0",
+        onClick ? "hover:bg-c-bg-hover" : "opacity-40 cursor-default",
+        active ? "text-c-text" : "text-c-icon-secondary",
+      )}>
+      {children}
+    </button>
+  );
+}
+
+function MasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onSoloToggle, onMuteToggle, onLockToggle }: MasterLaneHeaderProps) {
+  const visible = control?.visible ?? true;
+  const solo = control?.solo ?? false;
+  const muted = control?.muted ?? false;
+  const locked = control?.locked ?? false;
+  return (
+    <div className="shrink-0 flex flex-col justify-center gap-[6px] pl-[8px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, height: ROW_BLOCK }}>
+      {/* top row — [type icon] [label] [+ add] */}
+      <div className="flex items-center gap-[6px]">
+        <span className={clsx("shrink-0 flex items-center", visible ? "text-c-icon-secondary" : "text-c-icon-secondary opacity-60")} aria-hidden>{icon}</span>
+        <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate", visible ? "text-c-text" : "text-c-text-secondary")}>{label}</span>
+        <button type="button" aria-label={`Add to ${label}`} disabled={!onAdd} onClick={onAdd}
+          className={clsx("shrink-0 size-[20px] rounded-c-sm flex items-center justify-center text-c-icon-secondary",
+            onAdd ? "hover:bg-c-bg-hover hover:text-c-text" : "opacity-40 cursor-default")}>
+          <Plus size={14} strokeWidth={1.5} />
+        </button>
+      </div>
+      {/* control row — [visibility] [solo] [mute] [lock] */}
+      <div className="flex items-center gap-[2px]">
+        <LaneControlButton label={visible ? `Hide ${label}` : `Show ${label}`} active={!visible} onClick={onVisibilityToggle}>
+          {visible ? <Eye size={14} strokeWidth={1.5} /> : <EyeOff size={14} strokeWidth={1.5} />}
+        </LaneControlButton>
+        <LaneControlButton label={solo ? `Unsolo ${label}` : `Solo ${label}`} active={solo} onClick={onSoloToggle}>
+          <span className={clsx(FONT, "text-[11px] font-[650] leading-none")}>S</span>
+        </LaneControlButton>
+        <LaneControlButton label={muted ? `Unmute ${label}` : `Mute ${label}`} active={muted} onClick={onMuteToggle}>
+          {muted ? <VolumeX size={14} strokeWidth={1.5} /> : <Volume2 size={14} strokeWidth={1.5} />}
+        </LaneControlButton>
+        <LaneControlButton label={locked ? `Unlock ${label}` : `Lock ${label}`} active={locked} onClick={onLockToggle}>
+          {locked ? <Lock size={14} strokeWidth={1.5} /> : <LockOpen size={14} strokeWidth={1.5} />}
+        </LaneControlButton>
+      </div>
+    </div>
+  );
+}
+
+// ── master track rows: "Slides" block track + "Video"/"Audio" lanes ──────────────
+function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onContextMenu, onMove, onTrim, onGestureStart, onGestureEnd }: {
   blocks: SlideBlock[];
+  header: MasterLaneHeaderProps;
   viewport: TimelineViewport; plotWidth: number;
   onSelect?: (id: string) => void;
   onOpen?: (id: string) => void;
@@ -1222,11 +1305,8 @@ function BlockTrack({ blocks, viewport, plotWidth, onSelect, onOpen, onContextMe
   };
   return (
     <div className="flex" style={{ height: ROW_BLOCK }}>
-      {/* left label */}
-      <div className="shrink-0 flex items-center gap-[8px] pl-[8px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W }}>
-        <Film size={16} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" />
-        <span className={clsx(FONT, "text-[11px] font-[450] text-c-text truncate")}>Compositions</span>
-      </div>
+      {/* left header — [icon][label][+] + [vis][solo][mute][lock] */}
+      <MasterLaneHeader {...header} />
       {/* block lane */}
       <div data-timeline-pan-surface className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }}>
         {blocks.map((b, i) => {
@@ -1282,8 +1362,9 @@ function BlockTrack({ blocks, viewport, plotWidth, onSelect, onOpen, onContextMe
   );
 }
 
-function BaseVideoTrack({ clips, viewport, plotWidth, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
+function BaseVideoTrack({ clips, header, viewport, plotWidth, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
   clips: BaseClipBlock[];
+  header: MasterLaneHeaderProps;
   viewport: TimelineViewport; plotWidth: number;
   onSelect?: (id: string) => void;
   onOpen?: (id: string) => void;
@@ -1319,10 +1400,7 @@ function BaseVideoTrack({ clips, viewport, plotWidth, onSelect, onOpen, onMove, 
   };
   return (
     <div className="flex" style={{ height: ROW_BLOCK }}>
-      <div className="shrink-0 flex items-center gap-[8px] pl-[8px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W }}>
-        <Film size={16} strokeWidth={1.5} className="text-c-icon-secondary shrink-0 opacity-60" />
-        <span className={clsx(FONT, "text-[11px] font-[450] text-c-text-secondary truncate")}>Base video</span>
-      </div>
+      <MasterLaneHeader {...header} />
       <div data-timeline-pan-surface className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Base video track" : "Base video track (empty)"}>
         {clips.map(clip => {
           const left = percent(clip.range[0], viewport);
@@ -1387,8 +1465,9 @@ function AudioLaneWaveform({ id, peaks, active }: { id: string; peaks?: number[]
   );
 }
 
-function AudioTrack({ clips, viewport, plotWidth, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
+function AudioTrack({ clips, header, viewport, plotWidth, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
   clips: AudioClipBlock[];
+  header: MasterLaneHeaderProps;
   viewport: TimelineViewport; plotWidth: number;
   onSelect?: (id: string) => void;
   onOpen?: (id: string) => void;
@@ -1424,10 +1503,7 @@ function AudioTrack({ clips, viewport, plotWidth, onSelect, onOpen, onMove, onTr
   };
   return (
     <div className="flex" style={{ height: ROW_BLOCK }}>
-      <div className="shrink-0 flex items-center gap-[8px] pl-[8px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W }}>
-        <Volume2 size={16} strokeWidth={1.5} className="text-c-icon-secondary shrink-0 opacity-60" />
-        <span className={clsx(FONT, "text-[11px] font-[450] text-c-text-secondary truncate")}>Audio</span>
-      </div>
+      <MasterLaneHeader {...header} />
       <div data-timeline-pan-surface className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Audio track" : "Audio track (empty)"}>
         {clips.map(clip => {
           const left = percent(clip.range[0], viewport);
@@ -1521,6 +1597,12 @@ export function Timeline({
   onAudioClipTrim,
   onGestureStart,
   onGestureEnd,
+  laneControls,
+  onLaneAdd,
+  onLaneVisibilityToggle,
+  onLaneSoloToggle,
+  onLaneMuteToggle,
+  onLaneLockToggle,
   revealKeyframe,
   onKeyframeRevealHandled,
   interactionContextKey,
@@ -1592,6 +1674,18 @@ export function Timeline({
   onAudioClipTrim?: (id: string, edge: "start" | "end", timeMs: number, detail?: TimelineClipTrimDetail) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
+  /** Per-lane master-header control state (visibility/solo/mute/lock). Absent lanes fall back to resting defaults. */
+  laneControls?: Partial<Record<MasterLane, MasterLaneControlState>>;
+  /** `+` add affordance per master lane (slides → composition; video/audio → clip). Omit to render the `+` disabled. */
+  onLaneAdd?: (lane: MasterLane) => void;
+  /** Toggle a master lane's visibility (eye). Presentation-only unless the host maps it to real state. */
+  onLaneVisibilityToggle?: (lane: MasterLane) => void;
+  /** Toggle a master lane's solo ("S"). */
+  onLaneSoloToggle?: (lane: MasterLane) => void;
+  /** Toggle a master lane's mute (speaker). No audio-DSP semantics in v1 — visual/state only. */
+  onLaneMuteToggle?: (lane: MasterLane) => void;
+  /** Toggle a master lane's lock (padlock). */
+  onLaneLockToggle?: (lane: MasterLane) => void;
   /** One-shot request to minimally pan a selected or newly created keyframe into the time viewport. */
   revealKeyframe?: TimelineKeyframeReveal;
   /** Acknowledges consumption so controlled hosts can clear the one-shot request. */
@@ -1619,6 +1713,18 @@ export function Timeline({
   const viewport = normalizeViewport(controlledViewport ?? internalViewport, duration);
   const viewportRef = useRef(viewport);
   const plotWidth = Math.max(1, timelineWidth - LEFT_W);
+  // Build the shared header contract for one master lane: resolves its control
+  // state and only binds a callback when the host supplied the matching handler,
+  // so an unwired affordance stays visible-but-disabled rather than a no-op.
+  const laneHeaderProps = (lane: MasterLane, icon: React.ReactNode, label: string): MasterLaneHeaderProps => ({
+    icon, label,
+    control: laneControls?.[lane],
+    onAdd: onLaneAdd ? () => onLaneAdd(lane) : undefined,
+    onVisibilityToggle: onLaneVisibilityToggle ? () => onLaneVisibilityToggle(lane) : undefined,
+    onSoloToggle: onLaneSoloToggle ? () => onLaneSoloToggle(lane) : undefined,
+    onMuteToggle: onLaneMuteToggle ? () => onLaneMuteToggle(lane) : undefined,
+    onLockToggle: onLaneLockToggle ? () => onLaneLockToggle(lane) : undefined,
+  });
   const setPlayhead = (timeMs: number, source: TimelinePlayheadChangeSource) => {
     if (controlledPlayhead === undefined) setInternalPlayhead(timeMs);
     onPlayheadChange?.(timeMs, { source, millisecondsPerPixel: (viewport.endMs - viewport.startMs) / Math.max(1, plotWidth) });
@@ -1825,9 +1931,9 @@ export function Timeline({
       <ScrollArea className="relative" viewportRef={scrollViewportRef}>
         {master ? (
           <>
-            <BlockTrack blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
-            <BaseVideoTrack clips={baseClips} viewport={viewport} plotWidth={plotWidth} onSelect={onClipSelect} onOpen={onClipOpen} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
-            <AudioTrack clips={audioClips} viewport={viewport} plotWidth={plotWidth} onSelect={onAudioClipSelect} onOpen={onAudioClipOpen} onMove={onAudioClipMove} onTrim={onAudioClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <BlockTrack header={laneHeaderProps("slides", <PenTool size={16} strokeWidth={1.5} />, "Slides")} blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <BaseVideoTrack header={laneHeaderProps("video", <Clapperboard size={16} strokeWidth={1.5} />, "Video")} clips={baseClips} viewport={viewport} plotWidth={plotWidth} onSelect={onClipSelect} onOpen={onClipOpen} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <AudioTrack header={laneHeaderProps("audio", <AudioLines size={16} strokeWidth={1.5} />, "Audio")} clips={audioClips} viewport={viewport} plotWidth={plotWidth} onSelect={onAudioClipSelect} onOpen={onAudioClipOpen} onMove={onAudioClipMove} onTrim={onAudioClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
           </>
         ) : (
           <>
