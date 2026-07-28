@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { clsx } from "clsx";
-import { Plus, Trash2, MonitorPlay, Clock, ArrowRight, ArrowDown, Type, Play, GripVertical, Layers } from "lucide-react";
+import { Plus, Trash2, MonitorPlay, Clock, ArrowRight, ArrowDown, Type, Play, GripVertical } from "lucide-react";
 import { PanelSection, PanelActionBtn, ScrollArea } from "./Panel";
 import { Dropdown } from "./Dropdown";
 import { ComboInput, NumericInput } from "./Input";
@@ -225,10 +225,15 @@ function DurationPill({ duration, kind }: { duration: string; kind: AnimKind }) 
 }
 
 // ── Combined card (multiple actions on ONE object) ─────────────────────────────────
-// When an object carries more than one action they collapse into a single combined
-// card whose children are per-action rows (motion-mental-model.md: "The combined card,
-// and the one signed gap"). N same-object cards each labelled "1" was the bug this
-// replaces. Objects with a single action (or no shared elementId) render unchanged.
+// When an object carries more than one action, its per-action cards render as normal
+// action cards (NOT boxed in a heavy container) and a thin VERTICAL CONNECTOR LINE
+// links them — that line is what now communicates "these are the same object" (owner
+// feedback: the container grouping felt too heavy; no bordered box, no group header /
+// "N actions" label). When a "delay between" is present the connector breaks around the
+// Between control (line from the preceding card → Between → line into the following
+// card); with no delay the line is continuous. N same-object cards each labelled "1" was
+// the bug this replaces. Objects with a single action (or no shared elementId) render
+// unchanged (a plain card, no connector).
 interface AnimationRowRef { item: ObjectAnimationItem; index: number; }
 type AnimationUnit =
   | { kind: "single"; row: AnimationRowRef }
@@ -256,19 +261,29 @@ export function buildAnimationUnits(anims: ObjectAnimationItem[]): AnimationUnit
 /** The signed start-to-start "delay between" two consecutive actions in a combined card.
  *  gap=0 fire together · gap>0 stagger · gap<0 overlap. Never clamped — `min` is left unset
  *  so the numeric field accepts negatives (motion-mental-model.md: "Gap is measured
- *  start-to-start (locked)"). */
+ *  start-to-start (locked)"). Owner refinement: no leading label — a compact, value-hugging
+ *  field centered in the connector gap, reading like `600ms between` (trailing text). */
 function DelayBetweenRow({ precedingId, followingId, gapMs, onChange }: {
   precedingId: string; followingId: string; gapMs: number;
   onChange?: ObjectAnimationCallbacks["onDelayBetweenChange"];
 }) {
+  // FieldShell is `w-full`, so the compact width is imposed by a fixed-width wrapper
+  // (the field fills it) and the whole thing is centered in the connector gap.
   return (
-    <div data-delay-between-preceding={precedingId} data-delay-between-following={followingId} className="pl-[2px]">
-      <LabeledRow label="Delay between">
-        <NumericInput value={gapMs} suffix="ms" commitOnBlur className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />}
+    <div data-delay-between-preceding={precedingId} data-delay-between-following={followingId} className="flex justify-center">
+      <div className="w-[124px]">
+        <NumericInput ariaLabel="Delay between" value={gapMs} suffix="ms between" commitOnBlur
+          iconLead={<Clock size={16} strokeWidth={1.5} />}
           onChange={ms => onChange?.(precedingId, followingId, ms)} />
-      </LabeledRow>
+      </div>
     </div>
   );
+}
+
+/** A vertical segment of the connector line, using the DS border token. Centered on the
+ *  card column so it reads as a single line running through the stack. */
+function ConnectorSegment({ className }: { className?: string }) {
+  return <div aria-hidden className={clsx("w-px self-center bg-c-border", className)} />;
 }
 
 function CombinedAnimationCard({ elementId, rows, renderRow, onDelayBetweenChange }: {
@@ -280,43 +295,53 @@ function CombinedAnimationCard({ elementId, rows, renderRow, onDelayBetweenChang
   // Two-tier selection: an object selection lights EVERY row (no focused sibling); a
   // single-action (focused) selection lights ONLY that row. A lit sibling next to a
   // focused row reads as "also selected" and is wrong — so focus suppresses sibling tint.
+  // No container box or header now — the connector line alone carries the grouping, so
+  // the wrapper is a bare flex column (crucially, no `overflow-hidden`: that used to clip
+  // the hover-revealed reorder drag handle sitting at `-left-[16px]`).
   const groupFocused = rows.some(row => row.item.focused);
   const groupSelected = rows.some(row => row.item.selected);
-  const objectName = rows[0]?.item.name ?? "";
   const rowId = (row: AnimationRowRef) => row.item.id ?? String(row.index);
   return (
     <div
       data-combined-card-element-id={elementId}
       data-animation-card-state={groupFocused ? "focused" : groupSelected ? "selected" : "neutral"}
-      className="rounded-c-md border border-c-border overflow-hidden flex flex-col"
+      className="flex flex-col"
     >
-      <div className={clsx(FONT, "h-[28px] flex items-center gap-[8px] px-[8px] bg-c-bg-secondary border-b border-c-border")}>
-        <Layers size={12} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" />
-        <span className="flex-1 min-w-0 truncate text-[11px] text-c-text text-left">{objectName}</span>
-        <span className="shrink-0 text-[9px] text-c-text-secondary">{rows.length} actions</span>
-      </div>
-      <div className="flex flex-col gap-[8px] p-[8px]">
-        {rows.map((row, k) => {
-          const tint = groupFocused ? !!row.item.focused : !!row.item.selected;
-          const preceding = rows[k - 1];
-          const hasGap = k > 0 && preceding !== undefined
-            && Number.isFinite(preceding.item.startMs) && Number.isFinite(row.item.startMs);
-          const gapMs = hasGap ? (row.item.startMs! - preceding!.item.startMs!) : 0;
-          return (
-            <Fragment key={rowId(row)}>
-              {hasGap && (
-                <DelayBetweenRow
-                  precedingId={rowId(preceding!)}
-                  followingId={rowId(row)}
-                  gapMs={gapMs}
-                  onChange={onDelayBetweenChange}
-                />
-              )}
-              {renderRow(row.item, row.index, tint)}
-            </Fragment>
-          );
-        })}
-      </div>
+      {rows.map((row, k) => {
+        const tint = groupFocused ? !!row.item.focused : !!row.item.selected;
+        const preceding = rows[k - 1];
+        const hasGap = k > 0 && preceding !== undefined
+          && Number.isFinite(preceding.item.startMs) && Number.isFinite(row.item.startMs);
+        const gapMs = hasGap ? (row.item.startMs! - preceding!.item.startMs!) : 0;
+        return (
+          <Fragment key={rowId(row)}>
+            {k > 0 && (
+              hasGap
+                // Delay present: the line runs out of the preceding card, breaks for the
+                // Between control, then continues into the following card.
+                ? (
+                  <div data-combined-connector="gap" className="flex flex-col py-[6px]">
+                    <ConnectorSegment className="h-[8px]" />
+                    <DelayBetweenRow
+                      precedingId={rowId(preceding!)}
+                      followingId={rowId(row)}
+                      gapMs={gapMs}
+                      onChange={onDelayBetweenChange}
+                    />
+                    <ConnectorSegment className="h-[8px]" />
+                  </div>
+                )
+                // No delay: one continuous line between the two cards.
+                : (
+                  <div data-combined-connector="continuous" className="flex justify-center py-[6px]">
+                    <ConnectorSegment className="h-[12px]" />
+                  </div>
+                )
+            )}
+            {renderRow(row.item, row.index, tint)}
+          </Fragment>
+        );
+      })}
     </div>
   );
 }
@@ -467,9 +492,10 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
             >
               {/* Drag handle — the reorder control. Rendered as a hover-revealed overlay
                   in the panel's own left padding (negative offset) so it reserves NO
-                  horizontal space: the number + card sit FLUSH at the container's left
-                  edge at rest, and the grip appears on hover without shifting the card. */}
-              <button type="button" draggable={!!callbacks?.onReorder} aria-label={`Drag ${a.name} animation`} className="hidden group-hover:flex absolute -left-[16px] top-[26px] size-[16px] items-center justify-center cursor-grab text-c-icon-secondary"
+                  horizontal space: the card sits FLUSH at the container's left edge at
+                  rest, and the grip appears on hover (vertically centered on the 32px card)
+                  without shifting the card. Owner refinement: no build-order number label. */}
+              <button type="button" draggable={!!callbacks?.onReorder} aria-label={`Drag ${a.name} animation`} className="hidden group-hover:flex absolute -left-[16px] top-[8px] size-[16px] items-center justify-center cursor-grab text-c-icon-secondary"
                 onDragStart={event => {
                   setDragged(id);
                   setDropTarget(null);
@@ -479,9 +505,6 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                 onDragEnd={() => { setDragged(null); setDropTarget(null); }}>
                 <GripVertical size={14} />
               </button>
-              {/* Build-order number sits ON TOP of the card, aligned with the card's
-                  left edge, so the card can take the full available width. */}
-              <div className={clsx(FONT, "h-[16px] flex items-center pl-[2px] text-[9px] font-[450] leading-[14px] tracking-[0.045px] text-c-text-secondary")}>{a.n}</div>
               {dragged && dragged !== id && (
                 <div
                   role="group"

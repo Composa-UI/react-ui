@@ -339,19 +339,25 @@ function Issue410IntensityDropdownFixture({ mode }: { mode: "light" | "dark" }) 
   );
 }
 
-// Combined card fixture (motion-mental-model.md): two Pulses on ONE object collapse
-// into a single combined card with a signed start-to-start "delay between" control.
+// Combined card fixture: two actions on ONE object no longer sit inside a heavy boxed
+// container — they render as plain action cards joined by a thin vertical CONNECTOR LINE.
+// This view shows BOTH connector states at once: the first object has a signed
+// start-to-start "delay between" control sitting IN THE GAP of the line; the second object
+// has no start data, so the line is CONTINUOUS.
 // `?view=combined-card` (append `&overlap=1` for a negative gap; `&focus=1` for the
-// two-tier single-action highlight).
+// two-tier single-action highlight on the delayed pair).
 function CombinedCardFixture({ mode }: { mode: "light" | "dark" }) {
   const params = new URLSearchParams(window.location.search);
   const overlap = params.get("overlap") === "1";
   const focus = params.get("focus") === "1";
   const [gapMs, setGapMs] = useState(overlap ? -300 : 500);
-  const firstStart = 0;
   const anims: ObjectAnimationItem[] = [
-    { id: "p1", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "1.2s", buildDuration: "1200ms", style: "pulse", startMs: firstStart, selected: true, focused: false },
-    { id: "p2", elementId: "logo", n: 2, name: "Logo", kind: "Action", duration: "0.8s", buildDuration: "800ms", style: "pulse", startMs: firstStart + gapMs, selected: true, focused: focus },
+    // Same object, with start times → the connector breaks for a "Delay between" control.
+    { id: "p1", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "1.2s", buildDuration: "1200ms", style: "pulse", startMs: 0, selected: true, focused: false },
+    { id: "p2", elementId: "logo", n: 2, name: "Logo", kind: "Action", duration: "0.8s", buildDuration: "800ms", style: "pulse", startMs: gapMs, selected: true, focused: focus },
+    // Same object, no start times → a continuous connector line, no delay control.
+    { id: "q1", elementId: "title", n: 3, name: "Title", kind: "Action", duration: "0.6s", buildDuration: "600ms", style: "jiggle", selected: true },
+    { id: "q2", elementId: "title", n: 4, name: "Title", kind: "Action", duration: "0.6s", buildDuration: "600ms", style: "jiggle", selected: true },
   ];
   return (
     <section data-composa-mode={mode === "dark" ? "dark" : undefined} className="w-[280px] overflow-visible rounded-c-lg bg-c-bg text-c-text shadow-c-200">
@@ -362,7 +368,10 @@ function CombinedCardFixture({ mode }: { mode: "light" | "dark" }) {
         selectionType="element"
         anims={anims}
         compTransition={{ style: "none", direction: "right", durationMs: 300, easing: "ease-out" }}
-        objectAnimationCallbacks={{ onDelayBetweenChange: (_preceding, _following, ms) => setGapMs(ms) }}
+        objectAnimationCallbacks={{
+          onDelayBetweenChange: (_preceding, _following, ms) => setGapMs(ms),
+          onReorder: () => {},
+        }}
       />
     </section>
   );
