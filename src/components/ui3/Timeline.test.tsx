@@ -359,6 +359,36 @@ describe("Timeline DOM contracts", () => {
     expect(html).not.toContain('aria-haspopup="menu"');
     expect(html).not.toContain('aria-keyshortcuts="Enter Shift+Enter"');
   });
+
+  // Playhead full-lanes-height contract (owner bug: the line came up short whenever the
+  // lanes overflowed the scroll viewport — master view + under scroll — and in the empty
+  // null state). jsdom has no layout engine, so we assert the structural invariant that
+  // *produces* a full-height line: the playhead wrapper spans `top-0 bottom-0` and resolves
+  // against the scroll CONTENT (the full lanes region, `min-h-full`), which must therefore
+  // carry `relative` so it — not the shorter scroll viewport — is the positioning context.
+  const playheadContract = (html: string) => {
+    // The scroll content that holds the lanes is the positioning context (relative).
+    const contentIdx = html.indexOf('data-composa-scroll-content');
+    expect(contentIdx).toBeGreaterThan(-1);
+    const contentTag = html.slice(html.lastIndexOf("<div", contentIdx), contentIdx + 200);
+    expect(contentTag).toContain("min-h-full");
+    expect(contentTag).toContain("relative");
+    // The playhead line spans the full height of that content, and lives inside it.
+    const wrapperIdx = html.indexOf("absolute top-0 bottom-0 right-0 z-20 overflow-hidden pointer-events-none");
+    expect(wrapperIdx).toBeGreaterThan(contentIdx);
+    expect(html).toContain('class="absolute top-0 bottom-0 w-px"');
+  };
+
+  it("spans the playhead across the full lanes region in master view (survives vertical overflow)", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={2_000}
+      blocks={[{ id: "intro", name: "Intro", range: [0, 1_000] }]} />);
+    playheadContract(html);
+  });
+
+  it("spans the playhead across the full lanes region in the empty/null slide-local state", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[]} />);
+    playheadContract(html);
+  });
 });
 
 describe("Timeline empty-lane time mapping", () => {

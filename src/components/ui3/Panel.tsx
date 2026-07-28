@@ -7,7 +7,7 @@ import { Tooltip } from "./Tooltip";
 // Native scrollbar is fully hidden (takes NO width — content is full-bleed); a thin
 // overlay thumb sits ON the panel, driven by JS and revealed on hover/scroll.
 // (Mirrors the study panel's `.composa-editing-inspector-scroll(bar)`.)
-export function ScrollArea({ children, className, thumbClassName = "bg-c-icon-secondary", onScroll, viewportRef }: { children?: ReactNode; className?: string; thumbClassName?: string; onScroll?: (scrollTop: number) => void; viewportRef?: MutableRefObject<HTMLDivElement | null> }) {
+export function ScrollArea({ children, className, contentClassName, thumbClassName = "bg-c-icon-secondary", onScroll, viewportRef }: { children?: ReactNode; className?: string; contentClassName?: string; thumbClassName?: string; onScroll?: (scrollTop: number) => void; viewportRef?: MutableRefObject<HTMLDivElement | null> }) {
   const ref = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [thumb, setThumb] = useState<{ top: number; height: number } | null>(null);
@@ -51,7 +51,7 @@ export function ScrollArea({ children, className, thumbClassName = "bg-c-icon-se
         // height in both cases.
         className={clsx("flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", className)}
       >
-        <div ref={contentRef} data-composa-scroll-content className="min-h-full">
+        <div ref={contentRef} data-composa-scroll-content className={clsx("min-h-full", contentClassName)}>
           {children}
         </div>
       </div>
