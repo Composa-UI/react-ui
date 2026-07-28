@@ -286,6 +286,19 @@ function ConnectorSegment({ className }: { className?: string }) {
   return <div aria-hidden className={clsx("w-px self-center bg-c-border", className)} />;
 }
 
+/** Sequential index for a UNIT in the object-animations list. A unit is either a
+ *  standalone action OR a whole combined card, so a combined card carries exactly ONE
+ *  number for the entire card (NOT one per action-row inside it) — the fix for #78's
+ *  over-correction that dropped all numbers. Small muted label sitting on top of the
+ *  unit, matching the pre-#78 placement but promoted from the row level to the unit
+ *  level. `pl-[2px]` keeps it aligned to the card's left edge so the card can still take
+ *  the full available width. */
+function UnitNumberLabel({ n }: { n: number }) {
+  return (
+    <div data-animation-unit-number={n} className={clsx(FONT, "h-[16px] flex items-center pl-[2px] text-[9px] font-[450] leading-[14px] tracking-[0.045px] text-c-text-secondary")}>{n}</div>
+  );
+}
+
 function CombinedAnimationCard({ elementId, rows, renderRow, onDelayBetweenChange }: {
   elementId: string;
   rows: AnimationRowRef[];
@@ -554,17 +567,29 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
             };
             // Group each object's actions into ONE combined card; single-action objects
             // (or rows with no shared elementId) render standalone, exactly as before.
-            return buildAnimationUnits(anims).map(unit =>
-              unit.kind === "combined"
-                ? <CombinedAnimationCard
-                    key={`combined:${unit.elementId}`}
-                    elementId={unit.elementId}
-                    rows={unit.rows}
-                    renderRow={renderActionRow}
-                    onDelayBetweenChange={callbacks?.onDelayBetweenChange}
-                  />
-                : renderActionRow(unit.row.item, unit.row.index),
-            );
+            // Each UNIT (a standalone action OR a whole combined card) carries a single
+            // sequential number: a combined card is ONE number, not one per row. The label
+            // sits on top of the unit, outside the card's own `group` box so it never
+            // shifts the flush-left card or the hover-revealed drag handle.
+            return buildAnimationUnits(anims).map((unit, unitIndex) => {
+              const unitNumber = unitIndex + 1;
+              const key = unit.kind === "combined"
+                ? `combined:${unit.elementId}`
+                : (unit.row.item.id ?? String(unit.row.index));
+              return (
+                <div key={key} data-animation-unit={unitNumber} className="flex flex-col">
+                  <UnitNumberLabel n={unitNumber} />
+                  {unit.kind === "combined"
+                    ? <CombinedAnimationCard
+                        elementId={unit.elementId}
+                        rows={unit.rows}
+                        renderRow={renderActionRow}
+                        onDelayBetweenChange={callbacks?.onDelayBetweenChange}
+                      />
+                    : renderActionRow(unit.row.item, unit.row.index)}
+                </div>
+              );
+            });
           })()}
           {/* #222: the "starts automatically" + delay authoring block is gated behind the
               `animationDelay` capability (default OFF). When off it is not rendered, so no
