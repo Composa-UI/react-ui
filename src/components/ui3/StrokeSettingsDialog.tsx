@@ -148,6 +148,12 @@ export function StrokeSettingsDialog({
     width={COMPACT_INSPECTOR_DIALOG_WIDTH}
     sideOffset={STROKE_SETTINGS_INSPECTOR_SIDE_OFFSET}
     elevation={400}
+    // The trigger is a 24px icon button that sits inline in the Stroke row next to
+    // the flex-1 "Position"/"Weight" columns. InspectorDialog's default trigger
+    // wrapper is `block w-full`, which gives this wrapper a full-width flex-basis and
+    // starves the flex-1 columns down to 0 (the align dropdown rendered 0-width).
+    // Keep the wrapper shrink-wrapped to the icon so the columns keep their share.
+    triggerClassName="shrink-0"
   >
     <div className="flex h-[40px] items-center border-b border-c-border pl-[16px] pr-[8px]">
       <span className="flex-1 text-[11px] font-[550] text-c-text">Stroke settings</span>
