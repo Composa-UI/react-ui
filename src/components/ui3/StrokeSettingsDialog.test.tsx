@@ -11,11 +11,13 @@ import { TooltipProvider } from "./Tooltip";
 
 vi.mock("./InspectorDialog", () => ({
   COMPACT_INSPECTOR_DIALOG_WIDTH: 240,
-  STROKE_SETTINGS_INSPECTOR_SIDE_OFFSET: 41,
+  STROKE_SETTINGS_INSPECTOR_SIDE_OFFSET: 8,
+  COMPOSA_INSPECTOR_SURFACE_SELECTOR: "[data-composa-inspector-surface]",
   InspectorDialog: ({
     ariaLabel,
     width,
     sideOffset,
+    anchorSurfaceSelector,
     elevation,
     trigger,
     children,
@@ -23,10 +25,17 @@ vi.mock("./InspectorDialog", () => ({
     ariaLabel: string;
     width?: number;
     sideOffset?: number;
+    anchorSurfaceSelector?: string;
     elevation?: number;
     trigger: ReactElement;
     children: ReactNode;
-  }) => <div data-inspector-dialog={ariaLabel} data-width={width} data-side-offset={sideOffset} data-elevation={elevation}>
+  }) => <div
+    data-inspector-dialog={ariaLabel}
+    data-width={width}
+    data-side-offset={sideOffset}
+    data-anchor-surface={anchorSurfaceSelector}
+    data-elevation={elevation}
+  >
     {trigger}{children}
   </div>,
 }));
@@ -35,7 +44,7 @@ const VALUE: StrokeSettingsValue = { style: "solid", join: "miter", cap: "none" 
 const withTooltips = (dialog: ReactElement) => <TooltipProvider>{dialog}</TooltipProvider>;
 
 describe("StrokeSettingsDialog", () => {
-  it("uses the approved compact Effects placement and exposes truthful capability gates", () => {
+  it("anchors clear of the inspector surface and renders only the engine-backed Basic fields with no tab strip", () => {
     const html = renderToStaticMarkup(withTooltips(<StrokeSettingsDialog
       open
       trigger={<button type="button">Open stroke</button>}
@@ -44,17 +53,29 @@ describe("StrokeSettingsDialog", () => {
       onClose={() => undefined}
     />));
 
+    // Placement contract: 240px, elevation-400, and — the overlap fix (C) —
+    // anchored to the inspector surface's left edge with the plain 8px gutter
+    // rather than a trigger-relative magic offset.
     expect(html).toContain('data-inspector-dialog="Stroke settings"');
     expect(html).toContain('data-width="240"');
-    expect(html).toContain('data-side-offset="41"');
+    expect(html).toContain('data-side-offset="8"');
+    expect(html).toContain('data-anchor-surface="[data-composa-inspector-surface]"');
     expect(html).toContain('data-elevation="400"');
-    expect(html).toContain("Dynamic stroke behavior needs an approved engine and persistence contract.");
-    expect(html).toContain("Brush strokes need an approved engine and persistence contract.");
-    expect(html).toContain("Width profiles and profile flipping are not supported by the current document model.");
-    expect(html).toContain("Editable miter angle is not supported by the current document model.");
-    expect(html).toContain('aria-label="Width profile: unavailable"');
-    expect(html).toContain('aria-label="Miter angle: unavailable"');
-    expect(html).toContain('aria-label="Flip width profile: unavailable"');
+
+    // Capability gate (D): only the engine-backed fields are present.
+    expect(html).toContain('aria-label="Style: Solid"');
+    expect(html).toContain('aria-label="Join: Miter"');
+    expect(html).toContain('aria-label="Cap: None"');
+
+    // No tab strip, and no unsupported controls are shipped inert.
+    expect(html).not.toContain('role="tablist"');
+    expect(html).not.toContain("Dynamic");
+    expect(html).not.toContain("Brush");
+    expect(html).not.toContain("Width profile");
+    expect(html).not.toContain("Miter angle");
+    expect(html).not.toContain("not supported by the current document model");
+    expect(html).not.toContain("approved engine and persistence contract");
+    expect(html).not.toContain("unavailable");
   });
 
   it("emits only the supported Style, Join, and Cap fields", () => {
@@ -97,6 +118,7 @@ describe("StrokeSettingsDialog", () => {
     expect(html).toContain('aria-label="Join: Mixed"');
     expect(html).toContain('aria-label="Cap: Mixed"');
     expect(html).toContain("Unlock the selection to edit stroke settings.");
-    expect(html.match(/disabled=""/g)?.length).toBeGreaterThanOrEqual(10);
+    // Read-only locks the Style dropdown plus all six Join/Cap segments.
+    expect(html.match(/disabled=""/g)?.length).toBeGreaterThanOrEqual(6);
   });
 });
