@@ -1,7 +1,7 @@
 import { useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { PropertyPanel, type ClipSpeed, type ElementEffectSetting, type ElementFillSetting, type ElementLayoutGuideSetting, type ElementLayoutSettings, type ElementSelectionColorSetting, type ElementStrokeSetting, type ElementTypographySettings, type InspectorExportSetting, type ProjectFrameRate, type SlideBackgroundType, type SlideTransitionDirection, type SlideTransitionEasing, type SlideTransitionType } from "./components/ui3/PropertyPanel";
-import { AnimatePanel } from "./components/ui3/AnimatePanel";
+import { AnimatePanel, type ObjectAnimationItem } from "./components/ui3/AnimatePanel";
 import SlidesTemplate from "./imports/SlidesTemplate";
 import { SlidesPanel, type SlideData } from "./components/ui3/SlidesPanel";
 import { SlideInspector } from "./components/ui3/SlideInspector";
@@ -333,6 +333,35 @@ function Issue410IntensityDropdownFixture({ mode }: { mode: "light" | "dark" }) 
         selectionType="element"
         anims={[{ id: `issue-410-${mode}`, n: 1, name: "Quarterly review", kind: "Action", duration: "0.6s", style: "pulse", intensity, selected: true }]}
         objectAnimationCallbacks={{ onIntensityChange: (_id, value) => setIntensity(value) }}
+      />
+    </section>
+  );
+}
+
+// Combined card fixture (motion-mental-model.md): two Pulses on ONE object collapse
+// into a single combined card with a signed start-to-start "delay between" control.
+// `?view=combined-card` (append `&overlap=1` for a negative gap; `&focus=1` for the
+// two-tier single-action highlight).
+function CombinedCardFixture({ mode }: { mode: "light" | "dark" }) {
+  const params = new URLSearchParams(window.location.search);
+  const overlap = params.get("overlap") === "1";
+  const focus = params.get("focus") === "1";
+  const [gapMs, setGapMs] = useState(overlap ? -300 : 500);
+  const firstStart = 0;
+  const anims: ObjectAnimationItem[] = [
+    { id: "p1", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "1.2s", buildDuration: "1200ms", style: "pulse", startMs: firstStart, selected: true, focused: false },
+    { id: "p2", elementId: "logo", n: 2, name: "Logo", kind: "Action", duration: "0.8s", buildDuration: "800ms", style: "pulse", startMs: firstStart + gapMs, selected: true, focused: focus },
+  ];
+  return (
+    <section data-composa-mode={mode === "dark" ? "dark" : undefined} className="w-[280px] overflow-visible rounded-c-lg bg-c-bg text-c-text shadow-c-200">
+      <header className="h-[40px] px-[16px] flex items-center border-b border-c-border">
+        <h2 className="text-[11px] font-[550]">{mode === "dark" ? "Dark" : "Light"} · combined card</h2>
+      </header>
+      <AnimatePanel
+        selectionType="element"
+        anims={anims}
+        compTransition={{ style: "none", direction: "right", durationMs: 300, easing: "ease-out" }}
+        objectAnimationCallbacks={{ onDelayBetweenChange: (_preceding, _following, ms) => setGapMs(ms) }}
       />
     </section>
   );
@@ -839,6 +868,15 @@ export default function Playground() {
       <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px] items-start">
         <Issue410IntensityDropdownFixture mode="light" />
         <Issue410IntensityDropdownFixture mode="dark" />
+      </main>
+    );
+  }
+
+  if (view === "combined-card") {
+    return (
+      <main className="min-h-screen bg-c-bg-secondary p-[24px] grid grid-cols-2 gap-[24px] items-start">
+        <CombinedCardFixture mode="light" />
+        <CombinedCardFixture mode="dark" />
       </main>
     );
   }
