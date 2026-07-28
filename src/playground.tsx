@@ -20,6 +20,7 @@ import { ImageAdjustDialog } from "./components/ui3/ImageAdjustDialog";
 import { Tooltip, TooltipProvider } from "./components/ui3/Tooltip";
 import { ComposaModeProvider } from "./components/ui3/useComposaMode";
 import { SegmentedControl } from "./components/ui3/SegmentedControl";
+import { Dial } from "./components/ui3/Dial";
 import { AlignmentControl, type AlignmentValue } from "./components/ui3/AlignmentControl";
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./components/ui3/LayerTypeIcon";
 import { AnchoredInspectorOverlay } from "./components/ui3/AnchoredInspectorOverlay";
@@ -668,6 +669,51 @@ function SlidesFixture() {
     </div>
   );
 }
+
+// ?view=dial — rotary knob for the audio inspector. A row of dials at different
+// values in light + dark, plus a labelled "De-hum" group (Frequency / Harmonics
+// / Sharpness / Depth) matching the Sequence audio-inspector study.
+function DialFixture({ mode }: { mode: "light" | "dark" }) {
+  const [dehum, setDehum] = useState({ frequency: 60, harmonics: 4, sharpness: 35, depth: 72 });
+  const [reverb, setReverb] = useState(50);
+  const [loudness, setLoudness] = useState(85);
+  const [solo, setSolo] = useState(0);
+
+  return (
+    <section
+      data-composa-mode={mode === "dark" ? "dark" : undefined}
+      className="flex flex-col gap-[28px] rounded-c-lg bg-c-bg text-c-text shadow-c-400 p-[28px]"
+    >
+      <div className={`text-c-text-secondary text-[11px] leading-[16px] ${FONT_PLAY}`}>{mode} · dial</div>
+
+      {/* Row of standalone dials at different values + sizes. */}
+      <div className="flex items-end gap-[28px]">
+        <Dial label="Empty" value={solo} min={0} max={100} onChange={setSolo} suffix="%" />
+        <Dial label="Reverb" value={reverb} min={0} max={100} onChange={setReverb} suffix="%" size="large" />
+        <Dial label="Loudness" value={loudness} min={0} max={100} defaultValue={100} onChange={setLoudness} suffix="dB" />
+        <Dial label="Small" value={30} min={0} max={100} onChange={() => {}} size="small" />
+        <Dial label="Disabled" value={40} min={0} max={100} disabled onChange={() => {}} />
+      </div>
+
+      {/* Labelled De-hum group. */}
+      <div className="flex flex-col gap-[10px]">
+        <div className={`text-c-text text-[11px] leading-[16px] ${FONT_PLAY}`}>De-hum</div>
+        <div className="flex items-end gap-[24px] rounded-c-md bg-c-bg-secondary p-[16px]">
+          <Dial label="Frequency" value={dehum.frequency} min={20} max={200} step={1} suffix="Hz"
+            onChange={v => setDehum(d => ({ ...d, frequency: v }))} />
+          <Dial label="Harmonics" value={dehum.harmonics} min={0} max={10} step={1}
+            onChange={v => setDehum(d => ({ ...d, harmonics: v }))} />
+          <Dial label="Sharpness" value={dehum.sharpness} min={0} max={100} suffix="%"
+            onChange={v => setDehum(d => ({ ...d, sharpness: v }))} />
+          <Dial label="Depth" value={dehum.depth} min={0} max={100} suffix="%"
+            onChange={v => setDehum(d => ({ ...d, depth: v }))} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const FONT_PLAY = "font-[family-name:var(--composa-font-family)] font-[450]";
 
 export default function Playground() {
   // ?view=slides = componentized SlidesPanel; ?view=slides-raw = the raw Figma export
@@ -1362,6 +1408,15 @@ export default function Playground() {
 
   if (view === "slides") {
     return <SlidesFixture />;
+  }
+
+  if (view === "dial") {
+    return (
+      <div style={{ minHeight: "100vh", width: "100vw", display: "flex", gap: 24, flexWrap: "wrap", alignItems: "flex-start", padding: 24, boxSizing: "border-box", background: "#e6e6e6" }}>
+        <DialFixture mode="light" />
+        <DialFixture mode="dark" />
+      </div>
+    );
   }
 
   return (
