@@ -1,6 +1,6 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { clsx } from "clsx";
-import { Plus, Trash2, MonitorPlay, Clock, ArrowRight, ArrowDown, Type, Play, GripVertical } from "lucide-react";
+import { Plus, Trash2, MonitorPlay, Clock, ArrowRight, ArrowDown, Type, Play, GripVertical, Layers } from "lucide-react";
 import { PanelSection, PanelActionBtn, ScrollArea } from "./Panel";
 import { Dropdown } from "./Dropdown";
 import { ComboInput, NumericInput } from "./Input";
@@ -36,6 +36,11 @@ export interface ObjectAnimationItem {
   /** Exact timeline-selected Animate unit. Takes precedence over element selection when opening cards. */
   focused?: boolean;
   selected?: boolean;
+  /** Slide-local start of this action, in ms. Host-supplied (derived from the engine's
+   *  order + duration + delay timing). When two actions on the same object both carry a
+   *  `startMs`, the combined card DERIVES the signed "delay between" as the start-to-start
+   *  offset (`following.startMs - preceding.startMs`) — see motion-mental-model.md. */
+  startMs?: number;
 }
 export type ObjectAnimationPhase = "build-in" | "action" | "build-out";
 export interface ObjectAnimationSequenceSettings { start: "on-click" | "automatically"; delayMs: number; }
@@ -48,6 +53,11 @@ export interface ObjectAnimationCallbacks {
   onDeliveryChange?: (id: string, delivery: "all-at-once" | "by-object" | "by-word" | "by-character") => void;
   onIntensityChange?: (id: string, intensity: "small" | "medium" | "large") => void;
   onReorder?: (id: string, targetId: string, placement: "before" | "after" | "with") => void;
+  /** Combined-card "delay between" edit. `gapMs` is the signed start-to-start offset the
+   *  FOLLOWING action should have relative to the PRECEDING one — negative means overlap
+   *  (the following action starts before the preceding one ends). The host maps this to a
+   *  start-offset change on `followingId`; the value is NEVER clamped at this layer. */
+  onDelayBetweenChange?: (precedingId: string, followingId: string, gapMs: number) => void;
   onStartChange?: (start: ObjectAnimationSequenceSettings["start"]) => void;
   onDelayChange?: (delayMs: number) => void;
   /** Play back every object animation on the current selection. Host-wired to real
@@ -214,6 +224,103 @@ function DurationPill({ duration, kind }: { duration: string; kind: AnimKind }) 
   );
 }
 
+// ── Combined card (multiple actions on ONE object) ─────────────────────────────────
+// When an object carries more than one action they collapse into a single combined
+// card whose children are per-action rows (motion-mental-model.md: "The combined card,
+// and the one signed gap"). N same-object cards each labelled "1" was the bug this
+// replaces. Objects with a single action (or no shared elementId) render unchanged.
+interface AnimationRowRef { item: ObjectAnimationItem; index: number; }
+type AnimationUnit =
+  | { kind: "single"; row: AnimationRowRef }
+  | { kind: "combined"; elementId: string; rows: AnimationRowRef[] };
+
+export function buildAnimationUnits(anims: ObjectAnimationItem[]): AnimationUnit[] {
+  const counts = new Map<string, number>();
+  for (const item of anims) if (item.elementId) counts.set(item.elementId, (counts.get(item.elementId) ?? 0) + 1);
+  const combinedByElement = new Map<string, Extract<AnimationUnit, { kind: "combined" }>>();
+  const units: AnimationUnit[] = [];
+  anims.forEach((item, index) => {
+    const row: AnimationRowRef = { item, index };
+    const elementId = item.elementId;
+    if (elementId && (counts.get(elementId) ?? 0) >= 2) {
+      let unit = combinedByElement.get(elementId);
+      if (!unit) { unit = { kind: "combined", elementId, rows: [] }; combinedByElement.set(elementId, unit); units.push(unit); }
+      unit.rows.push(row);
+    } else {
+      units.push({ kind: "single", row });
+    }
+  });
+  return units;
+}
+
+/** The signed start-to-start "delay between" two consecutive actions in a combined card.
+ *  gap=0 fire together · gap>0 stagger · gap<0 overlap. Never clamped — `min` is left unset
+ *  so the numeric field accepts negatives (motion-mental-model.md: "Gap is measured
+ *  start-to-start (locked)"). */
+function DelayBetweenRow({ precedingId, followingId, gapMs, onChange }: {
+  precedingId: string; followingId: string; gapMs: number;
+  onChange?: ObjectAnimationCallbacks["onDelayBetweenChange"];
+}) {
+  return (
+    <div data-delay-between-preceding={precedingId} data-delay-between-following={followingId} className="pl-[2px]">
+      <LabeledRow label="Delay between">
+        <NumericInput value={gapMs} suffix="ms" commitOnBlur className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />}
+          onChange={ms => onChange?.(precedingId, followingId, ms)} />
+      </LabeledRow>
+    </div>
+  );
+}
+
+function CombinedAnimationCard({ elementId, rows, renderRow, onDelayBetweenChange }: {
+  elementId: string;
+  rows: AnimationRowRef[];
+  renderRow: (item: ObjectAnimationItem, index: number, tintOverride?: boolean) => ReactNode;
+  onDelayBetweenChange?: ObjectAnimationCallbacks["onDelayBetweenChange"];
+}) {
+  // Two-tier selection: an object selection lights EVERY row (no focused sibling); a
+  // single-action (focused) selection lights ONLY that row. A lit sibling next to a
+  // focused row reads as "also selected" and is wrong — so focus suppresses sibling tint.
+  const groupFocused = rows.some(row => row.item.focused);
+  const groupSelected = rows.some(row => row.item.selected);
+  const objectName = rows[0]?.item.name ?? "";
+  const rowId = (row: AnimationRowRef) => row.item.id ?? String(row.index);
+  return (
+    <div
+      data-combined-card-element-id={elementId}
+      data-animation-card-state={groupFocused ? "focused" : groupSelected ? "selected" : "neutral"}
+      className="rounded-c-md border border-c-border overflow-hidden flex flex-col"
+    >
+      <div className={clsx(FONT, "h-[28px] flex items-center gap-[8px] px-[8px] bg-c-bg-secondary border-b border-c-border")}>
+        <Layers size={12} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" />
+        <span className="flex-1 min-w-0 truncate text-[11px] text-c-text text-left">{objectName}</span>
+        <span className="shrink-0 text-[9px] text-c-text-secondary">{rows.length} actions</span>
+      </div>
+      <div className="flex flex-col gap-[8px] p-[8px]">
+        {rows.map((row, k) => {
+          const tint = groupFocused ? !!row.item.focused : !!row.item.selected;
+          const preceding = rows[k - 1];
+          const hasGap = k > 0 && preceding !== undefined
+            && Number.isFinite(preceding.item.startMs) && Number.isFinite(row.item.startMs);
+          const gapMs = hasGap ? (row.item.startMs! - preceding!.item.startMs!) : 0;
+          return (
+            <Fragment key={rowId(row)}>
+              {hasGap && (
+                <DelayBetweenRow
+                  precedingId={rowId(preceding!)}
+                  followingId={rowId(row)}
+                  gapMs={gapMs}
+                  onChange={onDelayBetweenChange}
+                />
+              )}
+              {renderRow(row.item, row.index, tint)}
+            </Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-click", delayMs: 0 }, addablePhases = ["build-in", "action", "build-out"], contextKey, selectionType, animationDelay = false }: {
   anims: ObjectAnimationItem[]; callbacks?: ObjectAnimationCallbacks; settings?: ObjectAnimationSequenceSettings; addablePhases?: ObjectAnimationPhase[]; contextKey?: string; selectionType?: "slide" | "element"; animationDelay?: boolean;
 }) {
@@ -284,8 +391,13 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
         </p>
       ) : (
         <div className="px-[16px] pb-[8px] flex flex-col gap-[8px]">
-          {anims.map((a, i) => {
+          {(() => {
+            // Per-action row renderer. `tintOverride` lets a combined card impose the
+            // two-tier highlight (object → all rows; focused action → only that row),
+            // while standalone rows fall back to the item's own `selected` flag.
+            const renderActionRow = (a: ObjectAnimationItem, i: number, tintOverride?: boolean) => {
             const id = a.id ?? String(i);
+            const tinted = tintOverride ?? !!a.selected;
             const phase = a.kind === "In" ? "build-in" : a.kind === "Out" ? "build-out" : "action";
             const phaseLabel = phase === "build-in" ? "Build in" : phase === "build-out" ? "Build out" : "Action";
             const styleOptions = phase === "build-in" ? ["fade-in", "move-in", "slide-in", "wipe-in"] : phase === "build-out" ? ["fade-out", "move-out", "slide-out", "wipe-out"] : ACTION_STYLE_OPTIONS;
@@ -350,7 +462,7 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
               key={id}
               data-animation-card-id={id}
               data-animation-element-id={a.elementId}
-              data-animation-card-state={a.focused ? "focused" : a.selected ? "selected" : "neutral"}
+              data-animation-card-state={a.focused ? "focused" : tinted ? "selected" : "neutral"}
               className="group relative min-w-0 flex flex-col gap-[2px]"
             >
               {/* Drag handle — the reorder control. Rendered as a hover-revealed overlay
@@ -387,7 +499,7 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                   title={a.name}
                   badge={<><KindGlyph kind={a.kind} /><DurationPill duration={a.duration} kind={a.kind} /></>}
                   expanded={expanded === id}
-                  selected={!!a.selected}
+                  selected={tinted}
                   onToggle={() => { setExpanded(current => current === id ? null : id); setActiveStyleDialog(null); }}
                   onRemove={() => callbacks?.onRemove?.(id)}
                 >
@@ -416,7 +528,21 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                   {phase === "action" && <LabeledRow label="Intensity"><ChoiceDropdown ariaLabel="Intensity" value={a.intensity ?? "medium"} options={["small", "medium", "large"]} labels={{ small: "Small", medium: "Medium", large: "Large" }} onChange={intensity => callbacks?.onIntensityChange?.(id, intensity)} /></LabeledRow>}
                 </AnimationCard>
             </div>;
-          })}
+            };
+            // Group each object's actions into ONE combined card; single-action objects
+            // (or rows with no shared elementId) render standalone, exactly as before.
+            return buildAnimationUnits(anims).map(unit =>
+              unit.kind === "combined"
+                ? <CombinedAnimationCard
+                    key={`combined:${unit.elementId}`}
+                    elementId={unit.elementId}
+                    rows={unit.rows}
+                    renderRow={renderActionRow}
+                    onDelayBetweenChange={callbacks?.onDelayBetweenChange}
+                  />
+                : renderActionRow(unit.row.item, unit.row.index),
+            );
+          })()}
           {/* #222: the "starts automatically" + delay authoring block is gated behind the
               `animationDelay` capability (default OFF). When off it is not rendered, so no
               dangling start/delay state is shown; the delay is removed from the default path. */}

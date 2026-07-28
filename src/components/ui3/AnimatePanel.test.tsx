@@ -1,11 +1,128 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, create } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
-import { ACTION_STYLE_OPTIONS, AnimatePanel, type ObjectAnimationItem } from "./AnimatePanel";
+import { ACTION_STYLE_OPTIONS, AnimatePanel, buildAnimationUnits, type ObjectAnimationItem } from "./AnimatePanel";
 import { PopoverMenu } from "./Menu";
+import { NumericInput } from "./Input";
 import { AnimationStylesDialog } from "./AnimationStylesDialog";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+// ── Combined card + one signed gap (motion-mental-model.md) ─────────────────────────
+// Two pulses on ONE object (shared elementId) — the exact case that used to render as
+// two separate cards each labelled "1". They must collapse into one combined card.
+const TWO_PULSES: ObjectAnimationItem[] = [
+  { id: "p1", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "1.2s", style: "pulse", buildDuration: "1200ms", startMs: 0 },
+  { id: "p2", elementId: "logo", n: 2, name: "Logo", kind: "Action", duration: "0.8s", style: "pulse", buildDuration: "800ms", startMs: 500 },
+];
+const delayField = (renderer: ReturnType<typeof create>, followingId: string) =>
+  renderer.root.findAll(node => node.props["data-delay-between-following"] === followingId)[0]!.findByType(NumericInput);
+
+describe("AnimatePanel — combined card groups an object's actions into one card (motion-mental-model)", () => {
+  it("groups N same-object actions into ONE combined card, not N cards", () => {
+    const units = buildAnimationUnits(TWO_PULSES);
+    expect(units).toHaveLength(1);
+    expect(units[0]!.kind).toBe("combined");
+
+    const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={TWO_PULSES} />);
+    // Exactly one combined card for the object, and both action rows live inside it.
+    expect(html.match(/data-combined-card-element-id="logo"/g)).toHaveLength(1);
+    expect(html).toContain('data-animation-card-id="p1"');
+    expect(html).toContain('data-animation-card-id="p2"');
+    expect(html).toContain(">2 actions<");
+  });
+
+  it("keeps a single action on an object rendering EXACTLY as today (no combined chrome)", () => {
+    const single: ObjectAnimationItem[] = [
+      { id: "s1", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "0.6s", style: "pulse" },
+    ];
+    expect(buildAnimationUnits(single)[0]!.kind).toBe("single");
+    const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={single} />);
+    expect(html).not.toContain("data-combined-card-element-id");
+    expect(html).not.toContain("Delay between");
+    expect(html).toContain('data-animation-card-id="s1"');
+  });
+
+  it("renders no combined card for distinct objects each with one action", () => {
+    const distinct: ObjectAnimationItem[] = [
+      { id: "a", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "0.6s", style: "pulse" },
+      { id: "b", elementId: "title", n: 2, name: "Title", kind: "In", duration: "0.4s", style: "fade-in" },
+    ];
+    const units = buildAnimationUnits(distinct);
+    expect(units.every(unit => unit.kind === "single")).toBe(true);
+  });
+});
+
+describe("AnimatePanel — 'delay between' is the signed start-to-start gap (locked)", () => {
+  it("derives the gap as following.startMs − preceding.startMs (positive stagger)", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={TWO_PULSES} />); });
+    const field = delayField(renderer!, "p2");
+    expect(field.props.value).toBe(500); // 500 − 0
+    // Never clamped: no `min`, so the numeric field accepts negatives (overlap).
+    expect(field.props.min).toBeUndefined();
+    act(() => renderer!.unmount());
+  });
+
+  it("derives and shows a NEGATIVE gap (overlap) without clamping", () => {
+    const overlap: ObjectAnimationItem[] = [
+      { ...TWO_PULSES[0]!, startMs: 500 },
+      { ...TWO_PULSES[1]!, startMs: 200 },
+    ];
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={overlap} />); });
+    expect(delayField(renderer!, "p2").props.value).toBe(-300); // 200 − 500
+    act(() => renderer!.unmount());
+  });
+
+  it("emits onDelayBetweenChange(precedingId, followingId, signed ms) — including negative", () => {
+    const calls: Array<[string, string, number]> = [];
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<AnimatePanel selectionType="element" anims={TWO_PULSES}
+        objectAnimationCallbacks={{ onDelayBetweenChange: (preceding, following, ms) => calls.push([preceding, following, ms]) }} />);
+    });
+    act(() => delayField(renderer!, "p2").props.onChange(-150));
+    expect(calls).toEqual([["p1", "p2", -150]]);
+    act(() => renderer!.unmount());
+  });
+
+  it("omits the delay-between control when a start time is missing (no invented gap)", () => {
+    const noStart: ObjectAnimationItem[] = [
+      { id: "p1", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "1.2s", style: "pulse" },
+      { id: "p2", elementId: "logo", n: 2, name: "Logo", kind: "Action", duration: "0.8s", style: "pulse" },
+    ];
+    const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={noStart} />);
+    // Still one combined card, but no derived delay control without start data.
+    expect(html).toContain('data-combined-card-element-id="logo"');
+    expect(html).not.toContain("data-delay-between-following");
+  });
+});
+
+describe("AnimatePanel — two-tier selection inside a combined card (motion-mental-model)", () => {
+  const rowState = (renderer: ReturnType<typeof create>, id: string) =>
+    renderer.root.findAll(node => node.props["data-animation-card-id"] === id)[0]!.props["data-animation-card-state"];
+
+  it("object selection lights EVERY action row", () => {
+    const anims = TWO_PULSES.map(anim => ({ ...anim, selected: true }));
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={anims} />); });
+    expect(rowState(renderer!, "p1")).toBe("selected");
+    expect(rowState(renderer!, "p2")).toBe("selected");
+    act(() => renderer!.unmount());
+  });
+
+  it("a single focused action lights ONLY that row — the lit sibling is suppressed", () => {
+    // Real app: focusing one action still marks the whole object selected; the combined
+    // card must NOT leave the sibling tinted next to the focused/expanded row.
+    const anims = TWO_PULSES.map(anim => ({ ...anim, selected: true, focused: anim.id === "p2" }));
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={anims} />); });
+    expect(rowState(renderer!, "p2")).toBe("focused");
+    expect(rowState(renderer!, "p1")).toBe("neutral");
+    act(() => renderer!.unmount());
+  });
+});
 
 const ANIMS: ObjectAnimationItem[] = [
   { id: "a1", n: 1, name: "Title", kind: "In", duration: "0.6s", style: "fade-in", buildDuration: "600ms" },
