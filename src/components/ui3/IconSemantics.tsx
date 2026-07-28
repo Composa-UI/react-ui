@@ -14,6 +14,7 @@ import {
   ArrowUpToLine,
   Droplet,
   LayoutGrid,
+  Grid2x2,
   Component,
   Frame,
   Image as ImageIcon,
@@ -108,6 +109,7 @@ export type ComposaIconSemantic =
   | "auto-layout-vertical-left"
   | "auto-layout-vertical-center"
   | "auto-layout-vertical-right"
+  | "layout-grid"
   | "settings";
 
 export const composaIconSemantics = {
@@ -176,6 +178,9 @@ export const composaIconSemantics = {
   "auto-layout-vertical-left": ProposedLayoutVerticalLeft,
   "auto-layout-vertical-center": ProposedLayoutVerticalCenter,
   "auto-layout-vertical-right": ProposedLayoutVerticalRight,
+  // Grid is a distinct 2D layout mode (grid-and-wrap-spec §3), separate from the
+  // wrapped-flow `layout-wrap` glyph above — a true grid reads as Grid2x2.
+  "layout-grid": Grid2x2,
   settings: Settings2,
 } as const satisfies Record<ComposaIconSemantic, LucideIcon>;
 
