@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advanceEdgeAutoScrollViewport, collectAggregateKeyframes, createTimelineEdgeDragController, edgeAutoScrollVelocity, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineAnchorRatioAtX, timelineDragDeltaMs, timelinePointerPanDelta, timelineScrollTop, timelineViewportChanged, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport } from "./timelineModel";
+import { advanceEdgeAutoScrollViewport, collectAggregateKeyframes, createTimelineEdgeDragController, edgeAutoScrollVelocity, formatMasterRulerTick, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineAnchorRatioAtX, timelineDragDeltaMs, timelinePointerPanDelta, timelineRulerUsesMinutes, timelineScrollbarPan, timelineScrollbarThumb, timelineScrollTop, timelineViewportChanged, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport } from "./timelineModel";
 
 describe("timeline viewport model", () => {
   it("round-trips time and pixels inside a controlled viewport", () => {
@@ -134,6 +134,64 @@ describe("timeline viewport model", () => {
     expect(cancellations).toBe(1);
     expect(frames.size).toBe(0);
     expect(applied).toBe(2);
+  });
+});
+
+describe("master ruler unit selection", () => {
+  it("labels ticks in seconds while zoomed in (span under one minute)", () => {
+    expect(timelineRulerUsesMinutes(45_000)).toBe(false);
+    expect(formatMasterRulerTick(1_500, 45_000)).toBe("1.5s");
+    expect(formatMasterRulerTick(0, 45_000)).toBe("0s");
+  });
+
+  it("switches to m:ss when zoomed far out (span at/over one minute)", () => {
+    expect(timelineRulerUsesMinutes(60_000)).toBe(true);
+    expect(formatMasterRulerTick(90_000, 120_000)).toBe("1:30");
+    expect(formatMasterRulerTick(600_000, 600_000)).toBe("10:00");
+    // sub-minute remainder pads to two digits
+    expect(formatMasterRulerTick(65_000, 90_000)).toBe("1:05");
+  });
+
+  it("honours a custom threshold", () => {
+    expect(timelineRulerUsesMinutes(30_000, 20_000)).toBe(true);
+    expect(formatMasterRulerTick(30_000, 30_000, 20_000)).toBe("0:30");
+  });
+});
+
+describe("horizontal time-axis scrollbar", () => {
+  it("sizes the thumb to the visible fraction and positions it by scroll offset", () => {
+    // half the duration visible, scrolled to the start
+    const atStart = timelineScrollbarThumb({ startMs: 0, endMs: 5_000 }, 10_000, 400);
+    expect(atStart.widthPx).toBe(200);
+    expect(atStart.leftPx).toBe(0);
+    expect(atStart.scrollable).toBe(true);
+    // scrolled to the end → thumb hugs the right edge
+    const atEnd = timelineScrollbarThumb({ startMs: 5_000, endMs: 10_000 }, 10_000, 400);
+    expect(atEnd.leftPx).toBe(200);
+  });
+
+  it("spans the full track and is not scrollable when everything fits", () => {
+    const full = timelineScrollbarThumb({ startMs: 0, endMs: 10_000 }, 10_000, 400);
+    expect(full.widthPx).toBe(400);
+    expect(full.scrollable).toBe(false);
+  });
+
+  it("enforces a minimum thumb width so a tiny window stays grabbable", () => {
+    const tiny = timelineScrollbarThumb({ startMs: 0, endMs: 100 }, 100_000, 400, 24);
+    expect(tiny.widthPx).toBe(24);
+  });
+
+  it("pans the viewport by a thumb drag delta and clamps at the ends", () => {
+    // drag the half-width thumb right by 100px of a 400px track (maxLeft 200) → +5000ms
+    const panned = timelineScrollbarPan({ startMs: 0, endMs: 5_000 }, 100, 10_000, 400);
+    expect(panned).toEqual({ startMs: 2_500, endMs: 7_500 });
+    // cannot pan past the end
+    const clamped = timelineScrollbarPan({ startMs: 5_000, endMs: 10_000 }, 100, 10_000, 400);
+    expect(clamped).toEqual({ startMs: 5_000, endMs: 10_000 });
+  });
+
+  it("is a no-op when the whole duration is already visible", () => {
+    expect(timelineScrollbarPan({ startMs: 0, endMs: 10_000 }, 100, 10_000, 400)).toEqual({ startMs: 0, endMs: 10_000 });
   });
 });
 

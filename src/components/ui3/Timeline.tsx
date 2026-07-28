@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent a
 import { clsx } from "clsx";
 import { Play, Pause, Square, Circle, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, Layers, SquarePlay, AudioLines } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { collectAggregateKeyframes, createTimelineEdgeDragController, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineAnchorRatioAtX, timelineDragDeltaMs, timelinePointerPanDelta, timelineScrollTop, timelineViewportChanged, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
+import { collectAggregateKeyframes, createTimelineEdgeDragController, formatMasterRulerTick, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineAnchorRatioAtX, timelineDragDeltaMs, timelinePointerPanDelta, timelineScrollbarPan, timelineScrollbarThumb, timelineScrollTop, timelineViewportChanged, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
 import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSelectionState";
 import { ScrollArea, IconButtonRow, type IconBtn } from "./Panel";
@@ -26,7 +26,7 @@ const FONT = "font-[family-name:var(--composa-font-family)]";
 const LEFT_W = 297;       // track-list width
 const ROW_LAYER = 28;
 const ROW_PROP = 28;      // raised from 24 → contains the 20px bar with 4px above/below
-const ROW_BLOCK = 56;     // master-view lane height — two-row header ([icon][label][+] + [vis][solo][mute][lock], Figma 2-4060); the lane's clip bar fills this row height (inset 4px)
+const ROW_BLOCK = 62;     // master-view lane height — two-row header ([icon][label][+] + [vis][solo][mute][lock], Figma 2-4060); the lane's clip bar fills this row height (inset 4px). Raised 56→62 for more top/bottom header inset (the two header rows were vertically cramped) — the extra height reads as ~3pt of breathing room above and below via the header's justify-center, and gives the Audio lane's stacked name+waveform room.
 // Accepted MIME prefixes per master lane, used to type the file-drop target
 // (`useLaneFileDrop`): the Video lane accepts image + video, the Audio lane accepts
 // audio. An audio file dragged over the Video lane therefore does not highlight,
@@ -1187,17 +1187,80 @@ function Ruler({ viewport, width }: { viewport: TimelineViewport; width: number 
   );
 }
 
-// ── ruler (master view — seconds) ──────────────────────────────────────────────────
+// ── ruler (master view — seconds, switching to m:ss when zoomed far out) ────────────
 function SecondRuler({ viewport, width }: { viewport: TimelineViewport; width: number }) {
   const ticks = tickTimes(viewport, width);
+  const spanMs = viewport.endMs - viewport.startMs;
   return (
     <div className="absolute inset-0 overflow-hidden">
       {ticks.map(timeMs => (
         <div key={timeMs} className="absolute top-0 bottom-0 pointer-events-none" style={{ left: percent(timeMs, viewport) }}>
-          <span className={clsx(FONT, "absolute bottom-[6px] left-0 -translate-x-1/2 text-[11px] text-c-text-secondary tabular-nums leading-none whitespace-nowrap")}>{Number((timeMs / 1000).toFixed(2))}s</span>
+          <span className={clsx(FONT, "absolute bottom-[6px] left-0 -translate-x-1/2 text-[11px] text-c-text-secondary tabular-nums leading-none whitespace-nowrap")}>{formatMasterRulerTick(timeMs, spanMs)}</span>
           <span className="absolute bottom-0 left-0 -translate-x-1/2 w-px h-[4px] bg-c-text-secondary" />
         </div>
       ))}
+    </div>
+  );
+}
+
+// ── horizontal time-axis scrollbar ─────────────────────────────────────────────
+// Visible, draggable pan affordance for the time axis (owner: "can't scroll the
+// timeline horizontally"). Sits under the lanes, offset past the track-list column
+// so it aligns with the plot. The thumb shows the visible window over the whole
+// duration and drags to pan; when everything fits it spans the full track (nothing
+// to scroll). Complements the existing shift-wheel / trackpad-x pan, giving it a
+// readable position indicator. Uses the shared viewport math (timelineScrollbarPan).
+function TimelineTimeScrollbar({ viewport, duration, plotWidth, onPan }: {
+  viewport: TimelineViewport;
+  duration: number;
+  plotWidth: number;
+  onPan: (next: TimelineViewport) => void;
+}) {
+  const drag = useRef<{ pointerId: number; startClientX: number; startViewport: TimelineViewport } | null>(null);
+  const trackWidth = Math.max(1, plotWidth);
+  const { leftPx, widthPx, scrollable } = timelineScrollbarThumb(viewport, duration, trackWidth);
+  const begin = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!shouldBeginTimelinePointer(event.button, event.isPrimary) || !scrollable) return;
+    event.preventDefault();
+    event.stopPropagation();
+    drag.current = { pointerId: event.pointerId, startClientX: event.clientX, startViewport: viewport };
+    try { event.currentTarget.setPointerCapture(event.pointerId); } catch {}
+  };
+  const move = (event: React.PointerEvent<HTMLDivElement>) => {
+    const active = drag.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    onPan(timelineScrollbarPan(active.startViewport, event.clientX - active.startClientX, duration, trackWidth));
+  };
+  const end = (event: React.PointerEvent<HTMLDivElement>) => {
+    const active = drag.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    drag.current = null;
+    try { event.currentTarget.releasePointerCapture(event.pointerId); } catch {}
+  };
+  return (
+    <div className="flex shrink-0 h-[12px] border-t border-c-border bg-c-bg" data-timeline-time-scrollbar>
+      <div className="shrink-0 border-r border-c-border" style={{ width: LEFT_W }} />
+      <div className="relative flex-1 min-w-0">
+        <div
+          role="scrollbar"
+          aria-label="Scroll timeline horizontally"
+          aria-orientation="horizontal"
+          aria-valuemin={0}
+          aria-valuemax={Math.max(0, Math.round(duration))}
+          aria-valuenow={Math.round(viewport.startMs)}
+          onPointerDown={begin}
+          onPointerMove={move}
+          onPointerUp={end}
+          onPointerCancel={end}
+          onLostPointerCapture={end}
+          className={clsx(
+            "absolute top-1/2 -translate-y-1/2 h-[6px] rounded-full transition-colors",
+            scrollable ? "bg-c-icon-secondary/60 hover:bg-c-icon-secondary cursor-grab active:cursor-grabbing" : "bg-c-bg-secondary cursor-default",
+          )}
+          style={{ left: leftPx, width: widthPx }}
+        />
+      </div>
     </div>
   );
 }
@@ -1615,10 +1678,13 @@ function AudioTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDr
               }
             }}
             onPointerDown={event => begin(event, clip, "move")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
-            className={clsx("absolute inset-y-[4px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-c-bg-secondary",
+            className={clsx("absolute inset-y-[4px] rounded-[4px] flex flex-col justify-center gap-[2px] px-[8px] py-[5px] overflow-hidden border bg-c-bg-secondary",
               clip.selected ? "border-c-border-selected-strong" : "border-c-border")}
             style={{ left, width }}>
-            <AudioLaneWaveform id={clip.id} peaks={clip.waveform} active={clip.selected} />
+            {/* vertical stack (owner): clip name on top, waveform below — not the old
+                side-by-side (name overlaid on a full-bleed waveform). */}
+            <span className={clsx(FONT, "relative z-10 shrink-0 text-[11px] font-[450] truncate leading-none", clip.selected ? "text-c-text" : "text-c-text-secondary")}>{clip.name}</span>
+            <div className="relative flex-1 min-h-0 w-full"><AudioLaneWaveform id={clip.id} peaks={clip.waveform} active={clip.selected} /></div>
             <span aria-label={`Trim start of ${clip.name}`} role="slider" aria-valuemin={0} aria-valuemax={clip.range[1]} aria-valuenow={clip.range[0]} tabIndex={0}
               onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "start", Math.min(clip.range[1], Math.max(0, clip.range[0] + (event.key === "ArrowLeft" ? -100 : 100))), timelineClipTrimDetail("keyboard", viewport, plotWidth)); } }}
               onPointerDown={event => begin(event, clip, "start")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
@@ -1627,7 +1693,6 @@ function AudioTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDr
               onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "end", Math.max(clip.range[0], clip.range[1] + (event.key === "ArrowLeft" ? -100 : 100)), timelineClipTrimDetail("keyboard", viewport, plotWidth)); } }}
               onPointerDown={event => begin(event, clip, "end")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
               className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize z-10" />
-            <span className={clsx(FONT, "relative text-[11px] font-[450] truncate", clip.selected ? "text-c-text" : "text-c-text-secondary")}>{clip.name}</span>
           </div>;
         })}
       </div>
@@ -2078,6 +2143,8 @@ export function Timeline({
           <div className="absolute top-0 bottom-0 w-px" style={{ left: percent(playhead, viewport), backgroundColor: autoKeyframe ? "#ff3b30" : BLUE }} />
         </div>
       </ScrollArea>
+      {/* horizontal time-axis scrollbar — visible, draggable pan of the viewport window */}
+      <TimelineTimeScrollbar viewport={viewport} duration={duration} plotWidth={plotWidth} onPan={next => setViewport(next, "pointer-pan")} />
     </div>
   );
 }

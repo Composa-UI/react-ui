@@ -496,6 +496,20 @@ describe("Timeline master seams", () => {
     expect(html).not.toContain("top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-c-bg-secondary");
   });
 
+  it("stacks the audio clip name above its waveform (vertical, not side-by-side)", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={20_000}
+      audioClips={[{ id: "audio-1", name: "voiceover", range: [1_000, 6_000] }]} />);
+    // The audio clip block is a vertical column, not a horizontal `items-center` row.
+    expect(html).toContain("rounded-[4px] flex flex-col justify-center gap-[2px] px-[8px] py-[5px]");
+    // The name renders ABOVE the waveform: the name span precedes the waveform
+    // wrapper in source order within the clip.
+    const nameIndex = html.indexOf(">voiceover</span>");
+    const waveformIndex = html.indexOf("relative flex-1 min-h-0 w-full");
+    expect(nameIndex).toBeGreaterThan(-1);
+    expect(waveformIndex).toBeGreaterThan(-1);
+    expect(nameIndex).toBeLessThan(waveformIndex);
+  });
+
   it("delineates each master lane row with a horizontal divider (header + track)", () => {
     const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={20_000} />);
     // Each of the three lane rows (Compositions / Video / Audio) carries a
@@ -562,6 +576,33 @@ describe("Timeline master seams", () => {
     expect(html).toContain('aria-pressed="true"');
     // Untouched lanes keep resting labels.
     expect(html).toContain('aria-label="Hide Compositions"');
+  });
+});
+
+describe("Timeline master ruler units", () => {
+  it("labels the master ruler in seconds while zoomed in", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={20_000}
+      viewport={{ startMs: 0, endMs: 20_000 }} />);
+    expect(html).toContain(">0s</span>");
+    expect(html).not.toContain(">0:00</span>");
+  });
+
+  it("switches the master ruler to m:ss when zoomed far out", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={200_000}
+      viewport={{ startMs: 0, endMs: 180_000 }} />);
+    expect(html).toContain(">0:00</span>");
+    expect(html).not.toContain(">0s</span>");
+  });
+});
+
+describe("Timeline horizontal time scrollbar", () => {
+  it("renders a draggable horizontal viewport scrollbar", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={20_000}
+      viewport={{ startMs: 4_000, endMs: 8_000 }} />);
+    expect(html).toContain("data-timeline-time-scrollbar");
+    expect(html).toContain('role="scrollbar"');
+    expect(html).toContain('aria-orientation="horizontal"');
+    expect(html).toContain('aria-label="Scroll timeline horizontally"');
   });
 });
 
