@@ -226,10 +226,13 @@ const S = 16; // icon size in panel (24px button frame, 16px glyph = Figma inset
 const si = (n: number) => n; // alias for clarity
 
 // Shared blend-mode menu (grouped + checkmark on current). Render fn → receives
-// `close` from PopoverMenu.
+// `close` from PopoverMenu. The full blend list (19 modes across 6 groups) is
+// long, so the menu is capped at a fixed max-height and scrolls its overflow
+// rather than growing unbounded (owner ask #504).
+const BLEND_MENU_MAX_HEIGHT = 280;
 function blendMenu(current: BlendMode, onPick: (m: BlendMode) => void) {
   return (close: () => void) => (
-    <Menu minWidth={190}>
+    <Menu minWidth={190} maxHeight={BLEND_MENU_MAX_HEIGHT}>
       {BLEND_GROUPS.map((group, gi) => (
         <Fragment key={gi}>
           {gi > 0 && <MenuRow type="divider" />}
@@ -488,6 +491,18 @@ const TEXT_SIZING_LABELS: Record<TextSizingMode, string> = {
   "fixed-size": "Fixed size",
 };
 
+// Icon segments for the text-resizing control (owner ask: icons, not text
+// labels). These mirror Figma's text auto-resize glyphs:
+//   auto-width  → horizontal resize arrows (box grows/shrinks on the X axis)
+//   auto-height → vertical resize arrows   (box grows/shrinks on the Y axis)
+//   fixed-size  → a fixed bounding box     (neither axis auto-resizes)
+// The word labels are kept as each segment's ariaLabel for accessibility.
+const TEXT_SIZING_ICONS: Record<TextSizingMode, ReactNode> = {
+  "auto-width": <MoveHorizontal size={16} strokeWidth={1.5} />,
+  "auto-height": <MoveVertical size={16} strokeWidth={1.5} />,
+  "fixed-size": <Square size={16} strokeWidth={1.5} />,
+};
+
 function TextSizingModeField({
   value,
   availableModes = ["auto-width", "auto-height", "fixed-size"],
@@ -512,7 +527,7 @@ function TextSizingModeField({
           ariaLabel="Text resizing"
           segments={availableModes.map(mode => ({
             value: mode,
-            label: TEXT_SIZING_LABELS[mode],
+            icon: TEXT_SIZING_ICONS[mode],
             ariaLabel: TEXT_SIZING_LABELS[mode],
           }))}
           value={value === "mixed" || value === undefined ? "" : value}

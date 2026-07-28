@@ -174,6 +174,14 @@ describe("Inspector context projections", () => {
     expect(html).toContain('data-composa-segmented-surface');
     expect(html).toMatch(/aria-pressed="true"[^>]*aria-label="Auto height"|aria-label="Auto height"[^>]*aria-pressed="true"/);
     expect(html).not.toContain('aria-label="Text resizing: Auto height"');
+    // Owner ask: each segment renders an ICON, not a text label. The word
+    // labels survive only as aria-labels (asserted above); no visible text.
+    const fixedSegment = html.match(/<button[^>]*aria-label="Fixed size"[\s\S]*?<\/button>/)?.[0] ?? "";
+    expect(fixedSegment).toContain("<svg");
+    expect(fixedSegment).not.toMatch(/>Fixed size</);
+    expect(html).not.toContain(">Auto width</span>");
+    expect(html).not.toContain(">Auto height</span>");
+    expect(html).not.toContain(">Fixed size</span>");
     expect(html).toContain('aria-label="Project canvas size: HD 16:9"');
     expect(html).not.toContain("Composition canvas size");
   });
