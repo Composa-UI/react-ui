@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
 import { clsx } from "clsx";
-import { Play, Pause, Square, Circle, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, PenTool, Clapperboard, AudioLines } from "lucide-react";
+import { Play, Pause, Square, Circle, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, Layers, Clapperboard, AudioLines } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { collectAggregateKeyframes, createTimelineEdgeDragController, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineAnchorRatioAtX, timelineDragDeltaMs, timelinePointerPanDelta, timelineScrollTop, timelineViewportChanged, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
 import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSelectionState";
 import { ScrollArea } from "./Panel";
 import { Menu, MenuRow } from "./Menu";
+import { SegmentedControlGroup, SegmentedControlItem } from "./SegmentedControl";
 import { NumericInput } from "./Input";
 import { useComposaMode } from "./useComposaMode";
 import { EASING_PRESETS, easingControlPoints, easingPresetLabel, easingSvgPath, type EasingPreset, type NamedEasingPreset } from "./easing";
@@ -1219,18 +1220,24 @@ interface MasterLaneHeaderProps {
   onLockToggle?: () => void;
 }
 
-function LaneControlButton({ label, active, onClick, children }: {
+// Single toggle inside the lane's control GROUP. Reuses the DS SegmentedControlItem
+// (the same grouped/segmented primitive the Design-tab alignment control is built
+// on) so the four toggles read as ONE enclosed control, not four loose buttons.
+// A toggle whose handler is absent renders disabled (anatomy stays visible without
+// pretending to act); a wired toggle advertises its pressed state.
+function LaneControlSegment({ label, active, onClick, children }: {
   label: string; active?: boolean; onClick?: () => void; children: React.ReactNode;
 }) {
   return (
-    <button type="button" aria-label={label} aria-pressed={onClick ? active : undefined} disabled={!onClick} onClick={onClick}
-      className={clsx(
-        "size-[20px] rounded-c-sm flex items-center justify-center shrink-0",
-        onClick ? "hover:bg-c-bg-hover" : "opacity-40 cursor-default",
-        active ? "text-c-text" : "text-c-icon-secondary",
-      )}>
-      {children}
-    </button>
+    <SegmentedControlItem
+      selected={!!active}
+      aria-label={label}
+      aria-pressed={onClick ? active : undefined}
+      disabled={!onClick}
+      onClick={onClick}
+      icon={children}
+      className="!h-[20px] !w-[28px] !flex-none !px-0"
+    />
   );
 }
 
@@ -1251,21 +1258,22 @@ function MasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onS
           <Plus size={14} strokeWidth={1.5} />
         </button>
       </div>
-      {/* control row — [visibility] [solo] [mute] [lock] */}
-      <div className="flex items-center gap-[2px]">
-        <LaneControlButton label={visible ? `Hide ${label}` : `Show ${label}`} active={!visible} onClick={onVisibilityToggle}>
+      {/* control row — [visibility] [solo] [mute] [lock] as ONE grouped/segmented
+          control (same DS primitive as the Design-tab alignment control) */}
+      <SegmentedControlGroup role="group" aria-label={`${label} controls`} className="p-[1px]">
+        <LaneControlSegment label={visible ? `Hide ${label}` : `Show ${label}`} active={!visible} onClick={onVisibilityToggle}>
           {visible ? <Eye size={14} strokeWidth={1.5} /> : <EyeOff size={14} strokeWidth={1.5} />}
-        </LaneControlButton>
-        <LaneControlButton label={solo ? `Unsolo ${label}` : `Solo ${label}`} active={solo} onClick={onSoloToggle}>
+        </LaneControlSegment>
+        <LaneControlSegment label={solo ? `Unsolo ${label}` : `Solo ${label}`} active={solo} onClick={onSoloToggle}>
           <span className={clsx(FONT, "text-[11px] font-[650] leading-none")}>S</span>
-        </LaneControlButton>
-        <LaneControlButton label={muted ? `Unmute ${label}` : `Mute ${label}`} active={muted} onClick={onMuteToggle}>
+        </LaneControlSegment>
+        <LaneControlSegment label={muted ? `Unmute ${label}` : `Mute ${label}`} active={muted} onClick={onMuteToggle}>
           {muted ? <VolumeX size={14} strokeWidth={1.5} /> : <Volume2 size={14} strokeWidth={1.5} />}
-        </LaneControlButton>
-        <LaneControlButton label={locked ? `Unlock ${label}` : `Lock ${label}`} active={locked} onClick={onLockToggle}>
+        </LaneControlSegment>
+        <LaneControlSegment label={locked ? `Unlock ${label}` : `Lock ${label}`} active={locked} onClick={onLockToggle}>
           {locked ? <Lock size={14} strokeWidth={1.5} /> : <LockOpen size={14} strokeWidth={1.5} />}
-        </LaneControlButton>
-      </div>
+        </LaneControlSegment>
+      </SegmentedControlGroup>
     </div>
   );
 }
@@ -1952,8 +1960,11 @@ export function Timeline({
       onPointerDownCapture={beginMiddlePan} onPointerMoveCapture={moveMiddlePan}
       onPointerUpCapture={endMiddlePan} onPointerCancelCapture={endMiddlePan} onLostPointerCapture={endMiddlePan}
       className={clsx("flex flex-col bg-c-bg border-t overflow-hidden", autoKeyframe ? "border-[#ff3b30]" : "border-c-border")} style={{ height }}>
-      {/* header: transport | ruler | zoom */}
-      <div className="relative flex h-[40px] shrink-0 border-b border-c-border">
+      {/* header: transport | ruler | zoom — the top bar matches a track/header row
+          height (master lanes are ROW_BLOCK tall) so the ruler row and the lanes
+          below read on one grid. Slide-local rows are shorter, so the transport
+          keeps its compact 40px there. */}
+      <div className="relative flex shrink-0 border-b border-c-border" style={{ height: master ? ROW_BLOCK : 40 }}>
         <Transport current={playhead} duration={duration} mode={mode} playing={playing} loop={loop} onPlayingChange={setPlaying} onLoopChange={setLoop}
           autoKeyframe={autoKeyframe} onAutoKeyframeChange={onAutoKeyframeChange}
           onStop={() => { setPlaying(false); onStop?.(); }} />
@@ -2025,7 +2036,7 @@ export function Timeline({
       <ScrollArea className="relative" viewportRef={scrollViewportRef}>
         {master ? (
           <>
-            <BlockTrack header={laneHeaderProps("slides", <PenTool size={16} strokeWidth={1.5} />, "Slides")} blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <BlockTrack header={laneHeaderProps("slides", <Layers size={16} strokeWidth={1.5} />, "Compositions")} blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
             <BaseVideoTrack header={laneHeaderProps("video", <Clapperboard size={16} strokeWidth={1.5} />, "Video")} clips={baseClips} viewport={viewport} plotWidth={plotWidth} accept={VIDEO_LANE_DROP_ACCEPT} dropHint="Drop image or video here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("video", files) : undefined} onSelect={onClipSelect} onOpen={onClipOpen} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
             <AudioTrack header={laneHeaderProps("audio", <AudioLines size={16} strokeWidth={1.5} />, "Audio")} clips={audioClips} viewport={viewport} plotWidth={plotWidth} accept={AUDIO_LANE_DROP_ACCEPT} dropHint="Drop audio here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("audio", files) : undefined} onSelect={onAudioClipSelect} onOpen={onAudioClipOpen} onMove={onAudioClipMove} onTrim={onAudioClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
           </>

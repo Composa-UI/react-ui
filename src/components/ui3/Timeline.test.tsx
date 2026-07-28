@@ -496,19 +496,26 @@ describe("Timeline master seams", () => {
     const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={20_000}
       onLaneAdd={() => undefined} onLaneVisibilityToggle={() => undefined}
       onLaneSoloToggle={() => undefined} onLaneMuteToggle={() => undefined} onLaneLockToggle={() => undefined} />);
-    // Figma-refreshed labels (Slides / Video / Audio), sentence case.
-    expect(html).toContain(">Slides</span>");
+    // Figma-refreshed labels (Compositions / Video / Audio), sentence case. The
+    // top compositions lane is "Compositions" (owner: not "Slides").
+    expect(html).toContain(">Compositions</span>");
     expect(html).toContain(">Video</span>");
     expect(html).toContain(">Audio</span>");
+    // The compositions lane uses the layers glyph, not the pen-tool.
+    expect(html).toContain("lucide-layers");
+    expect(html).not.toContain("lucide-pen-tool");
     // `+` add affordance per lane.
-    expect(html).toContain('aria-label="Add to Slides"');
+    expect(html).toContain('aria-label="Add to Compositions"');
     expect(html).toContain('aria-label="Add to Video"');
     expect(html).toContain('aria-label="Add to Audio"');
     // Four-control row per lane (resting labels: Hide / Solo / Mute / Lock).
-    expect(html).toContain('aria-label="Hide Slides"');
+    expect(html).toContain('aria-label="Hide Compositions"');
     expect(html).toContain('aria-label="Solo Video"');
     expect(html).toContain('aria-label="Mute Audio"');
-    expect(html).toContain('aria-label="Lock Slides"');
+    expect(html).toContain('aria-label="Lock Compositions"');
+    // The four toggles read as ONE grouped/segmented control (same DS primitive as
+    // the Design-tab alignment control), not four loose buttons.
+    expect(html).toContain("data-composa-segmented-surface");
     // Wired controls advertise their pressed state (resting = false).
     expect(html).toContain('aria-pressed="false"');
   });
@@ -516,11 +523,12 @@ describe("Timeline master seams", () => {
   it("renders lane header controls disabled when the host wires no handlers", () => {
     const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={20_000} />);
     // Affordances stay visible so the anatomy reads, but are disabled + un-pressed.
-    expect(html).toContain('aria-label="Add to Slides"');
+    expect(html).toContain('aria-label="Add to Compositions"');
     expect(html).toContain('aria-label="Hide Video"');
-    expect(html).toMatch(/aria-label="Add to Slides"[^>]*disabled/);
-    // Unwired toggles omit aria-pressed (they assert nothing about state).
-    expect(html).toMatch(/aria-label="Lock Audio"[^>]*disabled/);
+    expect(html).toMatch(/aria-label="Add to Compositions"[^>]*disabled/);
+    // Unwired toggles render disabled (order-independent: the segmented item emits
+    // `disabled` ahead of the spread aria-label).
+    expect(html).toMatch(/aria-label="Lock Audio"[^>]*disabled|disabled[^>]*aria-label="Lock Audio"/);
   });
 
   it("reflects per-lane control state and engaged labels from laneControls", () => {
@@ -536,7 +544,7 @@ describe("Timeline master seams", () => {
     // Engaged controls advertise aria-pressed="true".
     expect(html).toContain('aria-pressed="true"');
     // Untouched lanes keep resting labels.
-    expect(html).toContain('aria-label="Hide Slides"');
+    expect(html).toContain('aria-label="Hide Compositions"');
   });
 });
 
