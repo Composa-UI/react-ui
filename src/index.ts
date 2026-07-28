@@ -16,6 +16,7 @@ export * from "./components/ui3/WorkedLabel";
 export * from "./components/ui3/AnchoredInspectorOverlay";
 export * from "./components/ui3/AutoLayoutSpacingIcon";
 export * from "./components/ui3/AssetsPanel";
+export * from "./components/ui3/Waveform";
 export * from "./components/ui3/Avatar";
 export * from "./components/ui3/Button";
 export * from "./components/ui3/Checkbox";
