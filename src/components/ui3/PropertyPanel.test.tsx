@@ -167,9 +167,32 @@ describe("Inspector context projections", () => {
       onProjectCanvasSizeChange={() => undefined}
       onCustomProjectCanvasSizeRequest={() => undefined}
     />);
-    expect(html).toContain('aria-label="Text resizing: Auto height"');
+    // Text resizing renders as a segmented control (group + one button per mode),
+    // not a dropdown: the group carries the "Text resizing" label and the active
+    // mode is a pressed segment.
+    expect(html).toContain('aria-label="Text resizing"');
+    expect(html).toContain('data-composa-segmented-surface');
+    expect(html).toMatch(/aria-pressed="true"[^>]*aria-label="Auto height"|aria-label="Auto height"[^>]*aria-pressed="true"/);
+    expect(html).not.toContain('aria-label="Text resizing: Auto height"');
     expect(html).toContain('aria-label="Project canvas size: HD 16:9"');
     expect(html).not.toContain("Composition canvas size");
+  });
+
+  it("keeps the Canvas section out of the project inspector (moved to the top-right control)", () => {
+    const html = renderToStaticMarkup(<PropertyPanel
+      mode="project"
+      projectWidth={1920}
+      projectHeight={1080}
+      projectFrameRate={30}
+      onProjectCanvasSizeChange={() => undefined}
+      onProjectFrameRateChange={() => undefined}
+    />);
+    // No Canvas section, no Aspect ratio / inline Dimensions rows in the body …
+    expect(html).not.toContain(">Canvas</span>");
+    expect(html).not.toContain(">Aspect ratio</span>");
+    expect(html).not.toContain(">Dimensions</span>");
+    // … but the canvas-size + frame-rate control lives in the project header.
+    expect(html).toContain('aria-label="Project canvas size: HD 16:9"');
   });
 });
 

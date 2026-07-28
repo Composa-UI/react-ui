@@ -130,7 +130,7 @@ describe("Position alignment actions", () => {
 });
 
 describe("Inspector capability controls", () => {
-  it("routes the controlled text resizing projection without changing dimensions locally", () => {
+  it("routes the controlled text resizing projection through a segmented control", () => {
     const modes: string[] = [];
     let renderer: ReturnType<typeof create>;
     act(() => { renderer = create(<PropertyPanel
@@ -139,12 +139,15 @@ describe("Inspector capability controls", () => {
       availableTextSizingModes={["auto-width", "fixed-size"]}
       onTextSizingModeChange={mode => modes.push(mode)}
     />); });
-    const popover = renderer!.root.findAllByType(PopoverMenu)
-      .find(item => item.props.trigger.props.ariaLabel?.startsWith("Text resizing:"))!;
-    const menu = popover.props.children(() => undefined);
-    const fixed = menu.props.children.find((row: { props?: { label?: string } }) => row?.props?.label === "Fixed size");
+    // Text resizing is a segmented control (not a dropdown): its options are
+    // inline buttons, one per available mode. Clicking one emits that mode.
+    const group = renderer!.root.findAll(node => node.props?.["aria-label"] === "Text resizing" && node.props?.role === "group")[0];
+    const fixed = group.findAll(node => node.props?.["aria-label"] === "Fixed size" && typeof node.type === "string" && node.type === "button")[0];
     act(() => fixed.props.onClick());
     expect(modes).toEqual(["fixed-size"]);
+    // No dropdown/menu trigger for text resizing — the control is fully inline.
+    expect(renderer!.root.findAllByType(PopoverMenu)
+      .some(item => item.props.trigger?.props?.ariaLabel?.startsWith("Text resizing:"))).toBe(false);
     act(() => renderer!.unmount());
   });
 
@@ -190,17 +193,50 @@ describe("Inspector capability controls", () => {
     const custom = initialRows.find((row: { props?: { label?: string } }) => row?.props?.label === "Custom project canvas size…");
     act(() => custom.props.onClick());
 
-    let form = getMenu().props.children.flat(Infinity)
+    const getForm = () => getMenu().props.children.flat(Infinity)
       .find((child: { props?: { "aria-label"?: string } }) => child?.props?.["aria-label"] === "Custom project canvas size");
-    let fields = form.props.children[0].props.children;
-    act(() => fields[0].props.onChange(1440));
-    act(() => fields[1].props.onChange(900));
+    // The custom editor stacks its fields vertically (owner ask #4): W, then H,
+    // (then Frame rate when supplied) — each a direct full-width child — so the
+    // fields are addressed by aria-label rather than a horizontal W|H pair row.
+    type El = { props?: { ariaLabel?: string; label?: string; className?: string; children?: unknown; onChange?: (v: number) => void; onClick?: () => void } };
+    const fieldByLabel = (label: string): El => (getForm().props.children as El[])
+      .filter(Boolean).find(child => child?.props?.ariaLabel === label)!;
+    act(() => fieldByLabel("Custom canvas width").props!.onChange!(1440));
+    act(() => fieldByLabel("Custom canvas height").props!.onChange!(900));
 
-    form = getMenu().props.children.flat(Infinity)
-      .find((child: { props?: { "aria-label"?: string } }) => child?.props?.["aria-label"] === "Custom project canvas size");
-    const apply = form.props.children[1].props.children[1];
-    act(() => apply.props.onClick());
+    const buttons = (getForm().props.children as El[]).filter(Boolean)
+      .find(child => typeof child?.props?.className === "string" && child.props.className.includes("justify-end"))!;
+    const apply = (buttons.props!.children as El[]).find(child => child?.props?.label === "Apply")!;
+    act(() => apply.props!.onClick!());
     expect(sizes).toEqual([{ width: 1440, height: 900 }]);
+    act(() => renderer!.unmount());
+  });
+
+  it("folds frame rate into the top-right canvas control", () => {
+    const rates: number[] = [];
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel
+      elementType="shape"
+      projectWidth={1920}
+      projectHeight={1080}
+      projectFrameRate={30}
+      onProjectFrameRateChange={rate => rates.push(rate)}
+    />); });
+    const menu = renderer!.root.findAllByType(PopoverMenu)
+      .find(item => item.props.trigger.props.ariaLabel?.startsWith("Project canvas size:"))!
+      .props.children(() => undefined);
+    // The canvas dropdown owns a Frame rate control (moved out of the project
+    // inspector's Canvas section). Its ChoiceDropdown is a PopoverMenu whose
+    // trigger reads "Frame rate: 30 fps".
+    type El = { props?: { children?: unknown; ariaLabel?: string; "aria-label"?: string; value?: string; onChange?: (v: string) => void } };
+    const flat = (menu.props.children as El[]).flat(Infinity) as El[];
+    const frameRateBlock = flat.find(child => child?.props?.["aria-label"] === "Project frame rate")!;
+    expect(frameRateBlock).toBeTruthy();
+    // The block holds a Frame-rate ChoiceDropdown reflecting the current 30 fps.
+    const choice = (frameRateBlock.props!.children as El[]).find(child => child?.props?.ariaLabel === "Frame rate")!;
+    expect(choice.props!.value).toBe("30");
+    act(() => choice.props!.onChange!("60"));
+    expect(rates).toEqual([60]);
     act(() => renderer!.unmount());
   });
 
