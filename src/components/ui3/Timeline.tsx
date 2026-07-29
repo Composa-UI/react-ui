@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
 import { clsx } from "clsx";
-import { Play, Pause, Square, Circle, Diamond, Repeat, PanelBottomClose, PanelLeftClose, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, Layers, SquarePlay, AudioLines } from "lucide-react";
+import { Play, Pause, Square, Circle, Diamond, Repeat, PanelBottomClose, PanelBottomOpen, PanelLeftClose, PanelLeftOpen, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, Layers, SquarePlay, AudioLines } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { collectAggregateKeyframes, createTimelineEdgeDragController, formatMasterRulerTick, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineAnchorRatioAtX, timelineDragDeltaMs, timelinePointerPanDelta, timelineScrollbarPan, timelineScrollbarThumb, timelineScrollTop, timelineViewportChanged, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
@@ -922,9 +922,11 @@ function TimelineChildConnector({ index, count, depth }: { index: number; count:
   );
 }
 
-function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onPropertyValueChange, onPropertyToggleHidden, onPresetToggleHidden, onPresetSelect, onPresetBarChange, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
+function TrackRows({ track, trackIndex, focusable, leftWidth = LEFT_W, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onPropertyValueChange, onPropertyToggleHidden, onPresetToggleHidden, onPresetSelect, onPresetBarChange, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
   track: Track; trackIndex: number;
   focusable: boolean;
+  /** Track-list column width; 0 collapses the row's left column (Composa#582). */
+  leftWidth?: number;
   viewport: TimelineViewport; plotWidth: number; duration: number;
   edgeDrag: TimelineEdgeDragController;
   onTrackSelect?: (trackId: string, modifiers: TimelineTrackSelectionModifiers) => void;
@@ -975,8 +977,8 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
           data-composa-row-highlight="timeline-full-lane"
           className={clsx("pointer-events-none absolute inset-0", rowSelectionHighlightClassName(selectionState))}
         />
-        <div className="relative shrink-0 flex items-center gap-[8px] pr-[8px] border-r border-c-border"
-          style={{ width: LEFT_W, paddingLeft: 8 + depth * 16 }}>
+        <div className={clsx("relative shrink-0 flex items-center gap-[8px] pr-[8px] border-r border-c-border", leftWidth === 0 && "hidden")}
+          style={{ width: leftWidth, paddingLeft: 8 + depth * 16 }}>
           {/* tree guides: a vertical line at each ancestor indent level (Composa#343) */}
           {Array.from({ length: depth }).map((_, level) => (
             <span key={`guide-${level}`} aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-c-border" style={{ left: 16 + level * 16 }} />
@@ -1043,7 +1045,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
         const presetProjection = timelineDurationBarProjection(preset.timeRange, viewport);
         return (
         <div key={preset.id} className={clsx("group/preset flex", preset.hidden && "opacity-40")} style={{ height: ROW_PROP }}>
-          <div className="relative shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
+          <div className={clsx("relative shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border", leftWidth === 0 && "hidden")} style={{ width: leftWidth, paddingLeft: 48 + depth * 16 }}>
             <TimelineChildConnector index={childIndex} count={childCount} depth={depth} />
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate text-c-text-secondary")}>{preset.label}</span>
             {preset.editable !== false && <button type="button"
@@ -1077,7 +1079,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
           className={clsx("flex", p.hidden && "opacity-40", propSelected ? "bg-c-bg-selected" : rowGraySelected && "bg-c-bg-secondary")}
           style={{ height: ROW_PROP }}
           onClick={event => { if (!(event.target as Element).closest?.("button,[data-keyframe-id],[data-easing-segment]")) onPropertyRowSelect?.(propertyId); }}>
-          <div className="group/prop relative shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
+          <div className={clsx("group/prop relative shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border", leftWidth === 0 && "hidden")} style={{ width: leftWidth, paddingLeft: 48 + depth * 16 }}>
             <TimelineChildConnector index={presetCount + i} count={childCount} depth={depth} />
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate", p.accent ? "text-[#8638e5]" : "text-c-text-secondary")}>{p.name}</span>
             {/* keyframe stepper: ◀ prev-keyframe · ◇ toggle-at-playhead · ▶ next-keyframe */}
@@ -1092,7 +1094,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
             </button>
             {/* inline value at the playhead — between the stepper and the eye, revealed on hover/selection (Composa#343b) */}
             {p.value !== undefined && (
-              <div className={clsx("shrink-0 w-[56px]", !(propSelected || rowGraySelected) && "opacity-0 group-hover/prop:opacity-100 focus-within:opacity-100")}>
+              <div className={clsx("shrink-0 w-[56px] select-text", !(propSelected || rowGraySelected) && "opacity-0 group-hover/prop:opacity-100 focus-within:opacity-100")}>
                 <NumericInput ariaLabel={`${p.name} value`} value={p.value} size="small" disabled={p.valueEditable === false}
                   onChange={value => onPropertyValueChange?.(trackId, propertyId, value)} />
               </div>
@@ -1119,10 +1121,12 @@ function TransportIconButton({ children, label, onClick, active }: { children: R
   return <button aria-label={label} aria-pressed={active} onClick={onClick} className={clsx("size-[24px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover", active && "bg-c-bg-selected")}>{children}</button>;
 }
 
-function Transport({ current, duration, mode, playing, loop, autoKeyframe = false, onPlayingChange, onStop, onLoopChange, onAutoKeyframeChange }: {
+function Transport({ current, duration, mode, playing, loop, autoKeyframe = false, onPlayingChange, onStop, onLoopChange, onAutoKeyframeChange, trackListCollapsed = false, onTrackListCollapsedChange }: {
   current: number; duration: number; mode: TimelineMode; playing: boolean; loop: boolean; autoKeyframe?: boolean;
   onPlayingChange: (playing: boolean) => void; onStop?: () => void; onLoopChange: (loop: boolean) => void;
   onAutoKeyframeChange?: (value: boolean) => void;
+  trackListCollapsed?: boolean;
+  onTrackListCollapsedChange?: (collapsed: boolean) => void;
 }) {
   const slide = mode === "slide";
   const fmt = slide
@@ -1162,8 +1166,11 @@ function Transport({ current, duration, mode, playing, loop, autoKeyframe = fals
         </button>
       </div>
       <div className="flex-1" />
-      <button aria-label="Collapse track list" className="size-[24px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover">
-        <PanelLeftClose size={16} strokeWidth={1.5} />
+      <button type="button" aria-label={trackListCollapsed ? "Expand track list" : "Collapse track list"} aria-pressed={trackListCollapsed}
+        disabled={!onTrackListCollapsedChange}
+        onClick={onTrackListCollapsedChange ? () => onTrackListCollapsedChange(!trackListCollapsed) : undefined}
+        className={clsx("size-[24px] rounded-c-md flex items-center justify-center text-c-icon", onTrackListCollapsedChange ? "hover:bg-c-bg-hover" : "opacity-40 cursor-default", trackListCollapsed && "bg-c-bg-selected")}>
+        {trackListCollapsed ? <PanelLeftOpen size={16} strokeWidth={1.5} /> : <PanelLeftClose size={16} strokeWidth={1.5} />}
       </button>
     </div>
   );
@@ -1210,10 +1217,11 @@ function SecondRuler({ viewport, width }: { viewport: TimelineViewport; width: n
 // duration and drags to pan; when everything fits it spans the full track (nothing
 // to scroll). Complements the existing shift-wheel / trackpad-x pan, giving it a
 // readable position indicator. Uses the shared viewport math (timelineScrollbarPan).
-function TimelineTimeScrollbar({ viewport, duration, plotWidth, onPan }: {
+function TimelineTimeScrollbar({ viewport, duration, plotWidth, leftWidth = LEFT_W, onPan }: {
   viewport: TimelineViewport;
   duration: number;
   plotWidth: number;
+  leftWidth?: number;
   onPan: (next: TimelineViewport) => void;
 }) {
   const drag = useRef<{ pointerId: number; startClientX: number; startViewport: TimelineViewport } | null>(null);
@@ -1240,7 +1248,7 @@ function TimelineTimeScrollbar({ viewport, duration, plotWidth, onPan }: {
   };
   return (
     <div className="flex shrink-0 h-[12px] border-t border-c-border bg-c-bg" data-timeline-time-scrollbar>
-      <div className="shrink-0 border-r border-c-border" style={{ width: LEFT_W }} />
+      {leftWidth > 0 && <div className="shrink-0 border-r border-c-border" style={{ width: leftWidth }} />}
       <div className="relative flex-1 min-w-0">
         <div
           role="scrollbar"
@@ -1280,9 +1288,12 @@ interface MasterLaneHeaderProps {
   onSoloToggle?: () => void;
   onMuteToggle?: () => void;
   onLockToggle?: () => void;
+  /** Track-list column width; 0 collapses the header out entirely (Composa#582). */
+  leftWidth?: number;
 }
 
-function MasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onSoloToggle, onMuteToggle, onLockToggle }: MasterLaneHeaderProps) {
+function MasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onSoloToggle, onMuteToggle, onLockToggle, leftWidth = LEFT_W }: MasterLaneHeaderProps) {
+  if (leftWidth === 0) return null;
   const visible = control?.visible ?? true;
   const solo = control?.solo ?? false;
   const muted = control?.muted ?? false;
@@ -1324,7 +1335,7 @@ function MasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onS
     },
   ];
   return (
-    <div className="shrink-0 flex flex-col justify-center gap-[6px] pl-[8px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, height: ROW_BLOCK }}>
+    <div className="shrink-0 flex flex-col justify-center gap-[6px] pl-[8px] pr-[8px] border-r border-c-border" style={{ width: leftWidth, height: ROW_BLOCK }}>
       {/* top row — [type icon] [label] [+ add]. Icons use the primary c-icon token. */}
       <div className="flex items-center gap-[6px]">
         <span className={clsx("shrink-0 flex items-center", visible ? "text-c-icon" : "text-c-icon opacity-60")} aria-hidden>{icon}</span>
@@ -1345,9 +1356,10 @@ function MasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onS
 }
 
 // ── master track rows: "Slides" block track + "Video"/"Audio" lanes ──────────────
-function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onContextMenu, onMove, onTrim, onGestureStart, onGestureEnd }: {
+function BlockTrack({ blocks, header, leftWidth, viewport, plotWidth, onSelect, onOpen, onContextMenu, onMove, onTrim, onGestureStart, onGestureEnd }: {
   blocks: SlideBlock[];
   header: MasterLaneHeaderProps;
+  leftWidth: number;
   viewport: TimelineViewport; plotWidth: number;
   onSelect?: (id: string) => void;
   onOpen?: (id: string) => void;
@@ -1387,7 +1399,7 @@ function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onC
   return (
     <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK }}>
       {/* left header — [icon][label][+] + [vis][solo][mute][lock] */}
-      <MasterLaneHeader {...header} />
+      <MasterLaneHeader {...header} leftWidth={leftWidth} />
       {/* block lane */}
       <div data-timeline-pan-surface className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }}>
         {blocks.map((b, i) => {
@@ -1424,16 +1436,20 @@ function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onC
               onPointerMove={event => update(event, b)}
               onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
               className={clsx(
-                "absolute inset-y-[4px] rounded-[4px] flex items-center px-[10px] overflow-hidden border",
+                // outline-none + focus-visible ring: focusable bars must never leak the
+                // raw UA focus outline (Composa#584) — keyboard focus shows the DS ring,
+                // mouse click shows nothing.
+                "absolute inset-y-[4px] rounded-[4px] flex items-center px-[10px] overflow-hidden border outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring",
                 b.active
                   ? "bg-[#0d99ff]/20 border-[#0d99ff]"
-                  : "bg-c-bg-secondary border-c-border",
+                  // Blue hover highlight on rest, matching every other timeline bar (Composa#583).
+                  : "bg-c-bg-secondary border-c-border hover:border-c-border-selected",
               )}
               style={{ left, width }}
             >
               {/* trim handles (edge-drag to trim start/end) */}
-              <span aria-label={`Trim start of ${b.name}`} role="slider" aria-valuemin={0} aria-valuemax={b.range[1]} aria-valuenow={b.range[0]} tabIndex={0} onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(id, "start", Math.min(b.range[1], Math.max(0, b.range[0] + (event.key === "ArrowLeft" ? -100 : 100)))); } }} onPointerDown={event => begin(event, b, "start")} onPointerMove={event => update(event, b)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} className="absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
-              <span aria-label={`Trim end of ${b.name}`} role="slider" aria-valuemin={b.range[0]} aria-valuemax={Number.MAX_SAFE_INTEGER} aria-valuenow={b.range[1]} tabIndex={0} onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(id, "end", Math.max(b.range[0], b.range[1] + (event.key === "ArrowLeft" ? -100 : 100))); } }} onPointerDown={event => begin(event, b, "end")} onPointerMove={event => update(event, b)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize" />
+              <span aria-label={`Trim start of ${b.name}`} role="slider" aria-valuemin={0} aria-valuemax={b.range[1]} aria-valuenow={b.range[0]} tabIndex={0} onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(id, "start", Math.min(b.range[1], Math.max(0, b.range[0] + (event.key === "ArrowLeft" ? -100 : 100)))); } }} onPointerDown={event => begin(event, b, "start")} onPointerMove={event => update(event, b)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} className="absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />
+              <span aria-label={`Trim end of ${b.name}`} role="slider" aria-valuemin={b.range[0]} aria-valuemax={Number.MAX_SAFE_INTEGER} aria-valuenow={b.range[1]} tabIndex={0} onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(id, "end", Math.max(b.range[0], b.range[1] + (event.key === "ArrowLeft" ? -100 : 100))); } }} onPointerDown={event => begin(event, b, "end")} onPointerMove={event => update(event, b)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />
               <span className={clsx(FONT, "text-[11px] font-[450] truncate", b.active ? "text-c-text" : "text-c-text-secondary")}>{b.name}</span>
             </div>
           );
@@ -1512,9 +1528,10 @@ function LaneDropOverlay({ hint }: { hint: string }) {
   );
 }
 
-function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDropFiles, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
+function BaseVideoTrack({ clips, header, leftWidth, viewport, plotWidth, accept, dropHint, onDropFiles, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
   clips: BaseClipBlock[];
   header: MasterLaneHeaderProps;
+  leftWidth: number;
   viewport: TimelineViewport; plotWidth: number;
   accept?: readonly string[];
   dropHint?: string;
@@ -1554,7 +1571,7 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
   };
   return (
     <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK }}>
-      <MasterLaneHeader {...header} />
+      <MasterLaneHeader {...header} leftWidth={leftWidth} />
       <div {...dropHandlers} data-timeline-pan-surface data-lane-drop-active={dragActive || undefined} className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Base video track" : "Base video track (empty)"}>
         {dragActive && <LaneDropOverlay hint={dropHint ?? "Drop media here"} />}
         {clips.map(clip => {
@@ -1571,17 +1588,19 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
               }
             }}
             onPointerDown={event => begin(event, clip, "move")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
-            className={clsx("absolute inset-y-[4px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-c-bg-secondary",
-              clip.selected ? "border-c-border-selected-strong" : "border-c-border")}
+            className={clsx("absolute inset-y-[4px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-c-bg-secondary outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring",
+              // Blue hover highlight on rest (Composa#583); focus ring instead of the raw
+              // UA outline (Composa#584).
+              clip.selected ? "border-c-border-selected-strong" : "border-c-border hover:border-c-border-selected")}
             style={{ left, width, backgroundColor: !clip.thumbnail && !tintIsImage ? clip.tint : undefined, backgroundImage: clip.thumbnail ? `linear-gradient(rgba(0,0,0,.25),rgba(0,0,0,.25)),url(${clip.thumbnail})` : tintIsImage ? clip.tint : undefined, backgroundSize: "cover", backgroundPosition: "center" }}>
             <span aria-label={`Trim start of ${clip.name}`} role="slider" aria-valuemin={0} aria-valuemax={clip.range[1]} aria-valuenow={clip.range[0]} tabIndex={0}
               onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "start", Math.min(clip.range[1], Math.max(0, clip.range[0] + (event.key === "ArrowLeft" ? -100 : 100))), timelineClipTrimDetail("keyboard", viewport, plotWidth)); } }}
               onPointerDown={event => begin(event, clip, "start")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
-              className={clsx("absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full cursor-ew-resize", clip.selected ? "bg-white" : "bg-c-icon-secondary")} />
+              className={clsx("absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full cursor-ew-resize outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring", clip.selected ? "bg-white" : "bg-c-icon-secondary")} />
             <span aria-label={`Trim end of ${clip.name}`} role="slider" aria-valuemin={clip.range[0]} aria-valuemax={Number.MAX_SAFE_INTEGER} aria-valuenow={clip.range[1]} tabIndex={0}
               onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "end", Math.max(clip.range[0], clip.range[1] + (event.key === "ArrowLeft" ? -100 : 100)), timelineClipTrimDetail("keyboard", viewport, plotWidth)); } }}
               onPointerDown={event => begin(event, clip, "end")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
-              className={clsx("absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full cursor-ew-resize", clip.selected ? "bg-white" : "bg-c-icon-secondary")} />
+              className={clsx("absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full cursor-ew-resize outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring", clip.selected ? "bg-white" : "bg-c-icon-secondary")} />
             <span className={clsx(FONT, "relative text-[11px] font-[450] truncate", clip.thumbnail || clip.tint ? "text-white" : "text-c-text-secondary")}>{clip.name}</span>
           </div>;
         })}
@@ -1659,9 +1678,10 @@ function AudioLaneWaveform({ id, peaks, active }: { id: string; peaks?: number[]
   );
 }
 
-function AudioTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDropFiles, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
+function AudioTrack({ clips, header, leftWidth, viewport, plotWidth, accept, dropHint, onDropFiles, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
   clips: AudioClipBlock[];
   header: MasterLaneHeaderProps;
+  leftWidth: number;
   viewport: TimelineViewport; plotWidth: number;
   accept?: readonly string[];
   dropHint?: string;
@@ -1701,7 +1721,7 @@ function AudioTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDr
   };
   return (
     <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK }}>
-      <MasterLaneHeader {...header} />
+      <MasterLaneHeader {...header} leftWidth={leftWidth} />
       <div {...dropHandlers} data-timeline-pan-surface data-lane-drop-active={dragActive || undefined} className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Audio track" : "Audio track (empty)"}>
         {dragActive && <LaneDropOverlay hint={dropHint ?? "Drop audio here"} />}
         {clips.map(clip => {
@@ -1717,10 +1737,11 @@ function AudioTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDr
               }
             }}
             onPointerDown={event => begin(event, clip, "move")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
-            className={clsx("absolute inset-y-[4px] rounded-[4px] flex flex-col justify-center gap-[2px] px-[8px] py-[5px] overflow-hidden border",
+            className={clsx("absolute inset-y-[4px] rounded-[4px] flex flex-col justify-center gap-[2px] px-[8px] py-[5px] overflow-hidden border outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring",
               // Selection mirrors the local (slide) timeline bar (owner): blue fill
               // + strong border; the name, waveform, and trim handles go white on it.
-              clip.selected ? "border-c-border-selected-strong bg-c-bg-brand" : "border-c-border bg-c-bg-secondary")}
+              // Blue hover highlight on rest (Composa#583); focus ring not raw UA outline (Composa#584).
+              clip.selected ? "border-c-border-selected-strong bg-c-bg-brand" : "border-c-border bg-c-bg-secondary hover:border-c-border-selected")}
             style={{ left, width }}>
             {/* vertical stack (owner): clip name on top, waveform below — not the old
                 side-by-side (name overlaid on a full-bleed waveform). */}
@@ -1729,11 +1750,11 @@ function AudioTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDr
             <span aria-label={`Trim start of ${clip.name}`} role="slider" aria-valuemin={0} aria-valuemax={clip.range[1]} aria-valuenow={clip.range[0]} tabIndex={0}
               onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "start", Math.min(clip.range[1], Math.max(0, clip.range[0] + (event.key === "ArrowLeft" ? -100 : 100))), timelineClipTrimDetail("keyboard", viewport, plotWidth)); } }}
               onPointerDown={event => begin(event, clip, "start")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
-              className={clsx("absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full cursor-ew-resize z-10", clip.selected ? "bg-white" : "bg-c-icon-secondary")} />
+              className={clsx("absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full cursor-ew-resize z-10 outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring", clip.selected ? "bg-white" : "bg-c-icon-secondary")} />
             <span aria-label={`Trim end of ${clip.name}`} role="slider" aria-valuemin={clip.range[0]} aria-valuemax={Number.MAX_SAFE_INTEGER} aria-valuenow={clip.range[1]} tabIndex={0}
               onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "end", Math.max(clip.range[0], clip.range[1] + (event.key === "ArrowLeft" ? -100 : 100)), timelineClipTrimDetail("keyboard", viewport, plotWidth)); } }}
               onPointerDown={event => begin(event, clip, "end")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
-              className={clsx("absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full cursor-ew-resize z-10", clip.selected ? "bg-white" : "bg-c-icon-secondary")} />
+              className={clsx("absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full cursor-ew-resize z-10 outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring", clip.selected ? "bg-white" : "bg-c-icon-secondary")} />
           </div>;
         })}
       </div>
@@ -1811,6 +1832,10 @@ export function Timeline({
   onKeyframeRevealHandled,
   interactionContextKey,
   onBack,
+  timelineCollapsed = false,
+  onTimelineCollapsedChange,
+  trackListCollapsed = false,
+  onTrackListCollapsedChange,
 }: {
   mode?: TimelineMode;
   tracks?: Track[];
@@ -1904,6 +1929,23 @@ export function Timeline({
   /** Stable host identity for the active composition/project interaction context. */
   interactionContextKey?: string | number;
   onBack?: () => void;
+  /**
+   * Collapse the whole timeline to just its header bar (Composa#582 "Collapse
+   * timeline" control). Controlled — the host owns the boolean and its persistence.
+   * When true the lanes body + time scrollbar are hidden and the root shrinks to the
+   * header height (the `height` prop is ignored while collapsed). Mirrors the
+   * track-chevron pattern: DS owns the prop + rendered state, host owns the toggle.
+   */
+  timelineCollapsed?: boolean;
+  onTimelineCollapsedChange?: (collapsed: boolean) => void;
+  /**
+   * Collapse the left track-list column (transport / lane headers / layer names) so
+   * the ruler + lanes span the full width (Composa#582 "Collapse track list"
+   * control). Controlled. The transport floats at the top-left while collapsed so
+   * play/stop and this toggle stay reachable and can re-expand.
+   */
+  trackListCollapsed?: boolean;
+  onTrackListCollapsedChange?: (collapsed: boolean) => void;
 }) {
   const master = mode === "master";
   const [internalPlayhead, setInternalPlayhead] = useState(defaultPlayhead);
@@ -1923,7 +1965,10 @@ export function Timeline({
   const loop = controlledLoop ?? internalLoop;
   const viewport = normalizeViewport(controlledViewport ?? internalViewport, duration);
   const viewportRef = useRef(viewport);
-  const plotWidth = Math.max(1, timelineWidth - LEFT_W);
+  // Effective track-list width — 0 while the left column is collapsed (Composa#582),
+  // so the ruler + lanes reflow to full width and stay aligned header-to-body.
+  const leftWidth = trackListCollapsed ? 0 : LEFT_W;
+  const plotWidth = Math.max(1, timelineWidth - leftWidth);
   // Build the shared header contract for one master lane: resolves its control
   // state and only binds a callback when the host supplied the matching handler,
   // so an unwired affordance stays visible-but-disabled rather than a no-op.
@@ -1996,7 +2041,7 @@ export function Timeline({
       if (event.ctrlKey || event.metaKey) {
         if (event.deltaY === 0) return;
         const rect = element.getBoundingClientRect();
-        const ratio = timelineAnchorRatioAtX(event.clientX - rect.left - LEFT_W, plotWidth);
+        const ratio = timelineAnchorRatioAtX(event.clientX - rect.left - leftWidth, plotWidth);
         const deltaY = wheelDeltaPixels(event.deltaY, event.deltaMode, pageSize);
         const next = zoomViewport(viewport, ratio, Math.exp(deltaY * .002), duration);
         if (!timelineViewportChanged(viewport, next)) return;
@@ -2068,15 +2113,20 @@ export function Timeline({
     <div ref={timelineRef} data-timeline-viewport-start-ms={viewport.startMs} data-timeline-viewport-end-ms={viewport.endMs} data-timeline-autokeyframe={autoKeyframe || undefined}
       onPointerDownCapture={beginMiddlePan} onPointerMoveCapture={moveMiddlePan}
       onPointerUpCapture={endMiddlePan} onPointerCancelCapture={endMiddlePan} onLostPointerCapture={endMiddlePan}
-      className={clsx("flex flex-col bg-c-bg border-t overflow-hidden", autoKeyframe ? "border-[#ff3b30]" : "border-c-border")} style={{ height }}>
+      className={clsx("flex flex-col bg-c-bg border-t overflow-hidden select-none", autoKeyframe ? "border-[#ff3b30]" : "border-c-border")} style={{ height: timelineCollapsed ? undefined : height }}>
       {/* header: transport | ruler | zoom — the top bar matches a track/header row
           height (master lanes are ROW_BLOCK tall) so the ruler row and the lanes
           below read on one grid. Slide-local rows are shorter, so the transport
           keeps its compact 40px there. */}
       <div className="relative flex shrink-0 border-b border-c-border" style={{ height: master ? ROW_BLOCK : 40 }}>
-        <Transport current={playhead} duration={duration} mode={mode} playing={playing} loop={loop} onPlayingChange={setPlaying} onLoopChange={setLoop}
-          autoKeyframe={autoKeyframe} onAutoKeyframeChange={onAutoKeyframeChange}
-          onStop={() => { setPlaying(false); onStop?.(); }} />
+        {/* When the track list is collapsed the transport floats at the top-left over
+            the now-full-width ruler, so play/stop and the expand toggle stay reachable. */}
+        <div className={clsx("shrink-0 flex", trackListCollapsed && "absolute left-0 top-0 bottom-0 z-30 bg-c-bg")}>
+          <Transport current={playhead} duration={duration} mode={mode} playing={playing} loop={loop} onPlayingChange={setPlaying} onLoopChange={setLoop}
+            autoKeyframe={autoKeyframe} onAutoKeyframeChange={onAutoKeyframeChange}
+            trackListCollapsed={trackListCollapsed} onTrackListCollapsedChange={onTrackListCollapsedChange}
+            onStop={() => { setPlaying(false); onStop?.(); }} />
+        </div>
         <div
           data-timeline-pan-surface
           className="flex-1 relative cursor-ew-resize overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-border-selected-strong"
@@ -2135,8 +2185,11 @@ export function Timeline({
               onChange={event => setViewport(viewportAtZoomValue(viewport, Number(event.currentTarget.value) / 100, duration), "zoom-control")}
               className="relative appearance-none w-full h-[20px] cursor-ew-resize bg-transparent rounded-c-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-c-border-selected-strong [&::-webkit-slider-runnable-track]:h-[2px] [&::-webkit-slider-runnable-track]:rounded-[1px] [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-[12px] [&::-webkit-slider-thumb]:-mt-[5px] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-sm [&::-moz-range-track]:h-[2px] [&::-moz-range-track]:rounded-[1px] [&::-moz-range-track]:bg-transparent [&::-moz-range-progress]:h-[2px] [&::-moz-range-progress]:rounded-[1px] [&::-moz-range-progress]:bg-c-bg-brand [&::-moz-range-thumb]:size-[12px] [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white" />
           </div>
-          <button aria-label="Collapse timeline" className="size-[24px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover">
-            <PanelBottomClose size={16} strokeWidth={1.5} />
+          <button type="button" aria-label={timelineCollapsed ? "Expand timeline" : "Collapse timeline"} aria-pressed={timelineCollapsed}
+            disabled={!onTimelineCollapsedChange}
+            onClick={onTimelineCollapsedChange ? () => onTimelineCollapsedChange(!timelineCollapsed) : undefined}
+            className={clsx("size-[24px] rounded-c-md flex items-center justify-center text-c-icon", onTimelineCollapsedChange ? "hover:bg-c-bg-hover" : "opacity-40 cursor-default", timelineCollapsed && "bg-c-bg-selected")}>
+            {timelineCollapsed ? <PanelBottomOpen size={16} strokeWidth={1.5} /> : <PanelBottomClose size={16} strokeWidth={1.5} />}
           </button>
         </div>
       </div>
@@ -2147,12 +2200,13 @@ export function Timeline({
           the visible viewport. Without it the line's `top-0 bottom-0` resolved against
           the scroll viewport's client height and came up short whenever the lanes
           overflowed (master view) — and stayed short under vertical scroll. */}
+      {!timelineCollapsed && (<>
       <ScrollArea className="relative" contentClassName="relative" viewportRef={scrollViewportRef}>
         {master ? (
           <>
-            <BlockTrack header={laneHeaderProps("slides", <Layers size={16} strokeWidth={1.5} />, "Compositions")} blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
-            <BaseVideoTrack header={laneHeaderProps("video", <SquarePlay size={16} strokeWidth={1.5} />, "Video")} clips={baseClips} viewport={viewport} plotWidth={plotWidth} accept={VIDEO_LANE_DROP_ACCEPT} dropHint="Drop image or video here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("video", files) : undefined} onSelect={onClipSelect} onOpen={onClipOpen} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
-            <AudioTrack header={laneHeaderProps("audio", <AudioLines size={16} strokeWidth={1.5} />, "Audio")} clips={audioClips} viewport={viewport} plotWidth={plotWidth} accept={AUDIO_LANE_DROP_ACCEPT} dropHint="Drop audio here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("audio", files) : undefined} onSelect={onAudioClipSelect} onOpen={onAudioClipOpen} onMove={onAudioClipMove} onTrim={onAudioClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <BlockTrack header={laneHeaderProps("slides", <Layers size={16} strokeWidth={1.5} />, "Compositions")} leftWidth={leftWidth} blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <BaseVideoTrack header={laneHeaderProps("video", <SquarePlay size={16} strokeWidth={1.5} />, "Video")} leftWidth={leftWidth} clips={baseClips} viewport={viewport} plotWidth={plotWidth} accept={VIDEO_LANE_DROP_ACCEPT} dropHint="Drop image or video here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("video", files) : undefined} onSelect={onClipSelect} onOpen={onClipOpen} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <AudioTrack header={laneHeaderProps("audio", <AudioLines size={16} strokeWidth={1.5} />, "Audio")} leftWidth={leftWidth} clips={audioClips} viewport={viewport} plotWidth={plotWidth} accept={AUDIO_LANE_DROP_ACCEPT} dropHint="Drop audio here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("audio", files) : undefined} onSelect={onAudioClipSelect} onOpen={onAudioClipOpen} onMove={onAudioClipMove} onTrim={onAudioClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
           </>
         ) : (
           <>
@@ -2162,15 +2216,15 @@ export function Timeline({
                 type="button"
                 onClick={onBack}
                 aria-label="Back to project"
-                className={clsx(FONT, "shrink-0 flex items-center gap-[4px] pl-[8px] pr-[8px] h-full border-r border-c-border text-[11px] font-[450] text-c-text-secondary hover:text-c-text")}
-                style={{ width: LEFT_W }}
+                className={clsx(FONT, "shrink-0 flex items-center gap-[4px] pl-[8px] pr-[8px] h-full border-r border-c-border text-[11px] font-[450] text-c-text-secondary hover:text-c-text", leftWidth === 0 && "hidden")}
+                style={{ width: leftWidth }}
               >
                 <ChevronLeftBack size={14} strokeWidth={1.5} className="shrink-0" />
                 <span>Project</span>
               </button>
             </div>
             <div role={onTrackSelect ? "listbox" : undefined} aria-label={onTrackSelect ? "Timeline layers" : undefined} aria-multiselectable={onTrackSelect ? true : undefined}>
-            {tracks.map((t, i) => <TrackRows key={t.id ?? i} track={t} trackIndex={i} focusable={i === Math.max(0, tracks.findIndex(track => (track.selectionState ?? (track.selected ? "selected" : "none")) === "selected"))} viewport={viewport} plotWidth={plotWidth} duration={duration} edgeDrag={edgeDrag} onTrackSelect={onTrackSelect}
+            {tracks.map((t, i) => <TrackRows key={t.id ?? i} track={t} trackIndex={i} leftWidth={leftWidth} focusable={i === Math.max(0, tracks.findIndex(track => (track.selectionState ?? (track.selected ? "selected" : "none")) === "selected"))} viewport={viewport} plotWidth={plotWidth} duration={duration} edgeDrag={edgeDrag} onTrackSelect={onTrackSelect}
               onExpandedChange={onTrackExpandedChange} onAggregateKeyframeSelect={onAggregateKeyframeSelect}
               onKeyframeSelect={(target, additive) => { revealTime(target.timeMs); onKeyframeSelect?.(target, additive); }} onKeyframeMove={onKeyframeMove} onKeyframeDelete={onKeyframeDelete}
               onEasingSegmentSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange}
@@ -2189,12 +2243,13 @@ export function Timeline({
             relatively-positioned scroll content (see `contentClassName` above), so it
             spans header-ruler-bottom through the last lane at any scroll position and in
             the empty/null state, instead of only the visible viewport height. */}
-        <div className="absolute top-0 bottom-0 right-0 z-20 overflow-hidden pointer-events-none" style={{ left: LEFT_W }}>
+        <div className="absolute top-0 bottom-0 right-0 z-20 overflow-hidden pointer-events-none" style={{ left: leftWidth }}>
           <div className="absolute top-0 bottom-0 w-px" style={{ left: percent(playhead, viewport), backgroundColor: autoKeyframe ? "#ff3b30" : BLUE }} />
         </div>
       </ScrollArea>
       {/* horizontal time-axis scrollbar — visible, draggable pan of the viewport window */}
-      <TimelineTimeScrollbar viewport={viewport} duration={duration} plotWidth={plotWidth} onPan={next => setViewport(next, "pointer-pan")} />
+      <TimelineTimeScrollbar viewport={viewport} duration={duration} plotWidth={plotWidth} leftWidth={leftWidth} onPan={next => setViewport(next, "pointer-pan")} />
+      </>)}
     </div>
   );
 }

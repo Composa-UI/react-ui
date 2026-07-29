@@ -686,3 +686,68 @@ describe("master lane file-drop typing (Phase 3)", () => {
     expect(html).toContain("Audio track");
   });
 });
+
+// Composa#583 — composition blocks and video/audio clips get the same blue hover
+// highlight (and a managed focus ring instead of the raw UA outline, Composa#584).
+describe("Timeline bar hover + focus (Composa#583 / #584)", () => {
+  const master = (extra = {}) => renderToStaticMarkup(<Timeline mode="master" height={220} duration={4_000}
+    blocks={[{ id: "intro", name: "Intro", range: [0, 1_000] }]}
+    baseClips={[{ id: "v1", name: "Clip", range: [0, 1_000] }]}
+    audioClips={[{ id: "a1", name: "Track", range: [0, 1_000] }]}
+    {...extra} />);
+
+  it("gives composition blocks a blue hover highlight and a managed focus ring", () => {
+    const html = master();
+    // The Intro composition bar carries the hover border + outline-none focus ring.
+    expect(html).toContain("hover:border-c-border-selected");
+    expect(html).toContain("focus-visible:ring-c-focus-ring");
+  });
+
+  it("applies the hover highlight to every master clip type (comp/video/audio)", () => {
+    const html = master();
+    // Three lane bars (comp, video base clip, audio clip) each pick up the hover border.
+    expect(html.match(/hover:border-c-border-selected/g)?.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("makes the whole timeline non-text-selectable (chrome + headers + labels)", () => {
+    expect(master()).toContain("select-none");
+  });
+});
+
+// Composa#582 — the two formerly-inert collapse controls are controlled toggles.
+describe("Timeline collapse controls (Composa#582)", () => {
+  it("renders the collapse buttons disabled when the host wires no handler", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={2_000} />);
+    expect(html).toContain('aria-label="Collapse timeline"');
+    expect(html).toContain('aria-label="Collapse track list"');
+    // Inert without handlers — disabled, not silently no-op.
+    expect(html).toMatch(/aria-label="Collapse timeline"[^>]*disabled/);
+    expect(html).toMatch(/aria-label="Collapse track list"[^>]*disabled/);
+  });
+
+  it("reflects the collapsed state and hides the lanes body when timelineCollapsed", () => {
+    const open = renderToStaticMarkup(<Timeline mode="master" height={220} duration={2_000}
+      blocks={[{ id: "intro", name: "Intro", range: [0, 1_000] }]} onTimelineCollapsedChange={() => undefined} />);
+    expect(open).toContain('aria-label="Collapse timeline"');
+    expect(open).toContain('aria-label="Intro"');
+
+    const collapsed = renderToStaticMarkup(<Timeline mode="master" height={220} duration={2_000}
+      blocks={[{ id: "intro", name: "Intro", range: [0, 1_000] }]} timelineCollapsed onTimelineCollapsedChange={() => undefined} />);
+    // Header stays (with an Expand affordance); the body/lanes are gone.
+    expect(collapsed).toContain('aria-label="Expand timeline"');
+    expect(collapsed).toContain('aria-pressed="true"');
+    expect(collapsed).not.toContain('aria-label="Intro"');
+  });
+
+  it("drops the lane headers so the plot spans full width when trackListCollapsed", () => {
+    const open = renderToStaticMarkup(<Timeline mode="master" height={220} duration={2_000}
+      onTrackListCollapsedChange={() => undefined} />);
+    expect(open).toContain("Compositions");
+
+    const collapsed = renderToStaticMarkup(<Timeline mode="master" height={220} duration={2_000}
+      trackListCollapsed onTrackListCollapsedChange={() => undefined} />);
+    // Lane headers (the track list) are removed; the expand affordance replaces the toggle.
+    expect(collapsed).not.toContain("Compositions");
+    expect(collapsed).toContain('aria-label="Expand track list"');
+  });
+});

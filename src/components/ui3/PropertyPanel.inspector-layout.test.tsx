@@ -21,10 +21,12 @@ const rowByLabel = (renderer: ReactTestRenderer, label: string) =>
   renderer.root.findAllByType(PanelFieldRow).find(node => node.props.label === label);
 
 describe("slide/composition inspector — trailing-slot + Duration column", () => {
-  it("reserves the trailing-icon slot on the slide Range row", () => {
-    const range = rowByLabel(render({ mode: "slide", slideStart: 0, slideDuration: 4 }), "Range")!;
-    // reserveRightSlot true (not the edge-to-edge false the panel used before).
-    expect(range.props.reserveRightSlot).toBe(true);
+  it("reserves the trailing-icon slot on the slide Start/End rows", () => {
+    const renderer = render({ mode: "slide", slideStart: 0, slideDuration: 4 });
+    // Start and End are their own labeled rows (Composa#574), each reserving the slot
+    // (not the edge-to-edge false the panel used before).
+    expect(rowByLabel(renderer, "Start")!.props.reserveRightSlot).toBe(true);
+    expect(rowByLabel(renderer, "End")!.props.reserveRightSlot).toBe(true);
   });
 
   it("reserves the trailing slot AND pins Duration to one column", () => {
@@ -42,9 +44,11 @@ describe("slide/composition inspector — trailing-slot + Duration column", () =
 
   it("leaves the video-clip Timeline edge-to-edge (no reserved slot, no Duration spacer)", () => {
     const renderer = render({ mode: "video-clip", clipStart: 0, clipDuration: 8 });
-    const range = rowByLabel(renderer, "Range")!;
+    const start = rowByLabel(renderer, "Start")!;
+    const end = rowByLabel(renderer, "End")!;
     const duration = rowByLabel(renderer, "Duration")!;
-    expect(range.props.reserveRightSlot).toBe(false);
+    expect(start.props.reserveRightSlot).toBe(false);
+    expect(end.props.reserveRightSlot).toBe(false);
     expect(duration.props.reserveRightSlot).toBe(false);
     expect(duration.props.right).toBeUndefined();
   });

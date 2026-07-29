@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useId, type MutableRefObject, type ReactNode } from "react";
+import { Fragment, useState, useRef, useEffect, useId, type MutableRefObject, type ReactNode } from "react";
 import { clsx } from "clsx";
 import { ChevronDown, Eye, EyeOff, Minus } from "lucide-react";
 import { Tooltip } from "./Tooltip";
@@ -243,6 +243,10 @@ export interface IconBtn {
   active?: boolean;
   disabled?: boolean;
   onClick?: () => void;
+  /** Optional hover tooltip for these icon-only actions. `aria-label` still names
+   *  the button for assistive tech; `tooltip` adds the visible hint sighted users
+   *  need for unlabelled glyphs (align/rotate/flip, lane controls, …). */
+  tooltip?: string;
 }
 
 interface IconButtonRowProps {
@@ -274,9 +278,8 @@ export function IconButtonRow({
         // also advertise `aria-pressed`; single-select buttons stay unpressed.
         const isActive = btn.active ?? (value !== undefined && btn.value === value);
 
-        return (
+        const button = (
           <button
-            key={btn.label}
             aria-label={btn.label}
             aria-pressed={btn.active === undefined ? undefined : btn.active}
             disabled={btn.disabled}
@@ -300,6 +303,10 @@ export function IconButtonRow({
             {btn.icon}
           </button>
         );
+
+        return btn.tooltip
+          ? <Tooltip key={btn.label} label={btn.tooltip} disabled={btn.disabled}>{button}</Tooltip>
+          : <Fragment key={btn.label}>{button}</Fragment>;
       })}
     </div>
   );
