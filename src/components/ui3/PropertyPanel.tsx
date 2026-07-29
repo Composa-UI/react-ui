@@ -259,21 +259,29 @@ const si = (n: number) => n; // alias for clarity
 // long, so the menu is capped at a fixed max-height and scrolls its overflow
 // rather than growing unbounded (owner ask #504).
 const BLEND_MENU_MAX_HEIGHT = 280;
-function blendMenu(current: BlendMode, onPick: (m: BlendMode) => void) {
+function blendMenu(current: BlendMode, onPick: (m: BlendMode) => void, supported?: readonly BlendMode[]) {
+  const isSupported = (m: BlendMode) => !supported || supported.includes(m);
   return (close: () => void) => (
     <Menu minWidth={190} maxHeight={BLEND_MENU_MAX_HEIGHT}>
       {BLEND_GROUPS.map((group, gi) => (
         <Fragment key={gi}>
           {gi > 0 && <MenuRow type="divider" />}
-          {group.map(m => (
-            <MenuRow
-              key={m}
-              type="checkmark"
-              label={m}
-              checked={current === m}
-              onClick={() => { onPick(m); close(); }}
-            />
-          ))}
+          {group.map(m => {
+            // Modes the host engine can't apply yet are shown (Figma-parity full
+            // list) but disabled, so selecting one never silently no-ops.
+            const enabled = isSupported(m);
+            return (
+              <MenuRow
+                key={m}
+                type="checkmark"
+                label={m}
+                checked={current === m}
+                disabled={!enabled}
+                disabledReason={enabled ? undefined : "Not supported yet"}
+                onClick={enabled ? () => { onPick(m); close(); } : undefined}
+              />
+            );
+          })}
         </Fragment>
       ))}
     </Menu>
@@ -1398,11 +1406,15 @@ interface AppearanceSectionProps {
   onCornerRadiusChange?: (value: AppearanceSectionProps["cornerRadius"]) => void;
   blendControlled?: boolean;
   cornerControlled?: boolean;
+  /** Blend modes the host can actually apply. Others render disabled in the menu
+   *  (Figma-parity list, but never a silent no-op). Omit = all enabled. */
+  supportedBlendModes?: readonly BlendMode[];
   opacityKeyframe?: InspectorKeyframeControl;
 }
 
 function AppearanceSection({
   opacity = 100, blendMode = "Pass through", cornerRadius = 0, onOpacityChange, onBlendModeChange, onCornerRadiusChange, blendControlled = false, cornerControlled = false,
+  supportedBlendModes,
   opacityMixed = false, cornerRadiusMixed = false,
   opacityKeyframe,
 }: AppearanceSectionProps) {
@@ -1428,7 +1440,7 @@ function AppearanceSection({
             align="right"
             trigger={<PanelActionBtn icon={<BlendModeIcon data-icon-semantic="blend-mode" size={16} strokeWidth={1.5} />} label="Blend mode" />}
           >
-            {blendMenu(renderedBlend, setBlendValue)}
+            {blendMenu(renderedBlend, setBlendValue, supportedBlendModes)}
           </PopoverMenu>
         </>
       }
@@ -1470,7 +1482,7 @@ function AppearanceSection({
         <div className={subLabel}>Blend mode</div>
         <div className="flex items-center gap-[8px]">
           <PopoverMenu className="flex-1 min-w-0" trigger={<Dropdown value={renderedBlend} fullWidth leadingIcon={<BlendModeIcon data-icon-semantic="blend-mode" size={16} strokeWidth={1.5} />} />}>
-            {blendMenu(renderedBlend, setBlendValue)}
+            {blendMenu(renderedBlend, setBlendValue, supportedBlendModes)}
           </PopoverMenu>
           <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove blend mode" onClick={() => setBlendValue("Pass through")} />
         </div>
@@ -2819,6 +2831,9 @@ export interface PropertyPanelProps {
   opacityMixed?: boolean;
   cornerRadiusMixed?: boolean;
   blendMode?: BlendMode;
+  /** Blend modes the host engine can actually apply; others render disabled in
+   *  the menu (Figma-parity list, never a silent no-op). Omit = all enabled. */
+  supportedBlendModes?: readonly BlendMode[];
   cornerRadius?: AppearanceSectionProps["cornerRadius"];
   onBlendModeChange?: (value: BlendMode) => void;
   onCornerRadiusChange?: AppearanceSectionProps["onCornerRadiusChange"];
@@ -3298,6 +3313,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   opacity = 100,
   onOpacityChange,
   blendMode = "Pass through",
+  supportedBlendModes,
   cornerRadius = 0, onBlendModeChange, onCornerRadiusChange,
   layout, onLayoutChange, onSizingChange, onSizingConstraintChange, onApplySizingVariable,
   textSizingMode, availableTextSizingModes, textSizingModeDisabled = false, onTextSizingModeChange,
@@ -3799,7 +3815,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           )}
 
           {/* Appearance — always present */}
-          <AppearanceSection opacity={opacity} blendMode={blendMode} cornerRadius={cornerRadius} opacityMixed={opacityMixed} cornerRadiusMixed={cornerRadiusMixed} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} />
+          <AppearanceSection opacity={opacity} blendMode={blendMode} supportedBlendModes={supportedBlendModes} cornerRadius={cornerRadius} opacityMixed={opacityMixed} cornerRadiusMixed={cornerRadiusMixed} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} />
 
           {/* Typography — text only */}
           {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} fonts={fonts} />}
