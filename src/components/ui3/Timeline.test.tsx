@@ -526,6 +526,21 @@ describe("Timeline master seams", () => {
     expect(html).not.toContain("top-1/2 -translate-y-1/2 h-[20px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-c-bg-secondary");
   });
 
+  it("advertises a context-menu affordance on audio clips when a handler is wired", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={20_000}
+      audioClips={[{ id: "audio-1", name: "voiceover", range: [1_000, 6_000] }]}
+      onAudioClipContextMenu={() => undefined} />);
+    expect(html).toContain('aria-label="voiceover"');
+    expect(html).toContain('aria-haspopup="menu"');
+  });
+
+  it("does not advertise a context-menu affordance on audio clips without a handler", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={20_000}
+      audioClips={[{ id: "audio-1", name: "voiceover", range: [1_000, 6_000] }]} />);
+    expect(html).toContain('aria-label="voiceover"');
+    expect(html).not.toContain('aria-haspopup="menu"');
+  });
+
   it("stacks the audio clip name above its waveform (vertical, not side-by-side)", () => {
     const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={20_000}
       audioClips={[{ id: "audio-1", name: "voiceover", range: [1_000, 6_000] }]} />);
