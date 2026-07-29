@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, create } from "react-test-renderer";
 import { afterEach, describe, expect, it } from "vitest";
-import { PanelEntry, PanelSection, ScrollArea } from "./Panel";
+import { IconButtonRow, PanelEntry, PanelSection, ScrollArea, type IconBtn } from "./Panel";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -9,6 +9,24 @@ const originalResizeObserver = globalThis.ResizeObserver;
 
 afterEach(() => {
   globalThis.ResizeObserver = originalResizeObserver;
+});
+
+describe("IconButtonRow tooltips", () => {
+  const btns: IconBtn[] = [
+    { icon: <span>L</span>, label: "Align left", tooltip: "Align left", onClick: () => undefined },
+    { icon: <span>C</span>, label: "Align center", onClick: () => undefined },
+  ];
+
+  it("keeps the accessible name on every icon-only button, tooltip or not", () => {
+    // The tooltip is additive + SSR-safe (Tooltip renders its child straight through
+    // when document is absent), so the accessible name is unaffected either way and a
+    // tooltipped button renders without throwing. Hover behavior is browser-only.
+    const html = renderToStaticMarkup(<IconButtonRow buttons={btns} />);
+    expect(html).toContain('aria-label="Align left"');   // tooltip: "Align left"
+    expect(html).toContain('aria-label="Align center"'); // no tooltip
+    expect(html).toContain("<span>L</span>");
+    expect(html).toContain("<span>C</span>");
+  });
 });
 
 describe("PanelSection landmarks", () => {

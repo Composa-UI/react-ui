@@ -638,20 +638,22 @@ function PositionSection({
   positionKeyframe, scaleKeyframe, rotationKeyframe, scaleApplicable = false,
   positionPresentation = "separate", onPositionPresentationChange,
 }: PositionSectionProps) {
+  // These icon-only actions carry a hover tooltip (Composa DS gap) mirroring their
+  // aria-label, so sighted users get the same hint assistive tech already had.
   const hAlignBtns: IconBtn[] = [
-    { icon: <AlignLeftIcon data-icon-semantic="align-left" size={S} strokeWidth={1.5} />, label: "Align left", onClick: () => onAlignmentAction?.("left") },
-    { icon: <AlignCenterXIcon data-icon-semantic="align-center-x" size={S} strokeWidth={1.5} />, label: "Align center", onClick: () => onAlignmentAction?.("center-x") },
-    { icon: <AlignRightIcon data-icon-semantic="align-right" size={S} strokeWidth={1.5} />, label: "Align right", onClick: () => onAlignmentAction?.("right") },
+    { icon: <AlignLeftIcon data-icon-semantic="align-left" size={S} strokeWidth={1.5} />, label: "Align left", tooltip: "Align left", onClick: () => onAlignmentAction?.("left") },
+    { icon: <AlignCenterXIcon data-icon-semantic="align-center-x" size={S} strokeWidth={1.5} />, label: "Align center", tooltip: "Align center", onClick: () => onAlignmentAction?.("center-x") },
+    { icon: <AlignRightIcon data-icon-semantic="align-right" size={S} strokeWidth={1.5} />, label: "Align right", tooltip: "Align right", onClick: () => onAlignmentAction?.("right") },
   ];
   const vAlignBtns: IconBtn[] = [
-    { icon: <AlignTopIcon data-icon-semantic="align-top" size={S} strokeWidth={1.5} />, label: "Align top", onClick: () => onAlignmentAction?.("top") },
-    { icon: <AlignCenterYIcon data-icon-semantic="align-center-y" size={S} strokeWidth={1.5} />, label: "Align middle", onClick: () => onAlignmentAction?.("center-y") },
-    { icon: <AlignBottomIcon data-icon-semantic="align-bottom" size={S} strokeWidth={1.5} />, label: "Align bottom", onClick: () => onAlignmentAction?.("bottom") },
+    { icon: <AlignTopIcon data-icon-semantic="align-top" size={S} strokeWidth={1.5} />, label: "Align top", tooltip: "Align top", onClick: () => onAlignmentAction?.("top") },
+    { icon: <AlignCenterYIcon data-icon-semantic="align-center-y" size={S} strokeWidth={1.5} />, label: "Align middle", tooltip: "Align middle", onClick: () => onAlignmentAction?.("center-y") },
+    { icon: <AlignBottomIcon data-icon-semantic="align-bottom" size={S} strokeWidth={1.5} />, label: "Align bottom", tooltip: "Align bottom", onClick: () => onAlignmentAction?.("bottom") },
   ];
   const rotateBtns: IconBtn[] = [
-    { icon: <RotateCw       size={S} strokeWidth={1.5} />, label: "Rotate 90° CW", onClick: onRotate90Clockwise ?? (onRotationChange ? () => onRotationChange(rotation + 90) : undefined) },
-    { icon: <FlipHorizontal2 size={S} strokeWidth={1.5} />, label: "Flip horizontal", onClick: onFlipHorizontal },
-    { icon: <FlipVertical2   size={S} strokeWidth={1.5} />, label: "Flip vertical", onClick: onFlipVertical },
+    { icon: <RotateCw       size={S} strokeWidth={1.5} />, label: "Rotate 90° CW", tooltip: "Rotate 90° CW", onClick: onRotate90Clockwise ?? (onRotationChange ? () => onRotationChange(rotation + 90) : undefined) },
+    { icon: <FlipHorizontal2 size={S} strokeWidth={1.5} />, label: "Flip horizontal", tooltip: "Flip horizontal", onClick: onFlipHorizontal },
+    { icon: <FlipVertical2   size={S} strokeWidth={1.5} />, label: "Flip vertical", tooltip: "Flip vertical", onClick: onFlipVertical },
   ];
   // Scale aspect-lock (Figma Motion scale row's trailing ⊡). When locked, the two
   // axes scale uniformly. Kept in one edit session by NumericEditSessionProvider.
@@ -1515,14 +1517,14 @@ function TypographySection({ value, onChange, stylesAvailable, fonts }: { value?
   const hasStyle = stylesAvailable && !!settings.styleName;
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
   const textAlignBtns: IconBtn[] = [
-    { icon: <TextAlignLeftIcon data-icon-semantic="text-align-left" size={S} strokeWidth={1.5} />, label: "Align left", onClick: () => update({ align: "left" }) },
-    { icon: <TextAlignCenterXIcon data-icon-semantic="text-align-center-x" size={S} strokeWidth={1.5} />, label: "Align center", onClick: () => update({ align: "center" }) },
-    { icon: <TextAlignRightIcon data-icon-semantic="text-align-right" size={S} strokeWidth={1.5} />, label: "Align right", onClick: () => update({ align: "right" }) },
+    { icon: <TextAlignLeftIcon data-icon-semantic="text-align-left" size={S} strokeWidth={1.5} />, label: "Align left", tooltip: "Align left", onClick: () => update({ align: "left" }) },
+    { icon: <TextAlignCenterXIcon data-icon-semantic="text-align-center-x" size={S} strokeWidth={1.5} />, label: "Align center", tooltip: "Align center", onClick: () => update({ align: "center" }) },
+    { icon: <TextAlignRightIcon data-icon-semantic="text-align-right" size={S} strokeWidth={1.5} />, label: "Align right", tooltip: "Align right", onClick: () => update({ align: "right" }) },
   ];
   const vAlignBtns: IconBtn[] = [
-    { icon: <TextAlignTopIcon data-icon-semantic="text-align-top" size={S} strokeWidth={1.5} />, label: "Top", onClick: () => update({ verticalAlign: "top" }) },
-    { icon: <TextAlignCenterIcon data-icon-semantic="text-align-center" size={S} strokeWidth={1.5} />, label: "Middle", onClick: () => update({ verticalAlign: "middle" }) },
-    { icon: <TextAlignBottomIcon data-icon-semantic="text-align-bottom" size={S} strokeWidth={1.5} />, label: "Bottom", onClick: () => update({ verticalAlign: "bottom" }) },
+    { icon: <TextAlignTopIcon data-icon-semantic="text-align-top" size={S} strokeWidth={1.5} />, label: "Top", tooltip: "Align top", onClick: () => update({ verticalAlign: "top" }) },
+    { icon: <TextAlignCenterIcon data-icon-semantic="text-align-center" size={S} strokeWidth={1.5} />, label: "Middle", tooltip: "Align middle", onClick: () => update({ verticalAlign: "middle" }) },
+    { icon: <TextAlignBottomIcon data-icon-semantic="text-align-bottom" size={S} strokeWidth={1.5} />, label: "Bottom", tooltip: "Align bottom", onClick: () => update({ verticalAlign: "bottom" }) },
   ];
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
   const [typeSettingsOpen, setTypeSettingsOpen] = useState(false);
@@ -2147,23 +2149,32 @@ function SlideTimingSection({
   const commitDuration = (value: number) => { if (!controlled) setInternalEnd(renderedStart + value); onDurationChange?.(value); };
   return (
     <PanelSection title={title} landmark={landmark}>
+      {/* Start / End as their own labeled rows (Composa#574). "Start"/"End" are words,
+          not single glyphs like X/Y or W/H, so they read as the row's sub-label — the
+          same labeled-field pattern the Design-tab rows use — instead of being squeezed
+          into the NumericInput's icon-lead slot. Each field pins to the left column so
+          it lines up with Duration below. */}
       <PanelFieldRow
-        label="Range"
+        label="Start"
         reserveRightSlot={reserveTrailingSlot}
+        right={reserveTrailingSlot ? <span aria-hidden className="block" /> : undefined}
         left={
           <NumericInput
             ariaLabel="Start"
-            iconLead={<span className={clsx(FONT, "text-[10px]")}>Start</span>}
             value={renderedStart}
             onChange={value => { if (!controlled) setInternalStart(value); onStartChange?.(value); }}
             min={0}
             suffix="s"
           />
         }
-        right={
+      />
+      <PanelFieldRow
+        label="End"
+        reserveRightSlot={reserveTrailingSlot}
+        right={reserveTrailingSlot ? <span aria-hidden className="block" /> : undefined}
+        left={
           <NumericInput
             ariaLabel="End"
-            iconLead={<span className={clsx(FONT, "text-[10px]")}>End</span>}
             value={renderedEnd}
             onChange={value => { if (!controlled) setInternalEnd(value); onEndChange?.(value); }}
             min={0}
