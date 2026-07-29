@@ -3242,7 +3242,6 @@ function PlayControl({
     >
       <SplitButton
         size="large"
-        selected={playing}
         disabled={!canPresent}
         icon={playing ? <Pause size={16} strokeWidth={1.5} /> : <Play size={16} strokeWidth={1.5} />}
         actionLabel={presentLabel}
@@ -3261,15 +3260,14 @@ function PlayControl({
           <div className="absolute top-[calc(100%+6px)] right-0 z-50">
             <Menu minWidth={168}>
               <MenuRow
-                type="checkmark"
+                type="simple"
                 label="Present"
                 leading={<Play size={16} strokeWidth={1.5} />}
-                checked={playing}
                 disabled={!canPresent}
                 onClick={canPresent ? () => { onPresent?.(); close(); } : undefined}
               />
               <MenuRow
-                type="checkmark"
+                type="simple"
                 label="Preview"
                 leading={<MonitorPlay size={16} strokeWidth={1.5} />}
                 disabled={!canPreview}
