@@ -150,9 +150,9 @@ function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps)
           setOpen(false);
         }
       }}>
-      {/* gap-px reveals a thin separator (the container bg) between segments,
-          matching SplitButton.tsx. */}
-      <div className="flex items-stretch gap-px h-[32px] rounded-c-md overflow-hidden bg-c-bg-secondary">
+      {/* Primary + chevron segments sit flush — no divider column between them
+          (Composa#600: the hardcoded grayish separator was removed). */}
+      <div className="flex items-stretch h-[32px] rounded-c-md overflow-hidden">
         {/* Primary segment — selects/activates the tool; carries active state. */}
         <button
           aria-label={label}
