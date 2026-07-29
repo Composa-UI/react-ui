@@ -21,7 +21,7 @@ import {
 import { Tabs } from "./Tabs";
 import { NumericEditSessionProvider, NumericInput, NumericComboInput, NumericPairInput, InputField, ColorInput, ComboInput, formatNumericDisplay } from "./Input";
 import { Dropdown } from "./Dropdown";
-import { SegmentedControl, SegmentedControlGroup, SegmentedControlItem } from "./SegmentedControl";
+import { SegmentedControl } from "./SegmentedControl";
 import { AlignmentControl, type AlignmentValue } from "./AlignmentControl";
 import { Chit } from "./Chit";
 import { Checkbox } from "./Checkbox";
@@ -3191,35 +3191,24 @@ function InspectorTabs({
   );
 }
 
-// ─── Segmented Play control (#482 / #575) ─────────────────────────────────────
-// The segmented Play control exposes the two truthful playback surfaces: Present
-// (enter the full presentation) and Preview (floating, non-destructive). Present
-// is the primary action; Preview stays visibly capability-gated until the
-// floating-preview surface exists end-to-end (#440) — it renders as a disabled
-// segment rather than an inert chevron, so the Present/Preview distinction is
-// always legible without advertising behavior that isn't wired.
+// ─── Play control — split button + menu (#482 / #575) ─────────────────────────
+// Present/Preview is a SPLIT BUTTON that opens a menu — the same pattern the
+// creation toolbar's tool groups use (see CreationToolbar.tsx › ToolGroupButton,
+// built on SplitButton.tsx):
+//   • primary segment — Present: the headline action (Play icon, or Pause + a
+//     brand-selected state while presenting). Clicking it presents/plays.
+//   • chevron segment — opens a Menu with two rows, Present and Preview, so the
+//     floating Preview surface is reachable without a second visible button.
 //
-// #575: both segments are icon-only (matching the CreationToolbar's icon pattern)
-// with hover/focus tooltips carrying the name. Icon-only also shrinks the cluster
-// so the whole MultiplayerBar stays within the 240px inspector column.
-
-// A native `disabled` <button> swallows pointer/focus events, so a disabled
-// segment's tooltip would never fire. Wrap disabled segments in a focusable span
-// that becomes the tooltip trigger — mirrors the disabled-tooltip pattern already
-// used for the project export controls in this panel. Enabled segments trigger
-// the tooltip from the button itself.
-function SegmentTooltip({ label, disabled, children }: { label: string; disabled: boolean; children: ReactNode }) {
-  return (
-    <Tooltip label={label} direction="BottomCenter">
-      {disabled ? (
-        <span tabIndex={0} className="flex flex-1 min-w-0 outline-none">{children}</span>
-      ) : (
-        children
-      )}
-    </Tooltip>
-  );
-}
-
+// Present stays capability-gated (the primary segment is disabled when no host
+// present action is wired); Preview stays gated too — its menu row is a visibly
+// disabled row with a "Preview unavailable" reason until the floating-preview
+// surface exists end-to-end (#440), never an inert control.
+//
+// The menu is an inline, state-driven Menu (like ToolGroupButton) rather than a
+// portal, so it stays testable and self-contained. It opens DOWNWARD because the
+// MultiplayerBar sits at the top of the (overflow-hidden) inspector column — an
+// upward menu would clip against the panel top.
 function PlayControl({
   playing,
   onPresent,
@@ -3231,30 +3220,67 @@ function PlayControl({
   onPreviewOpen?: () => void;
   previewAvailable: boolean;
 }) {
+  const [open, setOpen] = useState(false);
   const canPresent = Boolean(onPresent);
   const canPreview = previewAvailable && Boolean(onPreviewOpen);
-  const presentTooltip = playing ? "Pause presentation" : "Present";
+  const presentLabel = playing ? "Pause presentation" : "Present";
+  const close = () => setOpen(false);
+
   return (
-    <SegmentedControlGroup role="group" aria-label="Play" className="p-[1px]">
-      <SegmentTooltip label={presentTooltip} disabled={!canPresent}>
-        <SegmentedControlItem
-          selected={playing}
-          icon={playing ? <Pause size={16} strokeWidth={1.5} /> : <Play size={16} strokeWidth={1.5} />}
-          aria-label={playing ? "Pause presentation" : "Present"}
-          disabled={!canPresent}
-          onClick={onPresent}
-        />
-      </SegmentTooltip>
-      <SegmentTooltip label="Preview" disabled={!canPreview}>
-        <SegmentedControlItem
-          selected={false}
-          icon={<MonitorPlay size={16} strokeWidth={1.5} />}
-          aria-label={canPreview ? "Preview" : "Preview unavailable"}
-          disabled={!canPreview}
-          onClick={canPreview ? onPreviewOpen : undefined}
-        />
-      </SegmentTooltip>
-    </SegmentedControlGroup>
+    <div
+      className="relative shrink-0"
+      onBlur={event => {
+        if (open && !event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
+      }}
+      onKeyDownCapture={event => {
+        if (open && event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          setOpen(false);
+        }
+      }}
+    >
+      <SplitButton
+        size="large"
+        selected={playing}
+        disabled={!canPresent}
+        icon={playing ? <Pause size={16} strokeWidth={1.5} /> : <Play size={16} strokeWidth={1.5} />}
+        actionLabel={presentLabel}
+        menuLabel="Present and preview options"
+        menuOpen={open}
+        onIconClick={canPresent ? onPresent : undefined}
+        onChevronClick={() => setOpen(v => !v)}
+      />
+
+      {open && (
+        <>
+          {/* Click-away backdrop — dismiss the menu on any outside pointer. */}
+          <div className="fixed inset-0 z-40" onClick={close} />
+          {/* Downward menu, right-aligned to the split button so it stays inside
+              the 240px inspector column. */}
+          <div className="absolute top-[calc(100%+6px)] right-0 z-50">
+            <Menu minWidth={168}>
+              <MenuRow
+                type="checkmark"
+                label="Present"
+                leading={<Play size={16} strokeWidth={1.5} />}
+                checked={playing}
+                disabled={!canPresent}
+                onClick={canPresent ? () => { onPresent?.(); close(); } : undefined}
+              />
+              <MenuRow
+                type="checkmark"
+                label="Preview"
+                leading={<MonitorPlay size={16} strokeWidth={1.5} />}
+                disabled={!canPreview}
+                disabledReason={canPreview ? undefined : "Preview unavailable"}
+                onClick={canPreview ? () => { onPreviewOpen?.(); close(); } : undefined}
+              />
+            </Menu>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -3289,8 +3315,10 @@ function MultiplayerBar({
   const accountAvatar = <Avatar initial={accountInitial} src={accountPhotoUrl} size="default" color={accountColor} />;
   return (
     // #575: w-full + min-w-0 keep the cluster inside the fixed 240px inspector
-    // column; the flex-1 spacer collapses first, and the icon-only PlayControl
-    // (below) is what actually shrinks the cluster to fit rather than overflowing.
+    // column; the flex-1 spacer collapses first so the compact Present split
+    // button and the separate Share button beside it stay fully visible rather
+    // than overflowing. Share is deliberately its OWN button, not folded into the
+    // split group.
     <div className="flex w-full min-w-0 items-center gap-[8px] px-[8px] py-[6px]">
       {presenceControlsEnabled && onAccountMenu && onPresenceMenu ? (
         <SplitButton

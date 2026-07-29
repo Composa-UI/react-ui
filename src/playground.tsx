@@ -868,10 +868,18 @@ export default function Playground() {
     );
     return (
       <div style={{ minHeight: "100vh", display: "flex", gap: 24, justifyContent: "center", alignItems: "flex-start", background: "#e6e6e6", padding: 24 }}>
-        <Card title="Both capability-gated (disabled)">
+        <Card title="Present gated (primary disabled, chevron still opens menu)">
           <PropertyPanel mode="project" onShare={() => console.info("share")} accountInitial="S" accountColor="purple" />
         </Card>
-        <Card title="Present live + Preview available + presence">
+        <Card title="Present ready + Preview available + Share beside">
+          <PropertyPanel mode="project"
+            onPreviewToggle={() => console.info("present")}
+            onPreviewOpen={() => console.info("preview")}
+            previewAvailable
+            onShare={() => console.info("share")}
+            accountInitial="S" accountColor="purple" />
+        </Card>
+        <Card title="Presenting (Pause) + presence">
           <PropertyPanel mode="project"
             previewPlaying
             onPreviewToggle={() => console.info("present")}

@@ -10,4 +10,26 @@ describe("SplitButton semantics", () => {
     expect(html).toContain('aria-label="Preview options"');
     expect(html.match(/type="button"/g)).toHaveLength(2);
   });
+
+  it("advertises menu disclosure on the chevron when a menuOpen state is supplied", () => {
+    const closed = renderToStaticMarkup(<SplitButton icon={<span>icon</span>} actionLabel="Present" menuLabel="Present and preview options" menuOpen={false} />);
+    expect(closed).toMatch(/aria-label="Present and preview options"[^>]*aria-haspopup="menu"/);
+    expect(closed).toMatch(/aria-label="Present and preview options"[^>]*aria-expanded="false"/);
+
+    const open = renderToStaticMarkup(<SplitButton icon={<span>icon</span>} actionLabel="Present" menuLabel="Present and preview options" menuOpen />);
+    expect(open).toMatch(/aria-label="Present and preview options"[^>]*aria-expanded="true"/);
+  });
+
+  it("carries a brand-selected primary and can disable only the primary segment", () => {
+    const selected = renderToStaticMarkup(<SplitButton icon={<span>icon</span>} actionLabel="Pause presentation" menuLabel="menu" selected />);
+    expect(selected).toMatch(/aria-label="Pause presentation"[^>]*aria-pressed="true"/);
+    expect(selected).toContain("bg-c-bg-brand");
+
+    const disabled = renderToStaticMarkup(<SplitButton icon={<span>icon</span>} actionLabel="Present" menuLabel="menu" disabled menuOpen={false} />);
+    // Primary is natively disabled; the chevron stays operable (no disabled attr).
+    expect(disabled).toMatch(/<button[^>]*aria-label="Present"[^>]*disabled=""/);
+    const chevron = disabled.match(/<button[^>]*aria-label="menu"[^>]*>/)?.[0];
+    expect(chevron).toBeTruthy();
+    expect(chevron).not.toContain("disabled");
+  });
 });
