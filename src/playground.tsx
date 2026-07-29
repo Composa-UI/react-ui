@@ -855,6 +855,38 @@ export default function Playground() {
     guides: [{ id: "guide-1", type: "Grid", visible: true, size: 8 }],
   });
 
+  if (view === "issue-575-multiplayer") {
+    // #575 verify: the full multiplayer cluster (Present + Preview + Share +
+    // account) inside the real 240px inspector column, in the states that made
+    // the text-first version overflow. Each card is exactly 240px wide with a
+    // 1px overflow tell-tale border so any horizontal spill is visible.
+    const Card = ({ title, children }: { title: string; children: React.ReactNode }) => (
+      <div style={{ width: 240 }}>
+        <div style={{ font: "12px system-ui", marginBottom: 8 }}>{title}</div>
+        <div style={{ width: 240, outline: "1px solid #f00", overflow: "hidden" }}>{children}</div>
+      </div>
+    );
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", gap: 24, justifyContent: "center", alignItems: "flex-start", background: "#e6e6e6", padding: 24 }}>
+        <Card title="Both capability-gated (disabled)">
+          <PropertyPanel mode="project" onShare={() => console.info("share")} accountInitial="S" accountColor="purple" />
+        </Card>
+        <Card title="Present live + Preview available + presence">
+          <PropertyPanel mode="project"
+            previewPlaying
+            onPreviewToggle={() => console.info("present")}
+            onPreviewOpen={() => console.info("preview")}
+            previewAvailable
+            onShare={() => console.info("share")}
+            presenceControlsEnabled
+            onAccountMenu={() => console.info("account")}
+            onPresenceMenu={() => console.info("presence")}
+            accountInitial="S" accountColor="purple" />
+        </Card>
+      </div>
+    );
+  }
+
   if (view === "dialogs-288") {
     return <Dialog288Fixture />;
   }

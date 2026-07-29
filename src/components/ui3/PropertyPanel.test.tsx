@@ -98,8 +98,11 @@ describe("Project shell seams", () => {
   it("keeps project video export disabled and collapses Present to one truthful action", () => {
     const html = renderToStaticMarkup(<TooltipProvider><PropertyPanel mode="project" previewPlaying /></TooltipProvider>);
 
+    // #575: Present/Preview are icon-only (no visible text label); the Pause icon
+    // is carried by lucide, the name lives in the aria-label + tooltip.
     expect(html).toContain('class="lucide lucide-pause"');
-    expect(html).toContain(">Pause</span>");
+    expect(html).not.toContain(">Pause</span>");
+    expect(html).toContain('aria-label="Pause presentation"');
     expect(html).not.toContain('aria-label="Preview options"');
     expect(html).not.toContain(">Share</span>");
     expect(html).toContain('tabindex="0" aria-label="Project video format unavailable: Video export coming soon"');
@@ -115,8 +118,13 @@ describe("Project shell seams", () => {
     // exists end-to-end (#440 / #482) — never an inert chevron.
     const plain = renderToStaticMarkup(<TooltipProvider><PropertyPanel mode="project" onPreviewToggle={() => undefined} /></TooltipProvider>);
     expect(plain).toContain('aria-label="Play"');
-    expect(plain).toContain(">Present</span>");
-    expect(plain).toContain(">Preview</span>");
+    // #575: icon-only segments — Present shows the Play icon, Preview the
+    // MonitorPlay icon; names move to aria-label + tooltip, no visible text.
+    expect(plain).not.toContain(">Present</span>");
+    expect(plain).not.toContain(">Preview</span>");
+    expect(plain).toContain('aria-label="Present"');
+    expect(plain).toContain('class="lucide lucide-play"');
+    expect(plain).toContain('class="lucide lucide-monitor-play"');
     expect(plain).toContain('aria-label="Preview unavailable"');
     expect(plain).not.toContain('aria-label="Preview options"');
     expect(plain).not.toContain('aria-label="Presence and spotlight"');
@@ -136,6 +144,33 @@ describe("Project shell seams", () => {
     expect(enabled).not.toContain('aria-label="Preview unavailable"');
     expect(enabled).toContain('aria-label="Presence and spotlight"');
     expect(enabled).toContain(">Share</span>");
+  });
+
+  it("renders Present/Preview as icon-only segments and keeps disabled segments tooltip-reachable (#575)", () => {
+    // No handlers → both Present and Preview are disabled. Each renders its icon,
+    // no visible text, and is wrapped in a focusable span so the tooltip still
+    // fires even though the underlying <button> is natively disabled.
+    const disabled = renderToStaticMarkup(<TooltipProvider><PropertyPanel mode="project" /></TooltipProvider>);
+    expect(disabled).toContain('class="lucide lucide-play"');
+    expect(disabled).toContain('class="lucide lucide-monitor-play"');
+    expect(disabled).not.toContain(">Present</span>");
+    expect(disabled).not.toContain(">Preview</span>");
+    // A focusable span trigger wraps each disabled segment's button.
+    expect(disabled).toMatch(/<span tabindex="0"[^>]*><button[^>]*aria-label="Present"/);
+    expect(disabled).toMatch(/<span tabindex="0"[^>]*><button[^>]*aria-label="Preview unavailable"/);
+
+    // Enabled Present + Preview: both are bare <button> segments (no span
+    // wrapper — the button itself is the tooltip trigger) with icons, no text.
+    const enabled = renderToStaticMarkup(<TooltipProvider><PropertyPanel mode="project"
+      onPreviewToggle={() => undefined}
+      onPreviewOpen={() => undefined}
+      previewAvailable
+    /></TooltipProvider>);
+    expect(enabled).toContain('class="lucide lucide-play"');
+    expect(enabled).toContain('class="lucide lucide-monitor-play"');
+    expect(enabled).not.toContain('tabindex="0"><button');
+    expect(enabled).not.toContain(">Present</span>");
+    expect(enabled).not.toContain(">Preview</span>");
   });
 });
 
