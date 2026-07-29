@@ -95,15 +95,18 @@ describe("Audio Clip inspector semantics", () => {
 });
 
 describe("Project shell seams", () => {
-  it("keeps project video export disabled and collapses Present to one truthful action", () => {
+  it("keeps project video export disabled and shows Present as a split button while presenting", () => {
     const html = renderToStaticMarkup(<TooltipProvider><PropertyPanel mode="project" previewPlaying /></TooltipProvider>);
 
-    // #575: Present/Preview are icon-only (no visible text label); the Pause icon
-    // is carried by lucide, the name lives in the aria-label + tooltip.
+    // #575 (redo): Present is the primary segment of a split button. While
+    // presenting it carries the Pause icon; the name lives on aria-label.
     expect(html).toContain('class="lucide lucide-pause"');
-    expect(html).not.toContain(">Pause</span>");
     expect(html).toContain('aria-label="Pause presentation"');
-    expect(html).not.toContain('aria-label="Preview options"');
+    // The chevron segment advertises the menu it opens.
+    expect(html).toContain('aria-label="Present and preview options"');
+    expect(html).toMatch(/aria-label="Present and preview options"[^>]*aria-haspopup="menu"/);
+    // Menu is closed in static markup, so its rows are not present yet.
+    expect(html).not.toContain(">Preview</span>");
     expect(html).not.toContain(">Share</span>");
     expect(html).toContain('tabindex="0" aria-label="Project video format unavailable: Video export coming soon"');
     expect(html).toContain('tabindex="0" aria-label="Export project unavailable: Video export coming soon"');
@@ -112,25 +115,26 @@ describe("Project shell seams", () => {
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*><span>Export project<\/span>/);
   });
 
-  it("restores a segmented Play control with a gated Preview, plus host-backed Share and presence", () => {
-    // Segmented Play: Present is the primary action; Preview is a visible but
-    // capability-gated (disabled) segment until the floating-preview surface
-    // exists end-to-end (#440 / #482) — never an inert chevron.
+  it("renders Present as a split button (primary Present + chevron menu) with Share beside it", () => {
+    // #575 (redo): Present/Preview is a SPLIT BUTTON that opens a menu — the same
+    // pattern the creation toolbar uses. Present is the primary segment; the
+    // chevron opens a Present/Preview menu. Preview stays capability-gated inside
+    // that menu (asserted via interaction tests). Share is a SEPARATE button.
     const plain = renderToStaticMarkup(<TooltipProvider><PropertyPanel mode="project" onPreviewToggle={() => undefined} /></TooltipProvider>);
-    expect(plain).toContain('aria-label="Play"');
-    // #575: icon-only segments — Present shows the Play icon, Preview the
-    // MonitorPlay icon; names move to aria-label + tooltip, no visible text.
-    expect(plain).not.toContain(">Present</span>");
-    expect(plain).not.toContain(">Preview</span>");
+    // Primary Present segment: Play icon + name on aria-label, no visible text.
     expect(plain).toContain('aria-label="Present"');
     expect(plain).toContain('class="lucide lucide-play"');
-    expect(plain).toContain('class="lucide lucide-monitor-play"');
-    expect(plain).toContain('aria-label="Preview unavailable"');
-    expect(plain).not.toContain('aria-label="Preview options"');
+    // Chevron segment opens the menu; closed by default → aria-expanded=false.
+    expect(plain).toContain('aria-label="Present and preview options"');
+    expect(plain).toMatch(/aria-label="Present and preview options"[^>]*aria-haspopup="menu"/);
+    expect(plain).toMatch(/aria-label="Present and preview options"[^>]*aria-expanded="false"/);
+    // Menu closed → no rows, and no presence split without the capability.
+    expect(plain).not.toContain(">Present</span>");
+    expect(plain).not.toContain(">Preview</span>");
     expect(plain).not.toContain('aria-label="Presence and spotlight"');
 
-    // With a host-backed floating-preview capability, the Preview segment becomes
-    // an enabled action; Share stays a separate button; presence exposes its split.
+    // With host-backed capabilities: Share stays a separate button beside the
+    // split button, and presence exposes its own split.
     const enabled = renderToStaticMarkup(<TooltipProvider><PropertyPanel mode="project"
       onPreviewToggle={() => undefined}
       onPreviewOpen={() => undefined}
@@ -140,37 +144,49 @@ describe("Project shell seams", () => {
       onAccountMenu={() => undefined}
       onPresenceMenu={() => undefined}
     /></TooltipProvider>);
-    expect(enabled).toContain('aria-label="Preview"');
-    expect(enabled).not.toContain('aria-label="Preview unavailable"');
+    expect(enabled).toContain('aria-label="Present"');
+    expect(enabled).toContain('aria-label="Present and preview options"');
     expect(enabled).toContain('aria-label="Presence and spotlight"');
+    // Share is its own button beside the split group, not folded into it.
     expect(enabled).toContain(">Share</span>");
   });
 
-  it("renders Present/Preview as icon-only segments and keeps disabled segments tooltip-reachable (#575)", () => {
-    // No handlers → both Present and Preview are disabled. Each renders its icon,
-    // no visible text, and is wrapped in a focusable span so the tooltip still
-    // fires even though the underlying <button> is natively disabled.
+  it("disables only the primary Present segment when no present action is wired, keeping the chevron menu reachable (#575)", () => {
+    // No handlers → the primary Present segment is a natively-disabled <button>
+    // (capability gating), but the chevron segment stays operable so the menu —
+    // where Preview lives with its disabled reason — is always reachable.
     const disabled = renderToStaticMarkup(<TooltipProvider><PropertyPanel mode="project" /></TooltipProvider>);
     expect(disabled).toContain('class="lucide lucide-play"');
-    expect(disabled).toContain('class="lucide lucide-monitor-play"');
-    expect(disabled).not.toContain(">Present</span>");
-    expect(disabled).not.toContain(">Preview</span>");
-    // A focusable span trigger wraps each disabled segment's button.
-    expect(disabled).toMatch(/<span tabindex="0"[^>]*><button[^>]*aria-label="Present"/);
-    expect(disabled).toMatch(/<span tabindex="0"[^>]*><button[^>]*aria-label="Preview unavailable"/);
+    // Primary Present <button> is disabled.
+    expect(disabled).toMatch(/<button[^>]*aria-label="Present"[^>]*disabled=""/);
+    // Chevron is NOT disabled — it can still open the menu.
+    const chevron = disabled.match(/<button[^>]*aria-label="Present and preview options"[^>]*>/)?.[0];
+    expect(chevron).toBeTruthy();
+    expect(chevron).not.toContain("disabled");
 
-    // Enabled Present + Preview: both are bare <button> segments (no span
-    // wrapper — the button itself is the tooltip trigger) with icons, no text.
+    // With a present handler wired, the primary Present segment is enabled.
     const enabled = renderToStaticMarkup(<TooltipProvider><PropertyPanel mode="project"
       onPreviewToggle={() => undefined}
       onPreviewOpen={() => undefined}
       previewAvailable
     /></TooltipProvider>);
-    expect(enabled).toContain('class="lucide lucide-play"');
-    expect(enabled).toContain('class="lucide lucide-monitor-play"');
-    expect(enabled).not.toContain('tabindex="0"><button');
-    expect(enabled).not.toContain(">Present</span>");
-    expect(enabled).not.toContain(">Preview</span>");
+    const present = enabled.match(/<button[^>]*aria-label="Present"[^>]*>/)?.[0];
+    expect(present).toBeTruthy();
+    expect(present).not.toContain("disabled");
+  });
+
+  it("keeps the whole multiplayer cluster contained within the 240px inspector column (#575)", () => {
+    // The inspector column is a fixed 240px, overflow-hidden; the cluster wrapper
+    // is w-full min-w-0 so the split button + separate Share button stay visible
+    // rather than overflowing/clipping.
+    const html = renderToStaticMarkup(<TooltipProvider><PropertyPanel mode="project"
+      onPreviewToggle={() => undefined}
+      onShare={() => undefined}
+    /></TooltipProvider>);
+    expect(html).toContain("w-[240px]");
+    expect(html).toMatch(/class="flex w-full min-w-0 items-center/);
+    // Share button renders in the same contained cluster.
+    expect(html).toContain(">Share</span>");
   });
 });
 

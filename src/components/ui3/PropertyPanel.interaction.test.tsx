@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { AutoLayoutSettingsDialog } from "./AutoLayoutSettingsDialog";
 import { Button } from "./Button";
 import { NumericComboInput, NumericInput, NumericPairInput } from "./Input";
-import { PopoverMenu } from "./Menu";
+import { MenuRow, PopoverMenu } from "./Menu";
 import { DimensionSizingFields, PropertyPanel, SizingComboField, type ElementSizingMode, type SizingComboFieldProps } from "./PropertyPanel";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -523,6 +523,77 @@ describe("More alignment menu (Composa#406)", () => {
       act(() => row.props.onClick());
     }
     expect(actions).toEqual(["distribute-horizontal", "distribute-vertical", "tidy-up"]);
+    act(() => renderer!.unmount());
+  });
+});
+
+describe("Present/Preview split button (Composa#575)", () => {
+  const findButton = (root: ReactTestInstance, label: string) =>
+    root.findAll(node => node.type === "button" && node.props["aria-label"] === label)[0];
+  const menuRow = (root: ReactTestInstance, label: string) =>
+    root.findAllByType(MenuRow).find(row => row.props.label === label);
+
+  it("presents from the primary segment and opens a Present/Preview menu from the chevron", () => {
+    let presents = 0;
+    let previews = 0;
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<PropertyPanel mode="project"
+        onPreviewToggle={() => { presents += 1; }}
+        onPreviewOpen={() => { previews += 1; }}
+        previewAvailable />);
+    });
+    const root = renderer!.root;
+
+    // Primary segment presents immediately.
+    act(() => findButton(root, "Present").props.onClick());
+    expect(presents).toBe(1);
+
+    // Menu is closed until the chevron is used — no rows in the tree yet.
+    expect(root.findAllByType(MenuRow).length).toBe(0);
+    expect(findButton(root, "Present and preview options").props["aria-expanded"]).toBe(false);
+
+    // Chevron opens the menu with Present + Preview rows.
+    act(() => findButton(root, "Present and preview options").props.onClick());
+    expect(findButton(root, "Present and preview options").props["aria-expanded"]).toBe(true);
+    expect(menuRow(root, "Present")).toBeTruthy();
+    const preview = menuRow(root, "Preview")!;
+    expect(preview.props.disabled).toBe(false);
+
+    // Preview row routes to the floating-preview handler and closes the menu.
+    act(() => preview.props.onClick());
+    expect(previews).toBe(1);
+    expect(root.findAllByType(MenuRow).length).toBe(0);
+    act(() => renderer!.unmount());
+  });
+
+  it("disables the Preview menu row with a reason when preview is unavailable", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel mode="project" onPreviewToggle={() => undefined} />); });
+    const root = renderer!.root;
+
+    act(() => findButton(root, "Present and preview options").props.onClick());
+    const preview = menuRow(root, "Preview")!;
+    expect(preview.props.disabled).toBe(true);
+    expect(preview.props.disabledReason).toBe("Preview unavailable");
+    expect(preview.props.onClick).toBeUndefined();
+    act(() => renderer!.unmount());
+  });
+
+  it("keeps Share as a separate button beside the split button (not inside the split group)", () => {
+    let shares = 0;
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<PropertyPanel mode="project"
+        onPreviewToggle={() => undefined}
+        onShare={() => { shares += 1; }} />);
+    });
+    const root = renderer!.root;
+    // Share is a standalone Button, distinct from the split button's segments.
+    const share = root.findAllByType(Button).find(button => button.props.label === "Share")!;
+    expect(share).toBeTruthy();
+    act(() => share.props.onClick());
+    expect(shares).toBe(1);
     act(() => renderer!.unmount());
   });
 });
