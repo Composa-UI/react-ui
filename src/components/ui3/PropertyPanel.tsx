@@ -8,7 +8,7 @@ import {
   BookOpen,
   Crosshair, Grid3x3, ExternalLink, Unlink,
   Minus, EyeOff, AlignJustify, Maximize, ChevronDown, Ruler,
-  MoveHorizontal, MoveVertical, Play, Pause,
+  MoveHorizontal, MoveVertical, Play, Pause, MonitorPlay,
   Image as ImageIcon, Clock, SquareSquare,
   ArrowRightFromLine, Columns2, Grid2x2,
 } from "lucide-react";
@@ -3191,13 +3191,35 @@ function InspectorTabs({
   );
 }
 
-// ─── Segmented Play control (#482) ────────────────────────────────────────────
-// Restores the segmented Play control exposing the two truthful playback surfaces:
-// Present (enter the full presentation) and Preview (floating, non-destructive).
-// Present is the primary action; Preview stays visibly capability-gated until the
+// ─── Segmented Play control (#482 / #575) ─────────────────────────────────────
+// The segmented Play control exposes the two truthful playback surfaces: Present
+// (enter the full presentation) and Preview (floating, non-destructive). Present
+// is the primary action; Preview stays visibly capability-gated until the
 // floating-preview surface exists end-to-end (#440) — it renders as a disabled
 // segment rather than an inert chevron, so the Present/Preview distinction is
 // always legible without advertising behavior that isn't wired.
+//
+// #575: both segments are icon-only (matching the CreationToolbar's icon pattern)
+// with hover/focus tooltips carrying the name. Icon-only also shrinks the cluster
+// so the whole MultiplayerBar stays within the 240px inspector column.
+
+// A native `disabled` <button> swallows pointer/focus events, so a disabled
+// segment's tooltip would never fire. Wrap disabled segments in a focusable span
+// that becomes the tooltip trigger — mirrors the disabled-tooltip pattern already
+// used for the project export controls in this panel. Enabled segments trigger
+// the tooltip from the button itself.
+function SegmentTooltip({ label, disabled, children }: { label: string; disabled: boolean; children: ReactNode }) {
+  return (
+    <Tooltip label={label} direction="BottomCenter">
+      {disabled ? (
+        <span tabIndex={0} className="flex flex-1 min-w-0 outline-none">{children}</span>
+      ) : (
+        children
+      )}
+    </Tooltip>
+  );
+}
+
 function PlayControl({
   playing,
   onPresent,
@@ -3209,24 +3231,29 @@ function PlayControl({
   onPreviewOpen?: () => void;
   previewAvailable: boolean;
 }) {
+  const canPresent = Boolean(onPresent);
   const canPreview = previewAvailable && Boolean(onPreviewOpen);
+  const presentTooltip = playing ? "Pause presentation" : "Present";
   return (
     <SegmentedControlGroup role="group" aria-label="Play" className="p-[1px]">
-      <SegmentedControlItem
-        selected={playing}
-        icon={playing ? <Pause size={16} strokeWidth={1.5} /> : <Play size={16} strokeWidth={1.5} />}
-        label={playing ? "Pause" : "Present"}
-        aria-label={playing ? "Pause presentation" : "Present"}
-        disabled={!onPresent}
-        onClick={onPresent}
-      />
-      <SegmentedControlItem
-        selected={false}
-        label="Preview"
-        aria-label={canPreview ? "Preview" : "Preview unavailable"}
-        disabled={!canPreview}
-        onClick={canPreview ? onPreviewOpen : undefined}
-      />
+      <SegmentTooltip label={presentTooltip} disabled={!canPresent}>
+        <SegmentedControlItem
+          selected={playing}
+          icon={playing ? <Pause size={16} strokeWidth={1.5} /> : <Play size={16} strokeWidth={1.5} />}
+          aria-label={playing ? "Pause presentation" : "Present"}
+          disabled={!canPresent}
+          onClick={onPresent}
+        />
+      </SegmentTooltip>
+      <SegmentTooltip label="Preview" disabled={!canPreview}>
+        <SegmentedControlItem
+          selected={false}
+          icon={<MonitorPlay size={16} strokeWidth={1.5} />}
+          aria-label={canPreview ? "Preview" : "Preview unavailable"}
+          disabled={!canPreview}
+          onClick={canPreview ? onPreviewOpen : undefined}
+        />
+      </SegmentTooltip>
     </SegmentedControlGroup>
   );
 }
@@ -3261,7 +3288,10 @@ function MultiplayerBar({
 }) {
   const accountAvatar = <Avatar initial={accountInitial} src={accountPhotoUrl} size="default" color={accountColor} />;
   return (
-    <div className="flex items-center gap-[8px] px-[8px] py-[6px]">
+    // #575: w-full + min-w-0 keep the cluster inside the fixed 240px inspector
+    // column; the flex-1 spacer collapses first, and the icon-only PlayControl
+    // (below) is what actually shrinks the cluster to fit rather than overflowing.
+    <div className="flex w-full min-w-0 items-center gap-[8px] px-[8px] py-[6px]">
       {presenceControlsEnabled && onAccountMenu && onPresenceMenu ? (
         <SplitButton
           size="large"
