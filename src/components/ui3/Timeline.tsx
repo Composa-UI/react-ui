@@ -1678,7 +1678,7 @@ function AudioLaneWaveform({ id, peaks, active }: { id: string; peaks?: number[]
   );
 }
 
-function AudioTrack({ clips, header, leftWidth, viewport, plotWidth, accept, dropHint, onDropFiles, onSelect, onOpen, onMove, onTrim, onGestureStart, onGestureEnd }: {
+function AudioTrack({ clips, header, leftWidth, viewport, plotWidth, accept, dropHint, onDropFiles, onSelect, onOpen, onContextMenu, onMove, onTrim, onGestureStart, onGestureEnd }: {
   clips: AudioClipBlock[];
   header: MasterLaneHeaderProps;
   leftWidth: number;
@@ -1688,6 +1688,7 @@ function AudioTrack({ clips, header, leftWidth, viewport, plotWidth, accept, dro
   onDropFiles?: (files: File[]) => void;
   onSelect?: (id: string) => void;
   onOpen?: (id: string) => void;
+  onContextMenu?: (id: string, detail: TimelineBlockContextMenuDetail) => void;
   onMove?: (id: string, startMs: number) => void;
   onTrim?: (id: string, edge: "start" | "end", timeMs: number, detail?: TimelineClipTrimDetail) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
@@ -1727,11 +1728,24 @@ function AudioTrack({ clips, header, leftWidth, viewport, plotWidth, accept, dro
         {clips.map(clip => {
           const left = percent(clip.range[0], viewport);
           const width = percentWidth(clip.range[0], clip.range[1], viewport);
+          const hasContextMenu = !!clip.id && !!onContextMenu;
           return <div key={clip.id} role="button" tabIndex={0} aria-pressed={clip.selected} aria-label={clip.name}
+            aria-haspopup={hasContextMenu ? "menu" : undefined}
             onClick={() => onSelect?.(clip.id)} onDoubleClick={() => onOpen?.(clip.id)}
+            onContextMenu={event => {
+              if (!hasContextMenu) return;
+              event.preventDefault();
+              event.stopPropagation();
+              onContextMenu!(clip.id, { clientX: event.clientX, clientY: event.clientY, currentTarget: event.currentTarget, source: "pointer" });
+            }}
             onKeyDown={event => {
               if (event.key === "Enter") { event.preventDefault(); onOpen?.(clip.id); }
               else if (event.key === " ") { event.preventDefault(); onSelect?.(clip.id); }
+              else if (hasContextMenu && (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10"))) {
+                event.preventDefault(); event.stopPropagation();
+                const rect = event.currentTarget.getBoundingClientRect();
+                onContextMenu!(clip.id, { clientX: rect.left + Math.min(24, rect.width / 2), clientY: rect.top + rect.height / 2, currentTarget: event.currentTarget, source: "keyboard" });
+              }
               else if (shouldClaimTimelineGestureEscape(event.key, drag.current?.id === clip.id)) {
                 event.preventDefault(); event.stopPropagation(); finish(true);
               }
@@ -1817,6 +1831,7 @@ export function Timeline({
   onClipTrim,
   onAudioClipSelect,
   onAudioClipOpen,
+  onAudioClipContextMenu,
   onAudioClipMove,
   onAudioClipTrim,
   onGestureStart,
@@ -1899,6 +1914,7 @@ export function Timeline({
   onClipTrim?: (id: string, edge: "start" | "end", timeMs: number, detail?: TimelineClipTrimDetail) => void;
   onAudioClipSelect?: (id: string) => void;
   onAudioClipOpen?: (id: string) => void;
+  onAudioClipContextMenu?: (id: string, detail: TimelineBlockContextMenuDetail) => void;
   onAudioClipMove?: (id: string, startMs: number) => void;
   onAudioClipTrim?: (id: string, edge: "start" | "end", timeMs: number, detail?: TimelineClipTrimDetail) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
@@ -2206,7 +2222,7 @@ export function Timeline({
           <>
             <BlockTrack header={laneHeaderProps("slides", <Layers size={16} strokeWidth={1.5} />, "Compositions")} leftWidth={leftWidth} blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
             <BaseVideoTrack header={laneHeaderProps("video", <SquarePlay size={16} strokeWidth={1.5} />, "Video")} leftWidth={leftWidth} clips={baseClips} viewport={viewport} plotWidth={plotWidth} accept={VIDEO_LANE_DROP_ACCEPT} dropHint="Drop image or video here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("video", files) : undefined} onSelect={onClipSelect} onOpen={onClipOpen} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
-            <AudioTrack header={laneHeaderProps("audio", <AudioLines size={16} strokeWidth={1.5} />, "Audio")} leftWidth={leftWidth} clips={audioClips} viewport={viewport} plotWidth={plotWidth} accept={AUDIO_LANE_DROP_ACCEPT} dropHint="Drop audio here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("audio", files) : undefined} onSelect={onAudioClipSelect} onOpen={onAudioClipOpen} onMove={onAudioClipMove} onTrim={onAudioClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <AudioTrack header={laneHeaderProps("audio", <AudioLines size={16} strokeWidth={1.5} />, "Audio")} leftWidth={leftWidth} clips={audioClips} viewport={viewport} plotWidth={plotWidth} accept={AUDIO_LANE_DROP_ACCEPT} dropHint="Drop audio here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("audio", files) : undefined} onSelect={onAudioClipSelect} onOpen={onAudioClipOpen} onContextMenu={onAudioClipContextMenu} onMove={onAudioClipMove} onTrim={onAudioClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
           </>
         ) : (
           <>
