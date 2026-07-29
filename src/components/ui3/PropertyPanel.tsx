@@ -3258,7 +3258,7 @@ function PlayControl({
           {/* Downward menu, right-aligned to the split button so it stays inside
               the 240px inspector column. */}
           <div className="absolute top-[calc(100%+6px)] right-0 z-50">
-            <Menu minWidth={168}>
+            <Menu minWidth={120}>
               <MenuRow
                 type="simple"
                 label="Present"
