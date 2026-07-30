@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback } from "react";
+import { SidePanel, SIDE_PANEL_DEFAULT_WIDTH } from "./SidePanel";
 import { clsx } from "clsx";
 import { SlidesPanel, type SlideData } from "./SlidesPanel";
 import { LayerList, type LayerListProps, type LayerNode } from "./LayerList";
@@ -12,9 +13,6 @@ import { LayerList, type LayerListProps, type LayerNode } from "./LayerList";
 // are controllable; the editor wires real data and persists the ratio.
 
 const MIN_PX = 80;          // spec: each panel min 80px
-const DEFAULT_WIDTH = 240;  // spec: default panel width
-const MIN_WIDTH = 200;      // spec: min panel width
-const MAX_WIDTH = 360;      // spec: max panel width
 
 export interface CompositionPanelProps {
   slides?: SlideData[];
@@ -102,7 +100,7 @@ export function CompositionPanel({
   defaultSplit = 0.4,
   onSplitChange,
   width: controlledWidth,
-  defaultWidth = DEFAULT_WIDTH,
+  defaultWidth = SIDE_PANEL_DEFAULT_WIDTH,
   onWidthChange,
   className,
 }: CompositionPanelProps) {
@@ -111,9 +109,6 @@ export function CompositionPanel({
   const split = controlledSplit ?? internalSplit;
   const [dragging, setDragging] = useState(false);
 
-  const [internalWidth, setInternalWidth] = useState(defaultWidth);
-  const width = controlledWidth ?? internalWidth;
-  const [widthDragging, setWidthDragging] = useState(false);
 
   const setSplit = useCallback(
     (next: number) => {
@@ -121,15 +116,6 @@ export function CompositionPanel({
       onSplitChange?.(next);
     },
     [controlledSplit, onSplitChange],
-  );
-
-  const setWidth = useCallback(
-    (next: number) => {
-      const clamped = Math.min(Math.max(next, MIN_WIDTH), MAX_WIDTH);
-      if (controlledWidth == null) setInternalWidth(clamped);
-      onWidthChange?.(clamped);
-    },
-    [controlledWidth, onWidthChange],
   );
 
   // ── Vertical split resize — invisible hit area on the TOP EDGE of the layers panel.
@@ -171,46 +157,11 @@ export function CompositionPanel({
   );
 
   // ── Width resize — invisible hit area on the RIGHT EDGE of the panel.
-  const onWidthPointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      const el = containerRef.current;
-      if (!el) return;
-      setWidthDragging(true);
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
-
-      const move = (ev: PointerEvent) => {
-        const rect = el.getBoundingClientRect();
-        setWidth(ev.clientX - rect.left);
-      };
-      const up = () => {
-        setWidthDragging(false);
-        window.removeEventListener("pointermove", move);
-        window.removeEventListener("pointerup", up);
-      };
-      window.addEventListener("pointermove", move);
-      window.addEventListener("pointerup", up);
-    },
-    [setWidth],
-  );
-
-  const onWidthKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (e.key === "ArrowLeft") { e.preventDefault(); setWidth(width - 8); }
-      else if (e.key === "ArrowRight") { e.preventDefault(); setWidth(width + 8); }
-    },
-    [width, setWidth],
-  );
-
   return (
-    <div
-      ref={containerRef}
-      className={clsx(
-        "relative shrink-0 h-full flex flex-col bg-c-bg border-r border-c-border overflow-hidden",
-        className,
-      )}
-      style={{ width }}
-    >
+    <SidePanel className={className} width={controlledWidth} defaultWidth={defaultWidth} onWidthChange={onWidthChange}>
+      {/* The vertical split measures against this box, which spans the panel's
+          full height — SidePanel owns the outer element and the width handle. */}
+      <div ref={containerRef} className="relative flex-1 min-h-0 flex flex-col overflow-hidden">
       {/* Top — Slides (min 80px). `[&>*]:!w-full` stretches the child to the column
           width; `[&>*]:!border-r-0` drops its own right border (the container owns it). */}
       <div className="min-h-[80px] overflow-hidden [&>*]:!w-full [&>*]:!border-r-0" style={{ flexBasis: `calc(${split} * 100%)`, flexGrow: 0, flexShrink: 1 }}>
@@ -241,24 +192,8 @@ export function CompositionPanel({
             onReorder={onLayerReorder} onReparent={onLayerReparent} />
       </div>
 
-      {/* Width resize affordance — thin invisible vertical strip on the RIGHT EDGE.
-          No visible handle; only an ew-resize cursor on hover. */}
-      <div
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="Resize panel width"
-        aria-valuenow={Math.round(width)}
-        aria-valuemin={MIN_WIDTH}
-        aria-valuemax={MAX_WIDTH}
-        tabIndex={0}
-        onPointerDown={onWidthPointerDown}
-        onKeyDown={onWidthKeyDown}
-        className={clsx(
-          "absolute top-0 right-0 h-full w-[4px] z-20 cursor-ew-resize select-none outline-none translate-x-1/2",
-          widthDragging && "bg-c-border-selected/40",
-        )}
-      />
-    </div>
+      </div>
+    </SidePanel>
   );
 }
 

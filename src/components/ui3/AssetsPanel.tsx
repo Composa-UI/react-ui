@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
+import { SidePanel } from "./SidePanel";
 import { clsx } from "clsx";
 import { Upload, Search, Image as ImageIcon, Film, Volume2, Trash2, Plus, Pencil } from "lucide-react";
 import { Dropdown } from "./Dropdown";
@@ -266,6 +267,12 @@ const DEMO_ASSETS: AssetItem[] = [
 
 // ─── Panel ────────────────────────────────────────────────────────────────────
 export interface AssetsPanelProps {
+  /** Panel width in px (controlled). Share one value across the left rail so
+   * the width survives switching tabs (Composa#664). */
+  width?: number;
+  /** Uncontrolled default when `width` is not provided. Default 240px. */
+  defaultWidth?: number;
+  onWidthChange?: (width: number) => void;
   assets?: AssetItem[];
   title?: string;
   filter?: AssetFilter;
@@ -289,6 +296,9 @@ export interface AssetsPanelProps {
 }
 
 export function AssetsPanel({
+  width,
+  defaultWidth,
+  onWidthChange,
   assets = DEMO_ASSETS,
   title = "Assets",
   filter,
@@ -386,7 +396,7 @@ export function AssetsPanel({
   };
 
   return (
-    <div className="relative w-[240px] shrink-0 h-full flex flex-col bg-c-bg border-r border-c-border overflow-hidden"
+    <SidePanel width={width} defaultWidth={defaultWidth} onWidthChange={onWidthChange}
       onDragEnter={onDragEnter} onDragOver={event => event.preventDefault()} onDragLeave={onDragLeave} onDrop={onDrop}>
       {/* Header — Assets label + Upload. Title uses the same hierarchy as the
           composition panel's "Product review" title (13px/550), not the smaller
@@ -530,6 +540,6 @@ export function AssetsPanel({
           }} />
         </ModalFooter>
       </Modal>
-    </div>
+    </SidePanel>
   );
 }

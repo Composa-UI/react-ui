@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, type KeyboardEvent, type MutableRefObject, type ReactNode } from "react";
+import { SidePanel } from "./SidePanel";
 import { clsx } from "clsx";
 import {
   AlertTriangle,
@@ -107,6 +108,12 @@ export interface AgentSuggestion {
 }
 
 export interface AgentPanelProps {
+  /** Panel width in px (controlled). Share one value across the left rail so
+   * the width survives switching tabs (Composa#664). */
+  width?: number;
+  /** Uncontrolled default when `width` is not provided. Default 240px. */
+  defaultWidth?: number;
+  onWidthChange?: (width: number) => void;
   conversations: readonly AgentConversationSummary[];
   activeConversation: AgentConversation | null;
   search: string;
@@ -613,6 +620,9 @@ function Message({
 }
 
 export function AgentPanel({
+  width,
+  defaultWidth,
+  onWidthChange,
   conversations,
   activeConversation,
   search,
@@ -710,7 +720,7 @@ export function AgentPanel({
     // Left-column panel: same outer shell as CompositionPanel / AssetsPanel —
     // a right-border-only column (no top/left inset ring) so the Agent panel sits
     // flush with its siblings' top-left edges (Composa#211 director feedback).
-    <div className={clsx("relative w-[240px] shrink-0 h-full flex flex-col bg-c-bg border-r border-c-border overflow-hidden", className)}>
+    <SidePanel className={className} width={width} defaultWidth={defaultWidth} onWidthChange={onWidthChange}>
       <div
         ref={panelRef}
         tabIndex={-1}
@@ -851,6 +861,6 @@ export function AgentPanel({
           </>
         )}
       </div>
-    </div>
+    </SidePanel>
   );
 }
