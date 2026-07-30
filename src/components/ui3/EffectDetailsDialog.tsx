@@ -67,7 +67,7 @@ export function EffectDetailsDialog({ open, value, trigger, capabilities, onChan
     width={COMPACT_INSPECTOR_DIALOG_WIDTH} sideOffset={EFFECTS_INSPECTOR_DIALOG_SIDE_OFFSET} elevation={400} blockOutsideDismiss={colorOpen}>
     <div className="flex h-[40px] items-center gap-[4px] border-b border-c-border px-[8px]">
       <div className="mr-auto"><PopoverMenu align="left" trigger={<Dropdown value={value.type} hug />}>
-        {close => <Menu minWidth={200}>{TYPES.map(type => <MenuRow key={type} type="checkmark" checked={type === value.type} label={type} onClick={() => { onChange?.({ type }); close(); }} />)}</Menu>}
+        {close => <Menu>{TYPES.map(type => <MenuRow key={type} type="checkmark" checked={type === value.type} label={type} onClick={() => { onChange?.({ type }); close(); }} />)}</Menu>}
       </PopoverMenu></div>
       <button type="button" aria-label={value.visible ? "Hide effect" : "Show effect"} onClick={() => onChange?.({ visible: !value.visible })}
         className="flex items-center justify-center size-[24px] rounded-c-sm text-c-icon-secondary hover:bg-c-bg-hover">

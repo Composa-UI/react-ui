@@ -94,7 +94,7 @@ function OptionRow<T extends string>({
         }
       >
         {close => (
-          <Menu minWidth={160}>
+          <Menu>
             {options.map(option => (
               <MenuRow
                 key={option}

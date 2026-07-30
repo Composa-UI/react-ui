@@ -303,7 +303,7 @@ export function SlidesPanel({ slides, aspectRatio, title = "Product review", sub
         <>
           <button type="button" aria-label="Close menu" className="fixed inset-0 z-40 cursor-default" onClick={() => setMenu(null)} />
           <div className="fixed z-50" style={{ left: menu.x, top: menu.y }}>
-            <Menu minWidth={176}>
+            <Menu>
               <MenuRow label="Rename" leading={<Pencil size={14} />} onClick={() => { onRenameRequest?.(menu.index); setMenu(null); }} />
               <MenuRow label="Duplicate" leading={<Copy size={14} />} onClick={() => { onSlideDuplicate?.(menu.index); setMenu(null); }} />
               <MenuRow type="divider" />

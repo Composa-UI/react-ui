@@ -78,7 +78,7 @@ export function AutoLayoutSettingsDialog({
             trigger={<Dropdown ariaLabel={`Stroke inclusion: ${strokeLabel}`} value={strokeLabel} mixed={value.strokeSizing === "mixed"} disabled={disabled} fullWidth />}
           >
             {close => (
-              <Menu minWidth={156}>
+              <Menu>
                 <MenuRow type="checkmark" selectionRole="radio" label="Excluded" checked={value.strokeSizing === "excluded"} disabled={disabled} onClick={() => { onChange?.({ strokeSizing: "excluded" }); close(); }} />
                 <MenuRow type="checkmark" selectionRole="radio" label="Included" checked={value.strokeSizing === "included"} disabled={disabled} onClick={() => { onChange?.({ strokeSizing: "included" }); close(); }} />
               </Menu>
@@ -91,7 +91,7 @@ export function AutoLayoutSettingsDialog({
             trigger={<Dropdown ariaLabel={`Canvas stacking: ${stackingLabel}`} value={stackingLabel} mixed={value.canvasStacking === "mixed"} disabled={disabled} fullWidth />}
           >
             {close => (
-              <Menu minWidth={156}>
+              <Menu>
                 <MenuRow type="checkmark" selectionRole="radio" label="First on top" checked={value.canvasStacking === "first-on-top"} disabled={disabled} onClick={() => { onChange?.({ canvasStacking: "first-on-top" }); close(); }} />
                 <MenuRow type="checkmark" selectionRole="radio" label="Last on top" checked={value.canvasStacking === "last-on-top"} disabled={disabled} onClick={() => { onChange?.({ canvasStacking: "last-on-top" }); close(); }} />
               </Menu>

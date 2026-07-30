@@ -1,6 +1,52 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { Menu, MenuRow } from "./Menu";
+import { MENU_MIN_WIDTH, Menu, MenuRow } from "./Menu";
+
+describe("Menu width floor (Composa#627)", () => {
+  it("hugs its content from a Figma-tight floor, and never caps the width", () => {
+    const html = renderToStaticMarkup(
+      <Menu>
+        <MenuRow label="One" onClick={() => undefined} />
+      </Menu>,
+    );
+    // The floor is small enough that short menus stop opening wider than Figma's.
+    expect(MENU_MIN_WIDTH).toBe(120);
+    expect(html).toMatch(new RegExp(`min-width:\\s*${MENU_MIN_WIDTH}px`));
+    // `inline-flex` is what makes the menu hug: the floor only ever pads a menu
+    // narrower than it, so a row can never be clipped or wrapped by the floor.
+    expect(html).toContain("inline-flex");
+    expect(html).not.toMatch(/max-width/i);
+  });
+
+  it("still honours an explicit floor for menus that swap content in place", () => {
+    const html = renderToStaticMarkup(
+      <Menu minWidth={190}>
+        <MenuRow label="HD 16:9 (1920 × 1080)" onClick={() => undefined} />
+      </Menu>,
+    );
+    expect(html).toMatch(/min-width:\s*190px/);
+  });
+
+  // Guard the owner complaint itself: every DS menu must take the shared floor, so
+  // nobody silently re-inflates one back past Figma's width. The project-canvas menu
+  // is the single allowed exception (it swaps presets ↔ the Custom W/H/fps editor
+  // while open and would otherwise jump) and states so through a named constant.
+  it("has no ad-hoc per-menu width floors left in the design system", () => {
+    // Vite's raw glob — this repo has no @types/node, so the source sweep goes
+    // through the bundler rather than fs.
+    const sources = (import.meta as unknown as {
+      glob: (pattern: string, options: unknown) => Record<string, string>;
+    }).glob("./*.tsx", { query: "?raw", import: "default", eager: true });
+
+    const offenders = Object.entries(sources)
+      .filter(([file]) => !file.includes(".test."))
+      .flatMap(([file, source]) => [...source.matchAll(/<Menu\s+minWidth=\{([^}]+)\}/g)]
+        .map(match => `${file}: minWidth={${match[1]}}`))
+      .filter(entry => !entry.includes("PROJECT_CANVAS_MENU_MIN_WIDTH"));
+
+    expect(offenders).toEqual([]);
+  });
+});
 
 describe("Menu", () => {
   it("grows unbounded (no scroll) when no maxHeight is given", () => {
