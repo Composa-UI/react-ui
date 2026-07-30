@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef, type ReactElement } from "react";
 import { clsx } from "clsx";
-import { Image, Pipette, Blend, Contrast, Plus, Minus, RotateCcw, Disc, Diamond, Search, LayoutGrid, ChevronDown, X, SquarePlay } from "lucide-react";
+import { Image, Pipette, Plus, Minus, RotateCcw, Disc, Diamond, Search, LayoutGrid, ChevronDown, X, SquarePlay, SquareDashedMousePointer } from "lucide-react";
 import { ModalBody, ModalDivider } from "./Dialog";
 import { InspectorDialog } from "./InspectorDialog";
 import type { AnchoredInspectorOverlayAlign } from "./AnchoredInspectorOverlay";
 import { hexToHsb, hsbToHex } from "../../lib/color";
 import { Tabs } from "./Tabs";
+import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { Slider, PickerHandle, GradientStopHandle } from "./Slider";
 import { InputField, ColorInput, NumericInputMulti } from "./Input";
 import { Button } from "./Button";
@@ -14,7 +15,7 @@ import { Chit } from "./Chit";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type FillType = "solid" | "linear" | "radial" | "angular" | "diamond" | "image" | "video";
+export type FillType = "solid" | "linear" | "radial" | "angular" | "diamond" | "image" | "video" | "drop-zone";
 
 export interface GradientStop {
   id: string;
@@ -23,7 +24,7 @@ export interface GradientStop {
   opacity: number;  // 0–100
 }
 
-export interface ColorDialogCapabilities { styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; }
+export interface ColorDialogCapabilities { styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; dropZone?: boolean; }
 
 export const COLOR_DIALOG_WIDTH = 240;
 export const COLOR_DIALOG_INSPECTOR_SIDE_OFFSET = 24;
@@ -74,6 +75,15 @@ export interface ColorDialogProps {
   videoSourceLabel?: string;
   /** Host-backed media picker. When absent, Video is not offered. */
   onChooseVideo?: () => void;
+  /**
+   * Timeline TRACKS the drop zone can show. Deliberately tracks, not clips: a
+   * composition need not line up with any one clip's span, so binding a drop
+   * zone to a clip would break the moment the playhead left it.
+   */
+  dropZoneSources?: { id: string; label: string }[];
+  /** The bound track, if any. Absent ⇒ the zone is empty and shows its picker. */
+  dropZoneSourceId?: string;
+  onSelectDropZoneSource?: (id: string) => void;
 }
 
 // ─── Library color data types ─────────────────────────────────────────────────
@@ -259,6 +269,7 @@ function FillTypeIcon({ type }: { type: FillType }) {
   if (type === "diamond") return <Diamond  size={12} strokeWidth={1.5} />;
   if (type === "image")   return <Image    size={12} strokeWidth={1.5} />;
   if (type === "video")   return <SquarePlay size={12} strokeWidth={1.5} />;
+  if (type === "drop-zone") return <SquareDashedMousePointer size={12} strokeWidth={1.5} />;
   return null;
 }
 
@@ -382,6 +393,9 @@ export function ColorDialog({
   imageShadows = 0,
   videoSourceLabel,
   onChooseVideo,
+  dropZoneSources = [],
+  dropZoneSourceId,
+  onSelectDropZoneSource,
 }: ColorDialogProps) {
   const [fillType, setFillType] = useState<FillType>(fillTypeProp ?? "solid");
   const [activeTab, setActiveTab] = useState("custom");
@@ -389,6 +403,10 @@ export function ColorDialog({
   const variablesAvailable = capabilities?.variables ?? true;
   const librariesAvailable = capabilities?.libraries ?? true;
   const videoAvailable = (capabilities?.videoFill ?? false) && !!onChooseVideo;
+  // Same shape as videoAvailable: the tab appears only when the host can
+  // actually service it, so the dialog never offers a control that does nothing.
+  const dropZoneAvailable = (capabilities?.dropZone ?? false) && !!onSelectDropZoneSource;
+  const boundSource = dropZoneSources.find(source => source.id === dropZoneSourceId);
   useEffect(() => { if (!librariesAvailable && activeTab === "libraries") setActiveTab("custom"); }, [activeTab, librariesAvailable]);
   const [hue,     setHue]     = useState(hueProp);
   const [opacity, setOpacity] = useState(opacityProp);
@@ -527,11 +545,14 @@ export function ColorDialog({
                   <FillTypeIcon type="video" />
                 </Btn>
               )}
+              {dropZoneAvailable && (
+                <Btn label="Drop zone" active={fillType === "drop-zone"} onClick={() => handleFillType("drop-zone")}>
+                  <FillTypeIcon type="drop-zone" />
+                </Btn>
+              )}
             </div>
             <div className="flex items-center gap-[2px]">
               {isGradient && <Btn label="Swap gradient"><RotateCcw size={14} strokeWidth={1.5} /></Btn>}
-              <Btn label="Blend mode"><Blend size={14} strokeWidth={1.5} /></Btn>
-              <Btn label="Check color contrast"><Contrast size={14} strokeWidth={1.5} /></Btn>
             </div>
           </div>}
 
@@ -718,6 +739,50 @@ export function ColorDialog({
               <AdjustRow label="Shadows"     value={imageShadows}     />
             </div>
           </>
+        )}
+
+        {fillType === "drop-zone" && dropZoneAvailable && (
+          <div className="flex flex-col gap-[8px] p-[16px]">
+            {/* A drop zone is a WINDOW onto a track, so its empty state is a
+                source picker rather than an upload — nothing is being added to
+                the project, only pointed at. Mirrors the image/video placeholder
+                so the three fill types read as siblings. */}
+            <div className="flex h-[136px] items-center justify-center rounded-c-md bg-c-bg-secondary">
+              <PopoverMenu
+                align="left"
+                trigger={
+                  <Button
+                    variant="Secondary"
+                    icon={<SquareDashedMousePointer size={14} strokeWidth={1.5} />}
+                    label={boundSource ? boundSource.label : "Select source…"}
+                  />
+                }
+              >
+                {close => (
+                  <Menu>
+                    {dropZoneSources.length === 0 ? (
+                      <MenuRow label="No tracks yet" disabled disabledReason="Add a video to the timeline first." />
+                    ) : (
+                      dropZoneSources.map(source => (
+                        <MenuRow
+                          key={source.id}
+                          label={source.label}
+                          checked={source.id === dropZoneSourceId}
+                          selectionRole="radio"
+                          onClick={() => { onSelectDropZoneSource?.(source.id); close(); }}
+                        />
+                      ))
+                    )}
+                  </Menu>
+                )}
+              </PopoverMenu>
+            </div>
+            <span className={clsx(FONT, "text-[11px] font-[450] leading-[16px] text-c-text-secondary")}>
+              {boundSource
+                ? "This layer shows the track, cropped to fill its shape."
+                : "Pick a timeline track to show inside this layer."}
+            </span>
+          </div>
         )}
 
         {fillType === "video" && videoAvailable && (
