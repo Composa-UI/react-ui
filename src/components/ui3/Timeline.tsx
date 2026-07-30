@@ -7,6 +7,7 @@ import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./L
 import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSelectionState";
 import { ScrollArea, IconButtonRow, type IconBtn } from "./Panel";
 import { Menu, MenuRow } from "./Menu";
+import { Tooltip } from "./Tooltip";
 import { NumericInput } from "./Input";
 import { useComposaMode } from "./useComposaMode";
 import { EASING_PRESETS, easingControlPoints, easingPresetLabel, easingSvgPath, type EasingPreset, type NamedEasingPreset } from "./easing";
@@ -409,7 +410,7 @@ function EasingSegment({
           aria-label={`${propertyName} easing presets`}
           className="z-50 outline-none"
         >
-          <Menu minWidth={148}>
+          <Menu>
             {target.easing === "custom" && <MenuRow type="heading" label="Custom curve" />}
             {TIMELINE_QUICK_EASING_PRESETS.map(preset => (
               <MenuRow
@@ -882,7 +883,7 @@ function Lane({ prop, trackId, propertyId, active = false, height, viewport, plo
         </PopoverPrimitive.Anchor>
         <PopoverPrimitive.Portal>
           <PopoverPrimitive.Content data-composa-mode={laneMode} side="bottom" align="start" sideOffset={6} collisionPadding={8} aria-label={`${prop.name} keyframe actions`} className="z-50 outline-none">
-            <Menu minWidth={168}>
+            <Menu>
               <MenuRow type="simple" label="Delete keyframe" onClick={() => { onDelete?.(target); setMenuKeyframeId(null); }} />
             </Menu>
           </PopoverPrimitive.Content>
@@ -1117,8 +1118,18 @@ function TrackRows({ track, trackIndex, focusable, leftWidth = LEFT_W, viewport,
 // Layout, Play/Stop icons, timecode group, and loop are the SAME in both modes.
 // Timecode is shown in ms (slide) or seconds (master). Keyframes are added from
 // row/property diamonds or the focused Playhead's K shortcut, not extra chrome here.
+// Every icon-only control in the timeline carries a hover tooltip (owner standing
+// rule, Composa#628). The tooltip copy IS the aria-label, so the visible and the
+// announced affordance never drift. Where a control is inert because the consumer
+// wired no handler, the tooltip is suppressed the same way `IconButtonRow` and
+// `PanelActionBtn` already suppress theirs — a natively-disabled <button> swallows
+// hover, and an inert control has nothing to explain.
 function TransportIconButton({ children, label, onClick, active }: { children: React.ReactNode; label: string; onClick?: () => void; active?: boolean }) {
-  return <button aria-label={label} aria-pressed={active} onClick={onClick} className={clsx("size-[24px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover", active && "bg-c-bg-selected")}>{children}</button>;
+  return (
+    <Tooltip label={label}>
+      <button aria-label={label} aria-pressed={active} onClick={onClick} className={clsx("size-[24px] rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover", active && "bg-c-bg-selected")}>{children}</button>
+    </Tooltip>
+  );
 }
 
 function Transport({ current, duration, mode, playing, loop, autoKeyframe = false, onPlayingChange, onStop, onLoopChange, onAutoKeyframeChange, trackListCollapsed = false, onTrackListCollapsedChange }: {
@@ -1142,10 +1153,12 @@ function Transport({ current, duration, mode, playing, loop, autoKeyframe = fals
           replace it. When armed, edits record keyframes and the timeline shows the red
           record affordances (top-stroke + red playhead). */}
       {onAutoKeyframeChange && slide && (
-        <button aria-label="Auto-keyframe" aria-pressed={autoKeyframe} onClick={() => onAutoKeyframeChange(!autoKeyframe)}
-          className={clsx("size-[24px] rounded-c-md flex items-center justify-center hover:bg-c-bg-hover", autoKeyframe ? "text-[#ff3b30]" : "text-c-icon")}>
-          <Circle size={14} strokeWidth={1.5} className={clsx(autoKeyframe && "fill-current")} />
-        </button>
+        <Tooltip label="Auto-keyframe">
+          <button aria-label="Auto-keyframe" aria-pressed={autoKeyframe} onClick={() => onAutoKeyframeChange(!autoKeyframe)}
+            className={clsx("size-[24px] rounded-c-md flex items-center justify-center hover:bg-c-bg-hover", autoKeyframe ? "text-[#ff3b30]" : "text-c-icon")}>
+            <Circle size={14} strokeWidth={1.5} className={clsx(autoKeyframe && "fill-current")} />
+          </button>
+        </Tooltip>
       )}
       <div className="w-[8px]" />
       {/* time group */}
@@ -1161,17 +1174,21 @@ function Transport({ current, duration, mode, playing, loop, autoKeyframe = fals
             <span className={clsx(FONT, "text-[11px] text-c-text-secondary")}>ms</span>
           </div>
         )}
-        <button aria-label="Loop" aria-pressed={loop} onClick={() => onLoopChange(!loop)} className={clsx("size-[24px] bg-c-bg-secondary ml-px flex items-center justify-center text-c-icon hover:bg-c-bg-hover", loop && "!bg-c-bg-selected")}>
-          <Repeat size={14} strokeWidth={1.5} />
-        </button>
+        <Tooltip label="Loop">
+          <button aria-label="Loop" aria-pressed={loop} onClick={() => onLoopChange(!loop)} className={clsx("size-[24px] bg-c-bg-secondary ml-px flex items-center justify-center text-c-icon hover:bg-c-bg-hover", loop && "!bg-c-bg-selected")}>
+            <Repeat size={14} strokeWidth={1.5} />
+          </button>
+        </Tooltip>
       </div>
       <div className="flex-1" />
-      <button type="button" aria-label={trackListCollapsed ? "Expand track list" : "Collapse track list"} aria-pressed={trackListCollapsed}
-        disabled={!onTrackListCollapsedChange}
-        onClick={onTrackListCollapsedChange ? () => onTrackListCollapsedChange(!trackListCollapsed) : undefined}
-        className={clsx("size-[24px] rounded-c-md flex items-center justify-center text-c-icon", onTrackListCollapsedChange ? "hover:bg-c-bg-hover" : "opacity-40 cursor-default", trackListCollapsed && "bg-c-bg-selected")}>
-        {trackListCollapsed ? <PanelLeftOpen size={16} strokeWidth={1.5} /> : <PanelLeftClose size={16} strokeWidth={1.5} />}
-      </button>
+      <Tooltip label={trackListCollapsed ? "Expand track list" : "Collapse track list"} disabled={!onTrackListCollapsedChange}>
+        <button type="button" aria-label={trackListCollapsed ? "Expand track list" : "Collapse track list"} aria-pressed={trackListCollapsed}
+          disabled={!onTrackListCollapsedChange}
+          onClick={onTrackListCollapsedChange ? () => onTrackListCollapsedChange(!trackListCollapsed) : undefined}
+          className={clsx("size-[24px] rounded-c-md flex items-center justify-center text-c-icon", onTrackListCollapsedChange ? "hover:bg-c-bg-hover" : "opacity-40 cursor-default", trackListCollapsed && "bg-c-bg-selected")}>
+          {trackListCollapsed ? <PanelLeftOpen size={16} strokeWidth={1.5} /> : <PanelLeftClose size={16} strokeWidth={1.5} />}
+        </button>
+      </Tooltip>
     </div>
   );
 }
@@ -1308,6 +1325,7 @@ function MasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onS
     {
       icon: visible ? <Eye size={14} strokeWidth={1.5} /> : <EyeOff size={14} strokeWidth={1.5} />,
       label: visible ? `Hide ${label}` : `Show ${label}`,
+      tooltip: visible ? `Hide ${label}` : `Show ${label}`,
       active: onVisibilityToggle ? !visible : undefined,
       disabled: !onVisibilityToggle,
       onClick: onVisibilityToggle,
@@ -1315,6 +1333,7 @@ function MasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onS
     {
       icon: <span className={clsx(FONT, "text-[11px] font-[650] leading-none")}>S</span>,
       label: solo ? `Unsolo ${label}` : `Solo ${label}`,
+      tooltip: solo ? `Unsolo ${label}` : `Solo ${label}`,
       active: onSoloToggle ? solo : undefined,
       disabled: !onSoloToggle,
       onClick: onSoloToggle,
@@ -1322,6 +1341,7 @@ function MasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onS
     {
       icon: muted ? <VolumeX size={14} strokeWidth={1.5} /> : <Volume2 size={14} strokeWidth={1.5} />,
       label: muted ? `Unmute ${label}` : `Mute ${label}`,
+      tooltip: muted ? `Unmute ${label}` : `Mute ${label}`,
       active: onMuteToggle ? muted : undefined,
       disabled: !onMuteToggle,
       onClick: onMuteToggle,
@@ -1329,6 +1349,7 @@ function MasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onS
     {
       icon: locked ? <Lock size={14} strokeWidth={1.5} /> : <LockOpen size={14} strokeWidth={1.5} />,
       label: locked ? `Unlock ${label}` : `Lock ${label}`,
+      tooltip: locked ? `Unlock ${label}` : `Lock ${label}`,
       active: onLockToggle ? locked : undefined,
       disabled: !onLockToggle,
       onClick: onLockToggle,
@@ -1340,11 +1361,13 @@ function MasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onS
       <div className="flex items-center gap-[6px]">
         <span className={clsx("shrink-0 flex items-center", visible ? "text-c-icon" : "text-c-icon opacity-60")} aria-hidden>{icon}</span>
         <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate", visible ? "text-c-text" : "text-c-text-secondary")}>{label}</span>
-        <button type="button" aria-label={`Add to ${label}`} disabled={!onAdd} onClick={onAdd}
-          className={clsx("shrink-0 size-[20px] rounded-c-sm flex items-center justify-center text-c-icon",
-            onAdd ? "hover:bg-c-bg-hover hover:text-c-text" : "opacity-40 cursor-default")}>
-          <Plus size={14} strokeWidth={1.5} />
-        </button>
+        <Tooltip label={`Add to ${label}`} disabled={!onAdd}>
+          <button type="button" aria-label={`Add to ${label}`} disabled={!onAdd} onClick={onAdd}
+            className={clsx("shrink-0 size-[20px] rounded-c-sm flex items-center justify-center text-c-icon",
+              onAdd ? "hover:bg-c-bg-hover hover:text-c-text" : "opacity-40 cursor-default")}>
+            <Plus size={14} strokeWidth={1.5} />
+          </button>
+        </Tooltip>
       </div>
       {/* control row — grouped icon buttons (IconButtonRow, same as the Design-tab
           alignment control), hugging their content (no `fill`, not full width). */}
@@ -2182,6 +2205,10 @@ export function Timeline({
           </div>
         </div>
         <div className="absolute z-10 right-0 top-0 bottom-0 flex items-center gap-[8px] px-[12px] border-l border-c-border bg-c-bg">
+          {/* Zoom is the one unlabelled non-icon affordance in this chrome — a bare
+              track + thumb. It gets the same hover tooltip so it isn't the only
+              control here without one (Composa#628). */}
+          <Tooltip label="Timeline zoom">
           <div data-timeline-zoom-control className="relative w-[91px] h-[20px]">
             <span
               aria-hidden
@@ -2201,12 +2228,15 @@ export function Timeline({
               onChange={event => setViewport(viewportAtZoomValue(viewport, Number(event.currentTarget.value) / 100, duration), "zoom-control")}
               className="relative appearance-none w-full h-[20px] cursor-ew-resize bg-transparent rounded-c-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-c-border-selected-strong [&::-webkit-slider-runnable-track]:h-[2px] [&::-webkit-slider-runnable-track]:rounded-[1px] [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-[12px] [&::-webkit-slider-thumb]:-mt-[5px] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-sm [&::-moz-range-track]:h-[2px] [&::-moz-range-track]:rounded-[1px] [&::-moz-range-track]:bg-transparent [&::-moz-range-progress]:h-[2px] [&::-moz-range-progress]:rounded-[1px] [&::-moz-range-progress]:bg-c-bg-brand [&::-moz-range-thumb]:size-[12px] [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white" />
           </div>
-          <button type="button" aria-label={timelineCollapsed ? "Expand timeline" : "Collapse timeline"} aria-pressed={timelineCollapsed}
-            disabled={!onTimelineCollapsedChange}
-            onClick={onTimelineCollapsedChange ? () => onTimelineCollapsedChange(!timelineCollapsed) : undefined}
-            className={clsx("size-[24px] rounded-c-md flex items-center justify-center text-c-icon", onTimelineCollapsedChange ? "hover:bg-c-bg-hover" : "opacity-40 cursor-default", timelineCollapsed && "bg-c-bg-selected")}>
-            {timelineCollapsed ? <PanelBottomOpen size={16} strokeWidth={1.5} /> : <PanelBottomClose size={16} strokeWidth={1.5} />}
-          </button>
+          </Tooltip>
+          <Tooltip label={timelineCollapsed ? "Expand timeline" : "Collapse timeline"} disabled={!onTimelineCollapsedChange}>
+            <button type="button" aria-label={timelineCollapsed ? "Expand timeline" : "Collapse timeline"} aria-pressed={timelineCollapsed}
+              disabled={!onTimelineCollapsedChange}
+              onClick={onTimelineCollapsedChange ? () => onTimelineCollapsedChange(!timelineCollapsed) : undefined}
+              className={clsx("size-[24px] rounded-c-md flex items-center justify-center text-c-icon", onTimelineCollapsedChange ? "hover:bg-c-bg-hover" : "opacity-40 cursor-default", timelineCollapsed && "bg-c-bg-selected")}>
+              {timelineCollapsed ? <PanelBottomOpen size={16} strokeWidth={1.5} /> : <PanelBottomClose size={16} strokeWidth={1.5} />}
+            </button>
+          </Tooltip>
         </div>
       </div>
 

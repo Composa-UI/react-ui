@@ -290,6 +290,14 @@ export function MenuRow({
 
 interface MenuProps {
   children: ReactNode;
+  /**
+   * FLOOR only — the menu is `inline-flex`, so it always hugs its content and a
+   * floor can never clip or wrap a row; it only pads a menu whose content is
+   * narrower. Figma's menus hug tightly, so the default floor is deliberately
+   * small (Composa#627 — "our menus open a larger size than Figma's"). Override
+   * it ONLY when a menu swaps its content in place while open and would visibly
+   * jump without a stable width.
+   */
   minWidth?: number;
   /**
    * Cap the menu height. When set and the content overflows, the menu clips to
@@ -301,7 +309,11 @@ interface MenuProps {
   className?: string;
 }
 
-export function Menu({ children, minWidth = 160, maxHeight, className }: MenuProps) {
+/** Figma-tight default floor. Matches the value Composa#575 already landed on for
+ *  the Present/Preview menu, now the single DS-wide floor. */
+export const MENU_MIN_WIDTH = 120;
+
+export function Menu({ children, minWidth = MENU_MIN_WIDTH, maxHeight, className }: MenuProps) {
   const scrollable = maxHeight != null;
   return (
     // data-composa-mode="dark" forces all token classes to resolve to dark

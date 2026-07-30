@@ -169,7 +169,7 @@ export function EasingInspectorSection({
         <PopoverMenu directTrigger align="right" className="w-full" trigger={
           <Dropdown aria-haspopup="menu" ariaLabel="Easing preset" value={easingPresetLabel(value.preset)} fullWidth disabled={!editable} />
         }>
-          {close => <Menu minWidth={190}>
+          {close => <Menu>
             {EASING_PRESETS.map(preset => <MenuRow key={preset.value} type="checkmark" selectionRole="radio"
               checked={value.preset === preset.value} label={preset.label}
               onClick={() => { onChange?.({ preset: preset.value, controlPoints: [...preset.controlPoints] }); close(); }} />)}
@@ -238,7 +238,7 @@ export function EasingInspectorSection({
         <PopoverMenu directTrigger align="right" className="w-full" trigger={
           <Dropdown aria-haspopup="menu" ariaLabel="Apply easing to" value={EASING_SCOPE_LABELS[applyScope]} fullWidth disabled={!onApplyScopeChange || value.editable === false} />
         }>
-          {close => <Menu minWidth={210}>{(Object.keys(EASING_SCOPE_LABELS) as EasingApplyScope[]).map(scope =>
+          {close => <Menu>{(Object.keys(EASING_SCOPE_LABELS) as EasingApplyScope[]).map(scope =>
             <MenuRow key={scope} type="checkmark" selectionRole="radio" checked={scope === applyScope} label={EASING_SCOPE_LABELS[scope]}
               onClick={() => { onApplyScopeChange?.(scope); close(); }} />)}</Menu>}
         </PopoverMenu>

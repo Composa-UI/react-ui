@@ -152,7 +152,7 @@ const EASING_LABELS: Record<CompTransitionEasing, string> = { linear: "Linear", 
 
 function ChoiceDropdown<T extends string>({ ariaLabel, value, options, labels, onChange }: { ariaLabel?: string; value: T; options: readonly T[]; labels: Record<T, string>; onChange?: (value: T) => void }) {
   return <PopoverMenu align="right" className="w-full" trigger={<Dropdown ariaLabel={ariaLabel} value={labels[value]} fullWidth />}>
-    {close => <Menu minWidth={160}>{options.map(option => <MenuRow key={option} type="checkmark" selectionRole="radio" checked={option === value} label={labels[option]} onClick={() => { onChange?.(option); close(); }} />)}</Menu>}
+    {close => <Menu>{options.map(option => <MenuRow key={option} type="checkmark" selectionRole="radio" checked={option === value} label={labels[option]} onClick={() => { onChange?.(option); close(); }} />)}</Menu>}
   </PopoverMenu>;
 }
 
@@ -387,7 +387,7 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
     { value: "build-in", label: "Build in" }, { value: "action", label: "Action" }, { value: "build-out", label: "Build out" },
   ];
   const addMenu = (close: () => void) => (
-    <Menu minWidth={140}>
+    <Menu>
       {phaseOptions.map(option => <MenuRow key={option.value} type="simple" label={option.label} disabled={!addablePhases.includes(option.value)} onClick={() => { callbacks?.onAdd?.(option.value); close(); }} />)}
     </Menu>
   );

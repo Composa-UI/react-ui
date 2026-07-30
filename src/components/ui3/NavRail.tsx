@@ -66,7 +66,13 @@ export function NavRail({
 
   return (
     <nav aria-label="Navigation" className="w-[60px] shrink-0 h-full flex flex-col items-center bg-c-bg border-r border-c-border">
-      <div className="w-full flex justify-center py-[8px]">
+      {/* Brand slot — pinned to the DS 40px panel-header height (Composa#622) so the
+          divider BELOW it lands on exactly the same baseline as the header rule of
+          whichever left-column panel the rail is showing: SlidesPanel/CompositionPanel,
+          LayerList, AssetsPanel and AgentPanel all open with a 40px header. It used to
+          be `py-[8px]` around the 32px mark (=48px), which floated the rail's divider
+          8px below every panel's, so the rail and the panel read as disconnected. */}
+      <div className="w-full h-[40px] flex items-center justify-center">
         {onBackToFiles ? (
           <PopoverMenu directTrigger trigger={brandButton}>
             {close => (

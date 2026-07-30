@@ -199,7 +199,7 @@ export function StrokeSettingsDialog({
             fullWidth
           />
         }>
-          {close => <Menu minWidth={160}>{STYLE_OPTIONS.map(style => <MenuRow
+          {close => <Menu>{STYLE_OPTIONS.map(style => <MenuRow
             key={style}
             type="checkmark"
             selectionRole="radio"

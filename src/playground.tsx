@@ -1521,9 +1521,15 @@ export default function Playground() {
   }
 
   if (view === "timeline" || view === "timeline-master") {
+    // Lane + collapse callbacks are wired so those controls render LIVE rather than
+    // permanently inert — otherwise the playground can't demo their tooltips
+    // (Composa#628: an unwired control suppresses its tooltip by design).
+    const noop = () => undefined;
     return (
       <div style={{ height: "100vh", width: "100vw", background: "#e6e6e6", padding: 24, boxSizing: "border-box" }}>
-        <Timeline height={360} mode={view === "timeline-master" ? "master" : "slide"} />
+        <Timeline height={360} mode={view === "timeline-master" ? "master" : "slide"}
+          onLaneAdd={noop} onLaneVisibilityToggle={noop} onLaneSoloToggle={noop} onLaneMuteToggle={noop} onLaneLockToggle={noop}
+          onTrackListCollapsedChange={noop} onTimelineCollapsedChange={noop} />
       </div>
     );
   }

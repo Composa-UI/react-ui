@@ -196,7 +196,7 @@ function ToolGroupButton({ tool, active, menu, onSelect }: ToolGroupButtonProps)
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute bottom-[calc(100%+6px)] left-1/2 -translate-x-1/2 z-50">
-            <Menu minWidth={180}>
+            <Menu>
               {menu!.map(({ tool: t, active: a }) => {
                 const item = TOOLS[t];
                 return (

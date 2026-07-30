@@ -1,7 +1,10 @@
 import { type ReactElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { act, create, type ReactTestInstance } from "react-test-renderer";
 import { describe, expect, it } from "vitest";
 import { NavRail } from "./NavRail";
+import { LayerList } from "./LayerList";
+import { SlidesPanel } from "./SlidesPanel";
 import { MenuRow, PopoverMenu } from "./Menu";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -15,6 +18,30 @@ function menuRows(popover: ReactTestInstance, close: () => void) {
   const kids = menu.props.children;
   return Array.isArray(kids) ? kids : [kids];
 }
+
+describe("NavRail / left-panel divider alignment (Composa#622)", () => {
+  // The rail's brand slot must be the SAME height as the header of whichever
+  // left-column panel it is showing, so the rail's divider and the panel's header
+  // rule land on one baseline instead of reading as two disconnected surfaces.
+  // 40px is the DS panel-header standard shared by SlidesPanel / CompositionPanel,
+  // LayerList, AssetsPanel and AgentPanel.
+  const PANEL_HEADER_H = "h-[40px]";
+
+  it("pins the brand slot to the 40px DS panel-header height", () => {
+    const html = renderToStaticMarkup(<NavRail />);
+    const brandSlot = html.slice(0, html.indexOf('aria-label="Composa"'));
+
+    expect(brandSlot).toContain(PANEL_HEADER_H);
+    // The old 8px padding around the 32px mark pushed the divider to 48px.
+    expect(brandSlot).not.toContain("py-[8px]");
+  });
+
+  it("keeps the same 40px header on the panels the rail sits beside", () => {
+    for (const markup of [renderToStaticMarkup(<SlidesPanel slides={[]} />), renderToStaticMarkup(<LayerList />)]) {
+      expect(markup).toContain(PANEL_HEADER_H);
+    }
+  });
+});
 
 describe("NavRail back-to-files affordance", () => {
   it("opens a single 'Back to Files' menu action that fires the callback", () => {

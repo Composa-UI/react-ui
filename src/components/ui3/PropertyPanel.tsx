@@ -262,7 +262,7 @@ const BLEND_MENU_MAX_HEIGHT = 280;
 function blendMenu(current: BlendMode, onPick: (m: BlendMode) => void, supported?: readonly BlendMode[]) {
   const isSupported = (m: BlendMode) => !supported || supported.includes(m);
   return (close: () => void) => (
-    <Menu minWidth={190} maxHeight={BLEND_MENU_MAX_HEIGHT}>
+    <Menu maxHeight={BLEND_MENU_MAX_HEIGHT}>
       {BLEND_GROUPS.map((group, gi) => (
         <Fragment key={gi}>
           {gi > 0 && <MenuRow type="divider" />}
@@ -344,7 +344,7 @@ export function SizingComboField({
     fill: <SizingFillIcon data-icon-semantic="sizing-fill" size={14} strokeWidth={1.5} />,
   };
   const menu = (close: () => void) => (
-    <Menu minWidth={190}>
+    <Menu>
       {availableModes.includes("fixed") && <MenuRow type="checkmark" leading={modeIcons.fixed} label={`Fixed ${axis} (${formatNumericDisplay(value)})`} checked={!mixed && mode === "fixed"} onClick={() => { emitMode("fixed"); close(); }} />}
       {availableModes.includes("hug") && <MenuRow type="checkmark" leading={modeIcons.hug} label="Hug contents" checked={!mixed && mode === "hug"} onClick={() => { emitMode("hug"); close(); }} />}
       {availableModes.includes("fill") && <MenuRow type="checkmark" leading={modeIcons.fill} label="Fill container" checked={!mixed && mode === "fill"} onClick={() => { emitMode("fill"); close(); }} />}
@@ -501,7 +501,7 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
               onChange={next => changeConstraint(axis, constraint, next)}
               min={constraint === "max" ? (axis === "width" ? values.minWidth : values.minHeight) ?? 0 : 0}
               max={constraint === "min" ? (axis === "width" ? values.maxWidth : values.maxHeight) : undefined}
-              menu={close => <Menu minWidth={160}>
+              menu={close => <Menu>
                 <MenuRow
                   type="checkmark"
                   leading={<Minus size={14} strokeWidth={1.5} />}
@@ -683,7 +683,7 @@ function PositionSection({
               align="right"
               trigger={<PanelActionBtn icon={<MoreHorizontal size={16} strokeWidth={1.5} />} label="More alignment" />}
             >
-              {close => <Menu minWidth={200}>
+              {close => <Menu>
                 <MenuRow
                   type="simple"
                   leading={<DistributeHorizontalIcon data-icon-semantic="distribute-horizontal" size={14} strokeWidth={1.5} />}
@@ -1016,7 +1016,7 @@ function LayoutAutoSection({
   const gapIcon = <AutoLayoutSpacingIcon kind="gap" axis={gapAxis} />;
 
   const gapMenu = (close: () => void) => (
-    <Menu minWidth={156}>
+    <Menu>
       <MenuRow
         type="checkmark"
         label="Fixed"
@@ -1237,7 +1237,7 @@ function GridTrackEditor({ axis, tracks, onChange }: { axis: "row" | "column"; t
   const setTrack = (index: number, next: ElementGridTrack) => onChange(tracks.map((track, i) => (i === index ? next : track)));
   const removeTrack = (index: number) => { if (tracks.length <= 1) return; onChange(tracks.filter((_, i) => i !== index)); };
   const trackMenu = (index: number, track: ElementGridTrack) => (close: () => void) => (
-    <Menu minWidth={140}>
+    <Menu>
       <MenuRow type="checkmark" label="Fixed" checked={track.mode === "fixed"} onClick={() => { setTrack(index, { mode: "fixed", size: track.size || 100 }); close(); }} />
       <MenuRow type="checkmark" label="Hug" checked={track.mode === "hug"} onClick={() => { setTrack(index, { mode: "hug", size: track.size }); close(); }} />
     </Menu>
@@ -2205,7 +2205,7 @@ function SlideTimingSection({
               min={0}
               suffix={hugging ? undefined : "s"}
               menu={close => (
-                <Menu minWidth={190}>
+                <Menu>
                   <MenuRow type="checkmark" leading={<SizingFixedIcon data-icon-semantic="sizing-fixed" size={14} strokeWidth={1.5} />} label="Fixed duration" checked={!hugging} onClick={() => { onDurationModeChange("fixed"); close(); }} />
                   <MenuRow type="checkmark" leading={<SizingHugIcon data-icon-semantic="sizing-hug" size={14} strokeWidth={1.5} />} label="Hug contents" checked={hugging} onClick={() => { onDurationModeChange("hug"); close(); }} />
                 </Menu>
@@ -2446,7 +2446,7 @@ function ChoiceDropdown<T extends string>({ ariaLabel, value, options, labels, o
 }) {
   return (
     <PopoverMenu directTrigger align="right" className="w-full" trigger={<Dropdown aria-haspopup="menu" ariaLabel={ariaLabel ? `${ariaLabel}: ${labels[value]}` : undefined} value={labels[value]} fullWidth />}>
-      {close => <Menu minWidth={160}>{options.map(option => (
+      {close => <Menu>{options.map(option => (
         <MenuRow key={option} type="checkmark" checked={option === value} label={labels[option]} onClick={() => { onChange?.(option); close(); }} />
       ))}</Menu>}
     </PopoverMenu>
@@ -3008,6 +3008,9 @@ export interface PropertyPanelProps {
   className?: string;
 }
 
+/** See ProjectCanvasSizeControl — the single justified exception to the DS menu floor. */
+const PROJECT_CANVAS_MENU_MIN_WIDTH = 190;
+
 const PROJECT_CANVAS_PRESETS: ReadonlyArray<ProjectCanvasSize & { label: string }> = [
   { label: "HD 16:9", width: 1920, height: 1080 },
   { label: "HD 720p", width: 1280, height: 720 },
@@ -3070,7 +3073,12 @@ function ProjectCanvasSizeControl({
         disabled={!onChange && !onCustomRequest && !onFrameRateChange}
       />}
     >
-      {close => <Menu minWidth={190}>
+      {/* The ONE menu that keeps a floor above the DS default (Composa#627): this
+          menu swaps its content IN PLACE — the preset rows give way to the Custom
+          W/H/frame-rate editor while it stays open — so without a stable floor it
+          visibly jumps width mid-interaction (owner ask #4). 190 ≈ its widest
+          natural state ("HD 16:9 (1920 × 1080)" ≈ 184px), so the floor costs ~6px. */}
+      {close => <Menu minWidth={PROJECT_CANVAS_MENU_MIN_WIDTH}>
         {!currentPreset && <MenuRow type="checkmark" label={`Current (${currentLabel})`} checked disabled />}
         {PROJECT_CANVAS_PRESETS.map(preset => (
           <MenuRow
@@ -3258,7 +3266,7 @@ function PlayControl({
           {/* Downward menu, right-aligned to the split button so it stays inside
               the 240px inspector column. */}
           <div className="absolute top-[calc(100%+6px)] right-0 z-50">
-            <Menu minWidth={120}>
+            <Menu>
               <MenuRow
                 type="simple"
                 label="Present"
@@ -3660,7 +3668,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
               trigger={<PanelActionBtn icon={<MoreHorizontal size={16} strokeWidth={1.5} />} label="Composition options" />}
             >
               {(close) => (
-                <Menu minWidth={180}>
+                <Menu>
                   <MenuRow type="simple" label="Duplicate composition" onClick={() => { onDuplicateSlide?.(); close(); }} />
                   <MenuRow type="toggle" label="Skip composition" checked={renderedSkipped} onClick={() => { const next = !renderedSkipped; if (!slideSkippedControlled) setDemoSkipped(next); onSlideSkippedChange?.(next); close(); }} />
                   <MenuRow type="simple" label="Delete composition" destructive onClick={() => { onDeleteSlide?.(); close(); }} />
@@ -3726,7 +3734,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
               <InputField value={renderedClipName} onChange={value => { if (!clipNameControlled) setDemoClipName(value); onClipNameChange?.(value); }} placeholder="Clip name" />
             </div>
             <PopoverMenu align="right" trigger={<PanelActionBtn icon={<MoreHorizontal size={16} strokeWidth={1.5} />} label="Video clip options" />}>
-              {close => <Menu minWidth={180}>
+              {close => <Menu>
                 <MenuRow type="simple" label="Replace video" onClick={() => { onReplaceClip?.(); close(); }} />
                 <MenuRow type="simple" label="Delete clip" destructive onClick={() => { onDeleteClip?.(); close(); }} />
               </Menu>}
@@ -3763,7 +3771,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
               <InputField value={audioClipName} onChange={value => onAudioClipNameChange?.(value)} placeholder="Audio clip name" />
             </div>
             <PopoverMenu align="right" trigger={<PanelActionBtn icon={<MoreHorizontal size={16} strokeWidth={1.5} />} label="Audio clip options" />}>
-              {close => <Menu minWidth={180}>
+              {close => <Menu>
                 <MenuRow type="simple" label="Replace audio" onClick={() => { onReplaceAudio?.(); close(); }} />
                 <MenuRow type="simple" label="Delete clip" destructive onClick={() => { onDeleteAudioClip?.(); close(); }} />
               </Menu>}

@@ -434,7 +434,7 @@ export function AssetsPanel({
           }
         >
           {(close) => (
-            <Menu minWidth={160}>
+            <Menu>
               {FILTER_OPTIONS.map((opt) => (
                 <MenuRow
                   key={opt.value}
@@ -492,7 +492,7 @@ export function AssetsPanel({
         <>
           <button type="button" aria-label="Close asset menu" className="fixed inset-0 z-20 cursor-default" onClick={() => setContextAsset(null)} />
           <div className="fixed z-30" style={{ left: contextAsset.x, top: contextAsset.y }}>
-            <Menu minWidth={176}>
+            <Menu>
               <MenuRow label={contextAsset.item.kind === "video" || contextAsset.item.kind === "audio" ? "Add to timeline" : "Insert on slide"}
                 leading={contextAsset.item.kind === "video" ? <Film size={14} /> : contextAsset.item.kind === "audio" ? <Volume2 size={14} /> : <Plus size={14} />}
                 onClick={() => { insertAsset(contextAsset.item); setContextAsset(null); }} />
