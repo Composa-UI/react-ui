@@ -19,7 +19,7 @@ vi.mock("./InspectorDialog", () => ({
  * capability to make room for a different one.
  */
 const html = (props: Record<string, unknown> = {}) =>
-  renderToStaticMarkup(<ColorDialog open onClose={() => undefined} {...props} />);
+  renderToStaticMarkup(<ColorDialog open onClose={() => undefined} trigger={<button>Color</button>} {...props} />);
 
 const enabled = {
   capabilities: { dropZone: true },
