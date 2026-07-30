@@ -3,7 +3,7 @@ import { clsx } from "clsx";
 import {
   RotateCw, FlipHorizontal2, FlipVertical2,
   Link2, Link2Off, MoreHorizontal,
-  Maximize2, Minimize2, Plus, Eye, Square,
+  Maximize2, Minimize2, Plus, Eye,
   Rows2, Columns,
   BookOpen,
   Crosshair, Grid3x3, ExternalLink, Unlink,
@@ -1779,7 +1779,12 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
                 onClick={() => onActiveStackDialogChange(`stroke-settings:${stroke.id}`)}
               />}
             />
-            <PanelActionBtn icon={<Square size={16} strokeWidth={1.5} />} label="Individual sides" />
+            {/* "Individual sides" (per-side stroke weights) is deliberately absent.
+                It shipped as a button with no handler, and it could not simply be
+                wired: the engine models a stroke as one `weight`, with no per-side
+                weights behind it (Composa#634). Per Composa DEC-055 an entry that
+                cannot be delivered is omitted rather than left inert. It returns with
+                the engine feature — Composa#635. */}
           </div>
         </div>
       ))}
