@@ -23,6 +23,7 @@ export * from "./components/ui3/Checkbox";
 export * from "./components/ui3/ChipVariable";
 export * from "./components/ui3/Chit";
 export * from "./components/ui3/ColorDialog";
+export * from "./components/ui3/SidePanel";
 export * from "./components/ui3/CompositionPanel";
 export * from "./components/ui3/CreationToolbar";
 export * from "./components/ui3/Dial";
