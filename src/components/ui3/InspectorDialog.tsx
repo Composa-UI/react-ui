@@ -33,6 +33,13 @@ export const STROKE_SETTINGS_INSPECTOR_SIDE_OFFSET = 8;
 // 8px gutter and the dialog lands clear of the inspector regardless of where the
 // trigger sits or how wide the panel is.
 export const TYPE_SETTINGS_INSPECTOR_SIDE_OFFSET = 8;
+// The Auto Layout settings trigger sits in the Alignment/Gap row's far-right
+// action gutter, exactly like the Type settings trigger. It previously passed no
+// sideOffset and no anchor surface at all, so Radix anchored it to the trigger
+// and the dialog landed ON TOP of the inspector (Composa#661 item 3). Anchoring
+// to the inspector surface's LEFT edge gives the approved 8px gutter regardless
+// of trigger position or panel width.
+export const AUTO_LAYOUT_SETTINGS_INSPECTOR_SIDE_OFFSET = 8;
 export const INSPECTOR_DIALOG_DRAG_HANDLE_SELECTOR = "[data-composa-inspector-dialog-drag-handle]";
 
 export interface InspectorDialogProps {

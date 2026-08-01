@@ -202,6 +202,12 @@ const LayoutFreeformIcon = iconForSemantic("layout-freeform");
 const LayoutHorizontalIcon = iconForSemantic("layout-horizontal");
 const LayoutVerticalIcon = iconForSemantic("layout-vertical");
 const LayoutWrapIcon = iconForSemantic("layout-wrap");
+const LayoutGridIcon = iconForSemantic("layout-grid");
+// The Layout header's auto-layout toggle (Composa#661): panel-plus while auto
+// layout is OFF, panel-check while it is ON. A bare Plus/Grid glyph read as an
+// unrelated "add something" action rather than a two-state toggle.
+const AutoLayoutAddIcon = iconForSemantic("auto-layout-add");
+const AutoLayoutOnIcon = iconForSemantic("auto-layout-frame");
 const AlignLeftIcon = iconForSemantic("align-left");
 const AlignCenterXIcon = iconForSemantic("align-center-x");
 const AlignRightIcon = iconForSemantic("align-right");
@@ -777,6 +783,25 @@ function PositionSection({
   );
 }
 
+// ─── Layout flow (shared by the Frame / Auto-layout / Grid sections) ─────────
+
+/** The four mutually exclusive layout modes the Flow control selects between. */
+type FlowValue = "none" | "v" | "h" | "grid";
+
+// Flow is one four-way layout-mode selector (Composa#661): Freeform, Vertical,
+// Horizontal, Grid. Grid is a peer mode, not a side action reached from a header
+// button — every frame section renders the same segments so the selected mode is
+// always visible and reversible. Wrap is deliberately NOT a segment: it is a
+// modifier that rides alongside the selected flow.
+const FLOW_SEGMENTS: IconBtn[] = [
+  { icon: <LayoutFreeformIcon data-icon-semantic="layout-freeform" size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
+  { icon: <LayoutVerticalIcon data-icon-semantic="layout-vertical" size={S} strokeWidth={1.5} />, label: "Vertical", value: "v" },
+  { icon: <LayoutHorizontalIcon data-icon-semantic="layout-horizontal" size={S} strokeWidth={1.5} />, label: "Horizontal", value: "h" },
+  { icon: <LayoutGridIcon data-icon-semantic="layout-grid" size={S} strokeWidth={1.5} />, label: "Grid", value: "grid" },
+];
+
+const flowSegments = FLOW_SEGMENTS.map(segment => ({ value: segment.value!, icon: segment.icon, ariaLabel: segment.label }));
+
 // ─── Section: Layout — Frame (no auto-layout) ─────────────────────────────────
 
 interface LayoutFrameProps {
@@ -806,18 +831,13 @@ function LayoutFrameSection({
 }: LayoutFrameProps) {
   // Plain frame defaults to Freeform (no auto-layout yet) — NOT "v", which would
   // already imply vertical auto-layout while this is the "no auto-layout" section.
-  const [flow, setFlow] = useState("none");
-
-  // Wrap is not a peer flow option (it is a horizontal-only modifier reached from the
-  // auto-layout section). The plain-frame control only enters/leaves auto layout.
-  const flowBtns: IconBtn[] = [
-    { icon: <LayoutFreeformIcon data-icon-semantic="layout-freeform" size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
-    { icon: <LayoutVerticalIcon data-icon-semantic="layout-vertical" size={S} strokeWidth={1.5} />, label: "Vertical", value: "v" },
-    { icon: <LayoutHorizontalIcon data-icon-semantic="layout-horizontal" size={S} strokeWidth={1.5} />, label: "Horizontal", value: "h" },
-  ];
+  const [flow, setFlow] = useState<FlowValue>("none");
 
   const handleFlowChange = (v: string) => {
-    setFlow(v);
+    setFlow(v as FlowValue);
+    // Grid is a peer flow mode with its own section — it is entered from the Flow
+    // control now, not from a separate header action (Composa#661).
+    if (v === "grid") { onEnableGrid?.(); return; }
     if (v !== "none") onEnableAutoLayout?.();
   };
 
@@ -828,14 +848,17 @@ function LayoutFrameSection({
         <>
           <PanelActionBtn icon={<Maximize2 size={16} strokeWidth={1.5} />} label="Resize to fit" />
           <PanelActionBtn icon={<Grid2x2 size={16} strokeWidth={1.5} />} label="Add grid" onClick={onEnableGrid} />
-          <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add auto-layout" onClick={onEnableAutoLayout} />
+          {/* Trailing header toggle, OFF face (Composa#661 item 4): panel-plus.
+              A bare Plus read as a generic "add" rather than the off state of the
+              auto-layout toggle whose on face lives in the Auto layout section. */}
+          <PanelActionBtn icon={<AutoLayoutAddIcon data-icon-semantic="auto-layout-add" size={16} strokeWidth={1.5} />} label="Add auto-layout" onClick={onEnableAutoLayout} />
         </>
       }
     >
       {/* Flow */}
       <PanelFieldRow
         label="Flow"
-        left={<SegmentedControl segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon, ariaLabel: b.label }))} value={flow} onChange={handleFlowChange} className="w-full" />}
+        left={<SegmentedControl segments={flowSegments} value={flow} onChange={handleFlowChange} className="w-full" />}
       />
 
       <DimensionSizingFields width={width} height={height} onWidthChange={onWidthChange} onHeightChange={onHeightChange} {...sizing} />
@@ -883,6 +906,8 @@ interface LayoutAutoProps {
   onAutoLayoutSettingsRequest?: () => void;
   /** Switch this frame to the distinct Grid layout type (Reading A). */
   onEnableGrid?: () => void;
+  /** Turn auto layout back off from the header toggle (Composa#661 item 4). */
+  onDisableAutoLayout?: () => void;
   sizing?: Omit<DimensionSizingFieldsProps, "width" | "height" | "widthMode" | "heightMode">;
   spatialSelectionLayout?: SpatialSelectionLayoutControl;
 }
@@ -916,11 +941,11 @@ function LayoutAutoSection({
   canvasStackingMixed = false,
   settingsBaselineApplicable,
   settingsDisabled = false,
-  onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onAutoLayoutSettingsRequest, onEnableGrid, sizing, spatialSelectionLayout,
+  onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onAutoLayoutSettingsRequest, onEnableGrid, onDisableAutoLayout, sizing, spatialSelectionLayout,
 }: LayoutAutoProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const controlled = flowMode !== undefined;
-  const [flow, setFlow] = useState("v");
+  const [flow, setFlow] = useState<FlowValue>("v");
   const renderedFlow = flowMode === "horizontal" ? "h" : flowMode === "vertical" ? "v" : flowMode ?? flow;
   const [align, setAlign] = useState(alignValue);
   const renderedAlign = controlled ? alignValue : align;
@@ -935,8 +960,6 @@ function LayoutAutoSection({
   const rowGapControlled = rowGapProp !== undefined;
   const [internalRowGap, setInternalRowGap] = useState(rowGapProp ?? (typeof renderedGap === "number" ? renderedGap : 0));
   const renderedRowGap = rowGapControlled ? rowGapProp : internalRowGap;
-  // Item and row gaps start linked (they migrate equal); unlink once the user diverges them.
-  const [gapsLinked, setGapsLinked] = useState(true);
   const [indivPadding, setIndivPadding] = useState(false);
   const paddingSidesDiffer = paddingTop !== paddingRight || paddingTop !== paddingBottom || paddingTop !== paddingLeft;
   const paddingHasMixedSide = paddingTopMixed || paddingRightMixed || paddingBottomMixed || paddingLeftMixed;
@@ -945,15 +968,10 @@ function LayoutAutoSection({
 
   // Freeform is the explicit "disable auto layout" action and remains distinct
   // from the trailing Auto-layout Settings entry point.
-  // Flow is Horizontal / Vertical (+ Freeform). Wrap is a trailing toggle on Horizontal.
-  const flowBtns: IconBtn[] = [
-    { icon: <LayoutFreeformIcon data-icon-semantic="layout-freeform" size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
-    { icon: <LayoutVerticalIcon data-icon-semantic="layout-vertical" size={S} strokeWidth={1.5} />, label: "Vertical", value: "v" },
-    { icon: <LayoutHorizontalIcon data-icon-semantic="layout-horizontal" size={S} strokeWidth={1.5} />, label: "Horizontal", value: "h" },
-  ];
-
   const handleFlowChange = (v: string) => {
-    setFlow(v);
+    setFlow(v as FlowValue);
+    // Grid is a peer flow mode with its own section (Composa#661).
+    if (v === "grid") { onEnableGrid?.(); return; }
     const mode = v === "h" ? "horizontal" : v === "v" ? "vertical" : "none";
     // Wrap only survives on Horizontal; leaving Horizontal clears it.
     const nextWrap = mode === "horizontal" ? (wrapControlled ? !!wrapProp : internalWrap) : false;
@@ -973,38 +991,20 @@ function LayoutAutoSection({
     onLayoutChange?.({ wrap: next, ...gapPatch });
   };
 
+  // Item gap and row gap are independent (Composa#661 item 2). They used to be
+  // yoked by a link toggle that sat, unlabelled, beside the row-gap field — an
+  // unexplained control that also made typing in one field silently rewrite the
+  // other. Each field now edits only its own axis.
   const emitGap = (value: number | "auto") => {
     if (!gapControlled) setInternalGap(value);
     if (typeof value === "number") setLastFixedGap(value);
-    // While wrapping with the gaps linked, the row gap tracks the item gap.
-    if (wrapping && gapsLinked && typeof value === "number") {
-      if (!rowGapControlled) setInternalRowGap(value);
-      onLayoutChange?.({ gap: value, rowGap: value });
-      return;
-    }
     onLayoutChange?.({ gap: value });
   };
 
   const emitRowGap = (value: number) => {
     const next = Math.max(0, value);
     if (!rowGapControlled) setInternalRowGap(next);
-    if (gapsLinked && typeof renderedGap === "number") {
-      if (!gapControlled) setInternalGap(next);
-      setLastFixedGap(next);
-      onLayoutChange?.({ gap: next, rowGap: next });
-      return;
-    }
     onLayoutChange?.({ rowGap: next });
-  };
-
-  const toggleGapsLinked = () => {
-    const next = !gapsLinked;
-    setGapsLinked(next);
-    // Re-linking snaps the row gap to the item gap.
-    if (next && typeof renderedGap === "number" && renderedGap !== renderedRowGap) {
-      if (!rowGapControlled) setInternalRowGap(renderedGap);
-      onLayoutChange?.({ rowGap: renderedGap });
-    }
   };
 
   useEffect(() => {
@@ -1049,7 +1049,10 @@ function LayoutAutoSection({
       value={settingsValue}
       disabled={settingsDisabled}
       trigger={<PanelActionBtn
-        icon={<LayoutFreeformIcon data-icon-semantic="layout-freeform" size={16} strokeWidth={1.5} />}
+        // Every settings entry point in the inspector (Type, Stroke, Template)
+        // is the slider glyph; the auto-layout one used the Freeform *layout*
+        // glyph, which read as another flow option (Composa#661 item 3).
+        icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />}
         label="Auto-layout settings"
         disabled={settingsDisabled}
         onClick={settingsDisabled ? undefined : () => { setSettingsOpen(true); onAutoLayoutSettingsRequest?.(); }}
@@ -1060,12 +1063,26 @@ function LayoutAutoSection({
   );
 
   return (
-    <PanelSection title="Auto layout" rightActions={onEnableGrid && <PanelActionBtn icon={<Grid2x2 size={16} strokeWidth={1.5} />} label="Switch to grid" onClick={onEnableGrid} />}>
+    <PanelSection
+      title="Auto layout"
+      // Header toggle (Composa#661 item 4): auto layout is ON here, so the
+      // trailing button is the panel-check "on" face and turns it back off. It
+      // REPLACES the "Switch to grid" action that used to occupy this slot —
+      // grid is the fourth Flow segment now, not a header side door.
+      rightActions={onDisableAutoLayout && (
+        <PanelActionBtn
+          icon={<AutoLayoutOnIcon data-icon-semantic="auto-layout-frame" size={16} strokeWidth={1.5} />}
+          label="Remove auto-layout"
+          active
+          onClick={onDisableAutoLayout}
+        />
+      )}
+    >
       <div role="group" aria-label="Flow" className="flex items-start gap-[8px] px-[16px] pt-[8px]">
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Flow</div>
           <SegmentedControl
-            segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon, ariaLabel: b.label }))}
+            segments={flowSegments}
             value={renderedFlow}
             onChange={handleFlowChange}
             className="w-full"
@@ -1085,8 +1102,12 @@ function LayoutAutoSection({
         </div>
       </div>
 
-      {/* Alignment and Gap are the paired authoring row. Wrap intentionally
-          exposes one shared numeric gap; Auto remains unavailable while wrapping. */}
+      {/* Alignment and Gap are the paired authoring row. While wrapping, the
+          cross-axis Row gap joins the SAME gap column instead of getting its own
+          full-width row below the alignment block (Composa#661 item 2) — the two
+          gaps are one pair, and the 240px inspector cannot fit the 88px alignment
+          control plus two side-by-side numeric fields without shrinking both to
+          ~36px. Auto remains unavailable while wrapping. */}
       <div role="group" aria-label="Alignment and gap" className="flex items-start gap-[8px] px-[16px] pt-[8px] pb-[4px]">
         <div className="shrink-0">
           <div className={subLabel}>Alignment</div>
@@ -1095,53 +1116,42 @@ function LayoutAutoSection({
             onChange={value => { setAlign(value); onAlignChange?.(value); }}
           />
         </div>
-        <div className="flex-1 min-w-0">
-          <div className={subLabel}>Gap</div>
-          <NumericComboInput
-            dataMode={gapMode}
-            ariaLabel="Gap"
-            dropdownAriaLabel={`Gap sizing mode: ${gapMode === "auto" ? "Auto" : "Fixed"}`}
-            iconLead={gapIcon}
-            readOnlyLabel={gapMode === "auto" ? "Auto" : undefined}
-            value={gapControlled && typeof renderedGap === "number" ? renderedGap : undefined}
-            defaultValue={lastFixedGap}
-            onChange={emitGap}
-            min={0}
-            suffix="px"
-            menu={gapMenu}
-            className="w-full"
-          />
-        </div>
-        <div className="shrink-0 pt-[17px]">{settingsTriggerButton}</div>
-      </div>
-
-      {/* Row gap — the wrapped cross-axis spacing between rows (Figma's second gap).
-          Only present while wrapping. The link toggle keeps it equal to the item gap. */}
-      {wrapping && (
-        <div role="group" aria-label="Row gap" className="flex items-start gap-[8px] px-[16px] pb-[4px]">
-          <div className="flex-1 min-w-0">
-            <div className={subLabel}>Row gap</div>
-            <NumericInput
-              ariaLabel="Row gap"
-              iconLead={<AutoLayoutSpacingIcon kind="gap" axis="vertical" />}
-              value={renderedRowGap}
-              defaultValue={renderedRowGap}
-              onChange={emitRowGap}
+        <div className="flex-1 min-w-0 flex flex-col gap-[4px]">
+          <div>
+            <div className={subLabel}>Gap</div>
+            <NumericComboInput
+              dataMode={gapMode}
+              ariaLabel="Gap"
+              dropdownAriaLabel={`Gap sizing mode: ${gapMode === "auto" ? "Auto" : "Fixed"}`}
+              iconLead={gapIcon}
+              readOnlyLabel={gapMode === "auto" ? "Auto" : undefined}
+              value={gapControlled && typeof renderedGap === "number" ? renderedGap : undefined}
+              defaultValue={lastFixedGap}
+              onChange={emitGap}
               min={0}
               suffix="px"
+              menu={gapMenu}
               className="w-full"
             />
           </div>
-          <div className="shrink-0 pt-[17px]">
-            <PanelActionBtn
-              icon={gapsLinked ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />}
-              label={gapsLinked ? "Unlink item and row gap" : "Link item and row gap"}
-              active={gapsLinked}
-              onClick={toggleGapsLinked}
-            />
-          </div>
+          {wrapping && (
+            <div>
+              <div className={subLabel}>Row gap</div>
+              <NumericInput
+                ariaLabel="Row gap"
+                iconLead={<AutoLayoutSpacingIcon kind="gap" axis="vertical" />}
+                value={renderedRowGap}
+                defaultValue={renderedRowGap}
+                onChange={emitRowGap}
+                min={0}
+                suffix="px"
+                className="w-full"
+              />
+            </div>
+          )}
         </div>
-      )}
+        <div className="shrink-0 pt-[17px]">{settingsTriggerButton}</div>
+      </div>
 
       {/* Padding — cross layout. Combined (default): Vertical + Horizontal, two
           fields. Expanded (toggle): all four sides independently. */}
@@ -1310,6 +1320,13 @@ function LayoutGridSection({
     setGapsLinked(next);
     if (next && grid.columnGap !== grid.rowGap) emitGrid({ rowGap: grid.columnGap });
   };
+  // Grid is the fourth Flow segment (Composa#661), so this section renders the
+  // same control — otherwise choosing Grid made the selector vanish and the only
+  // way back out was the header's "Remove grid" action.
+  const handleFlowChange = (v: string) => {
+    if (v === "grid") return;
+    onLayoutChange?.({ mode: v === "h" ? "horizontal" : v === "v" ? "vertical" : "none" });
+  };
 
   return (
     <PanelSection
@@ -1321,6 +1338,14 @@ function LayoutGridSection({
         </>
       }
     >
+      {/* Flow — same four-way selector as the plain-frame and auto-layout sections. */}
+      <div role="group" aria-label="Flow" className="flex items-start gap-[8px] px-[16px] pt-[8px]">
+        <div className="flex-1 min-w-0">
+          <div className={subLabel}>Flow</div>
+          <SegmentedControl segments={flowSegments} value="grid" onChange={handleFlowChange} className="w-full" />
+        </div>
+      </div>
+
       {/* Columns */}
       <div className="flex items-start gap-[8px] px-[16px] pt-[8px]">
         <div className="flex-1 min-w-0">
@@ -3922,6 +3947,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onClipContentChange={onLayoutChange ? clipsContent => onLayoutChange({ clipsContent }) : undefined} />}
           {(isAutoLayout)  && <LayoutAutoSection width={width} height={height}
             onEnableGrid={onLayoutChange ? () => onLayoutChange({ mode: "grid" }) : undefined}
+            onDisableAutoLayout={() => { setAutoLayoutOn(false); onLayoutChange?.({ mode: "none" }); }}
             flowMode={layout?.mode}
             wrap={layout?.wrap} rowGap={layout?.rowGap}
             gap={layout?.gap} paddingTop={layout?.padding.top} paddingRight={layout?.padding.right} paddingBottom={layout?.padding.bottom} paddingLeft={layout?.padding.left}
