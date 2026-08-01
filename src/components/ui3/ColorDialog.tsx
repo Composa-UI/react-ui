@@ -26,6 +26,10 @@ export interface GradientStop {
 
 export interface ColorDialogCapabilities { styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; dropZone?: boolean; }
 
+/** The seven image adjustments, in the order they are listed in the dialog. */
+export type ImageAdjustment =
+  | "exposure" | "contrast" | "saturation" | "temperature" | "tint" | "highlights" | "shadows";
+
 export const COLOR_DIALOG_WIDTH = 240;
 export const COLOR_DIALOG_INSPECTOR_SIDE_OFFSET = 24;
 export const COLOR_DIALOG_NESTED_EFFECT_SIDE_OFFSET = 100;
@@ -71,6 +75,24 @@ export interface ColorDialogProps {
   imageTint?: number;
   imageHighlights?: number;
   imageShadows?: number;
+  /**
+   * Host-backed image picker, the same shape as `onChooseVideo`. Without it the
+   * upload control is not rendered at all: it previously shipped with no handler
+   * whatsoever, so the dialog advertised an upload it could never perform.
+   */
+  onChooseImage?: () => void;
+  /** Label for the chosen image fill source, shown in place of the empty state. */
+  imageSourceLabel?: string;
+  /**
+   * Commits one image adjustment. Without it the seven sliders are not rendered:
+   * they were passed a value and no `onChange`, so every drag was discarded.
+   */
+  onImageAdjustmentChange?: (adjustment: ImageAdjustment, value: number) => void;
+  /**
+   * Creates a style or variable from the current color. Without it the header's
+   * "+" is not rendered — it had no handler and did nothing when pressed.
+   */
+  onCreateStyleOrVariable?: () => void;
   /** Label for the currently selected video fill source. */
   videoSourceLabel?: string;
   /** Host-backed media picker. When absent, Video is not offered. */
@@ -301,8 +323,10 @@ function Btn({ onClick, label, active, children }: {
 
 const FONT = "font-[family-name:var(--composa-font-family)]";
 
+// `onChange` is required: the row previously took an optional handler and every
+// caller omitted it, which is how seven sliders shipped as decoration.
 function AdjustRow({ label, value, onChange }: {
-  label: string; value: number; onChange?: (v: number) => void;
+  label: string; value: number; onChange: (v: number) => void;
 }) {
   return (
     <div className="flex items-center gap-[8px] px-[16px] h-[28px]">
@@ -316,31 +340,54 @@ function AdjustRow({ label, value, onChange }: {
 
 // ─── Gradient stop row ────────────────────────────────────────────────────────
 
+/**
+ * The a11y name of a stop's hex field. `ColorInput` derives its inputs' labels
+ * from `ariaLabel`, and the on-bar handle focuses the field by this name when
+ * the stop is tapped — so the two have to agree.
+ */
+const stopHexLabel = (index: number) => `Stop ${index + 1} hex`;
+
 function StopRow({
-  stop, onPosition, onOpacity, onColor, onRemove,
+  stop, index, onPosition, onOpacity, onColor, onRemove, onFocusHex,
 }: {
   stop: GradientStop;
+  index: number;
   onPosition: (id: string, v: number) => void;
   onOpacity: (id: string, v: number) => void;
   onColor: (id: string, hex: string) => void;
   onRemove: (id: string) => void;
+  onFocusHex: (id: string) => void;
 }) {
   return (
     <div className="flex items-center gap-[8px] px-[16px] h-[32px]">
       {/* position % */}
       <div className="w-[52px] flex items-center h-[24px] rounded-c-md bg-c-bg ring-1 ring-inset ring-c-border overflow-hidden">
         <input
+          aria-label={`Stop ${index + 1} position`}
           value={String(stop.position)}
           onChange={e => onPosition(stop.id, parseFloat(e.target.value) || 0)}
           className={clsx("flex-1 min-w-0 h-full bg-transparent outline-none px-[6px]", FONT, "text-[11px] text-c-text")}
         />
         <span className={clsx(FONT, "text-[11px] text-c-text-secondary pr-[6px]")}>%</span>
       </div>
-      {/* the stop color uses the same ColorInput as the panels */}
+      {/* The stop color uses the same ColorInput as the panels. `onSwatchClick`
+          is what keeps the browser's native colour picker out of it: without a
+          handler the swatch falls through to <input type="color">. Pressing it
+          sends the user to the hex field beside it instead. */}
       <div className="flex-1 min-w-0">
-        <ColorInput fullWidth color={`#${stop.color}`} opacity={stop.opacity} onColorChange={v => onColor(stop.id, v)} onOpacityChange={v => onOpacity(stop.id, v)} />
+        <ColorInput
+          fullWidth
+          ariaLabel={`Stop ${index + 1}`}
+          color={`#${stop.color}`}
+          opacity={stop.opacity}
+          onSwatchClick={() => onFocusHex(stop.id)}
+          onColorChange={v => onColor(stop.id, v)}
+          onOpacityChange={v => onOpacity(stop.id, v)}
+        />
       </div>
       <button
+        type="button"
+        aria-label={`Remove stop ${index + 1}`}
         onClick={() => onRemove(stop.id)}
         className="shrink-0 flex items-center justify-center size-[24px] rounded-c-md text-c-icon hover:bg-c-bg-hover"
       >
@@ -358,6 +405,13 @@ const DEFAULT_STOPS: GradientStop[] = [
 ];
 
 const FILL_TYPES: FillType[] = ["solid", "linear", "radial", "angular", "diamond", "image"];
+/** The four gradient types, in the order the menu lists them. */
+const GRADIENT_TYPES: { value: FillType; label: string }[] = [
+  { value: "linear",  label: "Linear" },
+  { value: "radial",  label: "Radial" },
+  { value: "angular", label: "Angular" },
+  { value: "diamond", label: "Diamond" },
+];
 const COLOR_FORMATS = ["Hex", "RGB", "CSS", "HSL", "HSB"];
 
 export function ColorDialog({
@@ -391,6 +445,10 @@ export function ColorDialog({
   imageTint = 0,
   imageHighlights = 0,
   imageShadows = 0,
+  onChooseImage,
+  imageSourceLabel,
+  onImageAdjustmentChange,
+  onCreateStyleOrVariable,
   videoSourceLabel,
   onChooseVideo,
   dropZoneSources = [],
@@ -456,9 +514,14 @@ export function ColorDialog({
   const handleOpacity  = (v: number)   => { setOpacity(v);  onOpacityChange?.(v); };
   const handleHex      = (v: string)   => { setHex(v);      onHexChange?.(v); };
 
+  // Stops are kept sorted by position. A gradient's ORDER is its positions, so
+  // dragging a stop past its neighbour has to re-arrange the list — and the
+  // preview bar, which reads the first and last entries, was drawing itself
+  // backwards whenever they were not.
   const commitStops = (next: GradientStop[]) => {
-    setStops(next);
-    onStopsChange?.(next);
+    const sorted = [...next].sort((a, b) => a.position - b.position);
+    setStops(sorted);
+    onStopsChange?.(sorted);
   };
   const handleStopPos  = (id: string, v: number) =>
     commitStops(stops.map(x => x.id === id ? { ...x, position: Math.min(100, Math.max(0, v)) } : x));
@@ -470,12 +533,75 @@ export function ColorDialog({
   const handleStopAdd    = () =>
     commitStops([...stops, { id: String(Date.now()), position: 50, color: "888888", opacity: 100 }]);
 
+  // ── Gradient stop handles: drag along the bar, click to edit the hex ────────
+  // The handles used to render with no pointer handlers at all, and the stop's
+  // swatch fell through to the browser's native colour picker. Both are handled
+  // here instead: the handle drags, and selecting one focuses its hex field.
+  const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
+  const stopTrackRef = useRef<HTMLDivElement>(null);
+  const stopListRef = useRef<HTMLDivElement>(null);
+  const stopDrag = useRef<{ pointerId: number; id: string; moved: boolean } | null>(null);
+
+  /** Stop position (0–100) under a pointer, in the handle track's own space. */
+  const stopPositionAt = (clientX: number): number | null => {
+    const track = stopTrackRef.current;
+    if (!track) return null;
+    const rect = track.getBoundingClientRect();
+    if (rect.width === 0) return null;
+    return Math.round(Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * 100);
+  };
+
+  /** Focuses a stop's hex field — the only way to set a stop colour by typing. */
+  const focusStopHex = (id: string) => {
+    const index = stops.findIndex(stop => stop.id === id);
+    if (index < 0) return;
+    stopListRef.current
+      ?.querySelector<HTMLInputElement>(`[aria-label="${stopHexLabel(index)}"]`)
+      ?.focus();
+  };
+
+  const beginStopDrag = (id: string) => (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    setSelectedStopId(id);
+    stopDrag.current = { pointerId: event.pointerId, id, moved: false };
+    try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* synthetic */ }
+  };
+  const moveStopDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    const active = stopDrag.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    const position = stopPositionAt(event.clientX);
+    if (position === null) return;
+    active.moved = true;
+    handleStopPos(active.id, position);
+  };
+  const endStopDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    const active = stopDrag.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    stopDrag.current = null;
+    try { event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* already released */ }
+    // A press that never moved is a tap: send the user to the hex field rather
+    // than to the native colour picker the swatch used to open.
+    if (!active.moved) focusStopHex(active.id);
+  };
+  const stopKeyDown = (stop: GradientStop) => (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const step = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    setSelectedStopId(stop.id);
+    handleStopPos(stop.id, stop.position + step * (event.shiftKey ? 10 : 1));
+  };
+
   const hueColor = `hsl(${hue}, 100%, 50%)`;
   const pickerColor = `hsl(${hue}, ${sat}%, ${(bri * (100 - sat / 2) / 100)}%)`;
   // Canvas gradient: saturation (left→right) × brightness (top→bottom)
   const canvasBg = `linear-gradient(to bottom, transparent, black), linear-gradient(to right, white, ${hueColor})`;
 
   const isGradient = fillType === "linear" || fillType === "radial" || fillType === "angular" || fillType === "diamond";
+  // CSS needs at least two colour stops, so a lone stop is repeated to render as
+  // the flat colour it is rather than dropping the declaration entirely.
+  const previewStops = stops.length === 0 ? DEFAULT_STOPS : stops.length === 1 ? [stops[0], stops[0]] : stops;
+  const gradientPreview = `linear-gradient(to right, ${previewStops.map(stop => `#${stop.color} ${stop.position}%`).join(", ")})`;
 
   // ── Header: Custom / Libraries tabs only — fill type is in the toolbar ────
 
@@ -507,9 +633,12 @@ export function ColorDialog({
       <div className="flex h-[40px] shrink-0 items-center gap-[4px] border-b border-c-border px-[8px]">
         <h2 className="sr-only">Color</h2>
         <div className="flex min-w-0 flex-1 items-center overflow-hidden">{headerTabs}</div>
-        {(stylesAvailable || variablesAvailable) && (
+        {(stylesAvailable || variablesAvailable) && onCreateStyleOrVariable && (
           <div className="flex shrink-0 items-center gap-[4px]">
-            <Btn label={stylesAvailable && variablesAvailable ? "New style or variable" : stylesAvailable ? "New style" : "New variable"}>
+            <Btn
+              label={stylesAvailable && variablesAvailable ? "New style or variable" : stylesAvailable ? "New style" : "New variable"}
+              onClick={onCreateStyleOrVariable}
+            >
               <Plus size={14} strokeWidth={1.5} />
             </Btn>
           </div>
@@ -518,7 +647,9 @@ export function ColorDialog({
           type="button"
           aria-label="Close"
           onClick={onClose}
-          className="flex size-[24px] shrink-0 items-center justify-center rounded-c-sm text-c-icon-secondary hover:bg-c-bg-hover"
+          // Primary icon colour, not the muted one: close is the row's only
+          // remaining action and reading as de-emphasised made it look inactive.
+          className="flex size-[24px] shrink-0 items-center justify-center rounded-c-sm text-c-icon hover:bg-c-bg-hover"
         >
           <X size={16} strokeWidth={1.5} />
         </button>
@@ -527,8 +658,10 @@ export function ColorDialog({
       {/* ── Custom tab: toolbar + body ───────────────────────────────────── */}
       {activeTab === "custom" && (
         <>
-          {/* Toolbar: fill-type tabs (left) + utility icons (right) */}
-          {!solidOnly && <div className="flex items-center justify-between px-[8px] h-[40px] border-b border-c-border shrink-0">
+          {/* Toolbar: fill-type tabs. The trailing utility icons are gone — all
+              three (Blend mode, contrast check, Swap gradient) rendered with no
+              onClick, so the row promised three features it did not have. */}
+          {!solidOnly && <div className="flex items-center px-[8px] h-[40px] border-b border-c-border shrink-0">
             {/* Three fill-type tabs — gradient TYPE (linear/radial/…) lives in the dropdown, not here */}
             <div className="flex items-center gap-[2px]">
               <Btn label="Solid" active={fillType === "solid"} onClick={() => handleFillType("solid")}>
@@ -551,24 +684,39 @@ export function ColorDialog({
                 </Btn>
               )}
             </div>
-            <div className="flex items-center gap-[2px]">
-              {isGradient && <Btn label="Swap gradient"><RotateCcw size={14} strokeWidth={1.5} /></Btn>}
-            </div>
           </div>}
 
-          {/* Gradient type selector */}
+          {/* Gradient type selector — a menu, not a cycle. Pressing the control
+              used to advance linear→radial→angular→diamond, so choosing a type
+              meant guessing how many presses away it was and every press
+              committed a fill change the user had not asked for. */}
           {isGradient && (
             <div className="flex items-center gap-[8px] px-[8px] h-[40px] border-b border-c-border shrink-0">
-              <Dropdown
-                value={fillType.charAt(0).toUpperCase() + fillType.slice(1)}
-                size="default"
-                className="w-[96px]"
-                onClick={() => {
-                  const order: FillType[] = ["linear", "radial", "angular", "diamond"];
-                  const next = order[(order.indexOf(fillType) + 1) % order.length];
-                  handleFillType(next);
-                }}
-              />
+              <PopoverMenu
+                align="left"
+                trigger={
+                  <Dropdown
+                    ariaLabel="Gradient type"
+                    value={GRADIENT_TYPES.find(type => type.value === fillType)?.label}
+                    size="default"
+                    className="w-[96px]"
+                  />
+                }
+              >
+                {close => (
+                  <Menu>
+                    {GRADIENT_TYPES.map(type => (
+                      <MenuRow
+                        key={type.value}
+                        label={type.label}
+                        checked={type.value === fillType}
+                        selectionRole="radio"
+                        onClick={() => { handleFillType(type.value); close(); }}
+                      />
+                    ))}
+                  </Menu>
+                )}
+              </PopoverMenu>
             </div>
           )}
 
@@ -668,20 +816,29 @@ export function ColorDialog({
           <>
             {/* Gradient preview bar — stop handles on TOP (caret points down), squarish bar */}
             <div className="px-[16px] pt-[8px] pb-[8px]">
-              <div className="relative h-[34px]">
-                {stops.map(stop => (
+              <div ref={stopTrackRef} className="relative h-[34px]">
+                {stops.map((stop, index) => (
                   <GradientStopHandle
                     key={stop.id}
                     color={`#${stop.color}`}
+                    ariaLabel={`Stop ${index + 1}`}
+                    position={stop.position}
+                    selected={stop.id === selectedStopId}
                     style={{ position: "absolute", left: `calc(${stop.position}% - 12px)`, top: 0 }}
+                    onPointerDown={beginStopDrag(stop.id)}
+                    onPointerMove={moveStopDrag}
+                    onPointerUp={endStopDrag}
+                    onPointerCancel={endStopDrag}
+                    onKeyDown={stopKeyDown(stop)}
                   />
                 ))}
               </div>
+              {/* Every stop, at its own position — the bar used to interpolate
+                  the first colour straight to the last, so moving a stop or
+                  adding one in between changed nothing anybody could see. */}
               <div
                 className="h-[16px] rounded-c-sm ring-1 ring-inset ring-[rgba(0,0,0,0.1)]"
-                style={{
-                  background: `linear-gradient(to right, #${stops[0]?.color ?? "000"}, #${stops[stops.length - 1]?.color ?? "666"})`,
-                }}
+                style={{ background: gradientPreview }}
               />
             </div>
 
@@ -698,16 +855,20 @@ export function ColorDialog({
               </button>
             </div>
 
-            {stops.map(stop => (
-              <StopRow
-                key={stop.id}
-                stop={stop}
-                onPosition={handleStopPos}
-                onOpacity={handleStopOp}
-                onColor={handleStopColor}
-                onRemove={handleStopRemove}
-              />
-            ))}
+            <div ref={stopListRef}>
+              {stops.map((stop, index) => (
+                <StopRow
+                  key={stop.id}
+                  stop={stop}
+                  index={index}
+                  onPosition={handleStopPos}
+                  onOpacity={handleStopOp}
+                  onColor={handleStopColor}
+                  onRemove={handleStopRemove}
+                  onFocusHex={focusStopHex}
+                />
+              ))}
+            </div>
 
             <div className="pb-[16px]" />
           </>
@@ -716,7 +877,9 @@ export function ColorDialog({
         {/* ── IMAGE ─────────────────────────────────────────────────────── */}
         {fillType === "image" && (
           <>
-            {/* Upload / preview area */}
+            {/* Upload / preview area. The upload control appears only with a
+                host picker behind it — it shipped with no onClick at all, so
+                pressing it did nothing and the empty checkerboard stayed. */}
             <div
               className="relative mx-[16px] mt-[16px] mb-[8px] rounded-c-md overflow-hidden flex items-center justify-center"
               style={{
@@ -725,19 +888,34 @@ export function ColorDialog({
                 backgroundSize: "16px 16px",
               }}
             >
-              <Button variant="Primary" label="Upload from computer" />
+              {onChooseImage && (
+                <Button
+                  variant="Primary"
+                  label={imageSourceLabel ? "Replace image" : "Upload from computer"}
+                  onClick={onChooseImage}
+                />
+              )}
             </div>
+            {imageSourceLabel && (
+              <span className={clsx(FONT, "block truncate px-[16px] pb-[8px] text-[11px] font-[450] text-c-text")}>
+                {imageSourceLabel}
+              </span>
+            )}
 
-            {/* Image adjustments */}
-            <div className="flex flex-col gap-[2px] pb-[16px]">
-              <AdjustRow label="Exposure"    value={imageExposure}    />
-              <AdjustRow label="Contrast"    value={imageContrast}    />
-              <AdjustRow label="Saturation"  value={imageSaturation}  />
-              <AdjustRow label="Temperature" value={imageTemperature} />
-              <AdjustRow label="Tint"        value={imageTint}        />
-              <AdjustRow label="Highlights"  value={imageHighlights}  />
-              <AdjustRow label="Shadows"     value={imageShadows}     />
-            </div>
+            {/* Image adjustments — same rule: every slider was handed a value
+                and no onChange, so each drag was thrown away. Shown only when
+                the host can receive the change. */}
+            {onImageAdjustmentChange && (
+              <div className="flex flex-col gap-[2px] pb-[16px]">
+                <AdjustRow label="Exposure"    value={imageExposure}    onChange={v => onImageAdjustmentChange("exposure", v)} />
+                <AdjustRow label="Contrast"    value={imageContrast}    onChange={v => onImageAdjustmentChange("contrast", v)} />
+                <AdjustRow label="Saturation"  value={imageSaturation}  onChange={v => onImageAdjustmentChange("saturation", v)} />
+                <AdjustRow label="Temperature" value={imageTemperature} onChange={v => onImageAdjustmentChange("temperature", v)} />
+                <AdjustRow label="Tint"        value={imageTint}        onChange={v => onImageAdjustmentChange("tint", v)} />
+                <AdjustRow label="Highlights"  value={imageHighlights}  onChange={v => onImageAdjustmentChange("highlights", v)} />
+                <AdjustRow label="Shadows"     value={imageShadows}     onChange={v => onImageAdjustmentChange("shadows", v)} />
+              </div>
+            )}
           </>
         )}
 
