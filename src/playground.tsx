@@ -5,7 +5,7 @@ import { AnimatePanel, type ObjectAnimationItem } from "./components/ui3/Animate
 import SlidesTemplate from "./imports/SlidesTemplate";
 import { SlidesPanel, type SlideData } from "./components/ui3/SlidesPanel";
 import { SlideInspector } from "./components/ui3/SlideInspector";
-import { Timeline, type BaseClipBlock, type TimelineEasingPreset, type TimelineViewport, type Track } from "./components/ui3/Timeline";
+import { Timeline, type BaseClipBlock, type MasterLane, type MasterLaneControlState, type TimelineEasingPreset, type TimelineViewport, type Track } from "./components/ui3/Timeline";
 import type { EasingApplyScope, EasingPreset, CubicBezier } from "./components/ui3/easing";
 import { LayerList, type LayerNode } from "./components/ui3/LayerList";
 import { NavRail } from "./components/ui3/NavRail";
@@ -797,8 +797,15 @@ export default function Playground() {
   const [exportContract, setExportContract] = useState<InspectorExportSetting[]>([
     { id: "export-1", scale: 1, suffix: "", format: "PNG" },
   ]);
+  // Controlled master-lane header state, so the mute toggle can be driven and its
+  // effect on the lane's bars actually seen.
+  const [laneControls, setLaneControls] = useState<Partial<Record<MasterLane, MasterLaneControlState>>>({});
+  const toggleLane = (lane: MasterLane, key: keyof MasterLaneControlState) =>
+    setLaneControls(current => ({ ...current, [lane]: { ...current[lane], [key]: !(current[lane]?.[key] ?? (key === "visible")) } }));
   const [clipBlocks, setClipBlocks] = useState<BaseClipBlock[]>([
-    { id: "clip-1", name: "hero-cover.mp4", range: [1000, 7000], selected: true, tint: "linear-gradient(135deg,#1f2937,#475569)" },
+    // clip-1 carries audio peaks (the strip renders); clip-2 is silent (it must not).
+    { id: "clip-1", name: "hero-cover.mp4", range: [1000, 7000], selected: true, tint: "linear-gradient(135deg,#1f2937,#475569)",
+      waveform: [0.2, 0.6, 0.9, 0.4, 0.7, 1, 0.3, 0.5, 0.8, 0.2, 0.6, 0.4] },
     { id: "clip-2", name: "product.mp4", range: [8000, 12000], tint: "linear-gradient(135deg,#14532d,#16a34a)" },
   ]);
   const [layerContracts, setLayerContracts] = useState<LayerNode[]>([
@@ -1530,8 +1537,13 @@ export default function Playground() {
     return (
       <div style={{ height: "100vh", width: "100vw", background: "#e6e6e6", padding: 24, boxSizing: "border-box" }}>
         <Timeline height={360} mode={view === "timeline-master" ? "master" : "slide"}
-          onLaneAdd={noop} onLaneVisibilityToggle={noop} onLaneSoloToggle={noop} onLaneMuteToggle={noop} onLaneLockToggle={noop}
-          onTrackListCollapsedChange={noop} onTimelineCollapsedChange={noop} />
+          baseClips={clipBlocks} laneControls={laneControls}
+          onLaneAdd={noop}
+          onLaneVisibilityToggle={lane => toggleLane(lane, "visible")}
+          onLaneSoloToggle={lane => toggleLane(lane, "solo")}
+          onLaneMuteToggle={lane => toggleLane(lane, "muted")}
+          onLaneLockToggle={lane => toggleLane(lane, "locked")}
+          onTimelineCollapsedChange={noop} />
       </div>
     );
   }
