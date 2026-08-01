@@ -42,10 +42,51 @@ export function shouldMountAnchoredInspectorOverlay(open: boolean, anchorReady: 
   return open && anchorReady;
 }
 
+/**
+ * Last-resort anchor for a free-floating overlay whose `anchorSelector` and
+ * overlay boundary both resolve to nothing. Built by hand rather than through
+ * `new DOMRect(...)` so the fallback also works where there is no DOM
+ * constructor (SSR, and the node-environment unit tests).
+ */
+function viewportAnchorRect(): DOMRect {
+  const width = typeof window === "undefined" ? 0 : window.innerWidth;
+  const height = typeof window === "undefined" ? 0 : window.innerHeight;
+  return {
+    x: 0, y: 0, width, height, top: 0, right: width, bottom: height, left: 0,
+    toJSON() { return this; },
+  } as DOMRect;
+}
+
 export interface AnchoredInspectorOverlayProps {
   open: boolean;
   onClose: () => void;
-  trigger: ReactElement;
+  /**
+   * The control the overlay launches from. Optional: see {@link
+   * AnchoredInspectorOverlayProps.anchorSelector} for surfaces that have no
+   * persistent trigger to capture.
+   */
+  trigger?: ReactElement;
+  /**
+   * FREE-FLOATING mode — used when no `trigger` is supplied. Names the element
+   * the overlay positions against, which then plays every role the trigger
+   * normally plays: it supplies the anchor rect, the drag/collision boundary,
+   * and the Composa mode. `side` / `align` / `sideOffset` are interpreted
+   * against it exactly as they are against a trigger.
+   *
+   * This exists because not every floating surface HAS a launch control to
+   * capture: a mini-player opened from a menu row that closes itself on select,
+   * or straight from a URL, would otherwise need a phantom trigger element
+   * whose only job is to satisfy this API.
+   *
+   * If the selector matches nothing the anchor falls back to the nearest
+   * `[data-composa-overlay-boundary]`, and then to the viewport. That fallback
+   * is deliberate: a trigger-anchored overlay can safely wait for its trigger to
+   * appear, but a free-floating one has nothing to wait for, so a missed
+   * selector would leave `open` painting nothing at all.
+   *
+   * Ignored when `trigger` is supplied.
+   */
+  anchorSelector?: string;
   children: ReactNode;
   ariaLabel: string;
   width?: number | string;
@@ -95,6 +136,7 @@ export function AnchoredInspectorOverlay({
   open,
   onClose,
   trigger,
+  anchorSelector,
   children,
   ariaLabel,
   width = 240,
@@ -155,6 +197,26 @@ export function AnchoredInspectorOverlay({
   });
 
   const capture = (markOpeningGesture = false) => {
+    if (!trigger) {
+      // Free-floating: there is no launch control to capture, so the anchor is
+      // whatever `anchorSelector` names. This branch always succeeds (see the
+      // prop doc) — a free-floating surface has no trigger to wait for, so
+      // failing here would mean `open` renders nothing.
+      const anchor = (anchorSelector && typeof document !== "undefined"
+        ? document.querySelector<HTMLElement>(anchorSelector)
+        : null)
+        ?? (typeof document === "undefined"
+          ? null
+          : document.querySelector<HTMLElement>(COMPOSA_OVERLAY_BOUNDARY_SELECTOR));
+      openingGesture.current = markOpeningGesture;
+      capturedRect.current = anchor?.getBoundingClientRect() ?? viewportAnchorRect();
+      capturedSurfaceRect.current = anchorSurfaceSelector
+        ? anchor?.closest<HTMLElement>(anchorSurfaceSelector)?.getBoundingClientRect() ?? null
+        : null;
+      capturedBoundary.current = anchor?.closest<HTMLElement>(COMPOSA_OVERLAY_BOUNDARY_SELECTOR) ?? null;
+      triggerMode.current = (anchor ? composaModeAt(anchor) : undefined) ?? mode;
+      return true;
+    }
     const target = triggerControl(triggerHost.current);
     if (target) {
       openingGesture.current = markOpeningGesture;
@@ -255,14 +317,16 @@ export function AnchoredInspectorOverlay({
         onClose();
       }
     }}>
-      <span
-        ref={triggerHost}
-        className={clsx("inline-flex", triggerClassName)}
-        onPointerDownCapture={() => { capture(true); }}
-        onKeyDownCapture={event => { if (event.key === "Enter" || event.key === " ") capture(true); }}
-      >
-        {trigger}
-      </span>
+      {trigger !== undefined && (
+        <span
+          ref={triggerHost}
+          className={clsx("inline-flex", triggerClassName)}
+          onPointerDownCapture={() => { capture(true); }}
+          onKeyDownCapture={event => { if (event.key === "Enter" || event.key === " ") capture(true); }}
+        >
+          {trigger}
+        </span>
+      )}
       {capturedRect.current && <PopoverPrimitive.Anchor key={anchorVersion} virtualRef={virtualAnchor} />}
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
