@@ -1994,8 +1994,12 @@ function ExportSection({ settings, targetName = "selection", onAdd, onRemove, on
           <DragGutter grip={exports.length > 1} />
           <div className="flex-1 min-w-0 flex items-center gap-[4px]">
             <div className="w-[54px] shrink-0"><NumericInput value={exp.scale} min={0.01} step={0.25} suffix="×" onChange={scale => update(exp.id, { scale })} /></div>
-            <div className="flex-1 min-w-0"><InputField value={exp.suffix} placeholder="Suffix" onChange={suffix => update(exp.id, { suffix })} /></div>
-            <div className="w-[64px] shrink-0"><ChoiceDropdown value={exp.format} options={["PNG", "JPG"]} labels={{ PNG: "PNG", JPG: "JPG" }} onChange={format => update(exp.id, { format })} /></div>
+            {/* The Suffix field is gone (Composa#661). The app stopped reading it, so
+                it round-tripped a value nothing consumed: still editable, still
+                placeholdered, and no longer able to change an exported filename.
+                Removed rather than disabled -- a disabled field still promises the
+                feature exists. Format takes the freed width. */}
+            <div className="flex-1 min-w-0"><ChoiceDropdown value={exp.format} options={["PNG", "JPG"]} labels={{ PNG: "PNG", JPG: "JPG" }} onChange={format => update(exp.id, { format })} /></div>
           </div>
           <div className="shrink-0 flex items-center gap-[4px] pl-[8px]">
             <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove export" onClick={() => remove(exp.id)} />
