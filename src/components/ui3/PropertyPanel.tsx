@@ -48,7 +48,7 @@ import type { EasingApplyScope } from "./easing";
 import { iconForSemantic } from "./IconSemantics";
 import { AutoLayoutSpacingIcon } from "./AutoLayoutSpacingIcon";
 import { TypeSettingsDialog } from "./TypeSettingsDialog";
-import { FontPickerDialog, type FontEntry } from "./FontPickerDialog";
+import { DEFAULT_FONT_WEIGHTS, FontPickerDialog, type FontEntry, type FontWeightOption } from "./FontPickerDialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1510,11 +1510,40 @@ function StyleInput({ chit, value, onClick }: { chit: ReactNode; value: string; 
   );
 }
 
-function TypographySection({ value, onChange, stylesAvailable, fonts }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean; fonts?: ReadonlyArray<FontEntry> }) {
+/**
+ * Font sizes the size field's chevron offers. Presets only — the field stays a
+ * free-text combo, so any size not on this list is still typeable. The roster is
+ * the conventional editor type ramp (fine steps where UI text lives, coarser
+ * ones for display sizes); hosts with their own scale pass `fontSizes`.
+ */
+export const DEFAULT_FONT_SIZES: ReadonlyArray<number> = [8, 9, 10, 11, 12, 14, 16, 18, 24, 36, 48, 64, 72, 96, 128];
+
+/** Same cap + overlay-thumb scroll treatment the blend-mode menu uses. */
+const FONT_SIZE_MENU_MAX_HEIGHT = 280;
+
+/**
+ * Weights offered for the selected family: the family's own roster when the host
+ * declared one, else the host-wide roster, else the DS default four. Families
+ * differ widely (Inter ships 9 weights, many text faces ship 2), and neither the
+ * Google catalog nor the Local Font Access roster carries axis metadata, so this
+ * can only be as good as what the host supplies.
+ */
+function weightsForFamily(
+  family: string,
+  fonts: ReadonlyArray<FontEntry> | undefined,
+  hostWeights: ReadonlyArray<FontWeightOption> | undefined,
+): ReadonlyArray<FontWeightOption> {
+  const entry = fonts?.find(font => font.name === family);
+  return entry?.weights ?? hostWeights ?? DEFAULT_FONT_WEIGHTS;
+}
+
+function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes = DEFAULT_FONT_SIZES, fontWeights }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean; fonts?: ReadonlyArray<FontEntry>; fontSizes?: ReadonlyArray<number>; fontWeights?: ReadonlyArray<FontWeightOption> }) {
   const [internal, setInternal] = useState<ElementTypographySettings>({ fontFamily: "Inter", fontWeight: "Medium", fontSize: 11, lineHeight: 16, letterSpacing: 0, align: "left", verticalAlign: "top", decoration: "none", textCase: "none", weight: 500, styleName: "Title · 96/120" });
   const settings = value ?? internal;
   const update = (patch: Partial<ElementTypographySettings>) => { if (!value) setInternal(current => ({ ...current, ...patch })); onChange?.(patch); };
   const hasStyle = stylesAvailable && !!settings.styleName;
+  const weightOptions = weightsForFamily(settings.fontFamily, fonts, fontWeights);
+  const weightLabels = Object.fromEntries(weightOptions.map(option => [option.label, option.label])) as Record<string, string>;
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
   const textAlignBtns: IconBtn[] = [
     { icon: <TextAlignLeftIcon data-icon-semantic="text-align-left" size={S} strokeWidth={1.5} />, label: "Align left", tooltip: "Align left", onClick: () => update({ align: "left" }) },
@@ -1580,8 +1609,28 @@ function TypographySection({ value, onChange, stylesAvailable, fonts }: { value?
 
           {/* Weight / Size — no labels (Figma); Size is a combo input */}
           <div className="flex items-center gap-[8px] pl-[16px] pr-[16px] pt-[3px]">
-            <div className="flex-1 min-w-0"><ChoiceDropdown value={settings.fontWeight} options={["Regular", "Medium", "Semibold", "Bold"]} labels={{ Regular: "Regular", Medium: "Medium", Semibold: "Semibold", Bold: "Bold" }} onChange={fontWeight => update({ fontWeight })} /></div>
-            <div className="flex-1 min-w-0"><ComboInput ariaLabel="Font size" selectAllOnFocus iconLead={<span className={FONT}>T</span>} value={String(settings.fontSize)} onInputChange={fontSize => update({ fontSize: Number(fontSize) })} /></div>
+            {/* Weight rows come from the selected family, not a fixed four
+                (Composa#661) — and each pick emits BOTH the named weight and its
+                numeric value so a name outside the host's own name table (Thin,
+                Black, …) still persists as the right CSS weight. */}
+            <div className="flex-1 min-w-0"><ChoiceDropdown ariaLabel="Font weight" value={settings.fontWeight} options={weightOptions.map(option => option.label)} labels={weightLabels} onChange={label => { const picked = weightOptions.find(option => option.label === label); update({ fontWeight: label, ...(picked ? { weight: picked.value } : {}) }); }} /></div>
+            <div className="flex-1 min-w-0">
+              <ComboInput
+                ariaLabel="Font size"
+                selectAllOnFocus
+                iconLead={<span className={FONT}>T</span>}
+                value={String(settings.fontSize)}
+                onInputChange={fontSize => update({ fontSize: Number(fontSize) })}
+                dropdownAriaLabel="Font size presets"
+                menu={close => (
+                  <Menu maxHeight={FONT_SIZE_MENU_MAX_HEIGHT}>
+                    {fontSizes.map(size => (
+                      <MenuRow key={size} type="checkmark" checked={size === settings.fontSize} label={String(size)} onClick={() => { update({ fontSize: size }); close(); }} />
+                    ))}
+                  </Menu>
+                )}
+              />
+            </div>
             <div className="shrink-0 min-w-[24px]" />
           </div>
 
@@ -2449,8 +2498,12 @@ function ChoiceDropdown<T extends string>({ ariaLabel, value, options, labels, o
   labels: Record<T, string>;
   onChange?: (value: T) => void;
 }) {
+  // A roster-driven caller (the weight menu) can hold a value the current roster
+  // doesn't list — e.g. the selection is Semibold and the newly chosen family
+  // only ships Regular/Bold. Show the value verbatim rather than a blank field.
+  const displayed = labels[value] ?? value;
   return (
-    <PopoverMenu directTrigger align="right" className="w-full" trigger={<Dropdown aria-haspopup="menu" ariaLabel={ariaLabel ? `${ariaLabel}: ${labels[value]}` : undefined} value={labels[value]} fullWidth />}>
+    <PopoverMenu directTrigger align="right" className="w-full" trigger={<Dropdown aria-haspopup="menu" ariaLabel={ariaLabel ? `${ariaLabel}: ${displayed}` : undefined} value={displayed} fullWidth />}>
       {close => <Menu>{options.map(option => (
         <MenuRow key={option} type="checkmark" checked={option === value} label={labels[option]} onClick={() => { onChange?.(option); close(); }} />
       ))}</Menu>}
@@ -2880,6 +2933,11 @@ export interface PropertyPanelProps {
   /** Host-provided font roster for the Typography Font Picker. Defaults to the
    * DS bundled/web-safe roster (BUNDLED_FONTS) when omitted. */
   fonts?: ReadonlyArray<FontEntry>;
+  /** Presets the Typography font-size chevron offers. Defaults to DEFAULT_FONT_SIZES. */
+  fontSizes?: ReadonlyArray<number>;
+  /** Weight roster used for families whose `fonts` entry declares no `weights`.
+   * Defaults to DEFAULT_FONT_WEIGHTS (Regular · Medium · Semibold · Bold). */
+  fontWeights?: ReadonlyArray<FontWeightOption>;
   fills?: ElementFillSetting[];
   onAddFill?: () => void; onUpdateFill?: (id: string, patch: Partial<Omit<ElementFillSetting, "id">>) => void; onToggleFill?: (id: string, visible: boolean) => void; onReorderFill?: (id: string, targetId: string) => void; onRemoveFill?: (id: string) => void;
   strokes?: ElementStrokeSetting[];
@@ -3398,7 +3456,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   layout, onLayoutChange, onSizingChange, onSizingConstraintChange, onApplySizingVariable,
   textSizingMode, availableTextSizingModes, textSizingModeDisabled = false, onTextSizingModeChange,
   positionPresentation = "separate", onPositionPresentationChange,
-  onAutoLayoutSettingsRequest, typography, onTypographyChange, fonts,
+  onAutoLayoutSettingsRequest, typography, onTypographyChange, fonts, fontSizes, fontWeights,
   fills, onAddFill, onUpdateFill, onToggleFill, onReorderFill, onRemoveFill,
   strokes, strokeReadOnly = false, onAddStroke, onUpdateStroke, onToggleStroke, onReorderStroke, onRemoveStroke,
   effects, onAddEffect, onUpdateEffect, onToggleEffect, onReorderEffect, onRemoveEffect,
@@ -3898,7 +3956,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <AppearanceSection opacity={opacity} blendMode={blendMode} supportedBlendModes={supportedBlendModes} cornerRadius={cornerRadius} opacityMixed={opacityMixed} cornerRadiusMixed={cornerRadiusMixed} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} />
 
           {/* Typography — text only */}
-          {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} fonts={fonts} />}
+          {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} fonts={fonts} fontSizes={fontSizes} fontWeights={fontWeights} />}
 
           {/* Stackable sections */}
           <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill} capabilities={capabilities}

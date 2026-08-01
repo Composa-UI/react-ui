@@ -1071,7 +1071,11 @@ export function ColorInput({
 }
 
 // ─── ComboInput ───────────────────────────────────────────────────────────────
-// Input field + split chevron dropdown button
+// Input field + split chevron dropdown button.
+// The chevron only renders when the consumer gives it something to do — either
+// an anchored `menu` or an `onDropdownClick`. A chevron with neither is an inert
+// control that still advertises a dropdown (Composa#661: the font-size chevron
+// shipped that way and nothing dropped down), so it is omitted instead.
 
 type ComboInputState = "default" | "hover" | "selectedInput" | "selectedChevron";
 
@@ -1091,6 +1095,13 @@ interface ComboInputProps {
    */
   selectAllOnFocus?: boolean;
   onInputChange?: (v: string) => void;
+  /**
+   * Renders the chevron half as an anchored menu trigger. Takes precedence over
+   * `onDropdownClick`; receives `close` so a chosen row can dismiss the popover.
+   */
+  menu?: (close: () => void) => ReactNode;
+  /** Names the chevron half for assistive tech, e.g. "Font size presets". */
+  dropdownAriaLabel?: string;
   onDropdownClick?: () => void;
   className?: string;
 }
@@ -1106,6 +1117,8 @@ export function ComboInput({
   state = "default",
   selectAllOnFocus = false,
   onInputChange,
+  menu,
+  dropdownAriaLabel,
   onDropdownClick,
   className,
 }: ComboInputProps) {
@@ -1116,6 +1129,26 @@ export function ComboInput({
   const inputRing = inputFocused ? "ring-c-focus-ring" : state === "hover" ? "ring-c-border" : "ring-transparent";
   const chevronBg = chevronFocused ? "bg-c-bg-selected" : state === "hover" ? "bg-c-bg-tertiary" : "bg-c-bg-secondary";
   const chevronRing = (inputFocused || chevronFocused || state === "hover") ? "ring-c-focus-ring" : "ring-transparent";
+
+  const chevron = (
+    <button
+      type="button"
+      aria-label={dropdownAriaLabel}
+      aria-haspopup={menu ? "menu" : undefined}
+      onClick={!disabled && !menu ? onDropdownClick : undefined}
+      disabled={disabled}
+      className={clsx(
+        "shrink-0 flex items-center justify-center rounded-r-c-md",
+        "ring-1 ring-inset transition-colors duration-100",
+        H[size], "w-[24px]",
+        chevronBg,
+        chevronRing,
+        disabled && "opacity-60 cursor-not-allowed",
+      )}
+    >
+      <ChevronDown size={10} strokeWidth={2} className="text-c-icon-secondary" />
+    </button>
+  );
 
   return (
     <div className={clsx("flex gap-px items-start", className)}>
@@ -1163,21 +1196,10 @@ export function ComboInput({
         )}
       </div>
 
-      {/* chevron half */}
-      <button
-        onClick={!disabled ? onDropdownClick : undefined}
-        disabled={disabled}
-        className={clsx(
-          "shrink-0 flex items-center justify-center rounded-r-c-md",
-          "ring-1 ring-inset transition-colors duration-100",
-          H[size], "w-[24px]",
-          chevronBg,
-          chevronRing,
-          disabled && "opacity-60 cursor-not-allowed",
-        )}
-      >
-        <ChevronDown size={10} strokeWidth={2} className="text-c-icon-secondary" />
-      </button>
+      {/* chevron half — omitted entirely when it would do nothing */}
+      {menu
+        ? <PopoverMenu directTrigger align="right" className="shrink-0" trigger={chevron}>{menu}</PopoverMenu>
+        : onDropdownClick ? chevron : null}
     </div>
   );
 }
