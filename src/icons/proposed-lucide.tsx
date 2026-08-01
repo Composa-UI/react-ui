@@ -28,6 +28,7 @@ export const proposedLucideMetadata = {
   lineHeight: { pr: 3039, sourceUrl: "https://github.com/lucide-icons/lucide/pull/3039", replacementImport: "LineHeight" },
   squareText: { pr: 4609, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4609", replacementImport: "SquareText" },
   textMargins: { pr: 4610, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4610", replacementImport: "TextMargins" },
+  diamondCircle: { pr: 4615, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4615", replacementImport: "DiamondCircle" },
 } as const satisfies Record<string, ProposedLucideMetadata>;
 
 // TODO(lucide-pr-4541): replace with lucide-react LayoutHorizontal after upstream merge.
@@ -212,6 +213,16 @@ export const ProposedTextMargins = createLucideIcon("ProposedTextMargins", [
   ["path", { d: "M7 8h8", key: "line-1" }],
   ["path", { d: "M7 12h10", key: "line-2" }],
   ["path", { d: "M7 16h6", key: "line-3" }],
+]);
+
+// TODO(lucide-pr-4615): replace with lucide-react DiamondCircle after upstream merge.
+// Auto-keyframe / record glyph (owner ask): the `diamond-*` family outline with a
+// centred circle — the keyframe diamond carrying the record dot. Geometry is copied
+// verbatim from icons/diamond-circle.svg on the upstream PR branch, so the swap to
+// the real import is a pure import change.
+export const ProposedDiamondCircle = createLucideIcon("ProposedDiamondCircle", [
+  ["path", { d: "M2.7 10.3a2.41 2.41 0 0 0 0 3.41l7.59 7.59a2.41 2.41 0 0 0 3.41 0l7.59-7.59a2.41 2.41 0 0 0 0-3.41L13.7 2.71a2.41 2.41 0 0 0-3.41 0z", key: "diamond" }],
+  ["circle", { cx: "12", cy: "12", r: "4", key: "circle" }],
 ]);
 
 // TODO(lucide-pr-3039): replace with lucide-react LineHeight after upstream merge.
