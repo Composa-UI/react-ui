@@ -374,7 +374,7 @@ describe("Timeline DOM contracts", () => {
     expect(contentTag).toContain("min-h-full");
     expect(contentTag).toContain("relative");
     // The playhead line spans the full height of that content, and lives inside it.
-    const wrapperIdx = html.indexOf("absolute top-0 bottom-0 right-0 z-20 overflow-hidden pointer-events-none");
+    const wrapperIdx = html.indexOf("absolute top-0 bottom-0 z-20 overflow-hidden pointer-events-none");
     expect(wrapperIdx).toBeGreaterThan(contentIdx);
     expect(html).toContain('class="absolute top-0 bottom-0 w-px"');
   };
@@ -729,15 +729,13 @@ describe("Timeline bar hover + focus (Composa#583 / #584)", () => {
   });
 });
 
-// Composa#582 — the two formerly-inert collapse controls are controlled toggles.
+// Composa#582 — the timeline collapse control is a controlled toggle.
 describe("Timeline collapse controls (Composa#582)", () => {
-  it("renders the collapse buttons disabled when the host wires no handler", () => {
+  it("renders the collapse button disabled when the host wires no handler", () => {
     const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={2_000} />);
     expect(html).toContain('aria-label="Collapse timeline"');
-    expect(html).toContain('aria-label="Collapse track list"');
     // Inert without handlers — disabled, not silently no-op.
     expect(html).toMatch(/aria-label="Collapse timeline"[^>]*disabled/);
-    expect(html).toMatch(/aria-label="Collapse track list"[^>]*disabled/);
   });
 
   it("reflects the collapsed state and hides the lanes body when timelineCollapsed", () => {
@@ -754,15 +752,133 @@ describe("Timeline collapse controls (Composa#582)", () => {
     expect(collapsed).not.toContain('aria-label="Intro"');
   });
 
-  it("drops the lane headers so the plot spans full width when trackListCollapsed", () => {
-    const open = renderToStaticMarkup(<Timeline mode="master" height={220} duration={2_000}
-      onTrackListCollapsedChange={() => undefined} />);
-    expect(open).toContain("Compositions");
+  // Composa#661 — the owner does not want the track header collapsible, so the
+  // control (and the whole collapsed-track-list mode behind it) is gone rather than
+  // left disabled: a disabled button still promises the feature exists.
+  it("offers no track-list collapse control, and always renders the lane headers", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={2_000} />);
+    // Guard first: if the master chrome failed to render at all, the absences below
+    // would pass for the wrong reason.
+    expect(html).toContain('aria-label="Playhead"');
+    expect(html).toContain("Compositions");
+    expect(html).toContain("Video");
+    expect(html).toContain("Audio");
+    expect(html).not.toContain("Collapse track list");
+    expect(html).not.toContain("Expand track list");
+  });
+});
 
-    const collapsed = renderToStaticMarkup(<Timeline mode="master" height={220} duration={2_000}
-      trackListCollapsed onTrackListCollapsedChange={() => undefined} />);
-    // Lane headers (the track list) are removed; the expand affordance replaces the toggle.
-    expect(collapsed).not.toContain("Compositions");
-    expect(collapsed).toContain('aria-label="Expand track list"');
+// ── Composa#661 ────────────────────────────────────────────────────────────────
+// Feedback on the master timeline. Every assertion below is scoped to the element
+// under test (found by aria-label or a data hook); matching the whole rendered tree
+// passes vacuously here, because the timeline chrome already contains most of these
+// tokens no matter what the lanes do.
+
+/** The opening tag of the element carrying this aria-label. */
+function tagWithLabel(html: string, label: string): string {
+  const tag = new RegExp(`<[a-z]+[^>]*aria-label="${label}"[^>]*>`).exec(html)?.[0];
+  if (!tag) throw new Error(`no element labelled "${label}" in the markup`);
+  return tag;
+}
+const master = (extra: Record<string, unknown> = {}) =>
+  renderToStaticMarkup(<Timeline mode="master" height={320} duration={4_000} {...extra} />);
+
+describe("master track header aligns with the transport above it (Composa#661)", () => {
+  // The owner reads the GLYPHS, not the hit boxes: the play triangle sits half a
+  // gutter inside its 24px button, so a header padded to the transport row's own 8px
+  // put the lane icon 4px to its left. This derives the expected inset from the
+  // transport's OWN rendered numbers, so nudging the transport without moving the
+  // header fails here instead of drifting silently.
+  const html = master();
+
+  it("insets the lane header by the transport's play-glyph offset", () => {
+    const playButton = tagWithLabel(html, "Play");
+    const box = Number(/width:\s*(\d+)px/.exec(playButton)?.[1]);
+    const glyph = Number(/<svg[^>]*width="(\d+)"/.exec(html.slice(html.indexOf(playButton)))?.[1]);
+    // The transport row's own horizontal inset, read off the element that wraps it.
+    const rowIdx = html.indexOf(playButton);
+    const rowTag = html.slice(html.lastIndexOf("<div", html.lastIndexOf("<div", rowIdx) - 1), rowIdx);
+    const rowPad = Number(/padding-left:\s*(\d+)px/.exec(rowTag)?.[1]);
+    expect(box).toBe(24);
+    expect(glyph).toBe(16);
+    expect(rowPad).toBe(8);
+
+    const header = /<div[^>]*data-timeline-lane-header="Compositions"[^>]*>/.exec(html)?.[0];
+    expect(header).toBeDefined();
+    const headerPad = Number(/padding-left:\s*(\d+)px/.exec(header!)?.[1]);
+    expect(headerPad).toBe(rowPad + (box - glyph) / 2);
+  });
+});
+
+describe("time plot reserves the zoom/collapse gutter (Composa#661)", () => {
+  // 154px = the header's right cluster (91px zoom track + 8px gap + 24px collapse
+  // button + 2x12px padding + 1px border = 148) plus half the 12px playhead handle,
+  // which is centred on the time position and so overhangs it. Time used to map
+  // across the FULL row width, so at maximum zoom-out the handle (z-20) drew over
+  // that cluster (z-10). Every plot row now stops short of it, like a scrollbar track.
+  const GUTTER = 154;
+  const html = master({ audioClips: [{ id: "a1", name: "vo", range: [0, 1_000] }] });
+
+  it("insets the ruler row, every lane row and the time scrollbar by the same gutter", () => {
+    // Guard: the master chrome rendered, so counting below is not counting zero.
+    expect(html).toContain('aria-label="Playhead"');
+    // ruler/transport header + Compositions + Video + Audio + scrollbar = 5 rows.
+    expect(html.match(new RegExp(`padding-right:\\s*${GUTTER}px`, "g"))?.length).toBe(5);
+  });
+
+  it("insets the body playhead overlay by the same gutter", () => {
+    const wrapperIdx = html.indexOf("absolute top-0 bottom-0 z-20 overflow-hidden pointer-events-none");
+    expect(wrapperIdx).toBeGreaterThan(-1);
+    const wrapper = html.slice(html.lastIndexOf("<div", wrapperIdx), html.indexOf(">", wrapperIdx) + 1);
+    expect(wrapper).toContain(`right:${GUTTER}px`);
+  });
+});
+
+describe("video clips carry an audio strip (Composa#661)", () => {
+  it("draws the Audio lane's waveform inside the bar when peaks are supplied", () => {
+    const html = master({ baseClips: [{ id: "v1", name: "shot", range: [0, 1_000], waveform: [0.2, 0.9, 0.4] }] });
+    expect(() => tagWithLabel(html, "shot")).not.toThrow();
+    expect(html).toContain("data-timeline-clip-waveform");
+  });
+
+  it("draws nothing when the clip has no peaks, rather than inventing them", () => {
+    // No audioClips here, so a waveform anywhere in this markup could only be the
+    // video lane's. The bar itself must still render, or the absence proves nothing.
+    const html = master({ baseClips: [{ id: "v1", name: "shot", range: [0, 1_000] }] });
+    expect(() => tagWithLabel(html, "shot")).not.toThrow();
+    expect(html).not.toContain("data-timeline-clip-waveform");
+  });
+});
+
+describe("a muted lane dims its bars (Composa#661)", () => {
+  // Muting from the lane header used to be invisible below the header: `muted` was
+  // read only by the speaker icon and never reached the bars.
+  const bars: [string, string, Record<string, unknown>][] = [
+    ["slides", "Intro", { blocks: [{ id: "s1", name: "Intro", range: [0, 1_000] }] }],
+    ["video", "shot", { baseClips: [{ id: "v1", name: "shot", range: [0, 1_000] }] }],
+    ["audio", "vo", { audioClips: [{ id: "a1", name: "vo", range: [0, 1_000] }] }],
+  ];
+
+  describe.each(bars)("%s lane", (lane, label, props) => {
+    it("dims the bar while the lane is muted", () => {
+      expect(tagWithLabel(master({ ...props, laneControls: { [lane]: { muted: true } } }), label)).toContain("opacity-40");
+    });
+
+    it("leaves the bar at full opacity while it is not", () => {
+      expect(tagWithLabel(master({ ...props, laneControls: { [lane]: { muted: false } } }), label)).not.toContain("opacity-40");
+    });
+  });
+});
+
+describe("video clips raise a context menu (Composa#661)", () => {
+  const clip = { baseClips: [{ id: "v1", name: "shot", range: [0, 1_000] }] };
+
+  it("advertises the menu on the bar once a host handler is wired", () => {
+    expect(tagWithLabel(master({ ...clip, onClipContextMenu: () => undefined }), "shot")).toContain('aria-haspopup="menu"');
+  });
+
+  it("promises nothing when no host handler is wired", () => {
+    // The bar must still be there — otherwise the missing attribute means nothing.
+    expect(tagWithLabel(master(clip), "shot")).not.toContain("aria-haspopup");
   });
 });

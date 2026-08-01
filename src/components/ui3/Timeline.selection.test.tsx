@@ -65,15 +65,35 @@ describe("selection and active are different things", () => {
   });
 });
 
-describe("a selected video clip keeps its thumbnail", () => {
-  it("tints the scrim rather than painting over the frame", () => {
-    const markup = render({ baseClips: [{ id: "c1", name: "shot", range: [0, 4000], thumbnail: "blob:x", selected: true }] });
-    // The image must survive selection — it is the only thing distinguishing one
-    // clip from another at a glance, so a solid fill would be a regression
-    // dressed up as consistency.
-    expect(markup).toContain("blob:x");
-    expect(markup).toContain("--color-c-bg-brand");
-    // …and with an image present the bar must NOT take the solid fill.
-    expect(barClass(markup, "shot")).not.toContain(SELECTED_FILL);
+/**
+ * Composa#661 reverses the earlier "keep the thumbnail, tint the scrim" special case.
+ * The owner: "I don't see them in the UI today and even if they were there I don't
+ * think changing the color of the element has any adverse effect." So a thumbnail no
+ * longer buys a video clip an exemption from the shared selected treatment.
+ */
+describe("a selected video clip with a thumbnail", () => {
+  const markup = () => render({ baseClips: [{ id: "c1", name: "shot", range: [0, 4000], thumbnail: "blob:x", selected: true }] });
+
+  it("takes the same solid fill as every other selected bar", () => {
+    const cls = barClass(markup(), "shot");
+    expect(cls).toContain(SELECTED_BORDER);
+    expect(cls).toContain(SELECTED_FILL);
+  });
+
+  it("drops the thumbnail background so the fill is not a tint over the frame", () => {
+    // Scoped to the bar's own tag: `blob:x` would still appear in the markup if any
+    // OTHER element referenced it, and the scrim regression lived in this one style.
+    const tag = /<div[^>]*aria-label="shot"[^>]*>/.exec(markup())?.[0];
+    expect(tag).toBeDefined();
+    expect(tag).not.toContain("blob:x");
+    expect(tag).not.toContain("color-mix");
+  });
+
+  it("still paints the thumbnail when the clip is NOT selected", () => {
+    // The absence above must come from selection, not from thumbnails having broken.
+    const tag = /<div[^>]*aria-label="shot"[^>]*>/.exec(
+      render({ baseClips: [{ id: "c1", name: "shot", range: [0, 4000], thumbnail: "blob:x" }] }),
+    )?.[0];
+    expect(tag).toContain("blob:x");
   });
 });

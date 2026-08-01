@@ -25,12 +25,11 @@ describe("Timeline icon-button tooltips (Composa#628)", () => {
         duration={2_000}
         onStop={() => undefined}
         onAutoKeyframeChange={() => undefined}
-        onTrackListCollapsedChange={() => undefined}
         onTimelineCollapsedChange={() => undefined}
       />,
     );
 
-    for (const expected of ["Play", "Stop", "Auto-keyframe", "Loop", "Collapse track list", "Collapse timeline", "Timeline zoom"]) {
+    for (const expected of ["Play", "Stop", "Auto-keyframe", "Loop", "Collapse timeline", "Timeline zoom"]) {
       expect(labels).toContain(expected);
     }
   });
@@ -38,13 +37,11 @@ describe("Timeline icon-button tooltips (Composa#628)", () => {
   it("tracks the toggled state so the tooltip never contradicts the icon", () => {
     const playing = tooltipLabels(
       <Timeline height={220} duration={2_000} playing onPlayingChange={() => undefined}
-        trackListCollapsed timelineCollapsed
-        onTrackListCollapsedChange={() => undefined} onTimelineCollapsedChange={() => undefined} />,
+        timelineCollapsed onTimelineCollapsedChange={() => undefined} />,
     );
 
     expect(playing).toContain("Pause");
     expect(playing).not.toContain("Play");
-    expect(playing).toContain("Expand track list");
     expect(playing).toContain("Expand timeline");
   });
 
