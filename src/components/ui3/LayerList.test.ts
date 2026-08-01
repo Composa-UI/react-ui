@@ -54,11 +54,13 @@ describe("LayerList drag root normalization", () => {
     ]);
   });
 
+  // Alignment is now explicit: the `-center` glyph is what a centre-aligned frame
+  // draws, not what every auto-layout frame draws (Composa#661).
   it.each([
     ["horizontal", "auto-layout-horizontal-center"],
     ["vertical", "auto-layout-vertical-center"],
   ] as const)("uses the stateful auto-layout glyph while retaining %s mode semantics", (autoLayoutMode, semantic) => {
-    const html = renderToStaticMarkup(createElement(LayerTypeIcon, { type: "frame", autoLayoutMode }));
+    const html = renderToStaticMarkup(createElement(LayerTypeIcon, { type: "frame", autoLayoutMode, autoLayoutAlign: "center" }));
     expect(html).toContain(`data-icon-semantic="${semantic}"`);
     expect(html).toContain('data-layer-icon-type="frame"');
     expect(html).toContain(`data-auto-layout-mode="${autoLayoutMode}"`);

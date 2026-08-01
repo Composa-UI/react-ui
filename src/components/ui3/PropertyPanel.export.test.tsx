@@ -17,7 +17,10 @@ const exportSettings = [{ id: "e1", scale: 1, suffix: "", format: "PNG" as const
 
 const markup = () =>
   renderToStaticMarkup(
-    <PropertyPanel mode="element" exportSettings={exportSettings} onExportSettingsChange={() => undefined} />,
+    // `onExportSettingsChange` is not a PropertyPanel prop and never was — it broke
+    // `tsc` on main from the commit that landed this file. Export edits go through
+    // onAdd/onRemove/onUpdate, none of which this absence assertion needs.
+    <PropertyPanel mode="element" exportSettings={exportSettings} />,
   );
 
 describe("export row", () => {
