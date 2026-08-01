@@ -129,12 +129,23 @@ describe("settings icon semantics", () => {
     expect(iconForSemantic("ellipse")).toBe(Circle);
   });
 
-  it("projects the authored auto-layout direction into the canonical layer icon", () => {
-    const horizontal = renderToStaticMarkup(<LayerTypeIcon type="frame" autoLayoutMode="horizontal" />);
-    const vertical = renderToStaticMarkup(<LayerTypeIcon type="frame" autoLayoutMode="vertical" />);
+  it("projects the authored auto-layout direction AND alignment into the canonical layer icon", () => {
+    // The alignment half used to be missing: both directions were pinned to
+    // `-center` whatever the frame was aligned to (Composa#661).
+    const horizontal = renderToStaticMarkup(<LayerTypeIcon type="frame" autoLayoutMode="horizontal" autoLayoutAlign="center" />);
+    const vertical = renderToStaticMarkup(<LayerTypeIcon type="frame" autoLayoutMode="vertical" autoLayoutAlign="center" />);
     expect(horizontal).toContain('data-icon-semantic="auto-layout-horizontal-center"');
     expect(vertical).toContain('data-icon-semantic="auto-layout-vertical-center"');
     expect(horizontal).not.toBe(vertical);
+
+    // Every registered alignment glyph is reachable through the icon, and no two
+    // alignments collapse onto the same one.
+    const semanticOf = (mode: "horizontal" | "vertical", align: "start" | "center" | "end") =>
+      renderToStaticMarkup(<LayerTypeIcon type="frame" autoLayoutMode={mode} autoLayoutAlign={align} />).match(/data-icon-semantic="([^"]+)"/)?.[1];
+    expect((["horizontal", "vertical"] as const).flatMap(mode => (["start", "center", "end"] as const).map(align => semanticOf(mode, align)))).toEqual([
+      "auto-layout-horizontal-top", "auto-layout-horizontal-center", "auto-layout-horizontal-bottom",
+      "auto-layout-vertical-left", "auto-layout-vertical-center", "auto-layout-vertical-right",
+    ]);
   });
 
   it("uses the canonical semantic for current Animate settings entry points", () => {

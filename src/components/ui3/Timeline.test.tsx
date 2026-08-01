@@ -158,7 +158,7 @@ describe("Timeline DOM contracts", () => {
 
   it("shares canonical layer icons and exposes controlled multiselection", () => {
     const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[
-      { id: "stack", name: "Stack", type: "frame", autoLayoutMode: "vertical", selected: true, props: [] },
+      { id: "stack", name: "Stack", type: "frame", autoLayoutMode: "vertical", autoLayoutAlign: "center", selected: true, props: [] },
       { id: "shape", name: "Shape", type: "shape", props: [] },
     ]} onTrackSelect={() => undefined} />);
     expect(html).toContain('role="listbox"');
@@ -169,6 +169,9 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain('data-layer-icon-type="frame"');
     expect(html).toContain('data-auto-layout-mode="vertical"');
     expect(html).toContain('data-icon-semantic="auto-layout-vertical-center"');
+    // Alignment reaches the element row too, so Layers and the timeline cannot draw
+    // two different glyphs for the same frame (Composa#661).
+    expect(html).toContain('data-auto-layout-align="center"');
     expect(html).not.toMatch(/grid/i);
   });
 

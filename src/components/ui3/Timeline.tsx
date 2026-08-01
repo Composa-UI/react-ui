@@ -3,7 +3,7 @@ import { clsx } from "clsx";
 import { Play, Pause, Square, Diamond, Repeat, PanelBottomClose, PanelBottomOpen, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, Layers, SquarePlay, AudioLines } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { collectAggregateKeyframes, createTimelineEdgeDragController, formatMasterRulerTick, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineAnchorRatioAtX, timelineDragDeltaMs, timelinePointerPanDelta, timelineScrollbarPan, timelineScrollbarThumb, timelineScrollTop, timelineViewportChanged, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
-import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
+import { LayerTypeIcon, type LayerAutoLayoutAlign, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
 import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSelectionState";
 import { ScrollArea, IconButtonRow, type IconBtn } from "./Panel";
 import { Menu, MenuRow } from "./Menu";
@@ -157,6 +157,9 @@ export interface Track {
    */
   selectionState?: RowSelectionState;
   autoLayoutMode?: LayerAutoLayoutMode;
+  /** Counter-axis alignment, forwarded alongside the mode so an element row draws the
+      same glyph the Layers panel draws for the same object (Composa#661). */
+  autoLayoutAlign?: LayerAutoLayoutAlign;
   /** Host-authorized duration editing. False preserves duration presentation without exposing inert controls. */
   durationBarEditable?: boolean;
 }
@@ -1058,7 +1061,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
               onTrackSelect(trackId, { toggle: event.metaKey || event.ctrlKey, range: event.shiftKey });
             } : undefined}
             className={clsx("flex flex-1 min-w-0 h-full items-center gap-[8px] outline-none", onTrackSelect && "cursor-pointer focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-border-selected-strong")}>
-            <LayerTypeIcon type={track.type} autoLayoutMode={track.autoLayoutMode} tone="secondary" />
+            <LayerTypeIcon type={track.type} autoLayoutMode={track.autoLayoutMode} autoLayoutAlign={track.autoLayoutAlign} tone="secondary" />
             <span className={clsx(FONT, "text-[11px] text-c-text truncate", selectionState === "selected" ? "font-[550]" : "font-[450]")}>{track.name}</span>
           </div>
         </div>
