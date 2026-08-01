@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { getSizingMenuLabels, PropertyPanel, reconcileAutoLayoutGap } from "./PropertyPanel";
+import { PANEL_W } from "./Panel";
 import { TooltipProvider } from "./Tooltip";
 
 describe("Timeline easing inspector composition", () => {
@@ -175,15 +176,15 @@ describe("Project shell seams", () => {
     expect(present).not.toContain("disabled");
   });
 
-  it("keeps the whole multiplayer cluster contained within the 240px inspector column (#575)", () => {
-    // The inspector column is a fixed 240px, overflow-hidden; the cluster wrapper
+  it("keeps the whole multiplayer cluster contained within the inspector column (#575)", () => {
+    // The inspector column is a fixed width, overflow-hidden; the cluster wrapper
     // is w-full min-w-0 so the split button + separate Share button stay visible
     // rather than overflowing/clipping.
     const html = renderToStaticMarkup(<TooltipProvider><PropertyPanel mode="project"
       onPreviewToggle={() => undefined}
       onShare={() => undefined}
     /></TooltipProvider>);
-    expect(html).toContain("w-[240px]");
+    expect(html).toContain(`w-[${PANEL_W}px]`);
     expect(html).toMatch(/class="flex w-full min-w-0 items-center/);
     // Share button renders in the same contained cluster.
     expect(html).toContain(">Share</span>");

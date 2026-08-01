@@ -15,8 +15,8 @@ import {
 import { CirclesFour } from "@phosphor-icons/react";
 import { ProposedSquareText, ProposedTextMargins } from "../../icons/proposed-lucide";
 import {
-  PanelSection, PanelFieldRow, PanelFullRow, PanelRow,
-  IconButtonRow, PanelActionBtn, PanelEntry, ScrollArea, type IconBtn,
+  PanelSection, PanelFieldRow, PanelSegmentedRow, PanelFullRow, PanelRow,
+  IconButtonRow, PanelActionBtn, PanelEntry, PanelReorderableEntry, ScrollArea, type IconBtn,
 } from "./Panel";
 import { Tabs } from "./Tabs";
 import { NumericEditSessionProvider, NumericInput, NumericComboInput, NumericPairInput, InputField, ColorInput, ComboInput, formatNumericDisplay } from "./Input";
@@ -436,6 +436,17 @@ function SpatialSelectionLayoutFields({ value }: { value?: SpatialSelectionLayou
   </>;
 }
 
+/**
+ * The value the opposite axis must take to preserve the current width:height
+ * ratio. Returns undefined when there is no ratio to preserve (a non-finite or
+ * non-positive current dimension), so a locked lock can never emit NaN or 0.
+ */
+export function lockedAspectCounterpart(axis: ElementSizingAxis, nextValue: number, width: number, height: number): number | undefined {
+  if (![nextValue, width, height].every(Number.isFinite) || width <= 0 || height <= 0) return undefined;
+  const paired = nextValue * (axis === "width" ? height / width : width / height);
+  return Number.isFinite(paired) ? paired : undefined;
+}
+
 export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
   const [localWidthMode, setLocalWidthMode] = useState<ElementSizingMode>(props.widthMode ?? "fixed");
   const [localHeightMode, setLocalHeightMode] = useState<ElementSizingMode>(props.heightMode ?? "fixed");
@@ -453,12 +464,31 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
     }
     props.onConstraintChange?.(axis, constraint, value);
   };
-  const changeSizing = (axis: ElementSizingAxis, change: ElementSizingChange) => {
+  const emitSizing = (axis: ElementSizingAxis, change: ElementSizingChange) => {
     if (!controlledSizing) {
       if (axis === "width") setLocalWidthMode(change.mode); else setLocalHeightMode(change.mode);
       if (change.value !== undefined) (axis === "width" ? props.onWidthChange : props.onHeightChange)?.(change.value);
     }
     props.onSizingChange?.(axis, change);
+  };
+  const widthMode = controlledSizing ? props.widthMode ?? "fixed" : localWidthMode;
+  const heightMode = controlledSizing ? props.heightMode ?? "fixed" : localHeightMode;
+  const changeSizing = (axis: ElementSizingAxis, change: ElementSizingChange) => {
+    emitSizing(axis, change);
+    // Aspect lock. The chain-link button used to do nothing but swap its own
+    // icon, so a locked circle kept its height when you changed its width
+    // (Composa#661 item 5). A fixed value on one axis now drives the other
+    // through the SAME emit path, preserving the ratio of the two values
+    // currently shown. Deliberately skipped when the other axis is relative
+    // (Hug/Fill) — a lock must not silently convert an authored relative axis
+    // to Fixed — and when either side is Mixed, where there is no one ratio.
+    if (!lockAspect || change.mode !== "fixed" || change.value === undefined) return;
+    if (props.widthMixed || props.heightMixed || props.widthValueMixed || props.heightValueMixed) return;
+    const other: ElementSizingAxis = axis === "width" ? "height" : "width";
+    if ((other === "width" ? widthMode : heightMode) !== "fixed") return;
+    const paired = lockedAspectCounterpart(axis, change.value, props.width, props.height);
+    if (paired === undefined) return;
+    emitSizing(other, { mode: "fixed", value: paired });
   };
   const constraintRows = [
     [
@@ -482,8 +512,8 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
   return <>
     <PanelFieldRow
       label="Dimensions"
-      left={<SizingComboField axis="width" value={props.width} mode={controlledSizing ? props.widthMode ?? "fixed" : localWidthMode} mixed={props.widthMixed} valueMixed={props.widthValueMixed} availableModes={props.availableWidthModes} minValue={values.minWidth} maxValue={values.maxWidth} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("width", change)} onConstraintChange={(constraint, value) => changeConstraint("width", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("width") : undefined} keyframe={props.dimensionsKeyframe} />}
-      right={<SizingComboField axis="height" value={props.height} mode={controlledSizing ? props.heightMode ?? "fixed" : localHeightMode} mixed={props.heightMixed} valueMixed={props.heightValueMixed} availableModes={props.availableHeightModes} minValue={values.minHeight} maxValue={values.maxHeight} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("height", change)} onConstraintChange={(constraint, value) => changeConstraint("height", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("height") : undefined} keyframe={props.dimensionsKeyframe} />}
+      left={<SizingComboField axis="width" value={props.width} mode={widthMode} mixed={props.widthMixed} valueMixed={props.widthValueMixed} availableModes={props.availableWidthModes} minValue={values.minWidth} maxValue={values.maxWidth} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("width", change)} onConstraintChange={(constraint, value) => changeConstraint("width", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("width") : undefined} keyframe={props.dimensionsKeyframe} />}
+      right={<SizingComboField axis="height" value={props.height} mode={heightMode} mixed={props.heightMixed} valueMixed={props.heightValueMixed} availableModes={props.availableHeightModes} minValue={values.minHeight} maxValue={values.maxHeight} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("height", change)} onConstraintChange={(constraint, value) => changeConstraint("height", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("height") : undefined} keyframe={props.dimensionsKeyframe} />}
       rightAction={<PanelActionBtn icon={lockAspect ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />} label="Lock aspect ratio" active={lockAspect} onClick={() => setLockAspect(value => !value)} />}
     />
     {hasConstraints && <div className="flex flex-col gap-y-[6px] px-[16px] pb-[8px]">
@@ -556,10 +586,13 @@ function TextSizingModeField({
   // Persistent mode selection → segmented control (property-panel.md §Segmented:
   // "2–5 mutually exclusive inline options … used for persistent mode selection").
   // "mixed" (or no value yet) shows no active segment, matching the DS mixed rule.
+  // PanelSegmentedRow, not PanelFieldRow: this row used to opt out of the
+  // trailing 24px slot, so the control ran to the panel edge with nowhere left
+  // for a per-row icon and out of line with every other row's right gutter
+  // (Composa#661 item 6). The row type no longer accepts that opt-out.
   return (
-    <PanelFieldRow
+    <PanelSegmentedRow
       label="Text resizing"
-      reserveRightSlot={false}
       left={
         <SegmentedControl
           className="w-full"
@@ -711,8 +744,10 @@ function PositionSection({
           : undefined}
       />
       {/* Position topology is presentation-only. A combined row never implies
-          independent X/Y timing tracks; a separate row still owns one position
-          keyframe through the Y field's trailing diamond. */}
+          independent X/Y timing tracks — and neither does a separate row, so BOTH
+          separated fields carry the diamond and both drive the one position
+          keyframe. Only Y had one, which read as "X cannot be keyframed"
+          (Composa#661 item 4). */}
       {positionPresentation === "combined" ? (
         <PanelFieldRow
           label="Position"
@@ -735,7 +770,7 @@ function PositionSection({
       ) : (
         <PanelFieldRow
           label="Position"
-          left={<NumericInput ariaLabel="Position X" iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>X</span>} value={x} onChange={onXChange} defaultValue={0} mixed={xMixed} />}
+          left={<NumericInput ariaLabel="Position X" iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>X</span>} value={x} onChange={onXChange} defaultValue={0} mixed={xMixed} keyframe={positionKeyframe} />}
           right={<NumericInput ariaLabel="Position Y" iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>} value={y} onChange={onYChange} defaultValue={0} mixed={yMixed} keyframe={positionKeyframe} />}
         />
       )}
@@ -833,7 +868,7 @@ function LayoutFrameSection({
       }
     >
       {/* Flow */}
-      <PanelFieldRow
+      <PanelSegmentedRow
         label="Flow"
         left={<SegmentedControl segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon, ariaLabel: b.label }))} value={flow} onChange={handleFlowChange} className="w-full" />}
       />
@@ -1639,6 +1674,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, 
   const updateFill = (id: string, patch: Partial<Omit<FillEntry, "id">>) => { if (!entries) setInternal(f => f.map(x => x.id === id ? { ...x, ...patch } : x)); onUpdate?.(id, patch); };
   const removeFill = (id: string) => { if (!entries) setInternal(f => f.filter(x => x.id !== id)); onRemove?.(id); };
   const toggleFill = (id: string) => { const fill = fills.find(item => item.id === id); if (!fill) return; if (!entries) setInternal(items => items.map(item => item.id === id ? { ...item, visible: !item.visible } : item)); onToggle?.(id, !fill.visible); };
+  const fillIds = fills.map(fill => fill.id);
 
   return (
     <PanelSection
@@ -1656,7 +1692,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, 
       {/* Entry = ColorInput summary + the shared PanelEntry grip/eye/remove anatomy,
           so Fill · Stroke · Effects render through ONE row primitive (#460). */}
       {fills.map(fill => (
-        <div key={fill.id} draggable={!!onReorder && fills.length > 1} onDragStart={event => event.dataTransfer.setData("text/plain", fill.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), fill.id); }}>
+        <PanelReorderableEntry key={fill.id} id={fill.id} ids={fillIds} onReorder={onReorder}>
           <PanelEntry
             draggable={fills.length > 1}
             visible={fill.visible}
@@ -1683,7 +1719,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, 
               onHexChange={color => updateFill(fill.id, { color: `#${color.replace(/^#/, "")}` })}
             />
           </PanelEntry>
-        </div>
+        </PanelReorderableEntry>
       ))}
     </PanelSection>
   );
@@ -1705,6 +1741,7 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
   const add = () => { if (!entries) setInternal(s => [...s, { id: String(Date.now()), color: "#000000", opacity: 100, visible: true, weight: 1, align: "center", style: "solid", join: "miter", cap: "none" }]); onAdd?.(); };
   const remove = (id: string) => { if (!entries) setInternal(s => s.filter(x => x.id !== id)); onRemove?.(id); };
   const toggle = (id: string) => { const stroke = strokes.find(item => item.id === id); if (!stroke) return; if (!entries) setInternal(items => items.map(item => item.id === id ? { ...item, visible: !item.visible } : item)); onToggle?.(id, !stroke.visible); };
+  const strokeIds = strokes.map(stroke => stroke.id);
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
 
   return (
@@ -1721,7 +1758,7 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
       }
     >
       {strokes.map(stroke => (
-        <div key={stroke.id} draggable={!!onReorder && strokes.length > 1} onDragStart={event => event.dataTransfer.setData("text/plain", stroke.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), stroke.id); }} className="pb-[2px]">
+        <PanelReorderableEntry key={stroke.id} id={stroke.id} ids={strokeIds} onReorder={onReorder} className="pb-[2px]">
           {/* Row 1 — color summary through the shared PanelEntry primitive (#460). */}
           <PanelEntry
             draggable={strokes.length > 1}
@@ -1786,7 +1823,7 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
                 cannot be delivered is omitted rather than left inert. It returns with
                 the engine feature — Composa#635. */}
           </div>
-        </div>
+        </PanelReorderableEntry>
       ))}
     </PanelSection>
   );
@@ -1807,6 +1844,7 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
   const add = () => { if (!entries) setInternal(e => [...e, { id: String(Date.now()), type: "Drop shadow", visible: true }]); onAdd?.(); };
   const remove = (id: string) => { if (!entries) setInternal(e => e.filter(x => x.id !== id)); onRemove?.(id); };
   const toggle = (id: string) => { const effect = effects.find(item => item.id === id); if (!effect) return; if (!entries) setInternal(items => items.map(item => item.id === id ? { ...item, visible: !item.visible } : item)); onToggle?.(id, !effect.visible); };
+  const effectIds = effects.map(effect => effect.id);
 
   return (
     <PanelSection
@@ -1822,7 +1860,7 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
       }
     >
       {effects.map(effect => (
-        <div key={effect.id} draggable={!!onReorder && effects.length > 1} onDragStart={event => event.dataTransfer.setData("text/plain", effect.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), effect.id); }}>
+        <PanelReorderableEntry key={effect.id} id={effect.id} ids={effectIds} onReorder={onReorder}>
           <PanelEntry
             draggable={!!onReorder && effects.length > 1}
             visible={effect.visible}
@@ -1837,7 +1875,7 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
               capabilities={capabilities}
               onChange={patch => update(effect.id, patch)} onClose={() => onActiveStackDialogChange(null)} />
           </PanelEntry>
-        </div>
+        </PanelReorderableEntry>
       ))}
     </PanelSection>
   );
@@ -2322,7 +2360,7 @@ function SlideBackgroundSection({
     <PanelSection title="Background">
       {/* Fill type — icon-only segmented, matching the Figma reference / ColorDialog's
           fill-type tabs (not text-labeled) */}
-      <PanelFieldRow
+      <PanelSegmentedRow
         label="Fill type"
         left={
           <SegmentedControl
@@ -3600,7 +3638,10 @@ export function PropertyPanel(props: PropertyPanelProps) {
         panels (CompositionPanel / AssetsPanel), flipped to a left border since it
         sits to the right of the canvas. No inset ring on top/right/bottom — a single
         border-l against the canvas (Composa#250, analogous to #33). */}
-    <div data-composa-inspector-surface className={clsx("relative w-[240px] shrink-0 h-full flex flex-col bg-c-bg border-l border-c-border overflow-hidden", className)}>
+    {/* w-[290px]: 50px wider than the original 240 (Composa#661 item 3) — at 240
+        the two-column rows clipped most values ("758.46" read as "758…"). Hosts
+        that own a resizable rail still override this with their own width. */}
+    <div data-composa-inspector-surface className={clsx("relative w-[290px] shrink-0 h-full flex flex-col bg-c-bg border-l border-c-border overflow-hidden", className)}>
       {/* Multiplayer tools — above the tabs; shared across all modes */}
       <MultiplayerBar
         previewPlaying={previewPlaying}
