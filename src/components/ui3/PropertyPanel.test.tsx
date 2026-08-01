@@ -108,7 +108,10 @@ describe("Project shell seams", () => {
     expect(html).toMatch(/aria-label="Present and preview options"[^>]*aria-haspopup="menu"/);
     // Menu is closed in static markup, so its rows are not present yet.
     expect(html).not.toContain(">Preview</span>");
-    expect(html).not.toContain(">Share</span>");
+    // The other side of the same gate: no `onShare`, no Share trigger. Asserted
+    // only AFTER the cluster above is proven to have rendered, so this cannot
+    // pass vacuously on an empty tree.
+    expect(html).not.toMatch(/<button[^>]*><span>Share<\/span><\/button>/);
     expect(html).toContain('tabindex="0" aria-label="Project video format unavailable: Video export coming soon"');
     expect(html).toContain('tabindex="0" aria-label="Export project unavailable: Video export coming soon"');
     expect(html).toContain('aria-label="Project video format"');
@@ -149,7 +152,12 @@ describe("Project shell seams", () => {
     expect(enabled).toContain('aria-label="Present and preview options"');
     expect(enabled).toContain('aria-label="Presence and spotlight"');
     // Share is its own button beside the split group, not folded into it.
-    expect(enabled).toContain(">Share</span>");
+    // Scoped to the BUTTON element, not a bare substring of the whole tree: a
+    // substring match would also be satisfied by the word appearing in a menu
+    // row or a tooltip, so it could not tell "the Share trigger renders" from
+    // "the string Share appears somewhere". This is the assertion that fails if
+    // the trigger ever stops rendering while `onShare` is supplied.
+    expect(enabled).toMatch(/<button[^>]*><span>Share<\/span><\/button>/);
   });
 
   it("disables only the primary Present segment when no present action is wired, keeping the chevron menu reachable (#575)", () => {
@@ -189,7 +197,7 @@ describe("Project shell seams", () => {
     expect(html).toContain(`style="width:${PANEL_W}px"`);
     expect(html).toMatch(/class="flex w-full min-w-0 items-center/);
     // Share button renders in the same contained cluster.
-    expect(html).toContain(">Share</span>");
+    expect(html).toMatch(/<button[^>]*><span>Share<\/span><\/button>/);
   });
 });
 
