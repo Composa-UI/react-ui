@@ -17,7 +17,11 @@ const exportSettings = [{ id: "e1", scale: 1, suffix: "", format: "PNG" as const
 
 const markup = () =>
   renderToStaticMarkup(
-    <PropertyPanel mode="element" exportSettings={exportSettings} onExportSettingsChange={() => undefined} />,
+    // `onExportSettingsChange` is not a PropertyPanel prop and never was — it was
+    // passed here when this test landed, which broke `tsc` on main. The export
+    // callbacks are onAdd/onRemove/onUpdateExportSetting, and this test asserts
+    // rendered markup only, so it needs none of them.
+    <PropertyPanel mode="element" exportSettings={exportSettings} />,
   );
 
 describe("export row", () => {
