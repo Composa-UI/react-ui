@@ -1,4 +1,4 @@
-import { Fragment, useState, useRef, useEffect, useId, type MutableRefObject, type ReactNode } from "react";
+import { useState, useRef, useEffect, useId, type DragEvent, type MutableRefObject, type ReactNode } from "react";
 import { clsx } from "clsx";
 import { ChevronDown, Eye, EyeOff, Minus } from "lucide-react";
 import { Tooltip } from "./Tooltip";
@@ -67,9 +67,12 @@ export function ScrollArea({ children, className, contentClassName, thumbClassNa
 }
 
 // ─── Panel surface ────────────────────────────────────────────────────────────
-// 240px wide. mode-adaptive (bg-c-bg). Right sidebar chrome.
+// 290px wide. mode-adaptive (bg-c-bg). Right sidebar chrome.
 
-export const PANEL_W = 240;
+// Widened from 240 (Composa#661): at 240 the two-column field rows truncated
+// most numeric values, so a value like "758.46" read as "758…". +50px gives each
+// column enough room to show a full value plus its unit.
+export const PANEL_W = 290;
 
 const FONT     = "font-[family-name:var(--composa-font-family)]";
 const SUBLABEL = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary");
@@ -163,6 +166,21 @@ interface PanelFieldRowProps {
   reserveRightSlot?: boolean;
 }
 
+/**
+ * A field row that holds a segmented control. The trailing 24px slot is NOT a
+ * prop here: a segmented control that runs edge-to-edge leaves nowhere to hang
+ * the per-row icon that the flow/wrap and text-resizing rows need, and it drops
+ * out of line with the inspector's right gutter. Owner feedback on that has
+ * recurred (Composa#661 item 6), so the rule is enforced by the type — this row
+ * cannot be asked to give the slot up — rather than by remembering not to write
+ * `reserveRightSlot={false}` at each call site.
+ */
+export type PanelSegmentedRowProps = Omit<PanelFieldRowProps, "reserveRightSlot">;
+
+export function PanelSegmentedRow(props: PanelSegmentedRowProps) {
+  return <PanelFieldRow {...props} reserveRightSlot />;
+}
+
 export function PanelFieldRow({ label, left, right, rightAction, reserveRightSlot = true }: PanelFieldRowProps) {
   return (
     <div className="h-[48px] flex flex-col justify-center pt-[3px] pb-[4px]">
@@ -243,9 +261,10 @@ export interface IconBtn {
   active?: boolean;
   disabled?: boolean;
   onClick?: () => void;
-  /** Optional hover tooltip for these icon-only actions. `aria-label` still names
-   *  the button for assistive tech; `tooltip` adds the visible hint sighted users
-   *  need for unlabelled glyphs (align/rotate/flip, lane controls, …). */
+  /** Hover tooltip for these icon-only actions. Defaults to `label`: the buttons
+   *  carry no visible text, so a sighted user had no way to learn what a glyph
+   *  does (Composa#661). Pass an explicit string only to say something the
+   *  aria-label does not already say. */
   tooltip?: string;
 }
 
@@ -304,9 +323,9 @@ export function IconButtonRow({
           </button>
         );
 
-        return btn.tooltip
-          ? <Tooltip key={btn.label} label={btn.tooltip} disabled={btn.disabled}>{button}</Tooltip>
-          : <Fragment key={btn.label}>{button}</Fragment>;
+        // Every button in this row is icon-only, so the hint always renders; the
+        // aria-label is the fallback text rather than an opt-in extra.
+        return <Tooltip key={btn.label} label={btn.tooltip ?? btn.label} disabled={btn.disabled}>{button}</Tooltip>;
       })}
     </div>
   );
@@ -322,7 +341,8 @@ interface PanelActionBtnProps {
   selected?: boolean;   // toggle "on" — accent (selected) color variant
   disabled?: boolean;
   onClick?: () => void;
-  /** Optional explanatory hover label for unfamiliar icon-only actions. */
+  /** Explanatory hover label. Defaults to `label` — this button is always
+   *  icon-only, so without a tooltip the glyph is unexplained (Composa#661). */
   tooltip?: string;
 }
 
@@ -344,7 +364,110 @@ export function PanelActionBtn({ icon, label, active, selected, disabled = false
       {icon}
     </button>
   );
-  return tooltip ? <Tooltip label={tooltip} disabled={disabled}>{button}</Tooltip> : button;
+  return <Tooltip label={tooltip ?? label} disabled={disabled}>{button}</Tooltip>;
+}
+
+// ─── Reorderable stack entry ─────────────────────────────────────────────────
+// Drag-to-reorder wrapper shared by the stackable inspector sections (Fill ·
+// Stroke · Effects). Before this, those sections were draggable but painted NO
+// drop indicator: the only feedback was the grip's grab cursor, so you could not
+// tell where an entry would land (Composa#661 item 7). The layer list already
+// answers that with a 2px insertion line (LayerList's `dropZone`); this
+// primitive gives every stackable section the same affordance from one place.
+
+export type PanelEntryDropZone = "before" | "after";
+
+/**
+ * Pointer position → which side of the row the entry will be inserted on.
+ * The layer list splits its rows into thirds because its middle third means
+ * "drop inside"; a stackable entry cannot contain another entry, so the whole
+ * row splits in half.
+ */
+export function panelEntryDropZone(clientY: number, rect: { top: number; height: number }): PanelEntryDropZone {
+  if (!(rect.height > 0)) return "before";
+  return clientY - rect.top < rect.height / 2 ? "before" : "after";
+}
+
+/**
+ * Translates a before/after drop into the `targetId` the existing two-argument
+ * `onReorder(id, targetId)` contract needs to land the entry in that exact gap.
+ *
+ * Hosts implement that contract as "remove `id`, re-insert at `targetId`'s
+ * original index", which lands the entry AFTER the target when dragging down
+ * and BEFORE it when dragging up. Dropping on the far half of a row therefore
+ * has to name the neighbouring row instead, otherwise the insertion line would
+ * promise a gap the drop does not honour. Returns null for a no-op drop (the
+ * entry is already in that gap), so an idle drag cannot push a history entry.
+ */
+export function panelEntryReorderTarget(
+  ids: readonly string[],
+  sourceId: string,
+  targetId: string,
+  zone: PanelEntryDropZone,
+): string | null {
+  const source = ids.indexOf(sourceId);
+  const target = ids.indexOf(targetId);
+  if (source < 0 || target < 0 || source === target) return null;
+  // The gap index the line was drawn at, in the ORIGINAL list.
+  const gap = zone === "before" ? target : target + 1;
+  if (gap === source || gap === source + 1) return null; // already there
+  return ids[source < gap ? gap - 1 : gap] ?? null;
+}
+
+interface PanelReorderableEntryProps {
+  /** Identity of this entry within `ids` — what gets emitted as the drag source. */
+  id: string;
+  /** The stack's ids in render order; drives the before/after → targetId mapping. */
+  ids: readonly string[];
+  onReorder?: (id: string, targetId: string) => void;
+  children: ReactNode;
+  className?: string;
+}
+
+export function PanelReorderableEntry({ id, ids, onReorder, children, className }: PanelReorderableEntryProps) {
+  const [zone, setZone] = useState<PanelEntryDropZone | null>(null);
+  const enabled = !!onReorder && ids.length > 1;
+  // `dataTransfer` cannot be read during dragover, so the row that started the
+  // drag remembers it locally — that is all we need to keep the source row from
+  // drawing an insertion line against itself.
+  const isSource = useRef(false);
+  const zoneAt = (event: DragEvent<HTMLDivElement>) =>
+    panelEntryDropZone(event.clientY, event.currentTarget.getBoundingClientRect());
+
+  return (
+    <div
+      className={clsx("relative", className)}
+      draggable={enabled}
+      onDragStart={event => { isSource.current = true; event.dataTransfer.setData("text/plain", id); event.dataTransfer.effectAllowed = "move"; }}
+      onDragEnd={() => { isSource.current = false; setZone(null); }}
+      onDragOver={event => {
+        if (!enabled || isSource.current) return;
+        event.preventDefault();
+        setZone(zoneAt(event));
+      }}
+      onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setZone(null); }}
+      onDrop={event => {
+        if (!enabled) return;
+        event.preventDefault();
+        const placement = zoneAt(event);
+        setZone(null);
+        const source = event.dataTransfer.getData("text/plain");
+        const target = source ? panelEntryReorderTarget(ids, source, id, placement) : null;
+        if (target) onReorder?.(source, target);
+      }}
+    >
+      {zone && (
+        <span
+          aria-hidden
+          data-composa-reorder-indicator={zone}
+          // Same 2px accent insertion line the layer list paints, inset to the
+          // panel's 16px gutter so the two surfaces read as one convention.
+          className={clsx("pointer-events-none absolute left-[8px] right-[16px] h-[2px] bg-c-border-selected z-10", zone === "before" ? "top-0" : "bottom-0")}
+        />
+      )}
+      {children}
+    </div>
+  );
 }
 
 // ─── Panel drag-handle entry anatomy ─────────────────────────────────────────

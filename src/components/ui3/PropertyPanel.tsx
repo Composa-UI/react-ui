@@ -15,8 +15,8 @@ import {
 import { CirclesFour } from "@phosphor-icons/react";
 import { ProposedSquareText, ProposedTextMargins } from "../../icons/proposed-lucide";
 import {
-  PanelSection, PanelFieldRow, PanelFullRow, PanelRow,
-  IconButtonRow, PanelActionBtn, PanelEntry, ScrollArea, type IconBtn,
+  PanelSection, PanelFieldRow, PanelSegmentedRow, PanelFullRow, PanelRow,
+  IconButtonRow, PanelActionBtn, PanelEntry, PanelReorderableEntry, ScrollArea, type IconBtn,
 } from "./Panel";
 import { Tabs } from "./Tabs";
 import { NumericEditSessionProvider, NumericInput, NumericComboInput, NumericPairInput, InputField, ColorInput, ComboInput, formatNumericDisplay } from "./Input";
@@ -48,7 +48,7 @@ import type { EasingApplyScope } from "./easing";
 import { iconForSemantic } from "./IconSemantics";
 import { AutoLayoutSpacingIcon } from "./AutoLayoutSpacingIcon";
 import { TypeSettingsDialog } from "./TypeSettingsDialog";
-import { FontPickerDialog, type FontEntry } from "./FontPickerDialog";
+import { DEFAULT_FONT_WEIGHTS, FontPickerDialog, type FontEntry, type FontWeightOption } from "./FontPickerDialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -202,6 +202,12 @@ const LayoutFreeformIcon = iconForSemantic("layout-freeform");
 const LayoutHorizontalIcon = iconForSemantic("layout-horizontal");
 const LayoutVerticalIcon = iconForSemantic("layout-vertical");
 const LayoutWrapIcon = iconForSemantic("layout-wrap");
+const LayoutGridIcon = iconForSemantic("layout-grid");
+// The Layout header's auto-layout toggle (Composa#661): panel-plus while auto
+// layout is OFF, panel-check while it is ON. A bare Plus/Grid glyph read as an
+// unrelated "add something" action rather than a two-state toggle.
+const AutoLayoutAddIcon = iconForSemantic("auto-layout-add");
+const AutoLayoutOnIcon = iconForSemantic("auto-layout-frame");
 const AlignLeftIcon = iconForSemantic("align-left");
 const AlignCenterXIcon = iconForSemantic("align-center-x");
 const AlignRightIcon = iconForSemantic("align-right");
@@ -436,6 +442,17 @@ function SpatialSelectionLayoutFields({ value }: { value?: SpatialSelectionLayou
   </>;
 }
 
+/**
+ * The value the opposite axis must take to preserve the current width:height
+ * ratio. Returns undefined when there is no ratio to preserve (a non-finite or
+ * non-positive current dimension), so a locked lock can never emit NaN or 0.
+ */
+export function lockedAspectCounterpart(axis: ElementSizingAxis, nextValue: number, width: number, height: number): number | undefined {
+  if (![nextValue, width, height].every(Number.isFinite) || width <= 0 || height <= 0) return undefined;
+  const paired = nextValue * (axis === "width" ? height / width : width / height);
+  return Number.isFinite(paired) ? paired : undefined;
+}
+
 export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
   const [localWidthMode, setLocalWidthMode] = useState<ElementSizingMode>(props.widthMode ?? "fixed");
   const [localHeightMode, setLocalHeightMode] = useState<ElementSizingMode>(props.heightMode ?? "fixed");
@@ -453,12 +470,31 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
     }
     props.onConstraintChange?.(axis, constraint, value);
   };
-  const changeSizing = (axis: ElementSizingAxis, change: ElementSizingChange) => {
+  const emitSizing = (axis: ElementSizingAxis, change: ElementSizingChange) => {
     if (!controlledSizing) {
       if (axis === "width") setLocalWidthMode(change.mode); else setLocalHeightMode(change.mode);
       if (change.value !== undefined) (axis === "width" ? props.onWidthChange : props.onHeightChange)?.(change.value);
     }
     props.onSizingChange?.(axis, change);
+  };
+  const widthMode = controlledSizing ? props.widthMode ?? "fixed" : localWidthMode;
+  const heightMode = controlledSizing ? props.heightMode ?? "fixed" : localHeightMode;
+  const changeSizing = (axis: ElementSizingAxis, change: ElementSizingChange) => {
+    emitSizing(axis, change);
+    // Aspect lock. The chain-link button used to do nothing but swap its own
+    // icon, so a locked circle kept its height when you changed its width
+    // (Composa#661 item 5). A fixed value on one axis now drives the other
+    // through the SAME emit path, preserving the ratio of the two values
+    // currently shown. Deliberately skipped when the other axis is relative
+    // (Hug/Fill) — a lock must not silently convert an authored relative axis
+    // to Fixed — and when either side is Mixed, where there is no one ratio.
+    if (!lockAspect || change.mode !== "fixed" || change.value === undefined) return;
+    if (props.widthMixed || props.heightMixed || props.widthValueMixed || props.heightValueMixed) return;
+    const other: ElementSizingAxis = axis === "width" ? "height" : "width";
+    if ((other === "width" ? widthMode : heightMode) !== "fixed") return;
+    const paired = lockedAspectCounterpart(axis, change.value, props.width, props.height);
+    if (paired === undefined) return;
+    emitSizing(other, { mode: "fixed", value: paired });
   };
   const constraintRows = [
     [
@@ -482,8 +518,8 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
   return <>
     <PanelFieldRow
       label="Dimensions"
-      left={<SizingComboField axis="width" value={props.width} mode={controlledSizing ? props.widthMode ?? "fixed" : localWidthMode} mixed={props.widthMixed} valueMixed={props.widthValueMixed} availableModes={props.availableWidthModes} minValue={values.minWidth} maxValue={values.maxWidth} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("width", change)} onConstraintChange={(constraint, value) => changeConstraint("width", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("width") : undefined} keyframe={props.dimensionsKeyframe} />}
-      right={<SizingComboField axis="height" value={props.height} mode={controlledSizing ? props.heightMode ?? "fixed" : localHeightMode} mixed={props.heightMixed} valueMixed={props.heightValueMixed} availableModes={props.availableHeightModes} minValue={values.minHeight} maxValue={values.maxHeight} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("height", change)} onConstraintChange={(constraint, value) => changeConstraint("height", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("height") : undefined} keyframe={props.dimensionsKeyframe} />}
+      left={<SizingComboField axis="width" value={props.width} mode={widthMode} mixed={props.widthMixed} valueMixed={props.widthValueMixed} availableModes={props.availableWidthModes} minValue={values.minWidth} maxValue={values.maxWidth} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("width", change)} onConstraintChange={(constraint, value) => changeConstraint("width", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("width") : undefined} keyframe={props.dimensionsKeyframe} />}
+      right={<SizingComboField axis="height" value={props.height} mode={heightMode} mixed={props.heightMixed} valueMixed={props.heightValueMixed} availableModes={props.availableHeightModes} minValue={values.minHeight} maxValue={values.maxHeight} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("height", change)} onConstraintChange={(constraint, value) => changeConstraint("height", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("height") : undefined} keyframe={props.dimensionsKeyframe} />}
       rightAction={<PanelActionBtn icon={lockAspect ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />} label="Lock aspect ratio" active={lockAspect} onClick={() => setLockAspect(value => !value)} />}
     />
     {hasConstraints && <div className="flex flex-col gap-y-[6px] px-[16px] pb-[8px]">
@@ -556,10 +592,13 @@ function TextSizingModeField({
   // Persistent mode selection → segmented control (property-panel.md §Segmented:
   // "2–5 mutually exclusive inline options … used for persistent mode selection").
   // "mixed" (or no value yet) shows no active segment, matching the DS mixed rule.
+  // PanelSegmentedRow, not PanelFieldRow: this row used to opt out of the
+  // trailing 24px slot, so the control ran to the panel edge with nowhere left
+  // for a per-row icon and out of line with every other row's right gutter
+  // (Composa#661 item 6). The row type no longer accepts that opt-out.
   return (
-    <PanelFieldRow
+    <PanelSegmentedRow
       label="Text resizing"
-      reserveRightSlot={false}
       left={
         <SegmentedControl
           className="w-full"
@@ -711,8 +750,10 @@ function PositionSection({
           : undefined}
       />
       {/* Position topology is presentation-only. A combined row never implies
-          independent X/Y timing tracks; a separate row still owns one position
-          keyframe through the Y field's trailing diamond. */}
+          independent X/Y timing tracks — and neither does a separate row, so BOTH
+          separated fields carry the diamond and both drive the one position
+          keyframe. Only Y had one, which read as "X cannot be keyframed"
+          (Composa#661 item 4). */}
       {positionPresentation === "combined" ? (
         <PanelFieldRow
           label="Position"
@@ -735,7 +776,7 @@ function PositionSection({
       ) : (
         <PanelFieldRow
           label="Position"
-          left={<NumericInput ariaLabel="Position X" iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>X</span>} value={x} onChange={onXChange} defaultValue={0} mixed={xMixed} />}
+          left={<NumericInput ariaLabel="Position X" iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>X</span>} value={x} onChange={onXChange} defaultValue={0} mixed={xMixed} keyframe={positionKeyframe} />}
           right={<NumericInput ariaLabel="Position Y" iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>} value={y} onChange={onYChange} defaultValue={0} mixed={yMixed} keyframe={positionKeyframe} />}
         />
       )}
@@ -777,6 +818,25 @@ function PositionSection({
   );
 }
 
+// ─── Layout flow (shared by the Frame / Auto-layout / Grid sections) ─────────
+
+/** The four mutually exclusive layout modes the Flow control selects between. */
+type FlowValue = "none" | "v" | "h" | "grid";
+
+// Flow is one four-way layout-mode selector (Composa#661): Freeform, Vertical,
+// Horizontal, Grid. Grid is a peer mode, not a side action reached from a header
+// button — every frame section renders the same segments so the selected mode is
+// always visible and reversible. Wrap is deliberately NOT a segment: it is a
+// modifier that rides alongside the selected flow.
+const FLOW_SEGMENTS: IconBtn[] = [
+  { icon: <LayoutFreeformIcon data-icon-semantic="layout-freeform" size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
+  { icon: <LayoutVerticalIcon data-icon-semantic="layout-vertical" size={S} strokeWidth={1.5} />, label: "Vertical", value: "v" },
+  { icon: <LayoutHorizontalIcon data-icon-semantic="layout-horizontal" size={S} strokeWidth={1.5} />, label: "Horizontal", value: "h" },
+  { icon: <LayoutGridIcon data-icon-semantic="layout-grid" size={S} strokeWidth={1.5} />, label: "Grid", value: "grid" },
+];
+
+const flowSegments = FLOW_SEGMENTS.map(segment => ({ value: segment.value!, icon: segment.icon, ariaLabel: segment.label }));
+
 // ─── Section: Layout — Frame (no auto-layout) ─────────────────────────────────
 
 interface LayoutFrameProps {
@@ -806,18 +866,13 @@ function LayoutFrameSection({
 }: LayoutFrameProps) {
   // Plain frame defaults to Freeform (no auto-layout yet) — NOT "v", which would
   // already imply vertical auto-layout while this is the "no auto-layout" section.
-  const [flow, setFlow] = useState("none");
-
-  // Wrap is not a peer flow option (it is a horizontal-only modifier reached from the
-  // auto-layout section). The plain-frame control only enters/leaves auto layout.
-  const flowBtns: IconBtn[] = [
-    { icon: <LayoutFreeformIcon data-icon-semantic="layout-freeform" size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
-    { icon: <LayoutVerticalIcon data-icon-semantic="layout-vertical" size={S} strokeWidth={1.5} />, label: "Vertical", value: "v" },
-    { icon: <LayoutHorizontalIcon data-icon-semantic="layout-horizontal" size={S} strokeWidth={1.5} />, label: "Horizontal", value: "h" },
-  ];
+  const [flow, setFlow] = useState<FlowValue>("none");
 
   const handleFlowChange = (v: string) => {
-    setFlow(v);
+    setFlow(v as FlowValue);
+    // Grid is a peer flow mode with its own section — it is entered from the Flow
+    // control now, not from a separate header action (Composa#661).
+    if (v === "grid") { onEnableGrid?.(); return; }
     if (v !== "none") onEnableAutoLayout?.();
   };
 
@@ -828,14 +883,17 @@ function LayoutFrameSection({
         <>
           <PanelActionBtn icon={<Maximize2 size={16} strokeWidth={1.5} />} label="Resize to fit" />
           <PanelActionBtn icon={<Grid2x2 size={16} strokeWidth={1.5} />} label="Add grid" onClick={onEnableGrid} />
-          <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add auto-layout" onClick={onEnableAutoLayout} />
+          {/* Trailing header toggle, OFF face (Composa#661 item 4): panel-plus.
+              A bare Plus read as a generic "add" rather than the off state of the
+              auto-layout toggle whose on face lives in the Auto layout section. */}
+          <PanelActionBtn icon={<AutoLayoutAddIcon data-icon-semantic="auto-layout-add" size={16} strokeWidth={1.5} />} label="Add auto-layout" onClick={onEnableAutoLayout} />
         </>
       }
     >
       {/* Flow */}
-      <PanelFieldRow
+      <PanelSegmentedRow
         label="Flow"
-        left={<SegmentedControl segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon, ariaLabel: b.label }))} value={flow} onChange={handleFlowChange} className="w-full" />}
+        left={<SegmentedControl segments={flowSegments} value={flow} onChange={handleFlowChange} className="w-full" />}
       />
 
       <DimensionSizingFields width={width} height={height} onWidthChange={onWidthChange} onHeightChange={onHeightChange} {...sizing} />
@@ -883,6 +941,8 @@ interface LayoutAutoProps {
   onAutoLayoutSettingsRequest?: () => void;
   /** Switch this frame to the distinct Grid layout type (Reading A). */
   onEnableGrid?: () => void;
+  /** Turn auto layout back off from the header toggle (Composa#661 item 4). */
+  onDisableAutoLayout?: () => void;
   sizing?: Omit<DimensionSizingFieldsProps, "width" | "height" | "widthMode" | "heightMode">;
   spatialSelectionLayout?: SpatialSelectionLayoutControl;
 }
@@ -916,11 +976,11 @@ function LayoutAutoSection({
   canvasStackingMixed = false,
   settingsBaselineApplicable,
   settingsDisabled = false,
-  onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onAutoLayoutSettingsRequest, onEnableGrid, sizing, spatialSelectionLayout,
+  onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onAutoLayoutSettingsRequest, onEnableGrid, onDisableAutoLayout, sizing, spatialSelectionLayout,
 }: LayoutAutoProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const controlled = flowMode !== undefined;
-  const [flow, setFlow] = useState("v");
+  const [flow, setFlow] = useState<FlowValue>("v");
   const renderedFlow = flowMode === "horizontal" ? "h" : flowMode === "vertical" ? "v" : flowMode ?? flow;
   const [align, setAlign] = useState(alignValue);
   const renderedAlign = controlled ? alignValue : align;
@@ -935,8 +995,6 @@ function LayoutAutoSection({
   const rowGapControlled = rowGapProp !== undefined;
   const [internalRowGap, setInternalRowGap] = useState(rowGapProp ?? (typeof renderedGap === "number" ? renderedGap : 0));
   const renderedRowGap = rowGapControlled ? rowGapProp : internalRowGap;
-  // Item and row gaps start linked (they migrate equal); unlink once the user diverges them.
-  const [gapsLinked, setGapsLinked] = useState(true);
   const [indivPadding, setIndivPadding] = useState(false);
   const paddingSidesDiffer = paddingTop !== paddingRight || paddingTop !== paddingBottom || paddingTop !== paddingLeft;
   const paddingHasMixedSide = paddingTopMixed || paddingRightMixed || paddingBottomMixed || paddingLeftMixed;
@@ -945,15 +1003,10 @@ function LayoutAutoSection({
 
   // Freeform is the explicit "disable auto layout" action and remains distinct
   // from the trailing Auto-layout Settings entry point.
-  // Flow is Horizontal / Vertical (+ Freeform). Wrap is a trailing toggle on Horizontal.
-  const flowBtns: IconBtn[] = [
-    { icon: <LayoutFreeformIcon data-icon-semantic="layout-freeform" size={S} strokeWidth={1.5} />, label: "Freeform", value: "none" },
-    { icon: <LayoutVerticalIcon data-icon-semantic="layout-vertical" size={S} strokeWidth={1.5} />, label: "Vertical", value: "v" },
-    { icon: <LayoutHorizontalIcon data-icon-semantic="layout-horizontal" size={S} strokeWidth={1.5} />, label: "Horizontal", value: "h" },
-  ];
-
   const handleFlowChange = (v: string) => {
-    setFlow(v);
+    setFlow(v as FlowValue);
+    // Grid is a peer flow mode with its own section (Composa#661).
+    if (v === "grid") { onEnableGrid?.(); return; }
     const mode = v === "h" ? "horizontal" : v === "v" ? "vertical" : "none";
     // Wrap only survives on Horizontal; leaving Horizontal clears it.
     const nextWrap = mode === "horizontal" ? (wrapControlled ? !!wrapProp : internalWrap) : false;
@@ -973,38 +1026,20 @@ function LayoutAutoSection({
     onLayoutChange?.({ wrap: next, ...gapPatch });
   };
 
+  // Item gap and row gap are independent (Composa#661 item 2). They used to be
+  // yoked by a link toggle that sat, unlabelled, beside the row-gap field — an
+  // unexplained control that also made typing in one field silently rewrite the
+  // other. Each field now edits only its own axis.
   const emitGap = (value: number | "auto") => {
     if (!gapControlled) setInternalGap(value);
     if (typeof value === "number") setLastFixedGap(value);
-    // While wrapping with the gaps linked, the row gap tracks the item gap.
-    if (wrapping && gapsLinked && typeof value === "number") {
-      if (!rowGapControlled) setInternalRowGap(value);
-      onLayoutChange?.({ gap: value, rowGap: value });
-      return;
-    }
     onLayoutChange?.({ gap: value });
   };
 
   const emitRowGap = (value: number) => {
     const next = Math.max(0, value);
     if (!rowGapControlled) setInternalRowGap(next);
-    if (gapsLinked && typeof renderedGap === "number") {
-      if (!gapControlled) setInternalGap(next);
-      setLastFixedGap(next);
-      onLayoutChange?.({ gap: next, rowGap: next });
-      return;
-    }
     onLayoutChange?.({ rowGap: next });
-  };
-
-  const toggleGapsLinked = () => {
-    const next = !gapsLinked;
-    setGapsLinked(next);
-    // Re-linking snaps the row gap to the item gap.
-    if (next && typeof renderedGap === "number" && renderedGap !== renderedRowGap) {
-      if (!rowGapControlled) setInternalRowGap(renderedGap);
-      onLayoutChange?.({ rowGap: renderedGap });
-    }
   };
 
   useEffect(() => {
@@ -1049,7 +1084,10 @@ function LayoutAutoSection({
       value={settingsValue}
       disabled={settingsDisabled}
       trigger={<PanelActionBtn
-        icon={<LayoutFreeformIcon data-icon-semantic="layout-freeform" size={16} strokeWidth={1.5} />}
+        // Every settings entry point in the inspector (Type, Stroke, Template)
+        // is the slider glyph; the auto-layout one used the Freeform *layout*
+        // glyph, which read as another flow option (Composa#661 item 3).
+        icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />}
         label="Auto-layout settings"
         disabled={settingsDisabled}
         onClick={settingsDisabled ? undefined : () => { setSettingsOpen(true); onAutoLayoutSettingsRequest?.(); }}
@@ -1060,12 +1098,26 @@ function LayoutAutoSection({
   );
 
   return (
-    <PanelSection title="Auto layout" rightActions={onEnableGrid && <PanelActionBtn icon={<Grid2x2 size={16} strokeWidth={1.5} />} label="Switch to grid" onClick={onEnableGrid} />}>
+    <PanelSection
+      title="Auto layout"
+      // Header toggle (Composa#661 item 4): auto layout is ON here, so the
+      // trailing button is the panel-check "on" face and turns it back off. It
+      // REPLACES the "Switch to grid" action that used to occupy this slot —
+      // grid is the fourth Flow segment now, not a header side door.
+      rightActions={onDisableAutoLayout && (
+        <PanelActionBtn
+          icon={<AutoLayoutOnIcon data-icon-semantic="auto-layout-frame" size={16} strokeWidth={1.5} />}
+          label="Remove auto-layout"
+          active
+          onClick={onDisableAutoLayout}
+        />
+      )}
+    >
       <div role="group" aria-label="Flow" className="flex items-start gap-[8px] px-[16px] pt-[8px]">
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Flow</div>
           <SegmentedControl
-            segments={flowBtns.map(b => ({ value: b.value!, icon: b.icon, ariaLabel: b.label }))}
+            segments={flowSegments}
             value={renderedFlow}
             onChange={handleFlowChange}
             className="w-full"
@@ -1085,8 +1137,12 @@ function LayoutAutoSection({
         </div>
       </div>
 
-      {/* Alignment and Gap are the paired authoring row. Wrap intentionally
-          exposes one shared numeric gap; Auto remains unavailable while wrapping. */}
+      {/* Alignment and Gap are the paired authoring row. While wrapping, the
+          cross-axis Row gap joins the SAME gap column instead of getting its own
+          full-width row below the alignment block (Composa#661 item 2) — the two
+          gaps are one pair, and the 240px inspector cannot fit the 88px alignment
+          control plus two side-by-side numeric fields without shrinking both to
+          ~36px. Auto remains unavailable while wrapping. */}
       <div role="group" aria-label="Alignment and gap" className="flex items-start gap-[8px] px-[16px] pt-[8px] pb-[4px]">
         <div className="shrink-0">
           <div className={subLabel}>Alignment</div>
@@ -1095,53 +1151,42 @@ function LayoutAutoSection({
             onChange={value => { setAlign(value); onAlignChange?.(value); }}
           />
         </div>
-        <div className="flex-1 min-w-0">
-          <div className={subLabel}>Gap</div>
-          <NumericComboInput
-            dataMode={gapMode}
-            ariaLabel="Gap"
-            dropdownAriaLabel={`Gap sizing mode: ${gapMode === "auto" ? "Auto" : "Fixed"}`}
-            iconLead={gapIcon}
-            readOnlyLabel={gapMode === "auto" ? "Auto" : undefined}
-            value={gapControlled && typeof renderedGap === "number" ? renderedGap : undefined}
-            defaultValue={lastFixedGap}
-            onChange={emitGap}
-            min={0}
-            suffix="px"
-            menu={gapMenu}
-            className="w-full"
-          />
-        </div>
-        <div className="shrink-0 pt-[17px]">{settingsTriggerButton}</div>
-      </div>
-
-      {/* Row gap — the wrapped cross-axis spacing between rows (Figma's second gap).
-          Only present while wrapping. The link toggle keeps it equal to the item gap. */}
-      {wrapping && (
-        <div role="group" aria-label="Row gap" className="flex items-start gap-[8px] px-[16px] pb-[4px]">
-          <div className="flex-1 min-w-0">
-            <div className={subLabel}>Row gap</div>
-            <NumericInput
-              ariaLabel="Row gap"
-              iconLead={<AutoLayoutSpacingIcon kind="gap" axis="vertical" />}
-              value={renderedRowGap}
-              defaultValue={renderedRowGap}
-              onChange={emitRowGap}
+        <div className="flex-1 min-w-0 flex flex-col gap-[4px]">
+          <div>
+            <div className={subLabel}>Gap</div>
+            <NumericComboInput
+              dataMode={gapMode}
+              ariaLabel="Gap"
+              dropdownAriaLabel={`Gap sizing mode: ${gapMode === "auto" ? "Auto" : "Fixed"}`}
+              iconLead={gapIcon}
+              readOnlyLabel={gapMode === "auto" ? "Auto" : undefined}
+              value={gapControlled && typeof renderedGap === "number" ? renderedGap : undefined}
+              defaultValue={lastFixedGap}
+              onChange={emitGap}
               min={0}
               suffix="px"
+              menu={gapMenu}
               className="w-full"
             />
           </div>
-          <div className="shrink-0 pt-[17px]">
-            <PanelActionBtn
-              icon={gapsLinked ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />}
-              label={gapsLinked ? "Unlink item and row gap" : "Link item and row gap"}
-              active={gapsLinked}
-              onClick={toggleGapsLinked}
-            />
-          </div>
+          {wrapping && (
+            <div>
+              <div className={subLabel}>Row gap</div>
+              <NumericInput
+                ariaLabel="Row gap"
+                iconLead={<AutoLayoutSpacingIcon kind="gap" axis="vertical" />}
+                value={renderedRowGap}
+                defaultValue={renderedRowGap}
+                onChange={emitRowGap}
+                min={0}
+                suffix="px"
+                className="w-full"
+              />
+            </div>
+          )}
         </div>
-      )}
+        <div className="shrink-0 pt-[17px]">{settingsTriggerButton}</div>
+      </div>
 
       {/* Padding — cross layout. Combined (default): Vertical + Horizontal, two
           fields. Expanded (toggle): all four sides independently. */}
@@ -1310,6 +1355,13 @@ function LayoutGridSection({
     setGapsLinked(next);
     if (next && grid.columnGap !== grid.rowGap) emitGrid({ rowGap: grid.columnGap });
   };
+  // Grid is the fourth Flow segment (Composa#661), so this section renders the
+  // same control — otherwise choosing Grid made the selector vanish and the only
+  // way back out was the header's "Remove grid" action.
+  const handleFlowChange = (v: string) => {
+    if (v === "grid") return;
+    onLayoutChange?.({ mode: v === "h" ? "horizontal" : v === "v" ? "vertical" : "none" });
+  };
 
   return (
     <PanelSection
@@ -1321,6 +1373,14 @@ function LayoutGridSection({
         </>
       }
     >
+      {/* Flow — same four-way selector as the plain-frame and auto-layout sections. */}
+      <div role="group" aria-label="Flow" className="flex items-start gap-[8px] px-[16px] pt-[8px]">
+        <div className="flex-1 min-w-0">
+          <div className={subLabel}>Flow</div>
+          <SegmentedControl segments={flowSegments} value="grid" onChange={handleFlowChange} className="w-full" />
+        </div>
+      </div>
+
       {/* Columns */}
       <div className="flex items-start gap-[8px] px-[16px] pt-[8px]">
         <div className="flex-1 min-w-0">
@@ -1510,11 +1570,40 @@ function StyleInput({ chit, value, onClick }: { chit: ReactNode; value: string; 
   );
 }
 
-function TypographySection({ value, onChange, stylesAvailable, fonts }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean; fonts?: ReadonlyArray<FontEntry> }) {
+/**
+ * Font sizes the size field's chevron offers. Presets only — the field stays a
+ * free-text combo, so any size not on this list is still typeable. The roster is
+ * the conventional editor type ramp (fine steps where UI text lives, coarser
+ * ones for display sizes); hosts with their own scale pass `fontSizes`.
+ */
+export const DEFAULT_FONT_SIZES: ReadonlyArray<number> = [8, 9, 10, 11, 12, 14, 16, 18, 24, 36, 48, 64, 72, 96, 128];
+
+/** Same cap + overlay-thumb scroll treatment the blend-mode menu uses. */
+const FONT_SIZE_MENU_MAX_HEIGHT = 280;
+
+/**
+ * Weights offered for the selected family: the family's own roster when the host
+ * declared one, else the host-wide roster, else the DS default four. Families
+ * differ widely (Inter ships 9 weights, many text faces ship 2), and neither the
+ * Google catalog nor the Local Font Access roster carries axis metadata, so this
+ * can only be as good as what the host supplies.
+ */
+function weightsForFamily(
+  family: string,
+  fonts: ReadonlyArray<FontEntry> | undefined,
+  hostWeights: ReadonlyArray<FontWeightOption> | undefined,
+): ReadonlyArray<FontWeightOption> {
+  const entry = fonts?.find(font => font.name === family);
+  return entry?.weights ?? hostWeights ?? DEFAULT_FONT_WEIGHTS;
+}
+
+function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes = DEFAULT_FONT_SIZES, fontWeights }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean; fonts?: ReadonlyArray<FontEntry>; fontSizes?: ReadonlyArray<number>; fontWeights?: ReadonlyArray<FontWeightOption> }) {
   const [internal, setInternal] = useState<ElementTypographySettings>({ fontFamily: "Inter", fontWeight: "Medium", fontSize: 11, lineHeight: 16, letterSpacing: 0, align: "left", verticalAlign: "top", decoration: "none", textCase: "none", weight: 500, styleName: "Title · 96/120" });
   const settings = value ?? internal;
   const update = (patch: Partial<ElementTypographySettings>) => { if (!value) setInternal(current => ({ ...current, ...patch })); onChange?.(patch); };
   const hasStyle = stylesAvailable && !!settings.styleName;
+  const weightOptions = weightsForFamily(settings.fontFamily, fonts, fontWeights);
+  const weightLabels = Object.fromEntries(weightOptions.map(option => [option.label, option.label])) as Record<string, string>;
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
   const textAlignBtns: IconBtn[] = [
     { icon: <TextAlignLeftIcon data-icon-semantic="text-align-left" size={S} strokeWidth={1.5} />, label: "Align left", tooltip: "Align left", onClick: () => update({ align: "left" }) },
@@ -1580,8 +1669,28 @@ function TypographySection({ value, onChange, stylesAvailable, fonts }: { value?
 
           {/* Weight / Size — no labels (Figma); Size is a combo input */}
           <div className="flex items-center gap-[8px] pl-[16px] pr-[16px] pt-[3px]">
-            <div className="flex-1 min-w-0"><ChoiceDropdown value={settings.fontWeight} options={["Regular", "Medium", "Semibold", "Bold"]} labels={{ Regular: "Regular", Medium: "Medium", Semibold: "Semibold", Bold: "Bold" }} onChange={fontWeight => update({ fontWeight })} /></div>
-            <div className="flex-1 min-w-0"><ComboInput ariaLabel="Font size" selectAllOnFocus iconLead={<span className={FONT}>T</span>} value={String(settings.fontSize)} onInputChange={fontSize => update({ fontSize: Number(fontSize) })} /></div>
+            {/* Weight rows come from the selected family, not a fixed four
+                (Composa#661) — and each pick emits BOTH the named weight and its
+                numeric value so a name outside the host's own name table (Thin,
+                Black, …) still persists as the right CSS weight. */}
+            <div className="flex-1 min-w-0"><ChoiceDropdown ariaLabel="Font weight" value={settings.fontWeight} options={weightOptions.map(option => option.label)} labels={weightLabels} onChange={label => { const picked = weightOptions.find(option => option.label === label); update({ fontWeight: label, ...(picked ? { weight: picked.value } : {}) }); }} /></div>
+            <div className="flex-1 min-w-0">
+              <ComboInput
+                ariaLabel="Font size"
+                selectAllOnFocus
+                iconLead={<span className={FONT}>T</span>}
+                value={String(settings.fontSize)}
+                onInputChange={fontSize => update({ fontSize: Number(fontSize) })}
+                dropdownAriaLabel="Font size presets"
+                menu={close => (
+                  <Menu maxHeight={FONT_SIZE_MENU_MAX_HEIGHT}>
+                    {fontSizes.map(size => (
+                      <MenuRow key={size} type="checkmark" checked={size === settings.fontSize} label={String(size)} onClick={() => { update({ fontSize: size }); close(); }} />
+                    ))}
+                  </Menu>
+                )}
+              />
+            </div>
             <div className="shrink-0 min-w-[24px]" />
           </div>
 
@@ -1639,6 +1748,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, 
   const updateFill = (id: string, patch: Partial<Omit<FillEntry, "id">>) => { if (!entries) setInternal(f => f.map(x => x.id === id ? { ...x, ...patch } : x)); onUpdate?.(id, patch); };
   const removeFill = (id: string) => { if (!entries) setInternal(f => f.filter(x => x.id !== id)); onRemove?.(id); };
   const toggleFill = (id: string) => { const fill = fills.find(item => item.id === id); if (!fill) return; if (!entries) setInternal(items => items.map(item => item.id === id ? { ...item, visible: !item.visible } : item)); onToggle?.(id, !fill.visible); };
+  const fillIds = fills.map(fill => fill.id);
 
   return (
     <PanelSection
@@ -1656,7 +1766,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, 
       {/* Entry = ColorInput summary + the shared PanelEntry grip/eye/remove anatomy,
           so Fill · Stroke · Effects render through ONE row primitive (#460). */}
       {fills.map(fill => (
-        <div key={fill.id} draggable={!!onReorder && fills.length > 1} onDragStart={event => event.dataTransfer.setData("text/plain", fill.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), fill.id); }}>
+        <PanelReorderableEntry key={fill.id} id={fill.id} ids={fillIds} onReorder={onReorder}>
           <PanelEntry
             draggable={fills.length > 1}
             visible={fill.visible}
@@ -1683,7 +1793,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, 
               onHexChange={color => updateFill(fill.id, { color: `#${color.replace(/^#/, "")}` })}
             />
           </PanelEntry>
-        </div>
+        </PanelReorderableEntry>
       ))}
     </PanelSection>
   );
@@ -1705,6 +1815,7 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
   const add = () => { if (!entries) setInternal(s => [...s, { id: String(Date.now()), color: "#000000", opacity: 100, visible: true, weight: 1, align: "center", style: "solid", join: "miter", cap: "none" }]); onAdd?.(); };
   const remove = (id: string) => { if (!entries) setInternal(s => s.filter(x => x.id !== id)); onRemove?.(id); };
   const toggle = (id: string) => { const stroke = strokes.find(item => item.id === id); if (!stroke) return; if (!entries) setInternal(items => items.map(item => item.id === id ? { ...item, visible: !item.visible } : item)); onToggle?.(id, !stroke.visible); };
+  const strokeIds = strokes.map(stroke => stroke.id);
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
 
   return (
@@ -1721,7 +1832,7 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
       }
     >
       {strokes.map(stroke => (
-        <div key={stroke.id} draggable={!!onReorder && strokes.length > 1} onDragStart={event => event.dataTransfer.setData("text/plain", stroke.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), stroke.id); }} className="pb-[2px]">
+        <PanelReorderableEntry key={stroke.id} id={stroke.id} ids={strokeIds} onReorder={onReorder} className="pb-[2px]">
           {/* Row 1 — color summary through the shared PanelEntry primitive (#460). */}
           <PanelEntry
             draggable={strokes.length > 1}
@@ -1786,7 +1897,7 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
                 cannot be delivered is omitted rather than left inert. It returns with
                 the engine feature — Composa#635. */}
           </div>
-        </div>
+        </PanelReorderableEntry>
       ))}
     </PanelSection>
   );
@@ -1807,6 +1918,7 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
   const add = () => { if (!entries) setInternal(e => [...e, { id: String(Date.now()), type: "Drop shadow", visible: true }]); onAdd?.(); };
   const remove = (id: string) => { if (!entries) setInternal(e => e.filter(x => x.id !== id)); onRemove?.(id); };
   const toggle = (id: string) => { const effect = effects.find(item => item.id === id); if (!effect) return; if (!entries) setInternal(items => items.map(item => item.id === id ? { ...item, visible: !item.visible } : item)); onToggle?.(id, !effect.visible); };
+  const effectIds = effects.map(effect => effect.id);
 
   return (
     <PanelSection
@@ -1822,7 +1934,7 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
       }
     >
       {effects.map(effect => (
-        <div key={effect.id} draggable={!!onReorder && effects.length > 1} onDragStart={event => event.dataTransfer.setData("text/plain", effect.id)} onDragOver={event => onReorder && event.preventDefault()} onDrop={event => { event.preventDefault(); onReorder?.(event.dataTransfer.getData("text/plain"), effect.id); }}>
+        <PanelReorderableEntry key={effect.id} id={effect.id} ids={effectIds} onReorder={onReorder}>
           <PanelEntry
             draggable={!!onReorder && effects.length > 1}
             visible={effect.visible}
@@ -1837,7 +1949,7 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
               capabilities={capabilities}
               onChange={patch => update(effect.id, patch)} onClose={() => onActiveStackDialogChange(null)} />
           </PanelEntry>
-        </div>
+        </PanelReorderableEntry>
       ))}
     </PanelSection>
   );
@@ -2322,7 +2434,7 @@ function SlideBackgroundSection({
     <PanelSection title="Background">
       {/* Fill type — icon-only segmented, matching the Figma reference / ColorDialog's
           fill-type tabs (not text-labeled) */}
-      <PanelFieldRow
+      <PanelSegmentedRow
         label="Fill type"
         left={
           <SegmentedControl
@@ -2449,8 +2561,12 @@ function ChoiceDropdown<T extends string>({ ariaLabel, value, options, labels, o
   labels: Record<T, string>;
   onChange?: (value: T) => void;
 }) {
+  // A roster-driven caller (the weight menu) can hold a value the current roster
+  // doesn't list — e.g. the selection is Semibold and the newly chosen family
+  // only ships Regular/Bold. Show the value verbatim rather than a blank field.
+  const displayed = labels[value] ?? value;
   return (
-    <PopoverMenu directTrigger align="right" className="w-full" trigger={<Dropdown aria-haspopup="menu" ariaLabel={ariaLabel ? `${ariaLabel}: ${labels[value]}` : undefined} value={labels[value]} fullWidth />}>
+    <PopoverMenu directTrigger align="right" className="w-full" trigger={<Dropdown aria-haspopup="menu" ariaLabel={ariaLabel ? `${ariaLabel}: ${displayed}` : undefined} value={displayed} fullWidth />}>
       {close => <Menu>{options.map(option => (
         <MenuRow key={option} type="checkmark" checked={option === value} label={labels[option]} onClick={() => { onChange?.(option); close(); }} />
       ))}</Menu>}
@@ -2880,6 +2996,11 @@ export interface PropertyPanelProps {
   /** Host-provided font roster for the Typography Font Picker. Defaults to the
    * DS bundled/web-safe roster (BUNDLED_FONTS) when omitted. */
   fonts?: ReadonlyArray<FontEntry>;
+  /** Presets the Typography font-size chevron offers. Defaults to DEFAULT_FONT_SIZES. */
+  fontSizes?: ReadonlyArray<number>;
+  /** Weight roster used for families whose `fonts` entry declares no `weights`.
+   * Defaults to DEFAULT_FONT_WEIGHTS (Regular · Medium · Semibold · Bold). */
+  fontWeights?: ReadonlyArray<FontWeightOption>;
   fills?: ElementFillSetting[];
   onAddFill?: () => void; onUpdateFill?: (id: string, patch: Partial<Omit<ElementFillSetting, "id">>) => void; onToggleFill?: (id: string, visible: boolean) => void; onReorderFill?: (id: string, targetId: string) => void; onRemoveFill?: (id: string) => void;
   strokes?: ElementStrokeSetting[];
@@ -3398,7 +3519,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   layout, onLayoutChange, onSizingChange, onSizingConstraintChange, onApplySizingVariable,
   textSizingMode, availableTextSizingModes, textSizingModeDisabled = false, onTextSizingModeChange,
   positionPresentation = "separate", onPositionPresentationChange,
-  onAutoLayoutSettingsRequest, typography, onTypographyChange, fonts,
+  onAutoLayoutSettingsRequest, typography, onTypographyChange, fonts, fontSizes, fontWeights,
   fills, onAddFill, onUpdateFill, onToggleFill, onReorderFill, onRemoveFill,
   strokes, strokeReadOnly = false, onAddStroke, onUpdateStroke, onToggleStroke, onReorderStroke, onRemoveStroke,
   effects, onAddEffect, onUpdateEffect, onToggleEffect, onReorderEffect, onRemoveEffect,
@@ -3600,7 +3721,10 @@ export function PropertyPanel(props: PropertyPanelProps) {
         panels (CompositionPanel / AssetsPanel), flipped to a left border since it
         sits to the right of the canvas. No inset ring on top/right/bottom — a single
         border-l against the canvas (Composa#250, analogous to #33). */}
-    <div data-composa-inspector-surface className={clsx("relative w-[240px] shrink-0 h-full flex flex-col bg-c-bg border-l border-c-border overflow-hidden", className)}>
+    {/* w-[290px]: 50px wider than the original 240 (Composa#661 item 3) — at 240
+        the two-column rows clipped most values ("758.46" read as "758…"). Hosts
+        that own a resizable rail still override this with their own width. */}
+    <div data-composa-inspector-surface className={clsx("relative w-[290px] shrink-0 h-full flex flex-col bg-c-bg border-l border-c-border overflow-hidden", className)}>
       {/* Multiplayer tools — above the tabs; shared across all modes */}
       <MultiplayerBar
         previewPlaying={previewPlaying}
@@ -3864,6 +3988,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onClipContentChange={onLayoutChange ? clipsContent => onLayoutChange({ clipsContent }) : undefined} />}
           {(isAutoLayout)  && <LayoutAutoSection width={width} height={height}
             onEnableGrid={onLayoutChange ? () => onLayoutChange({ mode: "grid" }) : undefined}
+            onDisableAutoLayout={() => { setAutoLayoutOn(false); onLayoutChange?.({ mode: "none" }); }}
             flowMode={layout?.mode}
             wrap={layout?.wrap} rowGap={layout?.rowGap}
             gap={layout?.gap} paddingTop={layout?.padding.top} paddingRight={layout?.padding.right} paddingBottom={layout?.padding.bottom} paddingLeft={layout?.padding.left}
@@ -3898,7 +4023,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <AppearanceSection opacity={opacity} blendMode={blendMode} supportedBlendModes={supportedBlendModes} cornerRadius={cornerRadius} opacityMixed={opacityMixed} cornerRadiusMixed={cornerRadiusMixed} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} />
 
           {/* Typography — text only */}
-          {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} fonts={fonts} />}
+          {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} fonts={fonts} fontSizes={fontSizes} fontWeights={fontWeights} />}
 
           {/* Stackable sections */}
           <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill} capabilities={capabilities}

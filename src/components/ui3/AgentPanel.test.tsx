@@ -11,6 +11,7 @@ import {
   type AgentPanelProps,
 } from "./AgentPanel";
 import { InspectorRailSwitcher } from "./InspectorRailSwitcher";
+import { PANEL_W } from "./Panel";
 import { NavRail } from "./NavRail";
 import { TooltipProvider } from "./Tooltip";
 
@@ -349,7 +350,7 @@ describe("canonical rail access", () => {
     act(() => renderer!.update(<InspectorRailSwitcher active="agent" inspector={<div data-view="inspector" />} agent={<div data-view="agent" />}
       onChange={view => calls.push(view)} />));
     expect(renderer!.root.findByProps({ "data-view": "agent" })).toBeTruthy();
-    expect(renderer!.root.findByProps({ "aria-label": "Inspector rail" }).props.style.width).toBe(240);
+    expect(renderer!.root.findByProps({ "aria-label": "Inspector rail" }).props.style.width).toBe(PANEL_W);
     act(() => renderer!.unmount());
   });
 

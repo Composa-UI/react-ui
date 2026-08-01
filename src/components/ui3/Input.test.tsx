@@ -67,6 +67,65 @@ describe("NumericInput presentation contract", () => {
   });
 });
 
+// Composa#661 item 1: the idle field read "758.46" but focusing it dumped the
+// raw stored float ("758.4596697032626") into the editor. The draft is the
+// editing surface, so it is seeded at display precision at every entry point.
+describe("NumericInput — editing precision", () => {
+  const RAW = 758.4596697032626;
+  const focus = (input: { props: Record<string, (event: unknown) => void> }) =>
+    act(() => input.props.onFocus({ target: { select: () => undefined } }));
+
+  it("seeds the editing draft at two decimals when the field is focused", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<NumericInput ariaLabel="Position X" value={RAW} />); });
+    const input = renderer!.root.findByProps({ "aria-label": "Position X" });
+    expect(input.props.value).toBe("758.46"); // idle presentation
+    focus(input);
+    expect(renderer!.root.findByProps({ "aria-label": "Position X" }).props.value).toBe("758.46");
+    act(() => renderer!.unmount());
+  });
+
+  it("seeds each pair segment's draft at two decimals too", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<NumericPairInput
+        a={{ ariaLabel: "Position X", iconLead: "X", value: RAW }}
+        b={{ ariaLabel: "Position Y", iconLead: "Y", value: 12 }}
+      />);
+    });
+    const x = renderer!.root.findByProps({ "aria-label": "Position X" });
+    focus(x);
+    expect(renderer!.root.findByProps({ "aria-label": "Position X" }).props.value).toBe("758.46");
+    act(() => renderer!.unmount());
+  });
+
+  it("steps from the displayed value rather than the raw float", () => {
+    const onChange = vi.fn();
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<NumericInput ariaLabel="Position X" value={RAW} onChange={onChange} />); });
+    const input = renderer!.root.findByProps({ "aria-label": "Position X" });
+    focus(input);
+    act(() => renderer!.root.findByProps({ "aria-label": "Position X" }).props.onKeyDown({
+      key: "ArrowUp", shiftKey: false, preventDefault: () => undefined,
+    }));
+    expect(renderer!.root.findByProps({ "aria-label": "Position X" }).props.value).toBe("759.46");
+    act(() => renderer!.unmount());
+  });
+
+  it("does not quantise the stored value when a commitOnBlur field is focused and left alone", () => {
+    // The draft now reads "758.46"; committing it verbatim would silently
+    // rewrite 758.4596697032626 on a bare focus/blur.
+    const onChange = vi.fn();
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<NumericInput ariaLabel="Gap" commitOnBlur value={RAW} onChange={onChange} />); });
+    const input = renderer!.root.findByProps({ "aria-label": "Gap" });
+    focus(input);
+    act(() => renderer!.root.findByProps({ "aria-label": "Gap" }).props.onBlur());
+    expect(onChange).not.toHaveBeenCalled();
+    act(() => renderer!.unmount());
+  });
+});
+
 describe("ComboInput focus contract", () => {
   it("selects an editable value only when the consumer opts in", () => {
     const selected = vi.fn();
