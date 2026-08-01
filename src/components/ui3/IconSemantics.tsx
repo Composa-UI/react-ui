@@ -12,6 +12,7 @@ import {
   AlignStartVertical,
   ArrowDownToLine,
   ArrowUpToLine,
+  Circle,
   Droplet,
   LayoutGrid,
   Grid2x2,
@@ -64,6 +65,7 @@ export type ComposaIconSemantic =
   | "component"
   | "image"
   | "line"
+  | "ellipse"
   | "shape"
   | "auto-layout-frame"
   | "auto-layout-add"
@@ -123,6 +125,11 @@ export const composaIconSemantics = {
   component: Component,
   image: ImageIcon,
   line: Minus,
+  // Every primitive draws its own outline, so a layer row reads as the object it
+  // points at (Composa#661). An ellipse used to fall through to `shape`/Square.
+  ellipse: Circle,
+  // `shape` stays the rectangle/fallback glyph for primitives with no dedicated
+  // outline yet.
   shape: Square,
   "auto-layout-frame": ProposedLayoutPanelLeftCheck,
   "auto-layout-add": ProposedLayoutPanelLeftPlus,

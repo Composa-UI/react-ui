@@ -306,6 +306,33 @@ describe("AgentPanel controlled contracts", () => {
   });
 });
 
+describe("AgentPanel message surfaces", () => {
+  // Composa#661: the user bubble was painted with `bg-c-bg-selected` — the pale
+  // blue the layer/slide rows use behind a SELECTED row — so ordinary message
+  // text looked like it had been dragged over and highlighted.
+  it("gives the user bubble a neutral surface, not the selection tint", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = renderAgent(props({ activeConversation })); });
+
+    const bubble = renderer!.root.find(node => node.type === "div" && node.props.children === "Review this");
+    expect(String(bubble.props.className)).toContain("bg-c-bg-secondary");
+    expect(String(bubble.props.className)).not.toContain("bg-c-bg-selected");
+    act(() => renderer!.unmount());
+  });
+
+  it("paints no message in the thread with the row-selection tint", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = renderAgent(props({ activeConversation })); });
+
+    const thread = renderer!.root.findByProps({ "aria-label": "Conversation messages" });
+    // Guard: the thread really rendered its messages, so the absence below means
+    // something rather than proving an empty subtree has no tint.
+    expect(thread.findAll(node => node.props.children === "Review this").length).toBeGreaterThan(0);
+    expect(thread.findAll(node => String(node.props.className ?? "").includes("bg-c-bg-selected"))).toHaveLength(0);
+    act(() => renderer!.unmount());
+  });
+});
+
 describe("Agent panel geometry helpers", () => {
   it("leaves Escape with native and ARIA edit controls", () => {
     expect(agentPanelEscapeIsEditableTarget({ tagName: "INPUT" } as unknown as EventTarget)).toBe(true);

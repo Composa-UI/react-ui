@@ -1,7 +1,7 @@
 import { clsx } from "clsx";
 import { iconForSemantic, type ComposaIconSemantic } from "./IconSemantics";
 
-export type LayerIconType = "frame" | "group" | "text" | "component" | "instance" | "image" | "shape" | "line";
+export type LayerIconType = "frame" | "group" | "text" | "component" | "instance" | "image" | "shape" | "line" | "ellipse";
 export type LayerAutoLayoutMode = "none" | "horizontal" | "vertical" | "grid";
 
 export interface LayerTypeIconProps {
@@ -24,6 +24,7 @@ export function LayerTypeIcon({ type, autoLayoutMode = "none", size = 16, stroke
     : type === "component" || type === "instance" ? "component"
     : type === "image" ? "image"
     : type === "line" ? "line"
+    : type === "ellipse" ? "ellipse"
     : "shape";
   const Icon = iconForSemantic(semantic);
   return <Icon data-icon-semantic={semantic} data-layer-icon-type={type} data-auto-layout-mode={autoLayoutMode} size={size} strokeWidth={strokeWidth}
