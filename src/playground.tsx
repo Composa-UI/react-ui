@@ -116,6 +116,8 @@ const ISSUE_67_ICON_ROWS: { label: string; type: LayerIconType; autoLayoutMode?:
   { label: "Text", type: "text" },
   { label: "Image", type: "image", tone: "secondary", state: "disabled" },
   { label: "Shape", type: "shape" },
+  { label: "Line", type: "line" },
+  { label: "Ellipse", type: "ellipse" },
   { label: "Compatibility group", type: "group" },
 ];
 

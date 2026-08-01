@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent, 
 import { clsx } from "clsx";
 import { ChevronRight, Eye, EyeOff, Lock, LockOpen } from "lucide-react";
 import { ScrollArea } from "./Panel";
-import { LayerTypeIcon, type LayerAutoLayoutMode } from "./LayerTypeIcon";
+import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
 import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSelectionState";
 
 // ─── Layer list ─────────────────────────────────────────────────────────────────
@@ -14,7 +14,11 @@ import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSel
 
 const FONT = "font-[family-name:var(--composa-font-family)]";
 
-export type LayerType = "frame" | "group" | "text" | "component" | "instance" | "image" | "shape";
+// Aliased to the canonical icon type rather than re-listed: the two drifted, and
+// LayerList's narrower copy silently rejected the `line` / `ellipse` types the
+// icon layer already drew, forcing callers to collapse them to `shape` — which is
+// why both landed in the tree as squares (Composa#661).
+export type LayerType = LayerIconType;
 
 export interface LayerNode {
   id: string;
@@ -290,11 +294,15 @@ function LayerRow({ row, hasChildren, open, focused, renaming, renameDraft, onRe
       ) : (
         <span className={clsx(FONT, "relative flex-1 min-w-0 text-[11px] leading-[16px] truncate", selectionState === "selected" ? "font-[550]" : "font-[450]", isComponent ? "text-accent-component" : "text-c-text")}>{node.name}</span>
       )}
-      {/* trailing: lock first (open padlock on hover; closed padlock persistent when locked), then visibility */}
-      <button type="button" tabIndex={-1} disabled={!!node.inheritedLocked && !node.locked} aria-label={node.inheritedLocked && !node.locked ? `${node.name} locked by parent` : node.locked ? `Unlock ${node.name}` : `Lock ${node.name}`} onClick={event => { event.stopPropagation(); onLockChange?.(); }} className={clsx("relative shrink-0 size-[14px] flex items-center justify-center text-c-icon-secondary focus-visible:opacity-100", !effectivelyLocked && "opacity-0 group-hover/layer:opacity-100")}>
+      {/* trailing: lock first (open padlock on hover; closed padlock persistent when locked), then visibility.
+          Both carry the PRIMARY icon colour (Composa#661): they are actionable
+          row controls, not de-emphasised metadata, and `text-c-icon-secondary`
+          made an engaged lock/hidden-eye read as disabled. The leading
+          disclosure chevron stays secondary — it is structure, not an action. */}
+      <button type="button" tabIndex={-1} disabled={!!node.inheritedLocked && !node.locked} aria-label={node.inheritedLocked && !node.locked ? `${node.name} locked by parent` : node.locked ? `Unlock ${node.name}` : `Lock ${node.name}`} onClick={event => { event.stopPropagation(); onLockChange?.(); }} className={clsx("relative shrink-0 size-[14px] flex items-center justify-center text-c-icon focus-visible:opacity-100", !effectivelyLocked && "opacity-0 group-hover/layer:opacity-100")}>
         {effectivelyLocked ? <Lock size={14} strokeWidth={1.5} /> : <LockOpen size={14} strokeWidth={1.5} />}
       </button>
-      <button type="button" tabIndex={-1} aria-label={node.hidden ? `Show ${node.name}` : `Hide ${node.name}`} onClick={event => { event.stopPropagation(); onVisibilityChange?.(); }} className={clsx("relative shrink-0 size-[14px] flex items-center justify-center text-c-icon-secondary focus-visible:opacity-100", !node.hidden && "opacity-0 group-hover/layer:opacity-100")}>
+      <button type="button" tabIndex={-1} aria-label={node.hidden ? `Show ${node.name}` : `Hide ${node.name}`} onClick={event => { event.stopPropagation(); onVisibilityChange?.(); }} className={clsx("relative shrink-0 size-[14px] flex items-center justify-center text-c-icon focus-visible:opacity-100", !node.hidden && "opacity-0 group-hover/layer:opacity-100")}>
         {node.hidden ? <EyeOff size={14} strokeWidth={1.5} /> : <Eye size={14} strokeWidth={1.5} />}
       </button>
     </div>

@@ -459,7 +459,11 @@ function UserMessage({ message, onSelectContext }: { message: Extract<AgentPanel
           context={message.context}
           onSelect={message.context.selectable !== false && onSelectContext ? () => onSelectContext(message.context!) : undefined}
         />}
-        <div className={clsx(FONT, "max-w-[196px] rounded-c-lg bg-c-bg-selected px-[8px] py-[6px] text-[11px] leading-[16px] text-c-text whitespace-pre-wrap break-words")}>
+        {/* Neutral surface, NOT `bg-c-bg-selected` (Composa#661): that is the
+            selection tint the layer/slide rows paint behind a selected row, so
+            the same wash behind message text read as a text selection. The
+            canonical UserBubble already uses the secondary surface. */}
+        <div className={clsx(FONT, "max-w-[196px] rounded-c-lg bg-c-bg-secondary px-[8px] py-[6px] text-[11px] leading-[16px] text-c-text whitespace-pre-wrap break-words")}>
           {message.content}
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { clsx } from "clsx";
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
-import { ChevronRight, ChevronDown, Plus, MoreHorizontal, Pencil, Copy, Trash2 } from "lucide-react";
+import { ChevronRight, ChevronDown, Plus, Pencil, Copy, Trash2 } from "lucide-react";
 import { ScrollArea } from "./Panel";
 import { Menu, MenuRow } from "./Menu";
 
@@ -147,20 +147,11 @@ export function SlideListItem({ item, aspectRatio, tabIndex = 0, onNavigate, onR
           <ChevronRight size={16} className={clsx("text-c-text transition-transform", item.expanded && "rotate-90")} />
         )}
       </div>
-
-      {/* Hover ⋯ affordance — opens the slide actions menu at the click point.
-          Hidden until row hover / keyboard focus, so it doesn't cover the thumb. */}
-      {onMenuRequest && (
-        <button
-          type="button"
-          tabIndex={-1}
-          aria-label={`Composition ${item.n} options`}
-          onClick={event => { event.stopPropagation(); onMenuRequest({ clientX: event.clientX, clientY: event.clientY }); }}
-          className="absolute top-[10px] right-[16px] z-10 size-[20px] flex items-center justify-center rounded-c-sm bg-c-bg text-c-icon-secondary shadow-c-100 opacity-0 group-hover/slide:opacity-100 focus-visible:opacity-100 hover:bg-c-bg-hover"
-        >
-          <MoreHorizontal size={14} />
-        </button>
-      )}
+      {/* No hover ⋯ affordance: the slide actions live on right-click only
+          (Composa#661). The chip used to float over the thumbnail on hover and
+          obscure the artwork it was attached to; `onContextMenu` above opens the
+          same Rename/Duplicate/Delete menu at the cursor, matching the assets
+          and layer panels' context-menu convention. */}
     </div>
   );
 }

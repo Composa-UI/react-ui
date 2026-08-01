@@ -1,4 +1,4 @@
-import { AlignCenter, AlignLeft, AlignRight, LayoutGrid, Settings2 } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, Circle, LayoutGrid, Settings2 } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { composaIconSemantics, iconForSemantic } from "./IconSemantics";
@@ -105,6 +105,16 @@ describe("settings icon semantics", () => {
     expect(composaIconSemantics["text-align-left"]).not.toBe(composaIconSemantics["text-align-top"]);
     expect(composaIconSemantics["text-align-center-x"]).not.toBe(composaIconSemantics["text-align-center"]);
     expect(composaIconSemantics["text-align-right"]).not.toBe(composaIconSemantics["text-align-bottom"]);
+  });
+
+  it("gives every drawable primitive its own glyph instead of collapsing to the square (#661)", () => {
+    // `shape` is the rectangle/fallback; a line and an ellipse are their own
+    // outlines, so a layer row points at the object it actually names.
+    expect(composaIconSemantics.ellipse).toBe(Circle);
+    expect(composaIconSemantics.ellipse).not.toBe(composaIconSemantics.shape);
+    expect(composaIconSemantics.line).not.toBe(composaIconSemantics.shape);
+    expect(composaIconSemantics.ellipse).not.toBe(composaIconSemantics.line);
+    expect(iconForSemantic("ellipse")).toBe(Circle);
   });
 
   it("projects the authored auto-layout direction into the canonical layer icon", () => {
