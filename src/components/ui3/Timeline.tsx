@@ -219,9 +219,10 @@ export interface MasterLaneControlState {
   muted?: boolean;     // default false — speaker/speaker-off
   locked?: boolean;    // default false — padlock
 }
-// How a muted lane's bars read. Reuses the timeline's existing "this row is switched
-// off" treatment (the hidden property/preset rows) rather than inventing a second
-// disabled look for the same idea.
+// How a switched-off bar (or part of one) reads. Reuses the timeline's existing
+// "this row is switched off" treatment (the hidden property/preset rows) rather than
+// inventing a second disabled look for the same idea. On the Video lane it applies
+// to the whole bar when hidden and to the waveform strip alone when muted (TL-3).
 const MUTED_BAR = "opacity-40";
 
 const DEMO_TRACKS: Track[] = [
@@ -1628,7 +1629,13 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
     if (active.kind === "start") onTrim?.(clip.id, "start", Math.min(active.range[1], Math.max(0, active.range[0] + delta)), timelineClipTrimDetail("pointer", viewport, plotWidth));
     if (active.kind === "end") onTrim?.(clip.id, "end", Math.max(active.range[0], active.range[1] + delta), timelineClipTrimDetail("pointer", viewport, plotWidth));
   };
+  // Mute and visibility are two different controls, so they get two different
+  // treatments on a video bar (Composa i2 TL-3): the speaker owns the clip's AUDIO,
+  // so muting dims only the waveform strip; the eye owns whether the clip renders at
+  // all, so hiding dims the whole bar. Dimming the picture on mute conflated them —
+  // the two toggles were indistinguishable by eye.
   const muted = header.control?.muted ?? false;
+  const visible = header.control?.visible ?? true;
   return (
     <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK, paddingRight: PLOT_RIGHT_GUTTER }}>
       <MasterLaneHeader {...header} />
@@ -1675,7 +1682,8 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
               // bar. An earlier pass kept the thumbnail visible by tinting the scrim
               // instead; the owner reversed that — one selected treatment across every
               // lane beats protecting the frame (Composa#661).
-              muted && MUTED_BAR,
+              // Hidden (eye) dims the whole bar; muted (speaker) does not — TL-3.
+              !visible && MUTED_BAR,
               clip.selected ? "border-c-border-selected-strong bg-c-bg-brand" : "border-c-border bg-c-bg-secondary hover:border-c-border-selected")}
             style={{ left, width,
               backgroundColor: !clip.selected && !clip.thumbnail && !tintIsImage ? clip.tint : undefined,
@@ -1683,9 +1691,11 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
               backgroundSize: "cover", backgroundPosition: "center" }}>
             {/* Audio strip — video with sound reads at a glance the way the Audio lane
                 does, reusing that lane's renderer rather than a second one. Pinned to
-                the bottom so it never competes with the clip name (Composa#661). */}
+                the bottom so it never competes with the clip name (Composa#661).
+                The lane's mute dims THIS strip only — see the `muted`/`visible` note
+                above (TL-3). */}
             {clip.waveform?.length ? (
-              <div data-timeline-clip-waveform className="absolute inset-x-0 bottom-[2px] h-[14px]">
+              <div data-timeline-clip-waveform className={clsx("absolute inset-x-0 bottom-[2px] h-[14px]", muted && MUTED_BAR)}>
                 <AudioLaneWaveform id={clip.id} peaks={clip.waveform} active={onArtwork} />
               </div>
             ) : null}
@@ -2060,6 +2070,12 @@ export function Timeline({
   onTimelineCollapsedChange?: (collapsed: boolean) => void;
 }) {
   const master = mode === "master";
+  // A playhead promises there is something to scrub through. The slide-local null
+  // state (drilled into a slide that has no layers yet) has nothing to seek, so the
+  // handle and the body line both drop out rather than pointing at an empty plot
+  // (Composa i2 LT-2). Master view always keeps them — its lanes are the composition
+  // itself and exist even when empty.
+  const seekable = master || tracks.length > 0;
   const [internalPlayhead, setInternalPlayhead] = useState(defaultPlayhead);
   const [internalPlaying, setInternalPlaying] = useState(defaultPlaying);
   const [internalLoop, setInternalLoop] = useState(defaultLoop);
@@ -2273,11 +2289,11 @@ export function Timeline({
           {master ? <SecondRuler viewport={viewport} width={plotWidth} /> : <Ruler viewport={viewport} width={plotWidth} />}
           {/* continuous playhead stroke through the header ruler, joining the body line
               below so the playhead reads unbroken (Composa#342, gated by #344) */}
-          {PLAYHEAD_CONNECTED && <div className="absolute top-[10px] bottom-0 w-px z-[15] -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport), backgroundColor: autoKeyframe ? "#ff3b30" : BLUE }} />}
+          {seekable && PLAYHEAD_CONNECTED && <div className="absolute top-[10px] bottom-0 w-px z-[15] -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport), backgroundColor: autoKeyframe ? "#ff3b30" : BLUE }} />}
           {/* playhead handle — recolors red when auto-keyframe/record is armed (Composa#330) */}
-          <div className="absolute top-[4px] z-20 -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport) }}>
+          {seekable && <div className="absolute top-[4px] z-20 -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport) }}>
             <svg width={PLAYHEAD_HANDLE_W} height="10" viewBox="0 0 12 10"><path d="M0 0h12v4l-6 6-6-6V0Z" fill={autoKeyframe ? "#ff3b30" : BLUE} /></svg>
-          </div>
+          </div>}
         </div>
         <div className="absolute z-10 right-0 top-0 bottom-0 flex items-center gap-[8px] px-[12px] border-l border-c-border bg-c-bg">
           {/* Zoom is the one unlabelled non-icon affordance in this chrome — a bare
@@ -2362,11 +2378,12 @@ export function Timeline({
         {/* shared playhead line spanning the FULL lanes region — above the keyframe
             diamonds (Composa#320). The wrapper's `top-0 bottom-0` resolves against the
             relatively-positioned scroll content (see `contentClassName` above), so it
-            spans header-ruler-bottom through the last lane at any scroll position and in
-            the empty/null state, instead of only the visible viewport height. */}
-        <div className="absolute top-0 bottom-0 z-20 overflow-hidden pointer-events-none" style={{ left: LEFT_W, right: PLOT_RIGHT_GUTTER }}>
+            spans header-ruler-bottom through the last lane at any scroll position,
+            instead of only the visible viewport height. Gated on `seekable` — the
+            slide-local null state has nothing to seek, so no line (LT-2). */}
+        {seekable && <div className="absolute top-0 bottom-0 z-20 overflow-hidden pointer-events-none" style={{ left: LEFT_W, right: PLOT_RIGHT_GUTTER }}>
           <div className="absolute top-0 bottom-0 w-px" style={{ left: percent(playhead, viewport), backgroundColor: autoKeyframe ? "#ff3b30" : BLUE }} />
-        </div>
+        </div>}
       </ScrollArea>
       {/* horizontal time-axis scrollbar — visible, draggable pan of the viewport window */}
       <TimelineTimeScrollbar viewport={viewport} duration={duration} plotWidth={plotWidth} onPan={next => setViewport(next, "pointer-pan")} />
