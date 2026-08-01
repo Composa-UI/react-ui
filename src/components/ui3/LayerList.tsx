@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent, 
 import { clsx } from "clsx";
 import { ChevronRight, Eye, EyeOff, Lock, LockOpen } from "lucide-react";
 import { ScrollArea } from "./Panel";
+import { suppressNativeDragImage } from "./dragImage";
 import { LayerTypeIcon, type LayerAutoLayoutAlign, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
 import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSelectionState";
 
@@ -638,6 +639,11 @@ export function LayerList({
                   if (!roots.length) { event.preventDefault(); setDraggedIds([]); setDropTarget(null); return; }
                   setDraggedIds(roots); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("application/x-composa-layers", JSON.stringify(roots));
                   event.dataTransfer.setData("text/plain", roots[0] ?? rowId);
+                  // No translucent row snapshot under the cursor — the insertion
+                  // line is the drop feedback the owner wants (iteration-3).
+                  // Below the !roots.length early-return, so an aborted drag is
+                  // untouched.
+                  suppressNativeDragImage(event);
                 }}
                 onDragEnd={() => { setDraggedIds([]); setDropTarget(null); }}
                 onDragOver={event => {

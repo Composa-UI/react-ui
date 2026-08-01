@@ -6,7 +6,7 @@ import {
   Maximize2, Minimize2, Plus, Eye,
   Columns,
   BookOpen,
-  Crosshair, Grid3x3, ExternalLink, Unlink,
+  Crosshair, Grid3x3, ExternalLink, Link, Unlink,
   Minus, EyeOff, AlignJustify, Maximize, ChevronDown, Ruler,
   MoveHorizontal, MoveVertical, Play, Pause, MonitorPlay,
   Image as ImageIcon, Clock, SquareSquare,
@@ -460,6 +460,28 @@ export function lockedAspectCounterpart(axis: ElementSizingAxis, nextValue: numb
   return Number.isFinite(paired) ? paired : undefined;
 }
 
+/**
+ * The glyph for a chain-link aspect toggle, given whether the axes are CURRENTLY
+ * locked.
+ *
+ * The owner's mapping, stated twice and still not honoured before this: a
+ * SLASHED link (`Link2Off`, the one lucide draws a 2,2→22,22 line across) means
+ * the two axes are locked RIGHT NOW, and pressing it breaks the link. An
+ * unslashed link (`Link2`) means they are free right now, and pressing it joins
+ * them. i.e. the icon reports the CURRENT state, not the action — the inverse of
+ * the "icon shows what you will get" reading a previous pass applied.
+ *
+ * This lives in exactly one place because the inspector has two of these
+ * toggles (Dimensions and Scale). They were written out separately and would
+ * otherwise drift, leaving one chain-link contradicting the other in the same
+ * panel. `active` on the button follows the same truth: active === locked.
+ */
+export function aspectLockIcon(locked: boolean) {
+  return locked
+    ? <Link2Off size={16} strokeWidth={1.5} />
+    : <Link2 size={16} strokeWidth={1.5} />;
+}
+
 export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
   const [localWidthMode, setLocalWidthMode] = useState<ElementSizingMode>(props.widthMode ?? "fixed");
   const [localHeightMode, setLocalHeightMode] = useState<ElementSizingMode>(props.heightMode ?? "fixed");
@@ -527,7 +549,7 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
       label="Dimensions"
       left={<SizingComboField axis="width" value={props.width} mode={widthMode} mixed={props.widthMixed} valueMixed={props.widthValueMixed} availableModes={props.availableWidthModes} minValue={values.minWidth} maxValue={values.maxWidth} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("width", change)} onConstraintChange={(constraint, value) => changeConstraint("width", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("width") : undefined} keyframe={props.dimensionsKeyframe} />}
       right={<SizingComboField axis="height" value={props.height} mode={heightMode} mixed={props.heightMixed} valueMixed={props.heightValueMixed} availableModes={props.availableHeightModes} minValue={values.minHeight} maxValue={values.maxHeight} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("height", change)} onConstraintChange={(constraint, value) => changeConstraint("height", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("height") : undefined} keyframe={props.dimensionsKeyframe} />}
-      rightAction={<PanelActionBtn icon={lockAspect ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />} label="Lock aspect ratio" active={lockAspect} onClick={() => setLockAspect(value => !value)} />}
+      rightAction={<PanelActionBtn icon={aspectLockIcon(lockAspect)} label="Lock aspect ratio" active={lockAspect} onClick={() => setLockAspect(value => !value)} />}
     />
     {hasConstraints && <div className="flex flex-col gap-y-[6px] px-[16px] pb-[8px]">
       {packedConstraintRows.map((row, rowIndex) => <div key={rowIndex} className="flex items-end gap-[8px]">
@@ -785,6 +807,22 @@ function PositionSection({
           label="Position"
           left={<NumericInput ariaLabel="Position X" iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>X</span>} value={x} onChange={onXChange} defaultValue={0} mixed={xMixed} keyframe={positionKeyframe} />}
           right={<NumericInput ariaLabel="Position Y" iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>} value={y} onChange={onYChange} defaultValue={0} mixed={yMixed} keyframe={positionKeyframe} />}
+          // The separate branch used to render NO rightAction, so pressing
+          // "Separate dimensions" destroyed the only control that could undo it —
+          // the trip was one-way for the rest of the session. The mirror action
+          // costs no layout: PanelFieldRow reserves the 24px right slot either
+          // way, so the affordance was literally a hole. Gated on the same
+          // callback the combined branch is, which is how a host that FORCES
+          // separation (the master view) keeps the row from offering a combine it
+          // would not honour.
+          rightAction={onPositionPresentationChange
+            ? <PanelActionBtn
+                icon={<Link size={16} strokeWidth={1.5} />}
+                label="Combine dimensions"
+                tooltip="Combine dimensions"
+                onClick={() => onPositionPresentationChange("combined")}
+              />
+            : undefined}
         />
       )}
 
@@ -800,7 +838,7 @@ function PositionSection({
               keyframe={scaleKeyframe}
             />
           }
-          rightAction={<PanelActionBtn icon={scaleLocked ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />} label="Lock scale aspect ratio" active={scaleLocked} onClick={() => setScaleLocked(value => !value)} />}
+          rightAction={<PanelActionBtn icon={aspectLockIcon(scaleLocked)} label="Lock scale aspect ratio" active={scaleLocked} onClick={() => setScaleLocked(value => !value)} />}
         />
       )}
 
