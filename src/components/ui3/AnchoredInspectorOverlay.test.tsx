@@ -11,6 +11,7 @@ import {
   shouldMountAnchoredInspectorOverlay,
 } from "./AnchoredInspectorOverlay";
 import { INSPECTOR_DIALOG_DRAG_HANDLE_SELECTOR, InspectorDialog } from "./InspectorDialog";
+import { ColorDialog } from "./ColorDialog";
 
 vi.mock("@radix-ui/react-popover", async () => {
   const React = await import("react");
@@ -218,6 +219,33 @@ describe("AnchoredInspectorOverlay runtime contract", () => {
     expect(overlay.props.dragHandleSelector).toBe(INSPECTOR_DIALOG_DRAG_HANDLE_SELECTOR);
     const header = Children.toArray(overlay.props.children)[0] as ReactElement<Record<string, unknown>>;
     expect(header.props["data-composa-inspector-dialog-drag-handle"]).toBe("");
+    act(() => renderer!.unmount());
+  });
+
+  it("tags a real dialog's header, so every InspectorDialog consumer drags from it", () => {
+    // ColorDialog is the shape that matters: its children start with a comment
+    // and a conditional, so the handle has to find the first ELEMENT rather than
+    // the first child. Dragging lives here, not per dialog, which is why colour,
+    // typography and the rest move without each implementing it.
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(
+        <ColorDialog open onClose={() => undefined} trigger={<button type="button">Open color</button>} />,
+        {
+          createNodeMock: element => element.type === "span"
+            ? { querySelector: () => ({ getBoundingClientRect: () => rect, closest: () => null, focus: () => undefined }) }
+            : null,
+        },
+      );
+    });
+    const handles = renderer!.root.findAll(instance =>
+      typeof instance.type === "string"
+      && instance.props["data-composa-inspector-dialog-drag-handle"] === "");
+    expect(handles).toHaveLength(1);
+    // …and the tagged element is the header: it owns the Close control.
+    expect(handles[0].findByProps({ "aria-label": "Close" })).toBeTruthy();
+    expect(renderer!.root.findByType(AnchoredInspectorOverlay).props.dragHandleSelector)
+      .toBe(INSPECTOR_DIALOG_DRAG_HANDLE_SELECTOR);
     act(() => renderer!.unmount());
   });
 });

@@ -325,6 +325,20 @@ interface GradientStopHandleProps {
   style?: React.CSSProperties;
   className?: string;
   onClick?: () => void;
+  /** Names the handle for assistive tech and gives drag tests something to grab. */
+  ariaLabel?: string;
+  /** The stop's position, so a keyboard user can read where the handle sits. */
+  position?: number;
+  /**
+   * Pointer handlers, so the owner can drag the handle along its track. Without
+   * them the handle is a static marker — the state it shipped in, which read as
+   * a draggable control while ignoring every pointer that touched it.
+   */
+  onPointerDown?: (event: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerMove?: (event: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerUp?: (event: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerCancel?: (event: React.PointerEvent<HTMLDivElement>) => void;
+  onKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
 }
 
 export function GradientStopHandle({
@@ -333,17 +347,42 @@ export function GradientStopHandle({
   style,
   className,
   onClick,
+  ariaLabel,
+  position,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
+  onKeyDown,
 }: GradientStopHandleProps) {
   const bg = selected ? "var(--color-bg-brand)" : "var(--color-bg-secondary)";
+  // A handle that can be moved is a slider; one that is only a marker keeps the
+  // plain presentational shape it had, so nothing promises interaction it lacks.
+  const interactive = Boolean(onPointerDown || onKeyDown || onClick);
 
   return (
     <div
-      className={clsx("flex flex-col items-center cursor-pointer select-none", className)}
+      className={clsx(
+        "flex flex-col items-center cursor-pointer select-none",
+        interactive && "touch-none outline-none",
+        className,
+      )}
       style={{
         filter: HANDLE_SHADOW,
         ...style,
       }}
+      role={interactive ? "slider" : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      aria-label={ariaLabel}
+      aria-valuemin={interactive && position !== undefined ? 0 : undefined}
+      aria-valuemax={interactive && position !== undefined ? 100 : undefined}
+      aria-valuenow={interactive ? position : undefined}
       onClick={onClick}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      onKeyDown={onKeyDown}
     >
       {/* Chit — rounded-c-md = radius-medium = 5px */}
       <div
