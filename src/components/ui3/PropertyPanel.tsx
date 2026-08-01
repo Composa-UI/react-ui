@@ -70,7 +70,13 @@ export type SlideTransitionDirection = "left" | "right" | "up" | "down";
 export type SlideTransitionEasing = "linear" | "ease-in" | "ease-out" | "ease-in-out";
 export type ClipSpeed = 0.25 | 0.5 | 0.75 | 1 | 1.25 | 1.5 | 2 | 4;
 export type ExportFormat = "PNG" | "JPG";
-export interface InspectorExportSetting { id: string; scale: number; suffix: string; format: ExportFormat; }
+/**
+ * `suffix` is vestigial: Composa#661 removed the Suffix field, and nothing in this
+ * component reads it any more. Kept OPTIONAL rather than deleted because the app
+ * still passes it, and an excess-property check would break the host the moment
+ * this shipped. It can go once the app stops sending it.
+ */
+export interface InspectorExportSetting { id: string; scale: number; suffix?: string; format: ExportFormat; }
 export type ProjectFrameRate = 24 | 25 | 30 | 60;
 export interface ElementFillSetting { id: string; color: string; opacity: number; visible: boolean; label?: string; }
 export interface ElementStrokeSetting extends ElementFillSetting {
