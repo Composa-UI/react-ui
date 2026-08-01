@@ -106,11 +106,28 @@ describe("AnimatePanel — every preset card offers easing (RP-10)", () => {
       .findByProps({ "aria-expanded": false }).props.onClick());
   const easingPopover = (renderer: ReturnType<typeof create>) =>
     renderer.root.findAllByType(PopoverMenu).find(item => item.props.trigger?.props?.ariaLabel === "Easing");
+  // The Easing row renders only for a host that wired it, so every test that wants to SEE
+  // the control has to wire it. `{}` here would be testing the unwired build.
+  const PRESETS_WIRED = { onEasingChange: () => {} };
+  const FULLY_WIRED = { onEasingChange: () => {}, onCustomEasingRequest: () => {} };
+  // A row rendered conditionally leaves `false` in the children array; drop it before
+  // touching `.props` so an absent row reads as absent instead of throwing.
+  type MenuRowLike = { props: { label?: string; type: string; onClick?: () => void } };
+  const easingMenuRows = (renderer: ReturnType<typeof create>, close: () => void = () => undefined) => {
+    const menu = easingPopover(renderer)!.props.children(close);
+    // Positive control for every absence assertion below: the menu container itself exists.
+    expect(menu).toBeTruthy();
+    return (menu.props.children.flat() as unknown[]).filter(Boolean) as MenuRowLike[];
+  };
+  // Proves an expanded card body actually rendered its LabeledRows, so "no Easing row"
+  // cannot pass just because the card stayed shut or the body failed to render.
+  const styleRowPresent = (renderer: ReturnType<typeof create>) =>
+    renderer.root.findAll(node => typeof node.props.ariaLabel === "string" && node.props.ariaLabel.startsWith("Style: ")).length > 0;
 
   it("offers an Easing control on a build-in, an action AND a build-out card", () => {
     for (const id of ["in", "act", "out"]) {
       let renderer: ReturnType<typeof create>;
-      act(() => { renderer = create(<AnimatePanel selectionType="element" anims={EVERY_PHASE} />); });
+      act(() => { renderer = create(<AnimatePanel selectionType="element" anims={EVERY_PHASE} objectAnimationCallbacks={PRESETS_WIRED} />); });
       // Positive control: the row only exists inside an expanded body, so prove the card
       // opened before asserting the control is there.
       expect(easingPopover(renderer!)).toBeUndefined();
@@ -121,12 +138,43 @@ describe("AnimatePanel — every preset card offers easing (RP-10)", () => {
     }
   });
 
-  it("shows the house preset set plus a route into the existing custom-easing editor", () => {
+  // ── iteration-3: "Easing is nice but clicking on the custom menu option does nothing" ──
+  // The component's half of that bug: it advertised a route into a host surface, and a
+  // whole menu of presets, to hosts that had wired neither. Both halves now render only
+  // when the host owns them. These two are the gates — they go red on the pre-fix build.
+
+  it("omits 'Custom…' entirely when the host has not wired the custom-easing route", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={EVERY_PHASE} objectAnimationCallbacks={PRESETS_WIRED} />); });
+    expand(renderer!, "act");
+    const rows = easingMenuRows(renderer!);
+    // Positive control: the preset rows ARE there, so the missing Custom row is a real
+    // absence and not an empty menu.
+    expect(rows.filter(row => row.props.type === "checkmark").map(row => row.props.label))
+      .toEqual(EASING_PRESETS.map(preset => preset.label));
+    expect(rows.map(row => row.props.label)).not.toContain("Custom…");
+    // …and no orphaned divider left hanging under the last preset.
+    expect(rows.filter(row => row.props.type === "divider")).toHaveLength(0);
+    act(() => renderer!.unmount());
+  });
+
+  it("renders no Easing row at all when the host has not wired onEasingChange", () => {
     let renderer: ReturnType<typeof create>;
     act(() => { renderer = create(<AnimatePanel selectionType="element" anims={EVERY_PHASE} />); });
     expand(renderer!, "act");
-    const menu = easingPopover(renderer!)!.props.children(() => undefined);
-    const rows = menu.props.children.flat() as Array<{ props: { label?: string; type: string } }>;
+    // Positive controls: the card opened AND its body rendered sibling LabeledRows.
+    expect(renderer!.root.findAll(node => node.props["aria-expanded"] === true).length).toBeGreaterThan(0);
+    expect(styleRowPresent(renderer!)).toBe(true);
+    // A dropdown that discards every pick is worse than no dropdown.
+    expect(easingPopover(renderer!)).toBeUndefined();
+    act(() => renderer!.unmount());
+  });
+
+  it("shows the house preset set plus a route into the existing custom-easing editor", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={EVERY_PHASE} objectAnimationCallbacks={FULLY_WIRED} />); });
+    expand(renderer!, "act");
+    const rows = easingMenuRows(renderer!);
     expect(rows.filter(row => row.props.type === "checkmark").map(row => row.props.label))
       .toEqual([...EASING_PRESETS.map(preset => preset.label), "Custom…"]);
     act(() => renderer!.unmount());
@@ -141,7 +189,7 @@ describe("AnimatePanel — every preset card offers easing (RP-10)", () => {
     });
     expand(renderer!, "act");
     const close = vi.fn();
-    const rows = easingPopover(renderer!)!.props.children(close).props.children.flat() as Array<{ props: { label?: string; onClick?: () => void } }>;
+    const rows = easingMenuRows(renderer!, close);
     act(() => rows.find(row => row.props.label === "Ease in-out")!.props.onClick!());
     expect(changes).toEqual([["act", "ease-in-out"]]);
     expect(close).toHaveBeenCalledOnce();
@@ -157,7 +205,7 @@ describe("AnimatePanel — every preset card offers easing (RP-10)", () => {
         objectAnimationCallbacks={{ onCustomEasingRequest: id => customRequests.push(id), onEasingChange: id => changes.push(id) }} />);
     });
     expand(renderer!, "out");
-    const rows = easingPopover(renderer!)!.props.children(vi.fn()).props.children.flat() as Array<{ props: { label?: string; onClick?: () => void } }>;
+    const rows = easingMenuRows(renderer!, vi.fn());
     act(() => rows.find(row => row.props.label === "Custom…")!.props.onClick!());
     expect(customRequests).toEqual(["out"]);
     // Custom is a route, not a value: it must not silently stamp a named preset.
@@ -172,7 +220,7 @@ describe("AnimatePanel — every preset card offers easing (RP-10)", () => {
     // action linear, build-out ease-in. Showing anything else would be a made-up value.
     for (const [id, label] of [["in", "Ease out"], ["act", "Linear"], ["out", "Ease in"]] as const) {
       let renderer: ReturnType<typeof create>;
-      act(() => { renderer = create(<AnimatePanel selectionType="element" anims={EVERY_PHASE} />); });
+      act(() => { renderer = create(<AnimatePanel selectionType="element" anims={EVERY_PHASE} objectAnimationCallbacks={PRESETS_WIRED} />); });
       expand(renderer!, id);
       expect(easingPopover(renderer!)!.props.trigger.props.value).toBe(label);
       act(() => renderer!.unmount());
@@ -180,7 +228,7 @@ describe("AnimatePanel — every preset card offers easing (RP-10)", () => {
 
     let renderer: ReturnType<typeof create>;
     act(() => {
-      renderer = create(<AnimatePanel selectionType="element"
+      renderer = create(<AnimatePanel selectionType="element" objectAnimationCallbacks={PRESETS_WIRED}
         anims={EVERY_PHASE.map(anim => anim.id === "act" ? { ...anim, easing: "spring" as const } : anim)} />);
     });
     expand(renderer!, "act");
