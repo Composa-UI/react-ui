@@ -1177,8 +1177,10 @@ function LayoutAutoSection({
             />
           </div>
           {wrapping && (
+            // No second title: the "Gap" above heads the pair. Kept identical to the
+            // grid section's gap column so the two blocks stay structurally the same
+            // ("row gap does not need a title row gap").
             <div>
-              <div className={subLabel}>Row gap</div>
               <NumericInput
                 ariaLabel="Row gap"
                 iconLead={<AutoLayoutSpacingIcon kind="gap" axis="vertical" />}
@@ -1337,6 +1339,14 @@ function LayoutGridSection({
           <div className={subLabel}>Flow</div>
           <SegmentedControl segments={flowSegments} value="grid" onChange={handleFlowChange} className="w-full" />
         </div>
+        {/* Trailing slot — RESERVED, deliberately empty. Wrap is a horizontal-only
+            modifier (RP-15, confirmed correct), so grid has no trailing control; but
+            without the reservation the SegmentedControl was 32px wider here than in
+            the freeform/auto sections, so all four segments visibly resized and
+            shifted the moment you picked Grid ("no trailing action space or element
+            beside segmented control when state is in grid"). Same 24px column the
+            auto-layout Flow row and the Alignment/Gap row use. */}
+        <div className="shrink-0 w-[24px] pt-[17px]" />
       </div>
 
       {/* Alignment and gap — structurally the SAME row as the auto-layout section's
@@ -1345,15 +1355,21 @@ function LayoutGridSection({
       <div role="group" aria-label="Alignment and gap" className="flex items-start gap-[8px] px-[16px] pt-[8px] pb-[4px]">
         <div className="shrink-0">
           <div className={subLabel}>Alignment</div>
-          <AlignmentControl ariaLabel="Grid alignment" value={gridItemsCode(grid)} onChange={code => emitGrid(codeToItems(code))} />
+          {/* RP-16a — the SAME control, wearing its grid face. Not a second picker,
+              not a renamed dialog: one picker whose rendered content changes with the
+              frame's flow ("alignment picker does not change to grid picker"). */}
+          <AlignmentControl variant="grid" ariaLabel="Grid alignment" value={gridItemsCode(grid)} onChange={code => emitGrid(codeToItems(code))} />
         </div>
+        {/* One "Gap" title over the pair, exactly as the wrapped auto-layout block
+            does — "row gap does not need a title row gap. Column gap can just say
+            Gap." The two fields keep their distinct accessible names and their
+            per-axis lead icons; only the visible sub-titles collapse to one. */}
         <div className="flex-1 min-w-0 flex flex-col gap-[4px]">
           <div>
-            <div className={subLabel}>Column gap</div>
+            <div className={subLabel}>Gap</div>
             <NumericInput ariaLabel="Column gap" iconLead={<AutoLayoutSpacingIcon kind="gap" axis="horizontal" />} value={grid.columnGap} defaultValue={grid.columnGap} onChange={emitColumnGap} min={0} suffix="px" className="w-full" />
           </div>
           <div>
-            <div className={subLabel}>Row gap</div>
             <NumericInput ariaLabel="Row gap" iconLead={<AutoLayoutSpacingIcon kind="gap" axis="vertical" />} value={grid.rowGap} defaultValue={grid.rowGap} onChange={emitRowGap} min={0} suffix="px" className="w-full" />
           </div>
         </div>

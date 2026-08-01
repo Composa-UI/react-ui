@@ -69,6 +69,26 @@ export const ProposedLayoutFreeform = createLucideIcon("ProposedLayoutFreeform",
   ["rect", { width: "7", height: "7", x: "4", y: "14", rx: "1", key: "bottom-left" }],
 ]);
 
+// Composa-local, no upstream proposal yet — hence absent from `proposedLucideMetadata`,
+// which requires a real lucide PR number.
+//
+// Wrap previously borrowed the Lucide `LayoutGrid` glyph (#86 / #459). The
+// grid-and-wrap spec calls that borrow a stand-in for the absence of a real grid
+// ("#86 borrowed the `layout-grid` glyph for the wrap cell — a label papering over
+// the absence of both a real two-gap wrap *and* a real grid") and folds "the #86
+// glyph choice" into the grid work. Now that Grid is a first-class Flow segment
+// wearing Grid2x2, the borrow puts two near-identical grid glyphs in the same Flow
+// row, which is what "Grid icon unchanged" names. Wrap gets its own glyph, drawn
+// from the same 7×7-rect family as ProposedLayoutHorizontal/Vertical/Freeform so
+// the Flow row still reads as one set: a first line of two cells, then the flow
+// wrapping back to the start of the next line.
+export const ProposedLayoutWrap = createLucideIcon("ProposedLayoutWrap", [
+  ["rect", { width: "7", height: "7", x: "3", y: "3", rx: "1", key: "first" }],
+  ["rect", { width: "7", height: "7", x: "14", y: "3", rx: "1", key: "second" }],
+  ["path", { d: "M21 14v1a2 2 0 0 1-2 2H6", key: "wrap" }],
+  ["path", { d: "m9 14-3 3 3 3", key: "arrow" }],
+]);
+
 // TODO(lucide-pr-4544): replace with lucide-react GapHorizontal after upstream merge.
 export const ProposedGapHorizontal = createLucideIcon("ProposedGapHorizontal", [
   ["path", { d: "M12 2v2", key: "dash-1" }],
