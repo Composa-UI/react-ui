@@ -5,11 +5,14 @@ import type { AnchoredInspectorOverlayAlign, AnchoredInspectorOverlayElevation }
 export { COMPOSA_INSPECTOR_SURFACE_SELECTOR };
 
 export const COMPACT_INSPECTOR_DIALOG_WIDTH = 240;
-/**
- * The settings/effects trigger sits inside the Inspector's row action gutter.
- * This compensated offset yields the approved 8px visual gutter at the panel edge.
- */
-export const EFFECTS_INSPECTOR_DIALOG_SIDE_OFFSET = 48;
+// The Effects trigger is the effect-type Dropdown inside a PanelEntry, which
+// reserves a 16px grip column flush to the panel edge — so a trigger-relative 48
+// landed the dialog 32px clear of the inspector, visibly further out than every
+// other inspector dialog (#661). Like Type/Stroke/Export/Color, EffectDetails now
+// anchors its side axis to the inspector surface's LEFT edge
+// (`COMPOSA_INSPECTOR_SURFACE_SELECTOR`), so this offset is just the approved 8px
+// gutter and stays correct however the row anatomy or panel width drifts.
+export const EFFECTS_INSPECTOR_DIALOG_SIDE_OFFSET = 8;
 // The stroke settings trigger sits inline in the Stroke row, deeper than the
 // Effects trigger. A fixed trigger-relative offset (previously 41) had to encode
 // BOTH the trigger inset AND the panel width, so it silently overlapped the
@@ -30,6 +33,13 @@ export const STROKE_SETTINGS_INSPECTOR_SIDE_OFFSET = 8;
 // 8px gutter and the dialog lands clear of the inspector regardless of where the
 // trigger sits or how wide the panel is.
 export const TYPE_SETTINGS_INSPECTOR_SIDE_OFFSET = 8;
+// The Auto Layout settings trigger sits in the Alignment/Gap row's far-right
+// action gutter, exactly like the Type settings trigger. It previously passed no
+// sideOffset and no anchor surface at all, so Radix anchored it to the trigger
+// and the dialog landed ON TOP of the inspector (Composa#661 item 3). Anchoring
+// to the inspector surface's LEFT edge gives the approved 8px gutter regardless
+// of trigger position or panel width.
+export const AUTO_LAYOUT_SETTINGS_INSPECTOR_SIDE_OFFSET = 8;
 export const INSPECTOR_DIALOG_DRAG_HANDLE_SELECTOR = "[data-composa-inspector-dialog-drag-handle]";
 
 export interface InspectorDialogProps {

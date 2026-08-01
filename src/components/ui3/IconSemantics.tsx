@@ -18,6 +18,7 @@ import {
   Grid2x2,
   Component,
   Frame,
+  Grip,
   Image as ImageIcon,
   Minus,
   PanelBottomDashed,
@@ -29,6 +30,7 @@ import {
   Square,
   SquareDashed,
   SquarePlay,
+  Sun,
   Type,
   type LucideIcon,
 } from "lucide-react";
@@ -100,6 +102,8 @@ export type ComposaIconSemantic =
   | "absolute-position"
   | "rotation"
   | "opacity"
+  | "effect-blur"
+  | "effect-spread"
   | "blend-mode"
   | "fill-video"
   | "sizing-fixed"
@@ -172,6 +176,12 @@ export const composaIconSemantics = {
   "absolute-position": ProposedScanSquare,
   rotation: ProposedAngle,
   opacity: ProposedOpacity,
+  // Effect blur/spread were shipped as literal text glyphs (⊞ / ☼) rather than
+  // icons, which read as mojibake next to the Lucide leads on every other numeric
+  // field (#661). The owner picked these two Lucide names; as with layout-wrap and
+  // blend-mode the semantic name carries the meaning, the glyph is the owner's.
+  "effect-blur": Grip,
+  "effect-spread": Sun,
   // Blend mode reads as a droplet per owner ask — the semantic name stays
   // "blend-mode" (its meaning), the glyph is Droplet (mirrors layout-wrap → grid).
   "blend-mode": Droplet,

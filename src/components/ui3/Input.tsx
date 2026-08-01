@@ -334,11 +334,15 @@ export function NumericInput({
   }, []);
 
   const current = value !== undefined ? value : internal;
-  const [draft, setDraft] = useState(String(current));
+  // The draft is what the user sees and edits, so it is seeded at display
+  // precision everywhere. Seeding it with String(current) leaked the raw float
+  // ("758.4596697032626") the moment the field was focused, even though the
+  // idle field read "758.46". Emitted values are still whatever the user typed.
+  const [draft, setDraft] = useState(formatNumericDisplay(current));
   useEffect(() => { if (!focused && !scrubbing) setDraft(formatNumericDisplay(current)); }, [current, focused, scrubbing]);
   useEffect(() => {
     if (!focused || lastEmitted.current === null) return;
-    if (current !== lastEmitted.current) setDraft(String(current));
+    if (current !== lastEmitted.current) setDraft(formatNumericDisplay(current));
     lastEmitted.current = null;
   }, [current, focused]);
   // Mixed (v5 §7): multi-select with differing values shows "Mixed" until focused; typing commits to all.
@@ -368,7 +372,7 @@ export function NumericInput({
     const start = sessionStart.current;
     sessionStart.current = null;
     if (cancelled) {
-      setDraft(String(start));
+      setDraft(formatNumericDisplay(start));
       if (value === undefined) setInternal(start);
       cancelSession?.();
     } else commitSession?.();
@@ -435,7 +439,7 @@ export function NumericInput({
       e.preventDefault();
       cancelBlurCommit.current = true;
       if (sessionControlled) finishSession(true);
-      else setDraft(String(current));
+      else setDraft(formatNumericDisplay(current));
       e.currentTarget.blur();
       return;
     }
@@ -443,14 +447,17 @@ export function NumericInput({
       e.preventDefault();
       const base = (commitOnBlur || sessionControlled) && Number.isFinite(Number(draft)) ? Number(draft) : current;
       const next = clampVal(base + (e.key === "ArrowUp" ? step : -step) * mult);
-      if (commitOnBlur && !sessionControlled) setDraft(String(next));
-      else { beginSession(); setDraft(String(next)); set(next); }
+      if (commitOnBlur && !sessionControlled) setDraft(formatNumericDisplay(next));
+      else { beginSession(); setDraft(formatNumericDisplay(next)); set(next); }
     }
   };
   const commitDraft = () => {
+    // An untouched draft is the rounded display string, so committing it would
+    // silently quantise the stored value on a bare focus/blur. Leave it alone.
+    if (draft === formatNumericDisplay(current)) return;
     const parsed = Number(draft);
     if (draft.trim() !== "" && Number.isFinite(parsed)) set(parsed);
-    else setDraft(String(current));
+    else setDraft(formatNumericDisplay(current));
   };
 
   return (
@@ -504,7 +511,7 @@ export function NumericInput({
             if (nextDraft.trim() !== "" && Number.isFinite(parsed)) {
               beginSession();
               const clamped = clampVal(parsed);
-              if (clamped !== parsed) setDraft(String(clamped));
+              if (clamped !== parsed) setDraft(formatNumericDisplay(clamped));
               set(clamped);
             }
           }}
@@ -516,7 +523,7 @@ export function NumericInput({
             onPointerCancel: cancelScrub,
             onLostPointerCapture: cancelScrub,
           })}
-          onFocus={e => { setDraft(String(current)); beginSession(); setFocused(true); e.target.select(); }}
+          onFocus={e => { setDraft(formatNumericDisplay(current)); beginSession(); setFocused(true); e.target.select(); }}
           onBlur={() => {
             if (cancelBlurCommit.current) cancelBlurCommit.current = false;
             else {
@@ -611,7 +618,8 @@ function PairSegment({ seg, size, isLast, onFocusChange }: {
   const [scrubbing, setScrubbing] = useState(false);
   const [internal, setInternal] = useState(defaultValue);
   const current = seg.value !== undefined ? seg.value : internal;
-  const [draft, setDraft] = useState(String(current));
+  // Same rule as NumericInput: the draft is a display string, never the raw float.
+  const [draft, setDraft] = useState(formatNumericDisplay(current));
   const scrubStart = useRef<{ x: number; value: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const sessionOpen = useRef(false);
@@ -650,13 +658,13 @@ function PairSegment({ seg, size, isLast, onFocusChange }: {
         role="spinbutton"
         inputMode="decimal"
         value={focused || scrubbing ? draft : formatNumericDisplay(current)}
-        onChange={e => { const nd = e.target.value; setDraft(nd); const p = Number(nd); if (nd.trim() !== "" && Number.isFinite(p)) { begin(); const c = clampVal(p); if (c !== p) setDraft(String(c)); set(c); } }}
+        onChange={e => { const nd = e.target.value; setDraft(nd); const p = Number(nd); if (nd.trim() !== "" && Number.isFinite(p)) { begin(); const c = clampVal(p); if (c !== p) setDraft(formatNumericDisplay(c)); set(c); } }}
         onKeyDown={e => {
           const mult = e.shiftKey ? 10 : 1;
           if (e.key === "Enter") { e.currentTarget.blur(); }
-          else if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); begin(); const n = clampVal(current + (e.key === "ArrowUp" ? step : -step) * mult); setDraft(String(n)); set(n); }
+          else if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); begin(); const n = clampVal(current + (e.key === "ArrowUp" ? step : -step) * mult); setDraft(formatNumericDisplay(n)); set(n); }
         }}
-        onFocus={e => { setDraft(String(current)); begin(); setFocus(true); e.target.select(); }}
+        onFocus={e => { setDraft(formatNumericDisplay(current)); begin(); setFocus(true); e.target.select(); }}
         onBlur={() => { finish(false); setFocus(false); }}
         className={clsx("w-full h-full bg-transparent outline-none text-left pl-[26px]", seg.suffix ? "pr-[2px]" : "pr-[6px]", FONT, T[size], "text-c-text [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none")}
       />
@@ -1071,7 +1079,11 @@ export function ColorInput({
 }
 
 // ─── ComboInput ───────────────────────────────────────────────────────────────
-// Input field + split chevron dropdown button
+// Input field + split chevron dropdown button.
+// The chevron only renders when the consumer gives it something to do — either
+// an anchored `menu` or an `onDropdownClick`. A chevron with neither is an inert
+// control that still advertises a dropdown (Composa#661: the font-size chevron
+// shipped that way and nothing dropped down), so it is omitted instead.
 
 type ComboInputState = "default" | "hover" | "selectedInput" | "selectedChevron";
 
@@ -1091,6 +1103,13 @@ interface ComboInputProps {
    */
   selectAllOnFocus?: boolean;
   onInputChange?: (v: string) => void;
+  /**
+   * Renders the chevron half as an anchored menu trigger. Takes precedence over
+   * `onDropdownClick`; receives `close` so a chosen row can dismiss the popover.
+   */
+  menu?: (close: () => void) => ReactNode;
+  /** Names the chevron half for assistive tech, e.g. "Font size presets". */
+  dropdownAriaLabel?: string;
   onDropdownClick?: () => void;
   className?: string;
 }
@@ -1106,6 +1125,8 @@ export function ComboInput({
   state = "default",
   selectAllOnFocus = false,
   onInputChange,
+  menu,
+  dropdownAriaLabel,
   onDropdownClick,
   className,
 }: ComboInputProps) {
@@ -1116,6 +1137,26 @@ export function ComboInput({
   const inputRing = inputFocused ? "ring-c-focus-ring" : state === "hover" ? "ring-c-border" : "ring-transparent";
   const chevronBg = chevronFocused ? "bg-c-bg-selected" : state === "hover" ? "bg-c-bg-tertiary" : "bg-c-bg-secondary";
   const chevronRing = (inputFocused || chevronFocused || state === "hover") ? "ring-c-focus-ring" : "ring-transparent";
+
+  const chevron = (
+    <button
+      type="button"
+      aria-label={dropdownAriaLabel}
+      aria-haspopup={menu ? "menu" : undefined}
+      onClick={!disabled && !menu ? onDropdownClick : undefined}
+      disabled={disabled}
+      className={clsx(
+        "shrink-0 flex items-center justify-center rounded-r-c-md",
+        "ring-1 ring-inset transition-colors duration-100",
+        H[size], "w-[24px]",
+        chevronBg,
+        chevronRing,
+        disabled && "opacity-60 cursor-not-allowed",
+      )}
+    >
+      <ChevronDown size={10} strokeWidth={2} className="text-c-icon-secondary" />
+    </button>
+  );
 
   return (
     <div className={clsx("flex gap-px items-start", className)}>
@@ -1163,21 +1204,10 @@ export function ComboInput({
         )}
       </div>
 
-      {/* chevron half */}
-      <button
-        onClick={!disabled ? onDropdownClick : undefined}
-        disabled={disabled}
-        className={clsx(
-          "shrink-0 flex items-center justify-center rounded-r-c-md",
-          "ring-1 ring-inset transition-colors duration-100",
-          H[size], "w-[24px]",
-          chevronBg,
-          chevronRing,
-          disabled && "opacity-60 cursor-not-allowed",
-        )}
-      >
-        <ChevronDown size={10} strokeWidth={2} className="text-c-icon-secondary" />
-      </button>
+      {/* chevron half — omitted entirely when it would do nothing */}
+      {menu
+        ? <PopoverMenu directTrigger align="right" className="shrink-0" trigger={chevron}>{menu}</PopoverMenu>
+        : onDropdownClick ? chevron : null}
     </div>
   );
 }

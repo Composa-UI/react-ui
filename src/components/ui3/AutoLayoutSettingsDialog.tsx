@@ -2,7 +2,12 @@ import { X } from "lucide-react";
 import { type ReactElement } from "react";
 import { Checkbox } from "./Checkbox";
 import { Dropdown } from "./Dropdown";
-import { InspectorDialog } from "./InspectorDialog";
+import {
+  AUTO_LAYOUT_SETTINGS_INSPECTOR_SIDE_OFFSET,
+  COMPACT_INSPECTOR_DIALOG_WIDTH,
+  COMPOSA_INSPECTOR_SURFACE_SELECTOR,
+  InspectorDialog,
+} from "./InspectorDialog";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { Tooltip } from "./Tooltip";
 
@@ -55,7 +60,14 @@ export function AutoLayoutSettingsDialog({
       onClose={onClose}
       trigger={trigger}
       ariaLabel="Auto Layout Settings"
-      width={288}
+      // Same 240px compact width, 8px surface-anchored gutter and elevation as
+      // every other inspector dialog (Type / Stroke / Effects / Export). This
+      // one was 288px wide and passed no anchor at all, so it read as a
+      // different, wider dialog that opened over the panel (Composa#661).
+      width={COMPACT_INSPECTOR_DIALOG_WIDTH}
+      sideOffset={AUTO_LAYOUT_SETTINGS_INSPECTOR_SIDE_OFFSET}
+      anchorSurfaceSelector={COMPOSA_INSPECTOR_SURFACE_SELECTOR}
+      elevation={400}
       triggerClassName="inline-flex"
     >
       <div className="flex h-[40px] items-center border-b border-c-border px-[12px]">

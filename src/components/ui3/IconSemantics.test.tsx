@@ -1,4 +1,4 @@
-import { AlignCenter, AlignLeft, AlignRight, Circle, LayoutGrid, Settings2 } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, Circle, Grip, LayoutGrid, Settings2, Sun } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { composaIconSemantics, iconForSemantic } from "./IconSemantics";
@@ -16,7 +16,7 @@ describe("settings icon semantics", () => {
     expect(iconForSemantic("settings")).toBe(Settings2);
   });
 
-  it("uses settings for Type, Stroke, and Template while Auto Layout stays a distinct layout action", () => {
+  it("uses settings for Type, Stroke, Template AND Auto Layout (Composa#661)", () => {
     const autoLayout = renderToStaticMarkup(<PropertyPanel elementType="frame-auto" />);
     const text = renderToStaticMarkup(<PropertyPanel elementType="text" strokes={[{
       id: "stroke-1",
@@ -28,10 +28,14 @@ describe("settings icon semantics", () => {
     }]} />);
     const slide = renderToStaticMarkup(<PropertyPanel mode="slide" capabilities={{ templates: true }} />);
 
+    // Auto-layout settings joined this list in Composa#661: it used the Freeform
+    // *layout* glyph, so the settings entry point read as a fourth flow option
+    // sitting next to the Flow segments.
     for (const [html, label] of [
       [text, "Type settings"],
       [text, "Stroke settings"],
       [slide, "Template settings"],
+      [autoLayout, "Auto-layout settings"],
     ] as const) {
       const trigger = settingsTrigger(html, label);
       expect(trigger, `${label} trigger`).toBeTruthy();
@@ -42,11 +46,10 @@ describe("settings icon semantics", () => {
       expect(trigger).toContain('stroke-width="1.5"');
     }
 
+    // …and specifically no longer wears a layout glyph.
     const autoTrigger = settingsTrigger(autoLayout, "Auto-layout settings");
-    expect(autoTrigger).toBeTruthy();
-    expect(autoTrigger).toContain("lucide-proposed-layout-freeform");
-    expect(autoTrigger).toContain('data-icon-semantic="layout-freeform"');
-    expect(autoTrigger).not.toContain('data-icon-semantic="settings"');
+    expect(autoTrigger).not.toContain("lucide-proposed-layout-freeform");
+    expect(autoTrigger).not.toContain('data-icon-semantic="layout-freeform"');
   });
 
   it("maps shared inspector semantics to outlined and proposed Lucide boundaries", () => {
@@ -77,6 +80,15 @@ describe("settings icon semantics", () => {
     ] as const) {
       expect(iconForSemantic(semantic)).toBe(composaIconSemantics[semantic]);
     }
+  });
+
+  it("pins the owner's Lucide glyphs for effect blur and spread (#661)", () => {
+    // Blur and Spread previously shipped as literal ⊞/☼ text characters. The owner
+    // named these two Lucide icons; pin them so a later "tidy-up" cannot quietly
+    // swap the glyph, and keep the two fields visually distinguishable.
+    expect(composaIconSemantics["effect-blur"]).toBe(Grip);
+    expect(composaIconSemantics["effect-spread"]).toBe(Sun);
+    expect(composaIconSemantics["effect-blur"]).not.toBe(composaIconSemantics["effect-spread"]);
   });
 
   it("dresses the Wrap flow mode with the grid glyph while keeping it distinct from the Freeform/H/V flow icons (#459/DEC-008)", () => {

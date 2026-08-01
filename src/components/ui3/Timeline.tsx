@@ -145,8 +145,24 @@ export interface SlideBlock {
   name: string;
   range: [number, number];     // [start,end] ms on the master timeline
   active?: boolean;            // canvas focus — visually distinct
+  /**
+   * The user clicked this bar. DISTINCT from `active`: active follows the
+   * editing context (which composition the canvas is showing), selection
+   * follows the click. A composition can be active without being selected and
+   * vice versa, and only selection was missing — clicking a composition bar
+   * updated the inspector while the bar itself never changed (Composa#656).
+   */
+  selected?: boolean;
 }
 const slideBlockId = (block: SlideBlock, index: number) => block.id ?? `slide-${index}`;
+/**
+ * The wash laid over a video clip's thumbnail. Neutral at rest so the frame
+ * reads; brand-coloured when selected so the bar matches the other lanes without
+ * hiding the thumbnail underneath it.
+ */
+const CLIP_SCRIM = (selected?: boolean) =>
+  selected ? "color-mix(in srgb, var(--color-c-bg-brand) 62%, transparent)" : "rgba(0,0,0,.25)";
+
 export interface BaseClipBlock {
   id: string;
   name: string;
@@ -1434,7 +1450,7 @@ function BlockTrack({ blocks, header, leftWidth, viewport, plotWidth, onSelect, 
           return (
             <div
               key={id}
-              role="button" tabIndex={0} aria-label={b.name} aria-pressed={b.active}
+              role="button" tabIndex={0} aria-label={b.name} aria-pressed={b.selected ?? b.active}
               aria-haspopup={hasContextMenu ? "menu" : undefined} data-timeline-block-id={stableId}
               onClick={() => onSelect?.(id)}
               onDoubleClick={() => onOpen?.(id)}
@@ -1463,7 +1479,13 @@ function BlockTrack({ blocks, header, leftWidth, viewport, plotWidth, onSelect, 
                 // raw UA focus outline (Composa#584) — keyboard focus shows the DS ring,
                 // mouse click shows nothing.
                 "absolute inset-y-[4px] rounded-[4px] flex items-center px-[10px] overflow-hidden border outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring",
-                b.active
+                // Selection wins over active: it is the more recent, more
+                // deliberate statement of what the user is looking at. Same
+                // tokens as a selected audio clip, so one convention reads
+                // across every lane (Composa#656).
+                b.selected
+                  ? "bg-c-bg-brand border-c-border-selected-strong"
+                  : b.active
                   ? "bg-[#0d99ff]/20 border-[#0d99ff]"
                   // Blue hover highlight on rest, matching every other timeline bar (Composa#583).
                   : "bg-c-bg-secondary border-c-border hover:border-c-border-selected",
@@ -1473,7 +1495,7 @@ function BlockTrack({ blocks, header, leftWidth, viewport, plotWidth, onSelect, 
               {/* trim handles (edge-drag to trim start/end) */}
               <span aria-label={`Trim start of ${b.name}`} role="slider" aria-valuemin={0} aria-valuemax={b.range[1]} aria-valuenow={b.range[0]} tabIndex={0} onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(id, "start", Math.min(b.range[1], Math.max(0, b.range[0] + (event.key === "ArrowLeft" ? -100 : 100)))); } }} onPointerDown={event => begin(event, b, "start")} onPointerMove={event => update(event, b)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} className="absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />
               <span aria-label={`Trim end of ${b.name}`} role="slider" aria-valuemin={b.range[0]} aria-valuemax={Number.MAX_SAFE_INTEGER} aria-valuenow={b.range[1]} tabIndex={0} onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(id, "end", Math.max(b.range[0], b.range[1] + (event.key === "ArrowLeft" ? -100 : 100))); } }} onPointerDown={event => begin(event, b, "end")} onPointerMove={event => update(event, b)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />
-              <span className={clsx(FONT, "text-[11px] font-[450] truncate", b.active ? "text-c-text" : "text-c-text-secondary")}>{b.name}</span>
+              <span className={clsx(FONT, "text-[11px] font-[450] truncate", b.selected ? "text-white" : b.active ? "text-c-text" : "text-c-text-secondary")}>{b.name}</span>
             </div>
           );
         })}
@@ -1601,7 +1623,10 @@ function BaseVideoTrack({ clips, header, leftWidth, viewport, plotWidth, accept,
           const left = percent(clip.range[0], viewport);
           const width = percentWidth(clip.range[0], clip.range[1], viewport);
           const tintIsImage = clip.tint?.includes("gradient(");
-          return <div key={clip.id} role="button" tabIndex={0} aria-pressed={clip.selected}
+          // aria-label: the bar is a button and had no accessible name, so a
+          // screen reader announced it as an unlabelled button. Audio clips
+          // already carry their name (Composa#656).
+          return <div key={clip.id} role="button" tabIndex={0} aria-pressed={clip.selected} aria-label={clip.name}
             onClick={() => onSelect?.(clip.id)} onDoubleClick={() => onOpen?.(clip.id)}
             onKeyDown={event => {
               if (event.key === "Enter") { event.preventDefault(); onOpen?.(clip.id); }
@@ -1611,11 +1636,17 @@ function BaseVideoTrack({ clips, header, leftWidth, viewport, plotWidth, accept,
               }
             }}
             onPointerDown={event => begin(event, clip, "move")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
-            className={clsx("absolute inset-y-[4px] rounded-[4px] flex items-center px-[10px] overflow-hidden border bg-c-bg-secondary outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring",
+            className={clsx("absolute inset-y-[4px] rounded-[4px] flex items-center px-[10px] overflow-hidden border outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring",
               // Blue hover highlight on rest (Composa#583); focus ring instead of the raw
               // UA outline (Composa#584).
-              clip.selected ? "border-c-border-selected-strong" : "border-c-border hover:border-c-border-selected")}
-            style={{ left, width, backgroundColor: !clip.thumbnail && !tintIsImage ? clip.tint : undefined, backgroundImage: clip.thumbnail ? `linear-gradient(rgba(0,0,0,.25),rgba(0,0,0,.25)),url(${clip.thumbnail})` : tintIsImage ? clip.tint : undefined, backgroundSize: "cover", backgroundPosition: "center" }}>
+              // Selected reads blue like every other lane. A video clip carries a
+              // thumbnail, so a solid fill would erase the one thing that makes it
+              // identifiable — the brand colour replaces the neutral scrim over the
+              // image instead, and only falls back to a solid fill when there is no
+              // image to protect (Composa#656).
+              clip.selected ? "border-c-border-selected-strong" : "border-c-border hover:border-c-border-selected",
+              clip.selected && !clip.thumbnail && !clip.tint ? "bg-c-bg-brand" : "bg-c-bg-secondary")}
+            style={{ left, width, backgroundColor: !clip.thumbnail && !tintIsImage ? clip.tint : undefined, backgroundImage: clip.thumbnail ? `linear-gradient(${CLIP_SCRIM(clip.selected)},${CLIP_SCRIM(clip.selected)}),url(${clip.thumbnail})` : tintIsImage ? clip.tint : undefined, backgroundSize: "cover", backgroundPosition: "center" }}>
             <span aria-label={`Trim start of ${clip.name}`} role="slider" aria-valuemin={0} aria-valuemax={clip.range[1]} aria-valuenow={clip.range[0]} tabIndex={0}
               onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "start", Math.min(clip.range[1], Math.max(0, clip.range[0] + (event.key === "ArrowLeft" ? -100 : 100))), timelineClipTrimDetail("keyboard", viewport, plotWidth)); } }}
               onPointerDown={event => begin(event, clip, "start")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}

@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { getSizingMenuLabels, PropertyPanel, reconcileAutoLayoutGap } from "./PropertyPanel";
+import { PANEL_W } from "./Panel";
 import { TooltipProvider } from "./Tooltip";
 
 describe("Timeline easing inspector composition", () => {
@@ -175,15 +176,15 @@ describe("Project shell seams", () => {
     expect(present).not.toContain("disabled");
   });
 
-  it("keeps the whole multiplayer cluster contained within the 240px inspector column (#575)", () => {
-    // The inspector column is a fixed 240px, overflow-hidden; the cluster wrapper
+  it("keeps the whole multiplayer cluster contained within the inspector column (#575)", () => {
+    // The inspector column is a fixed width, overflow-hidden; the cluster wrapper
     // is w-full min-w-0 so the split button + separate Share button stay visible
     // rather than overflowing/clipping.
     const html = renderToStaticMarkup(<TooltipProvider><PropertyPanel mode="project"
       onPreviewToggle={() => undefined}
       onShare={() => undefined}
     /></TooltipProvider>);
-    expect(html).toContain("w-[240px]");
+    expect(html).toContain(`w-[${PANEL_W}px]`);
     expect(html).toMatch(/class="flex w-full min-w-0 items-center/);
     // Share button renders in the same contained cluster.
     expect(html).toContain(">Share</span>");
@@ -291,13 +292,16 @@ describe("Auto-layout gap control", () => {
     const freeform = html.indexOf('aria-label="Freeform"');
     const vertical = html.indexOf('aria-label="Vertical"');
     const horizontal = html.indexOf('aria-label="Horizontal"');
+    const grid = html.indexOf('aria-label="Grid"');
     expect(freeform).toBeGreaterThan(-1);
     expect(freeform).toBeLessThan(vertical);
     expect(vertical).toBeLessThan(horizontal);
-    // Wrap is a horizontal-only modifier (Figma parity, grid-and-wrap-spec §5 Reading A):
-    // a trailing toggle beside the Horizontal flow option, not a fourth flow segment.
+    // Grid is the FOURTH flow segment (Composa#661), not a header side action.
+    expect(horizontal).toBeLessThan(grid);
+    expect(html).toContain('data-icon-semantic="layout-grid"');
+    // Wrap is not a flow segment — it is a modifier, rendered after the segments.
     const wrap = html.indexOf('aria-label="Wrap"');
-    expect(wrap).toBeGreaterThan(horizontal);
+    expect(wrap).toBeGreaterThan(grid);
     expect(html).toContain('data-icon-semantic="layout-wrap"');
     expect(html.match(/aria-label="Auto-layout settings"/g)).toHaveLength(1);
     expect(html).toContain('data-icon-semantic="layout-freeform"');
@@ -339,27 +343,32 @@ describe("Auto-layout gap control", () => {
     expect(reconcileAutoLayoutGap(true, 12, 18)).toBe(12);
   });
 
-  it("exposes a row gap field and the item/row link toggle only while wrapping", () => {
+  it("exposes a row gap field only while wrapping", () => {
     const plain = renderToStaticMarkup(<PropertyPanel elementType="frame-auto" layout={{ ...layout, wrap: false }} />);
+    // Assert the row it lives in renders at all, so the absence below is real.
+    expect(plain).toContain('role="group" aria-label="Alignment and gap"');
     expect(plain).not.toContain('aria-label="Row gap"');
 
     const wrapped = renderToStaticMarkup(<PropertyPanel elementType="frame-auto" layout={{ ...layout, wrap: true, rowGap: 24 }} />);
-    expect(wrapped).toContain('role="group" aria-label="Row gap"');
     expect(wrapped).toContain('aria-label="Row gap"');
-    // The link toggle keeps item + row gap in sync (Figma's linked/unlinked pair).
-    expect(wrapped).toMatch(/aria-label="(Unlink|Link) item and row gap"/);
+    // Composa#661 item 2: the row gap no longer gets its own row beneath the
+    // alignment block, and the unexplained link action beside it is gone.
+    expect(wrapped).not.toContain('role="group" aria-label="Row gap"');
+    expect(wrapped).not.toMatch(/aria-label="(Unlink|Link) item and row gap"/);
   });
 });
 
 describe("Plain-frame flow contract", () => {
-  it("orders Freeform, Vertical, Horizontal and omits Wrap as a flow segment", () => {
+  it("orders Freeform, Vertical, Horizontal, Grid and omits Wrap as a flow segment", () => {
     const html = renderToStaticMarkup(<PropertyPanel elementType="frame" />);
     const freeform = html.indexOf('aria-label="Freeform"');
     const vertical = html.indexOf('aria-label="Vertical"');
     const horizontal = html.indexOf('aria-label="Horizontal"');
+    const grid = html.indexOf('aria-label="Grid"');
     expect(freeform).toBeGreaterThan(-1);
     expect(freeform).toBeLessThan(vertical);
     expect(vertical).toBeLessThan(horizontal);
+    expect(horizontal).toBeLessThan(grid);
     // A plain (non-auto-layout) frame has no Wrap control — wrap is a horizontal-only
     // modifier reached from the auto-layout section, not a flow segment here.
     expect(html).not.toContain('aria-label="Wrap"');
