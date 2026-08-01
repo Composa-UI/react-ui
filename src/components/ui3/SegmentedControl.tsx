@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { nextSingleSelectionIndex, type SingleSelectionKey } from "./singleSelection";
+import { Tooltip } from "./Tooltip";
 
 export interface Segment {
   value: string;
@@ -122,10 +123,14 @@ export function SegmentedControl({ segments, value, onChange, disabled = false, 
     >
       {segments.map((seg, index) => {
         const isActive = seg.value === value;
-        return (
+        // Icon-only segments carried no visible explanation of what they select
+        // (Composa#661 item 2). The hint is the segment's own aria-label — never
+        // an invented string — and it is skipped when the segment already shows
+        // that same text, where a tooltip would only repeat what is on screen.
+        const hint = seg.ariaLabel ?? seg.label;
+        const item = (
           <SegmentedControlItem
             ref={node => { itemRefs.current[index] = node; }}
-            key={seg.value}
             selected={isActive}
             aria-pressed={isActive}
             aria-label={seg.ariaLabel}
@@ -136,6 +141,11 @@ export function SegmentedControl({ segments, value, onChange, disabled = false, 
             icon={seg.icon}
             label={seg.label}
           />
+        );
+        return (
+          <Tooltip key={seg.value} label={hint ?? ""} disabled={disabled || !hint || hint === seg.label}>
+            {item}
+          </Tooltip>
         );
       })}
     </SegmentedControlGroup>
