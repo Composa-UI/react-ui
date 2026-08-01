@@ -17,7 +17,7 @@ const exportSettings = [{ id: "e1", scale: 1, suffix: "", format: "PNG" as const
 
 const markup = () =>
   renderToStaticMarkup(
-    <PropertyPanel mode="element" exportSettings={exportSettings} onExportSettingsChange={() => undefined} />,
+    <PropertyPanel mode="element" exportSettings={exportSettings} onUpdateExportSetting={() => undefined} />,
   );
 
 describe("export row", () => {

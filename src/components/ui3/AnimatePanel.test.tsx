@@ -1,204 +1,195 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, create } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
-import { ACTION_STYLE_OPTIONS, AnimatePanel, buildAnimationUnits, type ObjectAnimationItem } from "./AnimatePanel";
+import { ArrowDown, ArrowRight } from "lucide-react";
+import { ACTION_STYLE_OPTIONS, AnimatePanel, type ObjectAnimationItem } from "./AnimatePanel";
 import { PopoverMenu } from "./Menu";
-import { NumericInput } from "./Input";
 import { AnimationStylesDialog } from "./AnimationStylesDialog";
+import { EASING_PRESETS } from "./easing";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-// ── Combined card + one signed gap (motion-mental-model.md) ─────────────────────────
-// Two pulses on ONE object (shared elementId) — the exact case that used to render as
-// two separate cards each labelled "1". They must collapse into one combined card.
+// ── RP-12: sequenced presets are their own ordered blocks ───────────────────────────
+// Two pulses on ONE object. They used to collapse into one "combined card" — a connector
+// line plus a "delay between" field, carrying a SINGLE number for the pair. The owner's
+// iteration-2 reading is the opposite: each sequenced preset is its own ordered block.
 const TWO_PULSES: ObjectAnimationItem[] = [
-  { id: "p1", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "1.2s", style: "pulse", buildDuration: "1200ms", startMs: 0 },
-  { id: "p2", elementId: "logo", n: 2, name: "Logo", kind: "Action", duration: "0.8s", style: "pulse", buildDuration: "800ms", startMs: 500 },
+  { id: "p1", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "1.2s", style: "pulse", buildDuration: "1200ms" },
+  { id: "p2", elementId: "logo", n: 2, name: "Logo", kind: "Action", duration: "0.8s", style: "pulse", buildDuration: "800ms" },
 ];
-const delayField = (renderer: ReturnType<typeof create>, followingId: string) =>
-  renderer.root.findAll(node => node.props["data-delay-between-following"] === followingId)[0]!.findByType(NumericInput);
 
-describe("AnimatePanel — combined card groups an object's actions into one card (motion-mental-model)", () => {
-  it("groups N same-object actions into ONE combined card, not N cards", () => {
-    const units = buildAnimationUnits(TWO_PULSES);
-    expect(units).toHaveLength(1);
-    expect(units[0]!.kind).toBe("combined");
+const blockNumbers = (renderer: ReturnType<typeof create>) =>
+  renderer.root
+    .findAll(node => node.props["data-animation-block-number"] !== undefined)
+    .map(node => node.props["data-animation-block-number"] as number);
 
+describe("AnimatePanel — sequenced presets render as ordered blocks (RP-12)", () => {
+  it("gives every sequenced action on one object its OWN numbered block", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={TWO_PULSES} />); });
+    // Positive control: both cards rendered, so the absences below mean something.
+    expect(renderer!.root.findAll(node => node.props["data-animation-card-id"] === "p1")).toHaveLength(1);
+    expect(renderer!.root.findAll(node => node.props["data-animation-card-id"] === "p2")).toHaveLength(1);
+    // Two blocks, numbered 1 and 2 — not one shared number for the pair.
+    expect(blockNumbers(renderer!)).toEqual([1, 2]);
+    act(() => renderer!.unmount());
+  });
+
+  it("renders no connector line and no 'delay between' control between them", () => {
     const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={TWO_PULSES} />);
-    // Exactly one combined group for the object, and both action rows belong to it.
-    expect(html.match(/data-combined-card-element-id="logo"/g)).toHaveLength(1);
-    expect(html).toContain('data-animation-card-id="p1"');
-    expect(html).toContain('data-animation-card-id="p2"');
-    // Owner feedback: no heavy container, no group header / "N actions" label.
-    expect(html).not.toContain(">2 actions<");
-    // The relationship is carried by a connector line instead.
-    expect(html).toContain("data-combined-connector");
-  });
-
-  it("renders the group WITHOUT a heavy container box (no border / overflow-hidden wrapper)", () => {
-    let renderer: ReturnType<typeof create>;
-    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={TWO_PULSES} />); });
-    const wrapper = renderer!.root.findAll(node => node.props["data-combined-card-element-id"] === "logo")[0]!;
-    const className = String(wrapper.props.className);
-    expect(className).not.toMatch(/\bborder\b/);
-    expect(className).not.toMatch(/overflow-hidden/);
-    act(() => renderer!.unmount());
-  });
-
-  it("connects the two cards with a vertical line, with the delay control IN THE GAP", () => {
-    let renderer: ReturnType<typeof create>;
-    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={TWO_PULSES} />); });
-    // The connector for a delayed pair is the "gap" variant and contains the delay control.
-    const gapConnector = renderer!.root.findAll(node => node.props["data-combined-connector"] === "gap")[0]!;
-    expect(gapConnector.findAll(node => node.props["data-delay-between-following"] === "p2")).toHaveLength(1);
-    act(() => renderer!.unmount());
-  });
-
-  it("keeps the connector FLUSH to the cards — no vertical padding gap detaching the line", () => {
-    // Owner feedback: the line must TOUCH the cards (extend to the preceding card's bottom
-    // edge and the following card's top edge). A `py-*` on the connector wrapper would
-    // insert a gap so the line no longer meets the cards — guard against it in both
-    // variants (delayed "gap" pair + continuous line).
-    const gapHtml = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={TWO_PULSES} />);
-    const gapWrapper = gapHtml.match(/<div data-combined-connector="gap"[^>]*class="([^"]*)"/)?.[1] ?? "";
-    expect(gapWrapper).not.toMatch(/\bpy-/);
-    expect(gapWrapper).not.toMatch(/\bpt-/);
-    expect(gapWrapper).not.toMatch(/\bpb-/);
-
-    const continuous: ObjectAnimationItem[] = [
-      { id: "c1", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "0.6s", style: "pulse" },
-      { id: "c2", elementId: "logo", n: 2, name: "Logo", kind: "Action", duration: "0.6s", style: "pulse" },
-    ];
-    const contHtml = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={continuous} />);
-    const contWrapper = contHtml.match(/<div data-combined-connector="continuous"[^>]*class="([^"]*)"/)?.[1] ?? "";
-    expect(contWrapper).not.toBe(""); // the continuous connector wrapper must exist
-    expect(contWrapper).not.toMatch(/\bpy-/);
-    expect(contWrapper).not.toMatch(/\bpt-/);
-    expect(contWrapper).not.toMatch(/\bpb-/);
-  });
-
-  it("keeps a single action on an object rendering EXACTLY as today (no combined chrome)", () => {
-    const single: ObjectAnimationItem[] = [
-      { id: "s1", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "0.6s", style: "pulse" },
-    ];
-    expect(buildAnimationUnits(single)[0]!.kind).toBe("single");
-    const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={single} />);
+    expect(html).toContain('data-animation-card-id="p2"'); // the pair rendered at all
     expect(html).not.toContain("data-combined-card-element-id");
+    expect(html).not.toContain("data-combined-connector");
+    expect(html).not.toContain("data-delay-between-following");
     expect(html).not.toContain("Delay between");
-    expect(html).toContain('data-animation-card-id="s1"');
   });
 
-  it("renders no combined card for distinct objects each with one action", () => {
-    const distinct: ObjectAnimationItem[] = [
-      { id: "a", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "0.6s", style: "pulse" },
-      { id: "b", elementId: "title", n: 2, name: "Title", kind: "In", duration: "0.4s", style: "fade-in" },
+  it("numbers blocks from the engine's order (`n`), not from render position", () => {
+    // The engine's `order` is the ordering concept the panel must PRESENT. A list whose
+    // orders are 3 and 4 must read "3", "4" — index+1 numbering would read "1", "2".
+    const ordered: ObjectAnimationItem[] = [
+      { id: "a", elementId: "logo", n: 3, name: "Logo", kind: "Action", duration: "0.6s", style: "pulse" },
+      { id: "b", elementId: "title", n: 4, name: "Title", kind: "In", duration: "0.4s", style: "fade-in" },
     ];
-    const units = buildAnimationUnits(distinct);
-    expect(units.every(unit => unit.kind === "single")).toBe(true);
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={ordered} />); });
+    expect(blockNumbers(renderer!)).toEqual([3, 4]);
+    act(() => renderer!.unmount());
+  });
+
+  it("emits exactly one number per animation in static markup", () => {
+    const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={TWO_PULSES} />);
+    expect(html.match(/data-animation-block-number=/g)).toHaveLength(2);
   });
 });
 
-// ── Unit-level numbering: one number per unit (combined card = ONE number) ──────────
-// #78 over-corrected and dropped ALL numbers. The owner wants numbers back, but at the
-// UNIT level: a standalone action gets its own number and a combined card carries a
-// SINGLE number for the whole card — not one per action-row inside it.
-describe("AnimatePanel — object-animations number by UNIT (combined card = one number)", () => {
-  // Two actions on `logo` collapse into one combined card (unit 1); a standalone action
-  // on `caption` is the next unit (unit 2).
-  const MIXED: ObjectAnimationItem[] = [
-    { id: "p1", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "1.2s", style: "pulse", buildDuration: "1200ms", startMs: 0 },
-    { id: "p2", elementId: "logo", n: 2, name: "Logo", kind: "Action", duration: "0.8s", style: "pulse", buildDuration: "800ms", startMs: 500 },
-    { id: "r1", elementId: "caption", n: 3, name: "Caption", kind: "In", duration: "0.4s", style: "fade-in", buildDuration: "400ms" },
+// ── RP-11: no phase arrow on a collapsed preset card ────────────────────────────────
+describe("AnimatePanel — collapsed preset cards carry no phase arrow (RP-11)", () => {
+  const collapsedCard = (renderer: ReturnType<typeof create>, id: string) =>
+    renderer.root.findAll(node => node.props["data-animation-card-id"] === id)[0]!;
+
+  it("renders no arrow glyph in a collapsed card, for either arrow direction", () => {
+    // In / Out used ArrowRight and Action used ArrowDown. Not every parametric has a
+    // direction, so the arrow was a promise the card could not always keep.
+    const anims: ObjectAnimationItem[] = [
+      { id: "in", n: 1, name: "Title", kind: "In", duration: "0.6s", style: "fade-in" },
+      { id: "act", n: 2, name: "Body", kind: "Action", duration: "0.5s", style: "pulse" },
+    ];
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={anims} />); });
+    for (const id of ["in", "act"]) {
+      const card = collapsedCard(renderer!, id);
+      // Positive control: the card is collapsed and its duration pill rendered, so an
+      // absent arrow is a removal rather than an unrendered card.
+      expect(card.findAll(node => node.props["aria-expanded"] === false)).toHaveLength(1);
+      expect(card.findAll(node => node.type === ArrowRight)).toHaveLength(0);
+      expect(card.findAll(node => node.type === ArrowDown)).toHaveLength(0);
+    }
+    // The phase is still legible — the duration pill still spells it out.
+    const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={anims} />);
+    expect(html).toContain(">In<");
+    expect(html).toContain(">Action<");
+    act(() => renderer!.unmount());
+  });
+});
+
+// ── RP-10: easing on EVERY preset card ──────────────────────────────────────────────
+// The owner's correction: "the easing thing doesn't apply to bounce only but all presets".
+describe("AnimatePanel — every preset card offers easing (RP-10)", () => {
+  const EVERY_PHASE: ObjectAnimationItem[] = [
+    { id: "in", n: 1, name: "Title", kind: "In", duration: "0.6s", style: "fade-in", buildDuration: "600ms" },
+    { id: "act", n: 2, name: "Body", kind: "Action", duration: "0.5s", style: "pulse", buildDuration: "500ms" },
+    { id: "out", n: 3, name: "Motto", kind: "Out", duration: "0.4s", style: "fade-out", buildDuration: "400ms" },
   ];
+  const expand = (renderer: ReturnType<typeof create>, id: string) =>
+    act(() => renderer.root.findAll(node => node.props["data-animation-card-id"] === id)[0]!
+      .findByProps({ "aria-expanded": false }).props.onClick());
+  const easingPopover = (renderer: ReturnType<typeof create>) =>
+    renderer.root.findAllByType(PopoverMenu).find(item => item.props.trigger?.props?.ariaLabel === "Easing");
 
-  const unitNumbers = (renderer: ReturnType<typeof create>) =>
-    renderer.root
-      .findAll(node => node.props["data-animation-unit-number"] !== undefined)
-      .map(node => node.props["data-animation-unit-number"] as number);
+  it("offers an Easing control on a build-in, an action AND a build-out card", () => {
+    for (const id of ["in", "act", "out"]) {
+      let renderer: ReturnType<typeof create>;
+      act(() => { renderer = create(<AnimatePanel selectionType="element" anims={EVERY_PHASE} />); });
+      // Positive control: the row only exists inside an expanded body, so prove the card
+      // opened before asserting the control is there.
+      expect(easingPopover(renderer!)).toBeUndefined();
+      expand(renderer!, id);
+      expect(renderer!.root.findAll(node => node.props["aria-expanded"] === true).length).toBeGreaterThan(0);
+      expect(easingPopover(renderer!)).toBeDefined();
+      act(() => renderer!.unmount());
+    }
+  });
 
-  it("emits exactly ONE number per unit — a combined card is a single index, not per-row", () => {
+  it("shows the house preset set plus a route into the existing custom-easing editor", () => {
     let renderer: ReturnType<typeof create>;
-    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={MIXED} />); });
-    // Two units (combined logo + standalone caption) → two numbers, "1" then "2".
-    expect(unitNumbers(renderer!)).toEqual([1, 2]);
-    // The combined card (two rows) contributed exactly one number, not two.
-    const combined = renderer!.root.findAll(node => node.props["data-combined-card-element-id"] === "logo")[0]!;
-    expect(combined.findAll(node => node.props["data-animation-unit-number"] !== undefined)).toHaveLength(0);
+    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={EVERY_PHASE} />); });
+    expand(renderer!, "act");
+    const menu = easingPopover(renderer!)!.props.children(() => undefined);
+    const rows = menu.props.children.flat() as Array<{ props: { label?: string; type: string } }>;
+    expect(rows.filter(row => row.props.type === "checkmark").map(row => row.props.label))
+      .toEqual([...EASING_PRESETS.map(preset => preset.label), "Custom…"]);
     act(() => renderer!.unmount());
   });
 
-  it("numbers a combined card as ONE index in static markup — [combined, standalone] → 1, 2", () => {
-    const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={MIXED} />);
-    // The two-row combined card yields a single unit number; there is no per-row number.
-    expect(html.match(/data-animation-unit-number="1"/g)).toHaveLength(1);
-    expect(html.match(/data-animation-unit-number="2"/g)).toHaveLength(1);
-    // Exactly two unit numbers total for two units (one combined + one standalone).
-    expect(html.match(/data-animation-unit-number=/g)).toHaveLength(2);
-  });
-
-  it("numbers each standalone action in a distinct-object list sequentially", () => {
-    const distinct: ObjectAnimationItem[] = [
-      { id: "a", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "0.6s", style: "pulse" },
-      { id: "b", elementId: "title", n: 2, name: "Title", kind: "In", duration: "0.4s", style: "fade-in" },
-      { id: "c", elementId: "body", n: 3, name: "Body", kind: "Action", duration: "0.5s", style: "jiggle" },
-    ];
-    let renderer: ReturnType<typeof create>;
-    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={distinct} />); });
-    expect(unitNumbers(renderer!)).toEqual([1, 2, 3]);
-    act(() => renderer!.unmount());
-  });
-});
-
-describe("AnimatePanel — 'delay between' is the signed start-to-start gap (locked)", () => {
-  it("derives the gap as following.startMs − preceding.startMs (positive stagger)", () => {
-    let renderer: ReturnType<typeof create>;
-    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={TWO_PULSES} />); });
-    const field = delayField(renderer!, "p2");
-    expect(field.props.value).toBe(500); // 500 − 0
-    // Never clamped: no `min`, so the numeric field accepts negatives (overlap).
-    expect(field.props.min).toBeUndefined();
-    act(() => renderer!.unmount());
-  });
-
-  it("derives and shows a NEGATIVE gap (overlap) without clamping", () => {
-    const overlap: ObjectAnimationItem[] = [
-      { ...TWO_PULSES[0]!, startMs: 500 },
-      { ...TWO_PULSES[1]!, startMs: 200 },
-    ];
-    let renderer: ReturnType<typeof create>;
-    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={overlap} />); });
-    expect(delayField(renderer!, "p2").props.value).toBe(-300); // 200 − 500
-    act(() => renderer!.unmount());
-  });
-
-  it("emits onDelayBetweenChange(precedingId, followingId, signed ms) — including negative", () => {
-    const calls: Array<[string, string, number]> = [];
+  it("emits onEasingChange(id, preset) for a house preset", () => {
+    const changes: Array<[string, string]> = [];
     let renderer: ReturnType<typeof create>;
     act(() => {
-      renderer = create(<AnimatePanel selectionType="element" anims={TWO_PULSES}
-        objectAnimationCallbacks={{ onDelayBetweenChange: (preceding, following, ms) => calls.push([preceding, following, ms]) }} />);
+      renderer = create(<AnimatePanel selectionType="element" anims={EVERY_PHASE}
+        objectAnimationCallbacks={{ onEasingChange: (id, preset) => changes.push([id, preset]) }} />);
     });
-    act(() => delayField(renderer!, "p2").props.onChange(-150));
-    expect(calls).toEqual([["p1", "p2", -150]]);
+    expand(renderer!, "act");
+    const close = vi.fn();
+    const rows = easingPopover(renderer!)!.props.children(close).props.children.flat() as Array<{ props: { label?: string; onClick?: () => void } }>;
+    act(() => rows.find(row => row.props.label === "Ease in-out")!.props.onClick!());
+    expect(changes).toEqual([["act", "ease-in-out"]]);
+    expect(close).toHaveBeenCalledOnce();
     act(() => renderer!.unmount());
   });
 
-  it("omits the delay-between control when a start time is missing (no invented gap)", () => {
-    const noStart: ObjectAnimationItem[] = [
-      { id: "p1", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "1.2s", style: "pulse" },
-      { id: "p2", elementId: "logo", n: 2, name: "Logo", kind: "Action", duration: "0.8s", style: "pulse" },
-    ];
-    const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={noStart} />);
-    // Still one combined group, but no derived delay control without start data.
-    expect(html).toContain('data-combined-card-element-id="logo"');
-    expect(html).not.toContain("data-delay-between-following");
-    // The connector line is CONTINUOUS (no gap variant) when there is no delay control.
-    expect(html).toContain('data-combined-connector="continuous"');
-    expect(html).not.toContain('data-combined-connector="gap"');
+  it("routes 'Custom…' to the host's existing easing editor, not to a nested curve editor", () => {
+    const customRequests: string[] = [];
+    const changes: string[] = [];
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<AnimatePanel selectionType="element" anims={EVERY_PHASE}
+        objectAnimationCallbacks={{ onCustomEasingRequest: id => customRequests.push(id), onEasingChange: id => changes.push(id) }} />);
+    });
+    expand(renderer!, "out");
+    const rows = easingPopover(renderer!)!.props.children(vi.fn()).props.children.flat() as Array<{ props: { label?: string; onClick?: () => void } }>;
+    act(() => rows.find(row => row.props.label === "Custom…")!.props.onClick!());
+    expect(customRequests).toEqual(["out"]);
+    // Custom is a route, not a value: it must not silently stamp a named preset.
+    expect(changes).toEqual([]);
+    // And the card does not grow a second curve editor of its own.
+    expect(renderer!.root.findAll(node => node.props["data-composa-easing-preview"] !== undefined)).toHaveLength(0);
+    act(() => renderer!.unmount());
+  });
+
+  it("defaults each phase to the curve the engine actually runs it on, and lets the host override", () => {
+    // engine/easing-presets.ts OBJECT_ANIMATION_PHASE_EASING — build-in ease-out,
+    // action linear, build-out ease-in. Showing anything else would be a made-up value.
+    for (const [id, label] of [["in", "Ease out"], ["act", "Linear"], ["out", "Ease in"]] as const) {
+      let renderer: ReturnType<typeof create>;
+      act(() => { renderer = create(<AnimatePanel selectionType="element" anims={EVERY_PHASE} />); });
+      expand(renderer!, id);
+      expect(easingPopover(renderer!)!.props.trigger.props.value).toBe(label);
+      act(() => renderer!.unmount());
+    }
+
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<AnimatePanel selectionType="element"
+        anims={EVERY_PHASE.map(anim => anim.id === "act" ? { ...anim, easing: "spring" as const } : anim)} />);
+    });
+    expand(renderer!, "act");
+    expect(easingPopover(renderer!)!.props.trigger.props.value).toBe("Spring");
+    act(() => renderer!.unmount());
   });
 });
 
-describe("AnimatePanel — two-tier selection inside a combined card (motion-mental-model)", () => {
+describe("AnimatePanel — focusing one action suppresses the sibling tint", () => {
   const rowState = (renderer: ReturnType<typeof create>, id: string) =>
     renderer.root.findAll(node => node.props["data-animation-card-id"] === id)[0]!.props["data-animation-card-state"];
 
