@@ -55,11 +55,16 @@ export interface ObjectAnimationCallbacks {
   onIntensityChange?: (id: string, intensity: "small" | "medium" | "large") => void;
   onReorder?: (id: string, targetId: string, placement: "before" | "after" | "with") => void;
   /** A house easing preset picked on the card. Every preset card offers this, not only the
-   *  bounce-style actions (iteration-2 RP-10). */
+   *  bounce-style actions (iteration-2 RP-10).
+   *  REQUIRED to see the control: the Easing row renders only when this is supplied, so an
+   *  unwired host shows no Easing row rather than one that silently discards the pick. */
   onEasingChange?: (id: string, preset: NamedEasingPreset) => void;
   /** "Custom…" — the host opens the EXISTING custom-easing editor (`EasingInspectorSection`)
    *  scoped to this animation. The card deliberately does NOT nest a second curve editor;
-   *  there is one custom-easing surface in the product and this is a route into it. */
+   *  there is one custom-easing surface in the product and this is a route into it.
+   *  REQUIRED to see the row: "Custom…" renders only when this is supplied. It is a route
+   *  into a host surface, so a host that does not own that surface must not advertise it
+   *  (iteration-3: "clicking on the custom menu option does nothing"). */
   onCustomEasingRequest?: (id: string) => void;
   onStartChange?: (start: ObjectAnimationSequenceSettings["start"]) => void;
   onDelayChange?: (delayMs: number) => void;
@@ -237,7 +242,24 @@ const PHASE_DEFAULT_EASING: Record<ObjectAnimationPhase, EasingPreset> = {
   "build-out": "ease-in",
 };
 
+// iteration-3: "Easing is nice but clicking on the custom menu option does nothing."
+// Both halves of this control render only when the host has actually wired them.
+// A menu row that closes the menu and changes nothing is the bug being fixed, and a
+// component cannot fix it by disabling the row — a greyed control still promises a
+// capability. So the rule here is one rule, applied to both halves: RENDER WHAT THE
+// HOST WIRED.
+//
+//   no `onEasingChange`        → no Easing row at all
+//   no `onCustomEasingRequest` → preset rows only, no "Custom…"
+//
+// This is deliberately not a deletion. The contract, the row and the tests stay, so the
+// day a host owns a per-animation curve the control lights up with no change here. As of
+// this commit no host wires either one (composa's InspectorPanel objectAnimationCallbacks
+// supplies neither), because the engine has nowhere to store a per-animation easing —
+// `ObjectAnimation` has no `easing` field and the curve is read from a per-phase constant.
+// Until that field exists the honest thing for this package to show is nothing.
 function EasingChoice({ id, value, callbacks }: { id: string; value: EasingPreset; callbacks?: ObjectAnimationCallbacks }) {
+  const onCustom = callbacks?.onCustomEasingRequest;
   return (
     <PopoverMenu align="right" className="w-full" trigger={
       <Dropdown ariaLabel="Easing" aria-haspopup="menu" value={easingPresetLabel(value)} fullWidth />
@@ -246,9 +268,9 @@ function EasingChoice({ id, value, callbacks }: { id: string; value: EasingPrese
         {EASING_PRESETS.map(preset => <MenuRow key={preset.value} type="checkmark" selectionRole="radio"
           checked={value === preset.value} label={preset.label}
           onClick={() => { callbacks?.onEasingChange?.(id, preset.value); close(); }} />)}
-        <MenuRow type="divider" />
-        <MenuRow type="checkmark" selectionRole="radio" checked={value === "custom"} label="Custom…"
-          onClick={() => { callbacks?.onCustomEasingRequest?.(id); close(); }} />
+        {onCustom && <MenuRow type="divider" />}
+        {onCustom && <MenuRow type="checkmark" selectionRole="radio" checked={value === "custom"} label="Custom…"
+          onClick={() => { onCustom(id); close(); }} />}
       </Menu>}
     </PopoverMenu>
   );
@@ -479,7 +501,7 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                     />
                   </LabeledRow>
                   <LabeledRow label="Duration"><NumericInput value={Number.parseFloat(a.buildDuration ?? a.duration) * (a.buildDuration?.includes("ms") ? 1 : 1000)} min={0} suffix="ms" commitOnBlur className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} onChange={durationMs => callbacks?.onDurationChange?.(id, durationMs)} /></LabeledRow>
-                  <LabeledRow label="Easing"><EasingChoice id={id} value={a.easing ?? PHASE_DEFAULT_EASING[phase]} callbacks={callbacks} /></LabeledRow>
+                  {callbacks?.onEasingChange && <LabeledRow label="Easing"><EasingChoice id={id} value={a.easing ?? PHASE_DEFAULT_EASING[phase]} callbacks={callbacks} /></LabeledRow>}
                   {directional && <LabeledRow label="Direction"><ChoiceDropdown value={a.direction ?? "left"} options={["left", "right", "up", "down"]} labels={{ left: phase === "build-out" ? "To left" : "From left", right: phase === "build-out" ? "To right" : "From right", up: phase === "build-out" ? "To top" : "From top", down: phase === "build-out" ? "To bottom" : "From bottom" }} onChange={direction => callbacks?.onDirectionChange?.(id, direction)} /></LabeledRow>}
                   {deliveryValue && <LabeledRow label="Delivery"><ChoiceDropdown value={deliveryValue} options={["all-at-once", "by-object", "by-word", "by-character"]} labels={deliveryLabels} onChange={delivery => callbacks?.onDeliveryChange?.(id, delivery)} /></LabeledRow>}
                   {phase === "action" && <LabeledRow label="Intensity"><ChoiceDropdown ariaLabel="Intensity" value={a.intensity ?? "medium"} options={["small", "medium", "large"]} labels={{ small: "Small", medium: "Medium", large: "Large" }} onChange={intensity => callbacks?.onIntensityChange?.(id, intensity)} /></LabeledRow>}
