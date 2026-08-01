@@ -361,8 +361,10 @@ describe("Timeline DOM contracts", () => {
   });
 
   // Playhead full-lanes-height contract (owner bug: the line came up short whenever the
-  // lanes overflowed the scroll viewport — master view + under scroll — and in the empty
-  // null state). jsdom has no layout engine, so we assert the structural invariant that
+  // lanes overflowed the scroll viewport — master view + under scroll). The slide-local
+  // NULL state is no longer part of this contract: it draws no playhead at all now
+  // (LT-2), and is covered by its own describe below.
+  // jsdom has no layout engine, so we assert the structural invariant that
   // *produces* a full-height line: the playhead wrapper spans `top-0 bottom-0` and resolves
   // against the scroll CONTENT (the full lanes region, `min-h-full`), which must therefore
   // carry `relative` so it — not the shorter scroll viewport — is the positioning context.
@@ -385,8 +387,8 @@ describe("Timeline DOM contracts", () => {
     playheadContract(html);
   });
 
-  it("spans the playhead across the full lanes region in the empty/null slide-local state", () => {
-    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[]} />);
+  it("spans the playhead across the full lanes region in slide-local view (survives vertical overflow)", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]} />);
     playheadContract(html);
   });
 });
@@ -853,9 +855,10 @@ describe("video clips carry an audio strip (Composa#661)", () => {
 describe("a muted lane dims its bars (Composa#661)", () => {
   // Muting from the lane header used to be invisible below the header: `muted` was
   // read only by the speaker icon and never reached the bars.
+  // The Video lane is deliberately absent — its bar carries a picture as well as
+  // audio, so mute scopes to the waveform strip there (TL-3, next describe).
   const bars: [string, string, Record<string, unknown>][] = [
     ["slides", "Intro", { blocks: [{ id: "s1", name: "Intro", range: [0, 1_000] }] }],
-    ["video", "shot", { baseClips: [{ id: "v1", name: "shot", range: [0, 1_000] }] }],
     ["audio", "vo", { audioClips: [{ id: "a1", name: "vo", range: [0, 1_000] }] }],
   ];
 
@@ -870,6 +873,38 @@ describe("a muted lane dims its bars (Composa#661)", () => {
   });
 });
 
+// Pulls the opening tag of the video bar's audio strip, so an opacity assertion
+// lands on the strip and not on some other dimmed thing in the markup.
+function waveformStripTag(html: string): string {
+  const tag = /<div data-timeline-clip-waveform[^>]*>/.exec(html)?.[0];
+  if (!tag) throw new Error("no waveform strip in the markup");
+  return tag;
+}
+
+describe("the Video lane's speaker and eye are different treatments (TL-3)", () => {
+  // Muting used to dim the whole video bar, which made the speaker and the eye
+  // indistinguishable by eye. The speaker owns the clip's audio, so it may only
+  // touch the waveform strip; the eye owns whether the clip renders at all.
+  const clip = { baseClips: [{ id: "v1", name: "shot", range: [0, 1_000], waveform: [0.2, 0.9, 0.4] }] };
+
+  it("dims only the waveform strip while the lane is muted", () => {
+    const html = master({ ...clip, laneControls: { video: { muted: true } } });
+    expect(waveformStripTag(html)).toContain("opacity-40");
+    expect(tagWithLabel(html, "shot")).not.toContain("opacity-40");
+  });
+
+  it("dims the whole bar while the lane is hidden", () => {
+    const html = master({ ...clip, laneControls: { video: { visible: false } } });
+    expect(tagWithLabel(html, "shot")).toContain("opacity-40");
+  });
+
+  it("dims neither at rest", () => {
+    const html = master({ ...clip, laneControls: { video: { muted: false, visible: true } } });
+    expect(waveformStripTag(html)).not.toContain("opacity-40");
+    expect(tagWithLabel(html, "shot")).not.toContain("opacity-40");
+  });
+});
+
 describe("video clips raise a context menu (Composa#661)", () => {
   const clip = { baseClips: [{ id: "v1", name: "shot", range: [0, 1_000] }] };
 
@@ -880,5 +915,35 @@ describe("video clips raise a context menu (Composa#661)", () => {
   it("promises nothing when no host handler is wired", () => {
     // The bar must still be there — otherwise the missing attribute means nothing.
     expect(tagWithLabel(master(clip), "shot")).not.toContain("aria-haspopup");
+  });
+});
+
+describe("the slide-local null state has no playhead (LT-2)", () => {
+  // Asserted against the playhead's OWN markup rather than a marker attribute, so
+  // the absences below would have been false on the unfixed component instead of
+  // passing because the marker never existed.
+  const HANDLE = 'd="M0 0h12v4l-6 6-6-6V0Z"';           // the pentagon handle in the ruler
+  const BODY_LINE = 'class="absolute top-0 bottom-0 w-px"'; // the vertical line through the lanes
+  const slide = (extra: Record<string, unknown> = {}) =>
+    renderToStaticMarkup(<Timeline mode="slide" height={220} duration={4_000} tracks={[]} {...extra} />);
+
+  it("renders neither the handle nor the body line when there is nothing to seek", () => {
+    const html = slide();
+    // Guard: the ruler chrome IS there, so the two absences below mean something.
+    expect(html).toContain('aria-label="Playhead"');
+    expect(html).not.toContain(HANDLE);
+    expect(html).not.toContain(BODY_LINE);
+  });
+
+  it("brings both back as soon as the slide has a layer", () => {
+    const html = slide({ tracks: [numericTrack] });
+    expect(html).toContain(HANDLE);
+    expect(html).toContain(BODY_LINE);
+  });
+
+  it("keeps the playhead in master view even with no layers — the lanes are the composition", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={4_000} tracks={[]} blocks={[]} baseClips={[]} audioClips={[]} />);
+    expect(html).toContain(HANDLE);
+    expect(html).toContain(BODY_LINE);
   });
 });
