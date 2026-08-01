@@ -1,4 +1,4 @@
-import { AlignCenter, AlignLeft, AlignRight, LayoutGrid, Settings2 } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, Grip, LayoutGrid, Settings2, Sun } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { composaIconSemantics, iconForSemantic } from "./IconSemantics";
@@ -77,6 +77,15 @@ describe("settings icon semantics", () => {
     ] as const) {
       expect(iconForSemantic(semantic)).toBe(composaIconSemantics[semantic]);
     }
+  });
+
+  it("pins the owner's Lucide glyphs for effect blur and spread (#661)", () => {
+    // Blur and Spread previously shipped as literal ⊞/☼ text characters. The owner
+    // named these two Lucide icons; pin them so a later "tidy-up" cannot quietly
+    // swap the glyph, and keep the two fields visually distinguishable.
+    expect(composaIconSemantics["effect-blur"]).toBe(Grip);
+    expect(composaIconSemantics["effect-spread"]).toBe(Sun);
+    expect(composaIconSemantics["effect-blur"]).not.toBe(composaIconSemantics["effect-spread"]);
   });
 
   it("dresses the Wrap flow mode with the grid glyph while keeping it distinct from the Freeform/H/V flow icons (#459/DEC-008)", () => {
