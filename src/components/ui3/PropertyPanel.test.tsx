@@ -184,7 +184,9 @@ describe("Project shell seams", () => {
       onPreviewToggle={() => undefined}
       onShare={() => undefined}
     /></TooltipProvider>);
-    expect(html).toContain(`w-[${PANEL_W}px]`);
+    // PANEL_W now sizes the column directly (RP-5) instead of via a w-[290px]
+    // utility that only coincidentally agreed with the constant.
+    expect(html).toContain(`style="width:${PANEL_W}px"`);
     expect(html).toMatch(/class="flex w-full min-w-0 items-center/);
     // Share button renders in the same contained cluster.
     expect(html).toContain(">Share</span>");

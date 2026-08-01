@@ -16,7 +16,7 @@ import { CirclesFour } from "@phosphor-icons/react";
 import { ProposedSquareText, ProposedTextMargins } from "../../icons/proposed-lucide";
 import {
   PanelSection, PanelFieldRow, PanelSegmentedRow, PanelFullRow, PanelRow,
-  IconButtonRow, PanelActionBtn, PanelEntry, PanelReorderableEntry, ScrollArea, type IconBtn,
+  IconButtonRow, PanelActionBtn, PanelEntry, PanelReorderableEntry, ScrollArea, PANEL_W, type IconBtn,
 } from "./Panel";
 import { Tabs } from "./Tabs";
 import { NumericEditSessionProvider, NumericInput, NumericComboInput, NumericPairInput, InputField, ColorInput, ComboInput, formatNumericDisplay } from "./Input";
@@ -3666,10 +3666,12 @@ export function PropertyPanel(props: PropertyPanelProps) {
         panels (CompositionPanel / AssetsPanel), flipped to a left border since it
         sits to the right of the canvas. No inset ring on top/right/bottom — a single
         border-l against the canvas (Composa#250, analogous to #33). */}
-    {/* w-[290px]: 50px wider than the original 240 (Composa#661 item 3) — at 240
-        the two-column rows clipped most values ("758.46" read as "758…"). Hosts
-        that own a resizable rail still override this with their own width. */}
-    <div data-composa-inspector-surface className={clsx("relative w-[290px] shrink-0 h-full flex flex-col bg-c-bg border-l border-c-border overflow-hidden", className)}>
+    {/* Width comes from PANEL_W, the one right-slot width (RP-5). It used to be a
+        hand-written w-[290px] here and another in SlideInspector, which is how
+        the right-hand panels drifted apart the last time the rail was widened.
+        Hosts that own a resizable rail still override it — a `!w-full` class
+        beats this inline width, same as it beat the utility class before. */}
+    <div data-composa-inspector-surface style={{ width: PANEL_W }} className={clsx("relative shrink-0 h-full flex flex-col bg-c-bg border-l border-c-border overflow-hidden", className)}>
       {/* Multiplayer tools — above the tabs; shared across all modes */}
       <MultiplayerBar
         previewPlaying={previewPlaying}

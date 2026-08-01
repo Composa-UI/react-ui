@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { clsx } from "clsx";
 import { ChevronDown, Play, Contrast, Image as ImageIcon } from "lucide-react";
-import { ScrollArea } from "./Panel";
+import { PANEL_W, ScrollArea } from "./Panel";
 
 // ─── Slide inspector (right panel) ──────────────────────────────────────────────
 // Componentized from the study export (`imports/SlidesTemplate` → SlidesSidebarRight).
@@ -151,9 +151,9 @@ function BackgroundSection() {
 // ── Panel ─────────────────────────────────────────────────────────────────────
 export function SlideInspector() {
   return (
-    // Tracks the element inspector's widened rail (Composa#661 item 3): the two
-    // right-hand inspectors sit in the same slot and must not differ in width.
-    <div className="w-[290px] shrink-0 h-full flex flex-col bg-slides-bg border-l border-slides-hairline overflow-hidden">
+    // PANEL_W, not a copy of it: every panel in the right slot reads the same
+    // constant so widening the rail can't leave one of them behind (RP-5).
+    <div style={{ width: PANEL_W }} className="shrink-0 h-full flex flex-col bg-slides-bg border-l border-slides-hairline overflow-hidden">
       <HeaderDual />
       <SlideTitle />
       <ScrollArea thumbClassName="bg-white">
