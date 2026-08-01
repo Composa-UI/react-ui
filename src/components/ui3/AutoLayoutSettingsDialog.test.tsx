@@ -7,10 +7,16 @@ import { Dropdown } from "./Dropdown";
 import { MenuRow, PopoverMenu } from "./Menu";
 import { Tooltip } from "./Tooltip";
 
-vi.mock("./InspectorDialog", () => ({
-  InspectorDialog: ({ children, ...props }: { children: ReactNode } & Record<string, unknown>) =>
-    <div data-inspector-dialog {...props}>{children}</div>,
-}));
+vi.mock("./InspectorDialog", async () => {
+  // Keep the real placement constants — the anchoring contract is asserted in
+  // AutoLayoutSettingsDialog.anchored.test.tsx against the real InspectorDialog.
+  const actual = await vi.importActual<typeof import("./InspectorDialog")>("./InspectorDialog");
+  return {
+    ...actual,
+    InspectorDialog: ({ children, ...props }: { children: ReactNode } & Record<string, unknown>) =>
+      <div data-inspector-dialog {...props}>{children}</div>,
+  };
+});
 
 vi.mock("./Tooltip", () => ({
   Tooltip: ({ children, ...props }: { children: ReactNode } & Record<string, unknown>) =>
