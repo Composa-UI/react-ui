@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useId, type DragEvent, type MutableRefObje
 import { clsx } from "clsx";
 import { ChevronDown, Eye, EyeOff, Minus } from "lucide-react";
 import { Tooltip } from "./Tooltip";
+import { suppressNativeDragImage } from "./dragImage";
 
 // ─── ScrollArea ───────────────────────────────────────────────────────────────
 // Native scrollbar is fully hidden (takes NO width — content is full-bleed); a thin
@@ -438,7 +439,14 @@ export function PanelReorderableEntry({ id, ids, onReorder, children, className 
     <div
       className={clsx("relative", className)}
       draggable={enabled}
-      onDragStart={event => { isSource.current = true; event.dataTransfer.setData("text/plain", id); event.dataTransfer.effectAllowed = "move"; }}
+      onDragStart={event => {
+        isSource.current = true;
+        event.dataTransfer.setData("text/plain", id);
+        event.dataTransfer.effectAllowed = "move";
+        // No translucent snapshot of the row under the cursor — the insertion
+        // line below is the drop feedback the owner wants (iteration-3).
+        suppressNativeDragImage(event);
+      }}
       onDragEnd={() => { isSource.current = false; setZone(null); }}
       onDragOver={event => {
         if (!enabled || isSource.current) return;
