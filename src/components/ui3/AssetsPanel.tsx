@@ -1,8 +1,9 @@
 import { useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { SidePanel } from "./SidePanel";
 import { clsx } from "clsx";
-import { Upload, Search, Image as ImageIcon, Film, Volume2, Trash2, Plus, Pencil } from "lucide-react";
+import { Upload, Search, Image as ImageIcon, Film, Volume2, Trash2, Plus, Pencil, ChevronRight, Library } from "lucide-react";
 import { Dropdown } from "./Dropdown";
+import { Tabs } from "./Tabs";
 import { FieldShell, InputField } from "./Input";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { Modal, ModalBody, ModalFooter, ModalHeader, MODAL_WIDTHS } from "./Dialog";
@@ -28,6 +29,22 @@ const CAPTION = clsx(FONT, "text-[11px] font-[450] leading-[16px] text-c-text-se
 export type AssetKind = "image" | "video" | "audio";
 export type AssetStatus = "ready" | "uploading" | "error";
 export type AssetFilter = "all" | "images" | "videos" | "audio";
+/** Top-level pane: this project's own media, or shared libraries to discover. */
+export type AssetsPanelTab = "library" | "community";
+
+// Tab ids double as the tabpanel ids so `Tabs` can wire real tab/tabpanel a11y.
+const LIBRARY_PANEL_ID = "composa-assets-library";
+const COMMUNITY_PANEL_ID = "composa-assets-community";
+const ASSET_TABS = [
+  { value: "library", label: "Library", panelId: LIBRARY_PANEL_ID },
+  { value: "community", label: "Community", panelId: COMMUNITY_PANEL_ID },
+];
+
+/** A named grouping of assets inside the Library tab. */
+export interface AssetLibrary {
+  id: string;
+  name: string;
+}
 
 // Type-filter options (shared by the dropdown trigger + its menu). Icons match
 // the per-kind badges; "All" has no icon.
@@ -50,6 +67,7 @@ export interface AssetItem {
   progress?: number;      // 0–100 when status="uploading"
   errorMessage?: string;  // optional upload error detail
   inUseCount?: number;    // project references; deletion requires confirmation when > 0
+  libraryId?: string;     // groups the card under an AssetLibrary section (opt-in)
 }
 
 // ─── Type badge (IMG / VID) ───────────────────────────────────────────────────
@@ -223,6 +241,48 @@ function EmptyState({ onUpload }: { onUpload: () => void }) {
   );
 }
 
+// ─── Community empty state ────────────────────────────────────────────────────
+// Honest placeholder: nothing is shared with this account yet, and the panel has
+// no discovery backend, so there is deliberately NO call to action here — an
+// enabled "Browse community" button would promise a destination that does not
+// exist (Composa#661).
+function CommunityEmptyState() {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center gap-[8px] px-[24px] text-center">
+      <div className="flex items-center justify-center size-[40px] rounded-c-full bg-c-bg-secondary text-c-icon-secondary">
+        <Library size={20} strokeWidth={1.5} />
+      </div>
+      <span className={LABEL}>No community libraries yet</span>
+      <span className={clsx(FONT, "text-[9px] font-[450] leading-[14px] text-c-text-secondary")}>
+        Libraries shared with you will show up here.
+      </span>
+    </div>
+  );
+}
+
+// ─── Library section header ───────────────────────────────────────────────────
+// Label plus a trailing chevron that opens the full list for that one library.
+// The chevron only renders when the host passes `onOpenLibrary` — a permanently
+// visible chevron with nowhere to go is an inert control.
+function LibrarySectionHeader({ name, onOpen }: { name: string; onOpen?: () => void }) {
+  return (
+    <div className="flex items-center gap-[4px] h-[24px] pl-[2px]">
+      <span className={clsx(LABEL, "min-w-0 flex-1 truncate")}>{name}</span>
+      {onOpen && (
+        <button
+          type="button"
+          aria-label={`Open ${name}`}
+          title={`Open ${name}`}
+          onClick={onOpen}
+          className="shrink-0 flex items-center justify-center size-[20px] rounded-c-sm text-c-icon hover:bg-c-bg-hover transition-colors"
+        >
+          <ChevronRight size={14} strokeWidth={2} />
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── Drop-zone overlay ────────────────────────────────────────────────────────
 function DropOverlay() {
   return (
@@ -275,6 +335,16 @@ export interface AssetsPanelProps {
   onWidthChange?: (width: number) => void;
   assets?: AssetItem[];
   title?: string;
+  /** Active top-level tab (controlled). */
+  tab?: AssetsPanelTab;
+  /** Uncontrolled default. Defaults to the project's own Library. */
+  defaultTab?: AssetsPanelTab;
+  onTabChange?: (tab: AssetsPanelTab) => void;
+  /** Named libraries the Library tab groups assets under, via `AssetItem.libraryId`.
+   *  Omit (the default) to render one flat grid, exactly as before. */
+  libraries?: AssetLibrary[];
+  /** Open the full list for one library — renders the section-header chevron. */
+  onOpenLibrary?: (id: string) => void;
   filter?: AssetFilter;
   onFilterChange?: (f: AssetFilter) => void;
   query?: string;
@@ -301,6 +371,11 @@ export function AssetsPanel({
   onWidthChange,
   assets = DEMO_ASSETS,
   title = "Assets",
+  tab,
+  defaultTab = "library",
+  onTabChange,
+  libraries,
+  onOpenLibrary,
   filter,
   onFilterChange,
   query,
@@ -320,6 +395,7 @@ export function AssetsPanel({
   onRetry,
 }: AssetsPanelProps) {
   // Uncontrolled fallbacks so the panel renders standalone.
+  const [tabInner, setTabInner] = useState<AssetsPanelTab>(defaultTab);
   const [filterInner, setFilterInner] = useState<AssetFilter>("all");
   const [queryInner, setQueryInner] = useState("");
   const [selInner, setSelInner] = useState<string | null>("a1");
@@ -331,6 +407,11 @@ export function AssetsPanel({
   const [renameValue, setRenameValue] = useState("");
   const [deleteAsset, setDeleteAsset] = useState<AssetItem | null>(null);
 
+  const activeTab = tab ?? tabInner;
+  const setTab = (next: AssetsPanelTab) => {
+    if (tab === undefined) setTabInner(next);
+    onTabChange?.(next);
+  };
   const activeFilter = filter ?? filterInner;
   const activeQuery = query ?? queryInner;
   const activeSel = selectedId !== undefined ? selectedId : selInner;
@@ -374,6 +455,25 @@ export function AssetsPanel({
     });
   }, [assets, activeFilter, activeQuery]);
 
+  // Group the ALREADY filtered/searched cards, so a section only survives if it
+  // still has a matching asset — a header over an empty grid reads as a bug.
+  // Cards whose libraryId names no known library keep rendering, headerless.
+  const grouped = useMemo(() => {
+    if (!libraries?.length) return null;
+    const buckets = new Map(libraries.map(library => [library.id, [] as AssetItem[]]));
+    const ungrouped: AssetItem[] = [];
+    for (const item of visible) {
+      const bucket = item.libraryId ? buckets.get(item.libraryId) : undefined;
+      (bucket ?? ungrouped).push(item);
+    }
+    return {
+      sections: libraries
+        .map(library => ({ ...library, items: buckets.get(library.id) ?? [] }))
+        .filter(section => section.items.length > 0),
+      ungrouped,
+    };
+  }, [libraries, visible]);
+
   const hasAny = assets.length > 0;
   const insertAsset = (item: AssetItem) => {
     if (item.kind === "video" || item.kind === "audio") onAddToTimeline?.(item.id);
@@ -395,6 +495,27 @@ export function AssetsPanel({
     setRenameAsset(null);
   };
 
+  // One card renderer shared by the flat grid and the per-library sections.
+  const renderCard = (item: AssetItem) => (
+    <AssetCard
+      key={item.id}
+      item={item}
+      selected={activeSel === item.id}
+      onSelect={event => select(item.id, event)}
+      onDoubleClick={() => insertAsset(item)}
+      onInsert={() => insertAsset(item)}
+      insertLabel={item.kind === "video" || item.kind === "audio" ? "Add to timeline" : "Insert on slide"}
+      onDelete={() => requestDelete(item)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        setContextAsset({ item, x: e.clientX, y: e.clientY });
+        onContextMenu?.(item.id, e);
+      }}
+      onRetry={() => onRetry?.(item.id)}
+    />
+  );
+  const renderGrid = (items: AssetItem[]) => <div className="grid grid-cols-2 gap-[8px]">{items.map(renderCard)}</div>;
+
   return (
     <SidePanel width={width} defaultWidth={defaultWidth} onWidthChange={onWidthChange}
       onDragEnter={onDragEnter} onDragOver={event => event.preventDefault()} onDragLeave={onDragLeave} onDrop={onDrop}>
@@ -406,92 +527,96 @@ export function AssetsPanel({
         <IconButton icon={<Upload size={16} strokeWidth={1.75} />} label="Upload" onClick={onUpload} />
       </div>
 
-      {/* Controls — search + type filter */}
-      <div className="shrink-0 flex flex-col gap-[8px] p-[8px] border-b border-c-border">
-        <FieldShell focused={searchFocused} size="medium">
-          <span className="absolute left-0 flex items-center justify-center size-[24px] shrink-0 text-c-icon-secondary pointer-events-none">
-            <Search size={14} strokeWidth={1.75} />
-          </span>
-          <input
-            type="text"
-            value={activeQuery}
-            placeholder="Search assets"
-            onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-            className={clsx(
-              "w-full h-full bg-transparent outline-none pl-[24px] pr-[8px]",
-              FONT, "font-[450] tracking-[0.005em] text-[11px] leading-[16px]",
-              "text-c-text placeholder:text-c-text-tertiary",
-            )}
-          />
-        </FieldShell>
-
-        {/* Type filter — a dropdown (not a segmented control): with Audio added
-            the four options crowd the 240px panel, so a menu-pick reads cleaner.
-            Borderless, label-only trigger matching the top-right canvas-size
-            control (ProjectCanvasSizeControl): no container stroke, no leading
-            icon — just the label + chevron (owner ask #460). */}
-        <PopoverMenu
-          align="left"
-          className="w-fit"
-          trigger={
-            <Dropdown
-              ariaLabel="Filter by type"
-              value={FILTER_LABELS[activeFilter]}
-              stroke={false}
-            />
-          }
-        >
-          {(close) => (
-            <Menu>
-              {FILTER_OPTIONS.map((opt) => (
-                <MenuRow
-                  key={opt.value}
-                  type="checkmark"
-                  selectionRole="radio"
-                  checked={opt.value === activeFilter}
-                  leading={opt.icon}
-                  label={opt.label}
-                  onClick={() => { setFilter(opt.value); close(); }}
-                />
-              ))}
-            </Menu>
-          )}
-        </PopoverMenu>
+      {/* Tabs — this project's own Library vs. Community discovery (Composa#661).
+          Everything below belongs to the active tab, so search/filter/grid never
+          claim to be filtering something they are not. */}
+      <div className="shrink-0 flex items-center px-[8px] py-[6px]">
+        <Tabs tabs={ASSET_TABS} value={activeTab} onChange={value => setTab(value as AssetsPanelTab)} />
       </div>
 
-      {/* Body — grid / empty */}
-      {!hasAny ? (
-        <EmptyState onUpload={() => onUpload?.()} />
-      ) : visible.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center px-[24px] text-center">
-          <span className={CAPTION}>No matching assets</span>
+      {activeTab === "community" ? (
+        <div id={COMMUNITY_PANEL_ID} role="tabpanel" aria-labelledby={`${COMMUNITY_PANEL_ID}-tab`} className="flex-1 min-h-0 flex flex-col">
+          <CommunityEmptyState />
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-[8px]">
-          <div className="grid grid-cols-2 gap-[8px]">
-            {visible.map((item) => (
-              <AssetCard
-                key={item.id}
-                item={item}
-                selected={activeSel === item.id}
-                onSelect={event => select(item.id, event)}
-                onDoubleClick={() =>
-                  insertAsset(item)
-                }
-                onInsert={() => insertAsset(item)}
-                insertLabel={item.kind === "video" || item.kind === "audio" ? "Add to timeline" : "Insert on slide"}
-                onDelete={() => requestDelete(item)}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setContextAsset({ item, x: e.clientX, y: e.clientY });
-                  onContextMenu?.(item.id, e);
-                }}
-                onRetry={() => onRetry?.(item.id)}
+        <div id={LIBRARY_PANEL_ID} role="tabpanel" aria-labelledby={`${LIBRARY_PANEL_ID}-tab`} className="flex-1 min-h-0 flex flex-col">
+        {/* Controls — search + type filter */}
+        <div className="shrink-0 flex flex-col gap-[8px] p-[8px] border-t border-b border-c-border">
+          <FieldShell focused={searchFocused} size="medium">
+            <span className="absolute left-0 flex items-center justify-center size-[24px] shrink-0 text-c-icon-secondary pointer-events-none">
+              <Search size={14} strokeWidth={1.75} />
+            </span>
+            <input
+              type="text"
+              value={activeQuery}
+              placeholder="Search assets"
+              onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              className={clsx(
+                "w-full h-full bg-transparent outline-none pl-[24px] pr-[8px]",
+                FONT, "font-[450] tracking-[0.005em] text-[11px] leading-[16px]",
+                "text-c-text placeholder:text-c-text-tertiary",
+              )}
+            />
+          </FieldShell>
+
+          {/* Type filter — a dropdown (not a segmented control): with Audio added
+              the four options crowd the 240px panel, so a menu-pick reads cleaner.
+              Borderless, label-only trigger matching the top-right canvas-size
+              control (ProjectCanvasSizeControl): no container stroke, no leading
+              icon — just the label + chevron (owner ask #460). */}
+          <PopoverMenu
+            align="left"
+            className="w-fit"
+            trigger={
+              <Dropdown
+                ariaLabel="Filter by type"
+                value={FILTER_LABELS[activeFilter]}
+                stroke={false}
               />
-            ))}
+            }
+          >
+            {(close) => (
+              <Menu>
+                {FILTER_OPTIONS.map((opt) => (
+                  <MenuRow
+                    key={opt.value}
+                    type="checkmark"
+                    selectionRole="radio"
+                    checked={opt.value === activeFilter}
+                    leading={opt.icon}
+                    label={opt.label}
+                    onClick={() => { setFilter(opt.value); close(); }}
+                  />
+                ))}
+              </Menu>
+            )}
+          </PopoverMenu>
+        </div>
+
+        {/* Body — sectioned grid / flat grid / empty */}
+        {!hasAny ? (
+          <EmptyState onUpload={() => onUpload?.()} />
+        ) : visible.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center px-[24px] text-center">
+            <span className={CAPTION}>No matching assets</span>
           </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-[8px]">
+            {grouped ? (
+              <div className="flex flex-col gap-[12px]">
+                {grouped.sections.map(section => (
+                  <section key={section.id} aria-label={section.name} className="flex flex-col gap-[4px]">
+                    <LibrarySectionHeader name={section.name} onOpen={onOpenLibrary ? () => onOpenLibrary(section.id) : undefined} />
+                    {renderGrid(section.items)}
+                  </section>
+                ))}
+                {grouped.ungrouped.length > 0 && renderGrid(grouped.ungrouped)}
+              </div>
+            ) : renderGrid(visible)}
+          </div>
+        )}
         </div>
       )}
 
