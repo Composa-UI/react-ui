@@ -27,6 +27,17 @@ const MODAL_BACKDROP = "rgba(0,0,0,0.4)";
 const FONT = "font-[family-name:var(--composa-font-family)]";
 const TITLE_CLASS = clsx(FONT, "text-[11px] font-[550] leading-[16px] tracking-[0.055px] text-c-text");
 
+// The card surface. Shared by `Modal` (single-card, painted on the Radix
+// Content) and `ModalCard` (stacked, painted per card) so the two can't drift.
+// overflow-hidden clips children (header border, body bg) to the rounded-c-lg
+// radius so square corners don't poke past it. Safe for in-modal
+// menus/tooltips: the DS Menu/Tooltip/inspector overlays all render through a
+// Radix Portal at document.body, so they're never clipped by this container.
+const MODAL_SURFACE = "bg-c-bg rounded-c-lg shadow-c-500 overflow-hidden";
+
+/** Gap between sibling cards in a `stacked` Modal (Figma 332:3 — 218 − 210). */
+export const MODAL_STACK_GAP = 8;
+
 // ─── Modal ────────────────────────────────────────────────────────────────────
 // Wraps Radix Dialog for a11y: focus trap, Escape key, aria-modal, portal.
 //
@@ -41,6 +52,13 @@ interface ModalProps {
   backdrop?: boolean;
   /** Whether clicking the backdrop closes the modal (default true) */
   closeOnBackdrop?: boolean;
+  /**
+   * Float several sibling cards in one column instead of one opaque card.
+   * The container goes transparent and each child must be a `ModalCard`, so
+   * every card keeps its own radius + shadow with `MODAL_STACK_GAP` between
+   * them (Figma 332:3 — share card, then the actions card beneath it).
+   */
+  stacked?: boolean;
   className?: string;
 }
 
@@ -51,6 +69,7 @@ export function Modal({
   width = MODAL_WIDTHS.standard,
   backdrop = true,
   closeOnBackdrop = true,
+  stacked = false,
   className,
 }: ModalProps) {
   const mode = useComposaMode();
@@ -74,25 +93,43 @@ export function Modal({
           className={clsx(
             // Positioning
             "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50",
-            // Surface — overflow-hidden clips children (header border, body bg)
-            // to the rounded-c-lg radius so square corners don't poke past it.
-            // Safe for in-modal menus/tooltips: the DS Menu/Tooltip/inspector
-            // overlays all render through a Radix Portal at document.body, so
-            // they're never clipped by this container.
-            "bg-c-bg rounded-c-lg shadow-c-500 overflow-hidden",
+            // Surface — stacked defers it to each ModalCard so the gap between
+            // cards shows the page through, rather than one tall card.
+            !stacked && MODAL_SURFACE,
             // Layout
             "flex flex-col outline-none",
             // Height constraint — footer pins, body scrolls
             "max-h-[90vh]",
             className,
           )}
-          style={{ width }}
+          style={stacked ? { width, gap: MODAL_STACK_GAP } : { width }}
           aria-modal
         >
           {children}
         </RadixDialog.Content>
       </RadixDialog.Portal>
     </RadixDialog.Root>
+  );
+}
+
+// ─── ModalCard ────────────────────────────────────────────────────────────────
+// One floating card inside a `stacked` Modal. Carries the surface that a
+// single-card Modal paints on its own container, so a stacked dialog reads as
+// separate floating cards rather than one card with a divider.
+//
+// min-h-0 lets a card holding a scrollable ModalBody shrink under the Modal's
+// max-height; pass `shrink-0` for cards that must always show in full.
+
+interface ModalCardProps {
+  children: ReactNode;
+  className?: string;
+}
+
+export function ModalCard({ children, className }: ModalCardProps) {
+  return (
+    <div data-composa-modal-card className={clsx(MODAL_SURFACE, "flex flex-col min-h-0", className)}>
+      {children}
+    </div>
   );
 }
 

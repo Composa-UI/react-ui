@@ -1,7 +1,7 @@
 import { forwardRef, useState, type ComponentPropsWithoutRef, type ReactNode } from "react";
-import { Link, Users, ChevronRight, ChevronDown } from "lucide-react";
+import { Link, Users, ChevronRight, ChevronDown, Download } from "lucide-react";
 import { clsx } from "clsx";
-import { Modal, ModalHeader, ModalBody, MODAL_WIDTHS } from "./Dialog";
+import { Modal, ModalCard, ModalHeader, ModalBody, MODAL_WIDTHS } from "./Dialog";
 import { Button } from "./Button";
 import { InputField } from "./Input";
 import { Avatar, type AvatarColor } from "./Avatar";
@@ -121,12 +121,14 @@ type ShareRowProps = {
   trailing?: ReactNode;
   interactive?: boolean;
   ariaLabel?: string;
+  /** What the row opens — access rows open menus, the actions rows open dialogs. */
+  haspopup?: "menu" | "dialog";
 } & Omit<ComponentPropsWithoutRef<"button">, "children" | "ref">;
 
 // forwardRef + prop spread so the interactive variant can serve as a Radix
 // PopoverMenu `asChild` trigger (a plain component would swallow the ref/props).
 const ShareRow = forwardRef<HTMLButtonElement, ShareRowProps>(function ShareRow(
-  { leading, children, trailing, interactive = false, ariaLabel, ...rest },
+  { leading, children, trailing, interactive = false, ariaLabel, haspopup = "menu", ...rest },
   ref,
 ) {
   const inner = (
@@ -147,7 +149,7 @@ const ShareRow = forwardRef<HTMLButtonElement, ShareRowProps>(function ShareRow(
         ref={ref}
         type="button"
         aria-label={ariaLabel}
-        aria-haspopup="menu"
+        aria-haspopup={haspopup}
         className={clsx(
           "flex items-center gap-[8px] h-[36px] w-full pl-[6px] pr-[8px] rounded-c-md text-left",
           "hover:bg-c-bg-hover outline-none focus-visible:ring-1 focus-visible:ring-c-focus-ring",
@@ -196,6 +198,14 @@ export interface ShareModalProps {
   pendingInvitations?: PendingShareInvitation[];
   /** When omitted pending invitations render as truthful, non-interactive rows. */
   onRevokeInvitation?: (id: string) => void;
+  /**
+   * Opens the host's export flow. Share and export are siblings, not the same
+   * control (RP-3): supplying this adds an actions card beneath the share card
+   * with an Export cell, leaving the invite flow untouched. Omit it and no
+   * actions card renders at all — the DS owns no export contract of its own, so
+   * an unwired cell would promise a feature the host cannot deliver.
+   */
+  onExport?: () => void;
 }
 
 // Placeholder scope options — no real permissions model yet (owner: "we have no
@@ -224,6 +234,7 @@ export function ShareModal({
   onRemovePerson,
   pendingInvitations = [],
   onRevokeInvitation,
+  onExport,
 }: ShareModalProps) {
   const [invite, setInvite] = useState("");
 
@@ -249,8 +260,8 @@ export function ShareModal({
     setInvite("");
   };
 
-  return (
-    <Modal open={open} onClose={onClose} width={MODAL_WIDTHS.standard} backdrop>
+  const shareCard = (
+    <>
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <ModalHeader
         title={title ?? HEADER_TITLE[variant]}
@@ -396,6 +407,42 @@ export function ShareModal({
           </div>
         </div>
       </ModalBody>
+    </>
+  );
+
+  // Without an export handler there is nothing to put in a second card, so keep
+  // the plain single-card modal every existing host already renders.
+  if (!onExport) {
+    return (
+      <Modal open={open} onClose={onClose} width={MODAL_WIDTHS.standard} backdrop>
+        {shareCard}
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} width={MODAL_WIDTHS.standard} backdrop stacked>
+      <ModalCard>{shareCard}</ModalCard>
+
+      {/* ── Actions card ───────────────────────────────────────────────────── */}
+      {/* A second floating card beneath share (Figma 332:87), holding the same
+          36px cells as the share card's rows so labels line up across the gap.
+          Export is a peer of sharing, not a rename of it — the Share button
+          still opens this invite flow. */}
+      <ModalCard className="shrink-0">
+        <div className="flex flex-col px-[16px] py-[8px]">
+          <ShareRow
+            interactive
+            haspopup="dialog"
+            ariaLabel="Export"
+            onClick={onExport}
+            leading={<Download size={16} strokeWidth={1.5} />}
+            trailing={<ChevronRight size={12} strokeWidth={2} className="text-c-icon-secondary" />}
+          >
+            <span className={clsx(LABEL, "text-c-text truncate")}>Export</span>
+          </ShareRow>
+        </div>
+      </ModalCard>
     </Modal>
   );
 }

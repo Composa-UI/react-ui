@@ -17,7 +17,9 @@ const exportSettings = [{ id: "e1", scale: 1, suffix: "", format: "PNG" as const
 
 const markup = () =>
   renderToStaticMarkup(
-    <PropertyPanel mode="element" exportSettings={exportSettings} onExportSettingsChange={() => undefined} />,
+    // No onExportSettingsChange: PropertyPanel has no such prop (it takes
+    // onAdd/onRemove/onUpdateExportSetting), so it only broke `tsc` on main.
+    <PropertyPanel mode="element" exportSettings={exportSettings} />,
   );
 
 describe("export row", () => {
