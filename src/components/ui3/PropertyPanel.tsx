@@ -4,13 +4,13 @@ import {
   RotateCw, FlipHorizontal2, FlipVertical2,
   Link2, Link2Off, MoreHorizontal,
   Maximize2, Minimize2, Plus, Eye,
-  Rows2, Columns,
+  Columns,
   BookOpen,
   Crosshair, Grid3x3, ExternalLink, Unlink,
   Minus, EyeOff, AlignJustify, Maximize, ChevronDown, Ruler,
   MoveHorizontal, MoveVertical, Play, Pause, MonitorPlay,
   Image as ImageIcon, Clock, SquareSquare,
-  ArrowRightFromLine, Columns2, Grid2x2,
+  ArrowRightFromLine, Grid2x2,
 } from "lucide-react";
 import { CirclesFour } from "@phosphor-icons/react";
 import { ProposedSquareText, ProposedTextMargins } from "../../icons/proposed-lucide";
@@ -34,6 +34,7 @@ import { Button } from "./Button";
 import { Tooltip } from "./Tooltip";
 import { EffectDetailsDialog, type EffectDetailsValue } from "./EffectDetailsDialog";
 import { AutoLayoutSettingsDialog } from "./AutoLayoutSettingsDialog";
+import { GridSettingsDialog } from "./GridSettingsDialog";
 import {
   StrokeSettingsDialog,
   type StrokeCap,
@@ -1250,77 +1251,38 @@ function LayoutAutoSection({
 }
 
 // ─── Section: Layout — Grid (grid-and-wrap-spec §3 / §5 Reading A) ─────────────
-// FLAGGED FOR OWNER REVIEW — track-editor layout choices (see PR body):
-//  • Grid is a DISTINCT layout type (Reading A): entered from the "Grid" action in
-//    the plain-frame / auto-layout Layout header; its own section replaces the flow
-//    controls. Wrap and Grid never coexist.
-//  • Columns and Rows are each an explicit vertical list of track editors; each track
-//    is a NumericComboInput whose menu picks Fixed(px)/Hug (no `fr` — Phase B). A
-//    per-track "–" removes; an "Add column/row" button appends a Hug track.
-//  • Two gaps (Column gap / Row gap) reuse the wrap section's linked-pair idiom.
-//  • Item alignment reuses the 3×3 AlignmentControl (justify/align items → cell
-//    placement). `stretch` is NOT on the 3×3 — it is reached via a child's Fill
-//    sizing (Phase A). Content alignment is a second 3×3 (justify/align content →
-//    track-block placement in a larger frame). Owner may prefer a distribute-style
-//    control; the mapping to the engine model is the load-bearing part.
+// Grid is a DISTINCT layout type (Reading A) and the fourth Flow segment. Wrap and
+// Grid never coexist; wrap stays a horizontal-only modifier (RP-15, confirmed).
+//
+// RP-16 restructure. The first pass showed the whole grid model inline and the
+// owner rejected it on two counts:
+//  1. "we just duplicated alignment picker into 'align items' and 'align content'.
+//     Wrong. The change is simpler when it's grid — the alignment picker changes."
+//     So there is now exactly ONE alignment picker, in the SAME "Alignment and gap"
+//     row the auto-layout section uses. Only its CONTENT changes: on grid it writes
+//     justifyItems/alignItems (cell placement) instead of the frame align value.
+//     `stretch` is still not on the 3×3 — it is reached via a child's Fill sizing.
+//  2. "we just did too much by showing the columns and grid inline rather than
+//     externalising it to a menu or a dedicated inspector." So the per-track
+//     Column/Row editors and the secondary content alignment moved out to
+//     GridSettingsDialog, reached from the same action gutter that holds the
+//     auto-layout settings trigger.
+//
+// The two gaps stay inline: they are the direct analogue of auto-layout's Gap /
+// Row gap pair, which is inline. They are also no longer yoked by a link toggle —
+// same reasoning already applied to the wrap gaps (Composa#661 item 2): the link
+// silently rewrote the other axis while you typed, and the gutter it sat in is now
+// the settings trigger's.
 
 const gridItemsCode = (grid: ElementGridSettings): AlignmentValue => {
   const h = grid.justifyItems === "center" ? "c" : grid.justifyItems === "end" ? "r" : "l";
   const v = grid.alignItems === "center" ? "m" : grid.alignItems === "end" ? "b" : "t";
   return `${v}${h}` as AlignmentValue;
 };
-const gridContentCode = (grid: ElementGridSettings): AlignmentValue => {
-  const h = grid.justifyContent === "center" ? "c" : grid.justifyContent === "end" ? "r" : "l";
-  const v = grid.alignContent === "center" ? "m" : grid.alignContent === "end" ? "b" : "t";
-  return `${v}${h}` as AlignmentValue;
-};
 const codeToItems = (code: AlignmentValue) => ({
   justifyItems: (code[1] === "c" ? "center" : code[1] === "r" ? "end" : "start") as GridItemAlign,
   alignItems: (code[0] === "m" ? "center" : code[0] === "b" ? "end" : "start") as GridItemAlign,
 });
-const codeToContent = (code: AlignmentValue) => ({
-  justifyContent: (code[1] === "c" ? "center" : code[1] === "r" ? "end" : "start") as GridContentAlign,
-  alignContent: (code[0] === "m" ? "center" : code[0] === "b" ? "end" : "start") as GridContentAlign,
-});
-
-function GridTrackEditor({ axis, tracks, onChange }: { axis: "row" | "column"; tracks: ElementGridTrack[]; onChange: (tracks: ElementGridTrack[]) => void }) {
-  const label = axis === "column" ? "Column" : "Row";
-  const setTrack = (index: number, next: ElementGridTrack) => onChange(tracks.map((track, i) => (i === index ? next : track)));
-  const removeTrack = (index: number) => { if (tracks.length <= 1) return; onChange(tracks.filter((_, i) => i !== index)); };
-  const trackMenu = (index: number, track: ElementGridTrack) => (close: () => void) => (
-    <Menu>
-      <MenuRow type="checkmark" label="Fixed" checked={track.mode === "fixed"} onClick={() => { setTrack(index, { mode: "fixed", size: track.size || 100 }); close(); }} />
-      <MenuRow type="checkmark" label="Hug" checked={track.mode === "hug"} onClick={() => { setTrack(index, { mode: "hug", size: track.size }); close(); }} />
-    </Menu>
-  );
-  return (
-    <div className="flex flex-col gap-[4px]" role="group" aria-label={`${label} tracks`}>
-      {tracks.map((track, index) => (
-        <div key={index} className="flex items-center gap-[4px]">
-          <div className="flex-1 min-w-0">
-            <NumericComboInput
-              dataMode={track.mode}
-              ariaLabel={`${label} ${index + 1} size`}
-              dropdownAriaLabel={`${label} ${index + 1} sizing mode: ${track.mode === "hug" ? "Hug" : "Fixed"}`}
-              iconLead={axis === "column" ? <Columns2 size={16} strokeWidth={1.5} /> : <Rows2 size={16} strokeWidth={1.5} />}
-              // Hug shows a "Hug" idle label but stays type-to-convert (Figma parity):
-              // typing a px value on a hug track atomically switches it to Fixed.
-              idleLabel={track.mode === "hug" ? "Hug" : undefined}
-              value={track.mode === "fixed" ? track.size : undefined}
-              defaultValue={track.size || 100}
-              onChange={size => setTrack(index, { mode: "fixed", size })}
-              min={0}
-              suffix="px"
-              menu={trackMenu(index, track)}
-              className="w-full"
-            />
-          </div>
-          <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label={`Remove ${label.toLowerCase()} ${index + 1}`} disabled={tracks.length <= 1} onClick={() => removeTrack(index)} />
-        </div>
-      ))}
-    </div>
-  );
-}
 
 interface LayoutGridProps {
   width?: number; height?: number;
@@ -1345,22 +1307,12 @@ function LayoutGridSection({
   sizing, spatialSelectionLayout,
   onLayoutChange, onPaddingChange, onClipContentChange,
 }: LayoutGridProps) {
-  const [gapsLinked, setGapsLinked] = useState(grid.rowGap === grid.columnGap);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
   const emitGrid = (patch: Partial<ElementGridSettings>) => onLayoutChange?.({ grid: { ...grid, ...patch } });
-  const emitColumnGap = (value: number) => {
-    const next = Math.max(0, value);
-    emitGrid(gapsLinked ? { columnGap: next, rowGap: next } : { columnGap: next });
-  };
-  const emitRowGap = (value: number) => {
-    const next = Math.max(0, value);
-    emitGrid(gapsLinked ? { columnGap: next, rowGap: next } : { rowGap: next });
-  };
-  const toggleGapsLinked = () => {
-    const next = !gapsLinked;
-    setGapsLinked(next);
-    if (next && grid.columnGap !== grid.rowGap) emitGrid({ rowGap: grid.columnGap });
-  };
+  // Each gap edits only its own axis (Composa#661 item 2) — see the section note.
+  const emitColumnGap = (value: number) => emitGrid({ columnGap: Math.max(0, value) });
+  const emitRowGap = (value: number) => emitGrid({ rowGap: Math.max(0, value) });
   // Grid is the fourth Flow segment (Composa#661), so this section renders the
   // same control — otherwise choosing Grid made the selector vanish and the only
   // way back out was the header's "Remove grid" action.
@@ -1387,53 +1339,36 @@ function LayoutGridSection({
         </div>
       </div>
 
-      {/* Columns */}
-      <div className="flex items-start gap-[8px] px-[16px] pt-[8px]">
-        <div className="flex-1 min-w-0">
-          <div className={subLabel}>Columns</div>
-          <GridTrackEditor axis="column" tracks={grid.columns} onChange={columns => emitGrid({ columns })} />
-        </div>
-        <div className="shrink-0 pt-[17px]">
-          <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add column" onClick={() => emitGrid({ columns: [...grid.columns, { mode: "hug", size: 100 }] })} />
-        </div>
-      </div>
-
-      {/* Rows */}
-      <div className="flex items-start gap-[8px] px-[16px] pt-[8px]">
-        <div className="flex-1 min-w-0">
-          <div className={subLabel}>Rows</div>
-          <GridTrackEditor axis="row" tracks={grid.rows} onChange={rows => emitGrid({ rows })} />
-        </div>
-        <div className="shrink-0 pt-[17px]">
-          <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add row" onClick={() => emitGrid({ rows: [...grid.rows, { mode: "hug", size: 100 }] })} />
-        </div>
-      </div>
-
-      {/* Two gaps — column + row, linked idiom (same as wrap's two gaps). */}
-      <div role="group" aria-label="Grid gaps" className="flex items-start gap-[8px] px-[16px] pt-[8px]">
-        <div className="flex-1 min-w-0">
-          <div className={subLabel}>Column gap</div>
-          <NumericInput ariaLabel="Column gap" iconLead={<AutoLayoutSpacingIcon kind="gap" axis="horizontal" />} value={grid.columnGap} defaultValue={grid.columnGap} onChange={emitColumnGap} min={0} suffix="px" className="w-full" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className={subLabel}>Row gap</div>
-          <NumericInput ariaLabel="Row gap" iconLead={<AutoLayoutSpacingIcon kind="gap" axis="vertical" />} value={grid.rowGap} defaultValue={grid.rowGap} onChange={emitRowGap} min={0} suffix="px" className="w-full" />
-        </div>
-        <div className="shrink-0 pt-[17px]">
-          <PanelActionBtn icon={gapsLinked ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />} label={gapsLinked ? "Unlink column and row gap" : "Link column and row gap"} active={gapsLinked} onClick={toggleGapsLinked} />
-        </div>
-      </div>
-
-      {/* Alignment — item placement within cells (left) and track-block placement
-          within the frame (right). Two 3×3 controls (flagged). */}
-      <div className="flex items-start gap-[16px] px-[16px] pt-[8px] pb-[4px]">
+      {/* Alignment and gap — structurally the SAME row as the auto-layout section's
+          (one alignment picker, the gap column, the settings gutter). Only the
+          picker's meaning changes on grid: it places items in their cells. */}
+      <div role="group" aria-label="Alignment and gap" className="flex items-start gap-[8px] px-[16px] pt-[8px] pb-[4px]">
         <div className="shrink-0">
-          <div className={subLabel}>Align items</div>
-          <AlignmentControl value={gridItemsCode(grid)} onChange={code => emitGrid(codeToItems(code))} />
+          <div className={subLabel}>Alignment</div>
+          <AlignmentControl ariaLabel="Grid alignment" value={gridItemsCode(grid)} onChange={code => emitGrid(codeToItems(code))} />
         </div>
-        <div className="shrink-0">
-          <div className={subLabel}>Align content</div>
-          <AlignmentControl value={gridContentCode(grid)} onChange={code => emitGrid(codeToContent(code))} />
+        <div className="flex-1 min-w-0 flex flex-col gap-[4px]">
+          <div>
+            <div className={subLabel}>Column gap</div>
+            <NumericInput ariaLabel="Column gap" iconLead={<AutoLayoutSpacingIcon kind="gap" axis="horizontal" />} value={grid.columnGap} defaultValue={grid.columnGap} onChange={emitColumnGap} min={0} suffix="px" className="w-full" />
+          </div>
+          <div>
+            <div className={subLabel}>Row gap</div>
+            <NumericInput ariaLabel="Row gap" iconLead={<AutoLayoutSpacingIcon kind="gap" axis="vertical" />} value={grid.rowGap} defaultValue={grid.rowGap} onChange={emitRowGap} min={0} suffix="px" className="w-full" />
+          </div>
+        </div>
+        <div className="shrink-0 pt-[17px]">
+          <GridSettingsDialog
+            open={settingsOpen}
+            grid={grid}
+            trigger={<PanelActionBtn
+              icon={<SettingsIcon data-icon-semantic="settings" size={16} strokeWidth={1.5} />}
+              label="Grid settings"
+              onClick={() => setSettingsOpen(true)}
+            />}
+            onChange={emitGrid}
+            onClose={() => setSettingsOpen(false)}
+          />
         </div>
       </div>
 

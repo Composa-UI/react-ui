@@ -40,6 +40,11 @@ export const TYPE_SETTINGS_INSPECTOR_SIDE_OFFSET = 8;
 // to the inspector surface's LEFT edge gives the approved 8px gutter regardless
 // of trigger position or panel width.
 export const AUTO_LAYOUT_SETTINGS_INSPECTOR_SIDE_OFFSET = 8;
+// The Grid settings trigger occupies the same Alignment/Gap action gutter as the
+// Auto Layout one, so it anchors identically. It exists as its own constant
+// rather than reusing the auto-layout name because the two triggers are separate
+// surfaces that could diverge; sharing the name would hide that.
+export const GRID_SETTINGS_INSPECTOR_SIDE_OFFSET = 8;
 export const INSPECTOR_DIALOG_DRAG_HANDLE_SELECTOR = "[data-composa-inspector-dialog-drag-handle]";
 
 export interface InspectorDialogProps {
