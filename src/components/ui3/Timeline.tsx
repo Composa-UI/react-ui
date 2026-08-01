@@ -1200,7 +1200,16 @@ function Transport({ current, duration, mode, playing, loop, autoKeyframe = fals
         <Tooltip label="Auto-keyframe">
           <button aria-label="Auto-keyframe" aria-pressed={autoKeyframe} onClick={() => onAutoKeyframeChange(!autoKeyframe)}
             className={clsx("size-[24px] rounded-c-md flex items-center justify-center hover:bg-c-bg-hover", autoKeyframe ? "text-[#ff3b30]" : "text-c-icon")}>
-            <ProposedDiamondCircle size={14} strokeWidth={1.5} className={clsx(autoKeyframe && "fill-current")} />
+            {/* Armed = record dot INSIDE the keyframe diamond, so the fill is scoped to the
+                inner <circle> only (owner: "in the fill state of the shape only the circle
+                should be filled"). A bare `fill-current` is CSS and so beats lucide's
+                `fill="none"` presentation attribute for BOTH children — the closed diamond
+                path then fills solid and swallows the circle. Keying the variant on the
+                ELEMENT NAME rather than a class of ours keeps this working verbatim after
+                lucide#4615 merges and ProposedDiamondCircle becomes the real DiamondCircle,
+                which emits the same `<circle>` child. A fill-rule cannot express this: even-odd
+                only applies between subpaths of one path, and these are two sibling elements. */}
+            <ProposedDiamondCircle size={14} strokeWidth={1.5} className={clsx(autoKeyframe && "[&>circle]:fill-current")} />
           </button>
         </Tooltip>
       )}

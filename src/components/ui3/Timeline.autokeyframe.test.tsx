@@ -9,7 +9,7 @@ import { Timeline } from "./Timeline";
 // NOT the plain `circle` it shipped with. Assert the class lucide stamps on the svg,
 // scoped to the button, so a regression back to `Circle` — or to any other glyph —
 // goes red here rather than only in a screenshot.
-function autoKeyframeIconClass(armed: boolean): string {
+function autoKeyframeIcon(armed: boolean): { classes: string[]; hasDirectCircleChild: boolean } {
   let renderer: ReturnType<typeof create>;
   act(() => {
     renderer = create(
@@ -21,9 +21,24 @@ function autoKeyframeIconClass(armed: boolean): string {
   );
   // Assert the container first — a missing button would make every absence below vacuous.
   expect(buttons).toHaveLength(1);
-  const className = String(buttons[0].findByType("svg").props.className);
+  const svg = buttons[0].findByType("svg");
+  // Split into TOKENS. A substring match cannot tell `fill-current` (fills the whole svg,
+  // so the closed diamond path goes solid and swallows the circle) apart from
+  // `[&>circle]:fill-current` (fills the inner dot only) — the former CONTAINS the latter's
+  // tail, so `toContain("fill-current")` stays green on exactly the regression we are guarding.
+  const classes = String(svg.props.className ?? "").split(/\s+/).filter(Boolean);
+  // The armed variant is keyed on the ELEMENT NAME `circle` as a DIRECT child of the svg.
+  // Pin that the glyph really renders one, or the selector would have no target and the
+  // armed state would silently render with no fill at all.
+  const hasDirectCircleChild = (svg.props.children as unknown[])
+    .flat(Infinity)
+    .some(child => !!child && typeof child === "object" && (child as { type?: unknown }).type === "circle");
   act(() => renderer!.unmount());
-  return className;
+  return { classes, hasDirectCircleChild };
+}
+
+function autoKeyframeIconClass(armed: boolean): string {
+  return autoKeyframeIcon(armed).classes.join(" ");
 }
 
 describe("Timeline auto-keyframe entry point (LT-1)", () => {
@@ -36,8 +51,25 @@ describe("Timeline auto-keyframe entry point (LT-1)", () => {
     expect(className).not.toContain("lucide-circle");
   });
 
-  it("keeps the armed fill treatment on the swapped glyph", () => {
-    expect(autoKeyframeIconClass(true)).toContain("fill-current");
-    expect(autoKeyframeIconClass(false)).not.toContain("fill-current");
+  // Owner's answer on the LT-1 follow-on: "in the fill state of the shape only the circle
+  // should be filled". A bare `fill-current` is CSS and therefore beats lucide's
+  // `fill="none"` PRESENTATION attribute for both children, so the closed diamond path
+  // fills solid and the circle vanishes into it — verified in a real browser, not inferred.
+  it("fills ONLY the inner circle when armed, never the whole glyph", () => {
+    const armed = autoKeyframeIcon(true);
+
+    expect(armed.hasDirectCircleChild).toBe(true);
+    expect(armed.classes).toContain("[&>circle]:fill-current");
+    // Exact-token absence: this is the assertion that goes red on a regression back to a
+    // whole-svg fill, which a substring check could not catch.
+    expect(armed.classes).not.toContain("fill-current");
+  });
+
+  it("applies no fill at all when idle", () => {
+    const idle = autoKeyframeIcon(false);
+
+    expect(idle.hasDirectCircleChild).toBe(true);
+    expect(idle.classes).not.toContain("fill-current");
+    expect(idle.classes).not.toContain("[&>circle]:fill-current");
   });
 });
