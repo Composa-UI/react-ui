@@ -1,6 +1,7 @@
 import { AlignCenter, AlignLeft, AlignRight, Circle, Grip, LayoutGrid, Settings2, Sun } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { ProposedLayoutWrap } from "../../icons/proposed-lucide";
 import { composaIconSemantics, iconForSemantic } from "./IconSemantics";
 import { PropertyPanel } from "./PropertyPanel";
 import { AnimatePanel } from "./AnimatePanel";
@@ -91,14 +92,35 @@ describe("settings icon semantics", () => {
     expect(composaIconSemantics["effect-blur"]).not.toBe(composaIconSemantics["effect-spread"]);
   });
 
-  it("dresses the Wrap flow mode with the grid glyph while keeping it distinct from the Freeform/H/V flow icons (#459/DEC-008)", () => {
-    // Wrap is Composa's single multi-line auto-layout *mode* (not a Grid
-    // document mode). Per owner #459 its flow cell uses the Lucide grid glyph
-    // because a wrapped layout reads as a grid; the semantic name stays "wrap".
-    expect(composaIconSemantics["layout-wrap"]).toBe(LayoutGrid);
+  it("stops Wrap and Grid wearing the same grid glyph in the Flow row ('Grid icon unchanged')", () => {
+    // #86/#459 dressed the Wrap cell in Lucide's LayoutGrid as a stand-in from
+    // before Grid existed; grid-and-wrap-spec §1(c) calls that borrow "a label
+    // papering over the absence of both a real two-gap wrap *and* a real grid" and
+    // folds "the #86 glyph choice" into the grid work. Grid is now its own Flow
+    // segment wearing Grid2x2, so the borrow put two near-identical grid glyphs in
+    // one row. Wrap has its own wrapped-flow glyph; the two must stay distinct and
+    // neither may fall back to Lucide's LayoutGrid.
+    expect(composaIconSemantics["layout-wrap"]).toBe(ProposedLayoutWrap);
+    expect(composaIconSemantics["layout-wrap"]).not.toBe(composaIconSemantics["layout-grid"]);
+    expect(composaIconSemantics["layout-wrap"]).not.toBe(LayoutGrid);
+    expect(composaIconSemantics["layout-grid"]).not.toBe(LayoutGrid);
+    // …and Wrap still reads as one of the Flow set without colliding with it.
     expect(composaIconSemantics["layout-wrap"]).not.toBe(composaIconSemantics["layout-freeform"]);
     expect(composaIconSemantics["layout-wrap"]).not.toBe(composaIconSemantics["layout-horizontal"]);
     expect(composaIconSemantics["layout-wrap"]).not.toBe(composaIconSemantics["layout-vertical"]);
+  });
+
+  it("draws the Wrap toggle with the wrapped-flow glyph in the auto-layout Flow row", () => {
+    // Reaching the UI, not just the map: the Wrap toggle only exists on Horizontal.
+    const horizontal = renderToStaticMarkup(<PropertyPanel elementType="frame-auto" layout={{
+      mode: "horizontal", gap: 12, padding: { top: 0, right: 0, bottom: 0, left: 0 },
+      align: "mc", widthMode: "fixed", heightMode: "fixed", clipsContent: false,
+    }} onLayoutChange={() => undefined} />);
+    const wrapToggle = settingsTrigger(horizontal, "Wrap");
+    expect(wrapToggle, "Wrap toggle").toBeTruthy();
+    expect(wrapToggle).toContain('data-icon-semantic="layout-wrap"');
+    expect(wrapToggle).toContain("lucide-proposed-layout-wrap");
+    expect(wrapToggle).not.toContain("lucide-layout-grid");
   });
 
   it("wires Typography horizontal alignment to paragraph text-align glyphs, distinct from the vertical group and the object-align row (#495)", () => {
