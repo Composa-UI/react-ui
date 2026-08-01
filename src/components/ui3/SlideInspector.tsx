@@ -151,7 +151,9 @@ function BackgroundSection() {
 // ── Panel ─────────────────────────────────────────────────────────────────────
 export function SlideInspector() {
   return (
-    <div className="w-[240px] shrink-0 h-full flex flex-col bg-slides-bg border-l border-slides-hairline overflow-hidden">
+    // Tracks the element inspector's widened rail (Composa#661 item 3): the two
+    // right-hand inspectors sit in the same slot and must not differ in width.
+    <div className="w-[290px] shrink-0 h-full flex flex-col bg-slides-bg border-l border-slides-hairline overflow-hidden">
       <HeaderDual />
       <SlideTitle />
       <ScrollArea thumbClassName="bg-white">

@@ -20,6 +20,27 @@ const MAX_VISIBLE_ROWS = 60;
 
 /* ─── Value contract ─────────────────────────────────────────────────────── */
 
+/** One selectable step on a family's weight axis. */
+export interface FontWeightOption {
+  /** CSS numeric weight, 100–900. */
+  value: number;
+  /** Menu label, e.g. "Semibold". */
+  label: string;
+}
+
+/**
+ * Weight roster the Typography weight menu falls back to when neither the
+ * selected family nor the host supplies one. These four are the weights the
+ * inspector has always offered; keeping them as the default means a host that
+ * knows nothing about weight axes sees exactly the previous behaviour.
+ */
+export const DEFAULT_FONT_WEIGHTS: ReadonlyArray<FontWeightOption> = [
+  { value: 400, label: "Regular" },
+  { value: 500, label: "Medium" },
+  { value: 600, label: "Semibold" },
+  { value: 700, label: "Bold" },
+];
+
 export interface FontEntry {
   /** Display name and selection key. */
   name: string;
@@ -27,6 +48,14 @@ export interface FontEntry {
   stack: string;
   /** Provenance — drives lazy webfont loading (only "google" needs a stylesheet). */
   source?: "bundled" | "google" | "local";
+  /**
+   * Weights this family actually supports, ascending. The UI package cannot
+   * derive this — neither the bundled Google catalog nor the Local Font Access
+   * roster carries axis metadata — so the host supplies it per family and the
+   * weight menu presents exactly these. Omitted ⇒ the menu falls back to the
+   * host-wide roster, then to {@link DEFAULT_FONT_WEIGHTS}.
+   */
+  weights?: ReadonlyArray<FontWeightOption>;
 }
 
 /**
