@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
 import { clsx } from "clsx";
-import { Play, Pause, Square, Circle, Diamond, Repeat, PanelBottomClose, PanelBottomOpen, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, Layers, SquarePlay, AudioLines } from "lucide-react";
+import { Play, Pause, Square, Diamond, Repeat, PanelBottomClose, PanelBottomOpen, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, Layers, SquarePlay, AudioLines } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { collectAggregateKeyframes, createTimelineEdgeDragController, formatMasterRulerTick, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineAnchorRatioAtX, timelineDragDeltaMs, timelinePointerPanDelta, timelineScrollbarPan, timelineScrollbarThumb, timelineScrollTop, timelineViewportChanged, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
@@ -8,6 +8,7 @@ import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSel
 import { ScrollArea, IconButtonRow, type IconBtn } from "./Panel";
 import { Menu, MenuRow } from "./Menu";
 import { Tooltip } from "./Tooltip";
+import { ProposedDiamondCircle } from "../../icons/proposed-lucide";
 import { NumericInput } from "./Input";
 import { useComposaMode } from "./useComposaMode";
 import { EASING_PRESETS, easingControlPoints, easingPresetLabel, easingSvgPath, type EasingPreset, type NamedEasingPreset } from "./easing";
@@ -1195,7 +1196,7 @@ function Transport({ current, duration, mode, playing, loop, autoKeyframe = fals
         <Tooltip label="Auto-keyframe">
           <button aria-label="Auto-keyframe" aria-pressed={autoKeyframe} onClick={() => onAutoKeyframeChange(!autoKeyframe)}
             className={clsx("size-[24px] rounded-c-md flex items-center justify-center hover:bg-c-bg-hover", autoKeyframe ? "text-[#ff3b30]" : "text-c-icon")}>
-            <Circle size={14} strokeWidth={1.5} className={clsx(autoKeyframe && "fill-current")} />
+            <ProposedDiamondCircle size={14} strokeWidth={1.5} className={clsx(autoKeyframe && "fill-current")} />
           </button>
         </Tooltip>
       )}

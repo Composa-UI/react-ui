@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ProposedAngle,
   ProposedArrowUpDownToLine,
+  ProposedDiamondCircle,
   ProposedGapHorizontal,
   ProposedGapVertical,
   ProposedLayoutFreeform,
@@ -47,6 +48,7 @@ const icons = [
   ProposedLineHeight,
   ProposedSquareText,
   ProposedTextMargins,
+  ProposedDiamondCircle,
 ];
 
 describe("proposed Lucide icon boundary", () => {
@@ -71,6 +73,17 @@ describe("proposed Lucide icon boundary", () => {
       expect(record.sourceUrl).toBe(`https://github.com/lucide-icons/lucide/pull/${record.pr}`);
       expect(record.replacementImport).toMatch(/^[A-Z][A-Za-z]+$/);
     }
+  });
+
+  // The class name alone can't tell a diamond-circle from a plain circle, so pin the
+  // geometry against icons/diamond-circle.svg on lucide#4615 verbatim. When that PR
+  // merges and this shim is deleted, this expectation goes with it.
+  it("vendors lucide#4615 diamond-circle geometry, not a bare circle", () => {
+    const html = renderToStaticMarkup(<ProposedDiamondCircle />);
+    expect(html).toContain(
+      'd="M2.7 10.3a2.41 2.41 0 0 0 0 3.41l7.59 7.59a2.41 2.41 0 0 0 3.41 0l7.59-7.59a2.41 2.41 0 0 0 0-3.41L13.7 2.71a2.41 2.41 0 0 0-3.41 0z"',
+    );
+    expect(html).toContain('<circle cx="12" cy="12" r="4">');
   });
 
   it("does not register the non-V1 layout-grid capability", () => {
