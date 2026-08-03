@@ -56,12 +56,12 @@ describe("Motion inspector rows", () => {
     }
   });
 
-  it("omits paint keyframe controls for unsupported gradient entries", () => {
+  it("keeps gradient paint opacity animatable while omitting the unsupported summary color track", () => {
     const control = { active: false, onToggle: () => undefined };
     const html = renderToStaticMarkup(<PropertyPanel elementType="shape"
       fills={[{ id: "gradient", fillType: "linear", color: "#ff0000", opacity: 80, visible: true, keyframes: { color: control, opacity: control } }]} />);
     expect(html).not.toContain("Fill color color keyframe");
-    expect(html).not.toContain("Fill color opacity keyframe");
+    expect(html).toContain("Fill color opacity keyframe");
   });
 
   it("renders a shared Dimensions keyframe control on both width and height", () => {

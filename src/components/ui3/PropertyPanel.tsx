@@ -26,7 +26,7 @@ import { SegmentedControl } from "./SegmentedControl";
 import { AlignmentControl, type AlignmentValue } from "./AlignmentControl";
 import { Chit } from "./Chit";
 import { Checkbox } from "./Checkbox";
-import { ColorDialog, type FillType, type GradientStop, type ImageAdjustment, type ImageAdjustments } from "./ColorDialog";
+import { ColorDialog, type FillType, type GradientStop, type GradientStopKeyframeControls, type ImageAdjustment, type ImageAdjustments } from "./ColorDialog";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { AnimatePanel } from "./AnimatePanel";
 import { Avatar, type AvatarColor } from "./Avatar";
@@ -88,6 +88,7 @@ export interface ElementFillSetting {
   keyframes?: {
     color?: InspectorKeyframeControl;
     opacity?: InspectorKeyframeControl;
+    gradientStops?: Record<string, GradientStopKeyframeControls>;
   };
   /** The controlled ColorDialog mode for this specific fill entry. */
   fillType?: FillType;
@@ -1755,7 +1756,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
                 color={fill.color}
                 opacity={fill.opacity}
                 colorKeyframe={fill.fillType === undefined || fill.fillType === "solid" ? fill.keyframes?.color : undefined}
-                opacityKeyframe={fill.fillType === undefined || fill.fillType === "solid" ? fill.keyframes?.opacity : undefined}
+                opacityKeyframe={fill.keyframes?.opacity}
                 onColorChange={color => updateFill(fill.id, { color })}
                 onOpacityChange={opacity => updateFill(fill.id, { opacity })}
                 onSwatchClick={() => onActiveStackDialogChange(`fill-color:${fill.id}`)}
@@ -1765,6 +1766,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
               fillType={fill.fillType}
               onFillTypeChange={onFillTypeChange ? type => onFillTypeChange(fill.id, type) : undefined}
               gradientStops={fill.gradientStops}
+              gradientStopKeyframes={fill.keyframes?.gradientStops}
               onStopsChange={onGradientStopsChange ? stops => onGradientStopsChange(fill.id, stops) : undefined}
               imageSourceLabel={fill.imageSourceLabel}
               onChooseImage={onChooseImage ? () => onChooseImage(fill.id) : undefined}
@@ -1859,7 +1861,7 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
                 color={stroke.color}
                 opacity={stroke.opacity}
                 colorKeyframe={stroke.fillType === undefined || stroke.fillType === "solid" ? stroke.keyframes?.color : undefined}
-                opacityKeyframe={stroke.fillType === undefined || stroke.fillType === "solid" ? stroke.keyframes?.opacity : undefined}
+                opacityKeyframe={stroke.keyframes?.opacity}
                 onColorChange={color => update(stroke.id, { color })}
                 onOpacityChange={opacity => update(stroke.id, { opacity })}
                 onSwatchClick={() => onActiveStackDialogChange(`stroke-color:${stroke.id}`)}

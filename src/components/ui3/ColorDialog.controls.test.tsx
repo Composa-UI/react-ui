@@ -258,4 +258,29 @@ describe("gradient stops", () => {
         && instance.props.style.background.includes("#888888"));
     expect(bar.props.style.background).toBe("linear-gradient(to right, #000000 0%, #888888 50%, #ffffff 100%)");
   });
+
+  it("routes position, color, and opacity diamonds by stable stop id", () => {
+    const position = vi.fn(), color = vi.fn(), opacity = vi.fn();
+    const renderer = render({
+      fillType: "linear", gradientStops: stops,
+      gradientStopKeyframes: { b: {
+        position: { active: true, onToggle: position },
+        color: { active: false, onToggle: color },
+        opacity: { active: false, onToggle: opacity },
+      } },
+    }, nodeMock());
+
+    for (const [label, callback] of [
+      ["Stop 2 position keyframe", position],
+      ["Stop 2 color keyframe", color],
+      ["Stop 2 opacity keyframe", opacity],
+    ] as const) {
+      const [button] = byLabel(renderer, label);
+      expect(button).toBeDefined();
+      act(() => button.props.onClick({ stopPropagation: vi.fn() }));
+      expect(callback).toHaveBeenCalledOnce();
+    }
+    expect(byLabel(renderer, "Stop 1 position keyframe")).toHaveLength(0);
+    act(() => renderer.unmount());
+  });
 });
