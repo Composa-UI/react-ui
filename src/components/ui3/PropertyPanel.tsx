@@ -71,6 +71,8 @@ export type SlideTransitionDirection = "left" | "right" | "up" | "down";
 export type SlideTransitionEasing = EasingPreset;
 export type ClipSpeed = 0.25 | 0.5 | 0.75 | 1 | 1.25 | 1.5 | 2 | 4;
 export type ExportFormat = "PNG" | "JPG";
+/** Static exports authored values; Frame exports one evaluated playhead still. */
+export type InspectorExportMode = "static" | "frame";
 /**
  * `suffix` is vestigial: Composa#661 removed the Suffix field, and nothing in this
  * component reads it any more. Kept OPTIONAL rather than deleted because the app
@@ -1859,9 +1861,11 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
 
 // ─── Section: Export ──────────────────────────────────────────────────────────
 
-function ExportSection({ settings, targetName = "selection", onAdd, onRemove, onUpdate, onExport }: {
+function ExportSection({ settings, targetName = "selection", mode = "static", onModeChange, onAdd, onRemove, onUpdate, onExport }: {
   settings?: InspectorExportSetting[];
   targetName?: string;
+  mode?: InspectorExportMode;
+  onModeChange?: (mode: InspectorExportMode) => void;
   onAdd?: () => void;
   onRemove?: (id: string) => void;
   onUpdate?: (id: string, patch: Partial<Omit<InspectorExportSetting, "id">>) => void;
@@ -1888,6 +1892,15 @@ function ExportSection({ settings, targetName = "selection", onAdd, onRemove, on
       muted={exports.length === 0}
       rightActions={<PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add export" onClick={add} />}
     >
+      <div className="px-[16px] pt-[4px] pb-[8px]">
+        <SegmentedControl
+          ariaLabel="Export mode"
+          segments={[{ value: "static", label: "Static" }, { value: "frame", label: "Frame" }]}
+          value={mode}
+          onChange={value => onModeChange?.(value as InspectorExportMode)}
+          className="w-full"
+        />
+      </div>
       {exports.map(exp => (
         <div key={exp.id} className="group/row flex items-center h-[32px] pr-[16px]">
           {/* Single-item stacks have nothing to reorder, so suppress the grip while
@@ -1909,7 +1922,7 @@ function ExportSection({ settings, targetName = "selection", onAdd, onRemove, on
         </div>
       ))}
       {exports.length > 0 && <PanelFullRow height={40}>
-        <Button label={`Export ${targetName}`} variant="Secondary" size="wide" onClick={onExport} />
+        <Button label={mode === "frame" ? "Export frame" : `Export ${targetName}`} variant="Secondary" size="wide" onClick={onExport} />
       </PanelFullRow>}
     </PanelSection>
   );
@@ -2959,7 +2972,9 @@ export interface PropertyPanelProps {
   accountPhotoUrl?: string;
   /** Shared element/selection/slide still-image export contract. */
   exportSettings?: InspectorExportSetting[];
+  exportMode?: InspectorExportMode;
   exportTargetName?: string;
+  onExportModeChange?: (mode: InspectorExportMode) => void;
   onAddExportSetting?: () => void;
   onRemoveExportSetting?: (id: string) => void;
   onUpdateExportSetting?: (id: string, patch: Partial<Omit<InspectorExportSetting, "id">>) => void;
@@ -3444,7 +3459,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
   accountColor,
   accountPhotoUrl,
   exportSettings,
+  exportMode = "static",
   exportTargetName,
+  onExportModeChange,
   onAddExportSetting,
   onRemoveExportSetting,
   onUpdateExportSetting,
@@ -3733,7 +3750,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <LayoutGuideSection entries={layoutGuides} onAdd={onAddLayoutGuide} onUpdate={onUpdateLayoutGuide} onRemove={onRemoveLayoutGuide} />
           {/* Selection colors — reuse the existing element-mode section */}
           <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} capabilities={capabilities} />
-          <ExportSection settings={exportSettings} targetName={exportTargetName ?? renderedSlideName}
+          <ExportSection settings={exportSettings} mode={exportMode} onModeChange={onExportModeChange} targetName={exportTargetName ?? renderedSlideName}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
           </>}
           </ScrollArea></div>}
@@ -3935,7 +3952,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           {/* Selection Colors — multi-select only (§5.8), positioned right after Effects */}
           {multiSelect && <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} capabilities={capabilities} />}
 
-          <ExportSection settings={exportSettings} targetName={exportTargetName ?? elementLabel[elementType]}
+          <ExportSection settings={exportSettings} mode={exportMode} onModeChange={onExportModeChange} targetName={exportTargetName ?? elementLabel[elementType]}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
           {easing && <EasingInspectorSection key={easing.interactionKey} value={easing} applyScope={easingApplyScope} applyToLabel={easingApplyToLabel}
             onChange={onEasingChange} onApplyScopeChange={onEasingApplyScopeChange}
