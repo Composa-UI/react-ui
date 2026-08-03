@@ -149,6 +149,8 @@ export interface Track {
   depth?: number;
   /** Controlled property-row visibility. Undefined preserves the legacy expanded state. */
   expanded?: boolean;
+  /** Controlled object visibility. Undefined preserves the visible legacy state. */
+  visible?: boolean;
   selected?: boolean;
   /**
    * Controlled visual projection for hierarchy-aware selection. When omitted,
@@ -977,12 +979,14 @@ function Lane({ prop, trackId, propertyId, active = false, height, viewport, plo
 // name. Keeping the final stem to half a row is important — a collapsed list, or
 // the last child in a list, must never leave an orphaned rule below itself.
 function TimelineChildConnector({ index, count, depth }: { index: number; count: number; depth: number }) {
-  const left = 28 + depth * 16;
+  // The parent icon occupies x=32..48 at depth zero. Branch from its horizontal
+  // centre (x=40), then stop four pixels before the child label at x=48.
+  const left = 40 + depth * 16;
   const last = index === count - 1;
   // Child labels begin at x=48 (+ depth). Carry the elbow to x=44 so the
   // remaining 4px reads as label breathing room, rather than as a detached
   // vertical guide. This mirrors Figma's compact "└─ Property" row anatomy.
-  const elbowWidth = 16;
+  const elbowWidth = 4;
   return (
     <span
       aria-hidden
@@ -999,13 +1003,14 @@ function TimelineChildConnector({ index, count, depth }: { index: number; count:
   );
 }
 
-function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onPropertyValueChange, onPropertyToggleHidden, onPresetToggleHidden, onPresetSelect, onPresetBarChange, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
+function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onVisibilityChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onPropertyValueChange, onPropertyToggleHidden, onPresetToggleHidden, onPresetSelect, onPresetBarChange, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
   track: Track; trackIndex: number;
   focusable: boolean;
   viewport: TimelineViewport; plotWidth: number; duration: number;
   edgeDrag: TimelineEdgeDragController;
   onTrackSelect?: (trackId: string, modifiers: TimelineTrackSelectionModifiers) => void;
   onExpandedChange?: (trackId: string, expanded: boolean) => void;
+  onVisibilityChange?: (trackId: string, visible: boolean) => void;
   onAggregateKeyframeSelect?: (target: AggregateKeyframeTarget, additive: boolean) => void;
   onKeyframeSelect?: (target: KeyframeTarget, additive: boolean) => void;
   onKeyframeMove?: (target: KeyframeTarget, timeMs: number) => void;
@@ -1046,7 +1051,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
   return (
     <>
       {/* layer row */}
-      <div className="group/selection-row relative flex" style={{ height: ROW_LAYER }} data-composa-row-state={selectionState}>
+      <div className={clsx("group/track group/selection-row relative flex", track.visible === false && "opacity-40")} style={{ height: ROW_LAYER }} data-composa-row-state={selectionState}>
         <span
           aria-hidden
           data-composa-row-highlight="timeline-full-lane"
@@ -1058,8 +1063,8 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
           {Array.from({ length: depth }).map((_, level) => (
             <span key={`guide-${level}`} aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-c-border" style={{ left: 16 + level * 16 }} />
           ))}
-          {expanded && hasChildren && <span aria-hidden data-timeline-child-trunk className="pointer-events-none absolute bottom-0 top-1/2 w-px bg-c-border" style={{ left: 28 + depth * 16 }} />}
-          {track.props.length ? onExpandedChange ? <button type="button" aria-label={`${expanded ? "Collapse" : "Expand"} ${track.name}`} aria-expanded={expanded}
+          {expanded && hasChildren && <span aria-hidden data-timeline-child-trunk data-timeline-child-trunk-origin="icon-bottom" className="pointer-events-none absolute bottom-0 w-px bg-c-border" style={{ left: 40 + depth * 16, top: "calc(50% + 8px)" }} />}
+          {hasChildren ? onExpandedChange ? <button type="button" aria-label={`${expanded ? "Collapse" : "Expand"} ${track.name}`} aria-expanded={expanded}
             tabIndex={onTrackSelect ? -1 : undefined}
             onClick={event => { event.stopPropagation(); onExpandedChange(trackId, !expanded); }} className="size-[16px] shrink-0 rounded-c-sm flex items-center justify-center text-c-icon-secondary hover:bg-c-bg-hover focus-visible:ring-2 focus-visible:ring-c-border-selected-strong outline-none">
             {expanded ? <ChevronDown size={12} strokeWidth={1.5} /> : <DisclosureRight size={12} strokeWidth={1.5} />}
@@ -1067,11 +1072,11 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
             {expanded ? <ChevronDown size={12} strokeWidth={1.5} /> : <DisclosureRight size={12} strokeWidth={1.5} />}
           </span> : <span className="size-[16px] shrink-0" />}
           <div role={onTrackSelect ? "option" : undefined} aria-selected={onTrackSelect ? selectionState === "selected" : undefined}
-            aria-expanded={onTrackSelect && onExpandedChange && track.props.length ? expanded : undefined} tabIndex={onTrackSelect ? focusable ? 0 : -1 : undefined}
+            aria-expanded={onTrackSelect && onExpandedChange && hasChildren ? expanded : undefined} tabIndex={onTrackSelect ? focusable ? 0 : -1 : undefined}
             onClick={onTrackSelect ? event => onTrackSelect(trackId, { toggle: event.metaKey || event.ctrlKey, range: event.shiftKey }) : undefined}
             onKeyDown={onTrackSelect ? event => {
               const expansion = timelineTrackExpansionForKey(event.key);
-              if (event.currentTarget === event.target && expansion !== null && onExpandedChange && track.props.length) {
+              if (event.currentTarget === event.target && expansion !== null && onExpandedChange && hasChildren) {
                 event.preventDefault(); event.stopPropagation();
                 if (expansion !== expanded) onExpandedChange(trackId, expansion);
                 return;
@@ -1089,9 +1094,16 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
               onTrackSelect(trackId, { toggle: event.metaKey || event.ctrlKey, range: event.shiftKey });
             } : undefined}
             className={clsx("flex flex-1 min-w-0 h-full items-center gap-[8px] outline-none", onTrackSelect && "cursor-pointer focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-border-selected-strong")}>
-            <LayerTypeIcon type={track.type} autoLayoutMode={track.autoLayoutMode} autoLayoutAlign={track.autoLayoutAlign} tone="secondary" />
+            <span data-timeline-parent-icon className="relative shrink-0 flex items-center justify-center">
+              <LayerTypeIcon type={track.type} autoLayoutMode={track.autoLayoutMode} autoLayoutAlign={track.autoLayoutAlign} tone="secondary" />
+            </span>
             <span className={clsx(FONT, "text-[11px] text-c-text truncate", selectionState === "selected" ? "font-[550]" : "font-[450]")}>{track.name}</span>
           </div>
+          {onVisibilityChange && <button type="button" aria-label={track.visible === false ? `Show ${track.name}` : `Hide ${track.name}`} aria-pressed={track.visible === false}
+            onClick={event => { event.stopPropagation(); onVisibilityChange(trackId, track.visible === false); }}
+            className={clsx("shrink-0 flex items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-c-border-selected-strong", track.visible !== false && "opacity-0 group-hover/track:opacity-100 focus-visible:opacity-100")}>
+            {track.visible === false ? <EyeOff size={14} strokeWidth={1.5} className="text-c-icon-secondary" /> : <Eye size={14} strokeWidth={1.5} className="text-c-icon-secondary" />}
+          </button>}
         </div>
         <div ref={laneRef} data-timeline-pan-surface className="flex-1 relative overflow-hidden" style={{ height: ROW_LAYER }}>
           {durationBar && (
@@ -1167,9 +1179,9 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
             <button type="button" aria-label={`Next ${p.name} keyframe`} onClick={() => onPropertyStepKeyframe?.(trackId, p.id ?? `property-${i}`, "next")} className="shrink-0 flex items-center justify-center opacity-0 group-hover/prop:opacity-100 disabled:opacity-0" disabled={!onPropertyStepKeyframe}>
               <ChevronRight size={14} strokeWidth={1.5} className="text-c-icon-secondary" />
             </button>
-            {/* inline value at the playhead — between the stepper and the eye, revealed on hover/selection (Composa#343b) */}
+            {/* Inline value at the playhead stays visible beside keyframe state, matching the canonical row anatomy. */}
             {p.value !== undefined && (
-              <div className={clsx("shrink-0 w-[56px] select-text", !(propSelected || rowGraySelected) && "opacity-0 group-hover/prop:opacity-100 focus-within:opacity-100")}>
+              <div data-timeline-property-value className="shrink-0 w-[56px] select-text">
                 <NumericInput ariaLabel={`${p.name} value`} value={p.value} size="small" disabled={p.valueEditable === false}
                   onChange={value => onPropertyValueChange?.(trackId, propertyId, value)} />
               </div>
@@ -2026,6 +2038,7 @@ export function Timeline({
   onPresetSelect,
   onPresetBarChange,
   onTrackExpandedChange,
+  onTrackVisibilityChange,
   onTrackSelect,
   onAggregateKeyframeSelect,
   onKeyframeSelect,
@@ -2108,6 +2121,8 @@ export function Timeline({
   /** Move or trim one selected editable Animate preset without compiling keyframes. */
   onPresetBarChange?: (change: TimelinePresetBarChange) => void;
   onTrackExpandedChange?: (trackId: string, expanded: boolean) => void;
+  /** Toggle the parent object's engine-backed visibility. */
+  onTrackVisibilityChange?: (trackId: string, visible: boolean) => void;
   onTrackSelect?: (trackId: string, modifiers: TimelineTrackSelectionModifiers) => void;
   onAggregateKeyframeSelect?: (target: AggregateKeyframeTarget, additive: boolean) => void;
   onKeyframeSelect?: (target: KeyframeTarget, additive: boolean) => void;
@@ -2467,7 +2482,7 @@ export function Timeline({
             </div>
             <div role={onTrackSelect ? "listbox" : undefined} aria-label={onTrackSelect ? "Timeline layers" : undefined} aria-multiselectable={onTrackSelect ? true : undefined}>
             {tracks.map((t, i) => <TrackRows key={t.id ?? i} track={t} trackIndex={i} focusable={i === Math.max(0, tracks.findIndex(track => (track.selectionState ?? (track.selected ? "selected" : "none")) === "selected"))} viewport={viewport} plotWidth={plotWidth} duration={duration} edgeDrag={edgeDrag} onTrackSelect={onTrackSelect}
-              onExpandedChange={onTrackExpandedChange} onAggregateKeyframeSelect={onAggregateKeyframeSelect}
+              onExpandedChange={onTrackExpandedChange} onVisibilityChange={onTrackVisibilityChange} onAggregateKeyframeSelect={onAggregateKeyframeSelect}
               onKeyframeSelect={(target, additive) => { revealTime(target.timeMs); onKeyframeSelect?.(target, additive); }} onKeyframeMove={onKeyframeMove} onKeyframeDelete={onKeyframeDelete}
               onEasingSegmentSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange}
               onDurationBarChange={onDurationBarChange}
