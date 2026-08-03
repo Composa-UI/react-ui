@@ -708,6 +708,12 @@ export interface InspectorKeyframeControls {
   /** Grid column and row gaps. */
   gridColumnGap?: InspectorKeyframeControl;
   gridRowGap?: InspectorKeyframeControl;
+  /** Physical Auto-layout padding edges. Aggregate Vertical/Horizontal controls
+   * intentionally expose no diamond because each edge owns an independent lane. */
+  paddingTop?: InspectorKeyframeControl;
+  paddingRight?: InspectorKeyframeControl;
+  paddingBottom?: InspectorKeyframeControl;
+  paddingLeft?: InspectorKeyframeControl;
 }
 
 // ─── Section: Position ────────────────────────────────────────────────────────
@@ -1043,6 +1049,10 @@ interface LayoutAutoProps {
   rowGapKeyframe?: InspectorKeyframeControl;
   gridColumnGapKeyframe?: InspectorKeyframeControl;
   gridRowGapKeyframe?: InspectorKeyframeControl;
+  paddingTopKeyframe?: InspectorKeyframeControl;
+  paddingRightKeyframe?: InspectorKeyframeControl;
+  paddingBottomKeyframe?: InspectorKeyframeControl;
+  paddingLeftKeyframe?: InspectorKeyframeControl;
 }
 
 export function reconcileAutoLayoutGap(
@@ -1077,6 +1087,7 @@ function LayoutAutoSection({
   settingsDisabled = false,
   onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onAutoLayoutSettingsRequest, onEnableGrid, onDisableAutoLayout, sizing, spatialSelectionLayout,
   gapKeyframe, rowGapKeyframe, gridColumnGapKeyframe, gridRowGapKeyframe,
+  paddingTopKeyframe, paddingRightKeyframe, paddingBottomKeyframe, paddingLeftKeyframe,
 }: LayoutAutoProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const controlled = flowMode !== undefined;
@@ -1098,7 +1109,11 @@ function LayoutAutoSection({
   const [indivPadding, setIndivPadding] = useState(false);
   const paddingSidesDiffer = paddingTop !== paddingRight || paddingTop !== paddingBottom || paddingTop !== paddingLeft;
   const paddingHasMixedSide = paddingTopMixed || paddingRightMixed || paddingBottomMixed || paddingLeftMixed;
-  const expandedPadding = indivPadding || paddingSidesDiffer || paddingHasMixedSide;
+  // Animated padding is always presented as four physical edges. The combined
+  // Vertical/Horizontal fields edit two values and therefore cannot truthfully
+  // own one scalar track or diamond.
+  const paddingKeyframesPresent = !!(paddingTopKeyframe || paddingRightKeyframe || paddingBottomKeyframe || paddingLeftKeyframe);
+  const expandedPadding = indivPadding || paddingSidesDiffer || paddingHasMixedSide || paddingKeyframesPresent;
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
 
   // Freeform is the explicit "disable auto layout" action and remains distinct
@@ -1322,10 +1337,10 @@ function LayoutAutoSection({
           // aligned (not centered) since the field block is two rows tall here.
           <div className="flex items-start gap-[4px]">
             <div className="grid grid-cols-2 gap-[4px] flex-1 min-w-0">
-              <NumericInput ariaLabel="Top padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="top" />} value={controlled ? paddingTop : undefined} defaultValue={paddingTop} mixed={paddingTopMixed} disabled={paddingDisabled} onChange={top => onPaddingChange?.({ top, right: paddingRight, bottom: paddingBottom, left: paddingLeft }, ["top"])} min={0} />
-              <NumericInput ariaLabel="Right padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="right" />} value={controlled ? paddingRight : undefined} defaultValue={paddingRight} mixed={paddingRightMixed} disabled={paddingDisabled} onChange={right => onPaddingChange?.({ top: paddingTop, right, bottom: paddingBottom, left: paddingLeft }, ["right"])} min={0} />
-              <NumericInput ariaLabel="Bottom padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="bottom" />} value={controlled ? paddingBottom : undefined} defaultValue={paddingBottom} mixed={paddingBottomMixed} disabled={paddingDisabled} onChange={bottom => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom, left: paddingLeft }, ["bottom"])} min={0} />
-              <NumericInput ariaLabel="Left padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="left" />} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} mixed={paddingLeftMixed} disabled={paddingDisabled} onChange={left => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom: paddingBottom, left }, ["left"])} min={0} />
+              <NumericInput ariaLabel="Top padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="top" />} value={controlled ? paddingTop : undefined} defaultValue={paddingTop} mixed={paddingTopMixed} disabled={paddingDisabled} onChange={top => onPaddingChange?.({ top, right: paddingRight, bottom: paddingBottom, left: paddingLeft }, ["top"])} keyframe={paddingTopKeyframe} min={0} />
+              <NumericInput ariaLabel="Right padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="right" />} value={controlled ? paddingRight : undefined} defaultValue={paddingRight} mixed={paddingRightMixed} disabled={paddingDisabled} onChange={right => onPaddingChange?.({ top: paddingTop, right, bottom: paddingBottom, left: paddingLeft }, ["right"])} keyframe={paddingRightKeyframe} min={0} />
+              <NumericInput ariaLabel="Bottom padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="bottom" />} value={controlled ? paddingBottom : undefined} defaultValue={paddingBottom} mixed={paddingBottomMixed} disabled={paddingDisabled} onChange={bottom => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom, left: paddingLeft }, ["bottom"])} keyframe={paddingBottomKeyframe} min={0} />
+              <NumericInput ariaLabel="Left padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="left" />} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} mixed={paddingLeftMixed} disabled={paddingDisabled} onChange={left => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom: paddingBottom, left }, ["left"])} keyframe={paddingLeftKeyframe} min={0} />
             </div>
             <PanelActionBtn
               icon={<SquareSquare size={16} strokeWidth={1.5} />}
@@ -4021,6 +4036,10 @@ export function PropertyPanel(props: PropertyPanelProps) {
             rowGapKeyframe={keyframeControls?.layoutCounterGap}
             gridColumnGapKeyframe={keyframeControls?.gridColumnGap}
             gridRowGapKeyframe={keyframeControls?.gridRowGap}
+            paddingTopKeyframe={keyframeControls?.paddingTop}
+            paddingRightKeyframe={keyframeControls?.paddingRight}
+            paddingBottomKeyframe={keyframeControls?.paddingBottom}
+            paddingLeftKeyframe={keyframeControls?.paddingLeft}
             onLayoutChange={onLayoutChange} onPaddingChange={props.onPaddingChange ?? (onLayoutChange ? padding => onLayoutChange({ padding }) : undefined)}
             onAlignChange={onLayoutChange ? align => onLayoutChange({ align }) : undefined} onClipContentChange={onLayoutChange ? clipsContent => onLayoutChange({ clipsContent }) : undefined}
             onAutoLayoutSettingsRequest={onAutoLayoutSettingsRequest} />}
