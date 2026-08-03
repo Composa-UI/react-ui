@@ -72,7 +72,7 @@ describe("AutoLayoutSettingsDialog — anchored InspectorDialog contract (Compos
   it("is the same 240px, elevation-400, left-anchored dialog as its inspector peers", () => {
     const { renderer, collisionBoundary } = renderOpen();
     const content = radix(renderer.root, "content");
-    expect(content.props["aria-label"]).toBe("Auto Layout Settings");
+    expect(content.props["aria-label"]).toBe("Auto layout settings");
     // The reported symptom: it was WIDER than the other inspector dialogs.
     expect(content.props.style.width).toBe(240);
     expect(content.props.style.boxShadow).toBe("var(--elevation-400)");

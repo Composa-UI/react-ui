@@ -2,10 +2,10 @@ import { type ReactElement, type ReactNode } from "react";
 import { act, create, type ReactTestInstance } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
 import { AutoLayoutSettingsDialog } from "./AutoLayoutSettingsDialog";
-import { Checkbox } from "./Checkbox";
 import { Dropdown } from "./Dropdown";
 import { MenuRow, PopoverMenu } from "./Menu";
 import { Tooltip } from "./Tooltip";
+import { SegmentedControl } from "./SegmentedControl";
 
 vi.mock("./InspectorDialog", async () => {
   // Keep the real placement constants — the anchoring contract is asserted in
@@ -55,7 +55,7 @@ describe("AutoLayoutSettingsDialog", () => {
     const firstOnTop = menuRows(popovers[1]).find(row => row.type === MenuRow && row.props.label === "First on top")!;
     act(() => strokeIncluded.props.onClick());
     act(() => firstOnTop.props.onClick());
-    act(() => renderer!.root.findByType(Checkbox).props.onChange(true));
+    act(() => renderer!.root.findByType(SegmentedControl).props.onChange("on"));
     expect(patches).toEqual([
       { strokeSizing: "included" },
       { canvasStacking: "first-on-top" },
@@ -74,7 +74,7 @@ describe("AutoLayoutSettingsDialog", () => {
         onClose={() => undefined}
       />);
     });
-    expect(renderer!.root.findByType(Checkbox).props.disabled).toBe(true);
+    expect(renderer!.root.findByType(SegmentedControl).props.disabled).toBe(true);
     expect(renderer!.root.findByType(Tooltip).props).toMatchObject({
       label: "Only applicable for horizontal layouts",
       disabled: false,
@@ -104,10 +104,7 @@ describe("AutoLayoutSettingsDialog", () => {
       "Canvas stacking: Mixed",
     ]);
     expect(dropdowns.every(dropdown => dropdown.props.mixed)).toBe(true);
-    expect(renderer!.root.findByType(Checkbox).props).toMatchObject({
-      checked: "mixed",
-      disabled: true,
-    });
+    expect(renderer!.root.findByType(SegmentedControl).props).toMatchObject({ value: "off", disabled: true });
     act(() => renderer!.unmount());
   });
 
@@ -123,7 +120,7 @@ describe("AutoLayoutSettingsDialog", () => {
       />);
     });
     expect(renderer!.root.findAllByType(Dropdown).every(dropdown => dropdown.props.disabled)).toBe(true);
-    expect(renderer!.root.findByType(Checkbox).props.disabled).toBe(true);
+    expect(renderer!.root.findByType(SegmentedControl).props.disabled).toBe(true);
     act(() => renderer!.unmount());
   });
 });

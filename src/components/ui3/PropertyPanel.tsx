@@ -34,6 +34,7 @@ import { Button } from "./Button";
 import { Tooltip } from "./Tooltip";
 import { EffectDetailsDialog, type EffectDetailsValue } from "./EffectDetailsDialog";
 import { AutoLayoutSettingsDialog } from "./AutoLayoutSettingsDialog";
+import { GridDimensionsPicker } from "./GridDimensionsPicker";
 import { GridSettingsDialog } from "./GridSettingsDialog";
 import {
   StrokeSettingsDialog,
@@ -895,7 +896,7 @@ interface LayoutFrameProps {
   /** Auto-layout is reached from here two ways: the "+" button, or moving Flow
    * off its first ("Freeform") option. Both call this. */
   onEnableAutoLayout?: () => void;
-  /** Grid is a distinct layout type (Reading A), entered via its own action. */
+  /** Grid is the fourth Auto-layout flow mode. */
   onEnableGrid?: () => void;
   spatialSelectionLayout?: SpatialSelectionLayoutControl;
 }
@@ -915,8 +916,7 @@ function LayoutFrameSection({
 
   const handleFlowChange = (v: string) => {
     setFlow(v as FlowValue);
-    // Grid is a peer flow mode with its own section — it is entered from the Flow
-    // control now, not from a separate header action (Composa#661).
+    // Grid is entered from Flow; there is no separate Add Grid action.
     if (v === "grid") { onEnableGrid?.(); return; }
     if (v !== "none") onEnableAutoLayout?.();
   };
@@ -927,7 +927,6 @@ function LayoutFrameSection({
       rightActions={
         <>
           <PanelActionBtn icon={<Maximize2 size={16} strokeWidth={1.5} />} label="Resize to fit" />
-          <PanelActionBtn icon={<Grid2x2 size={16} strokeWidth={1.5} />} label="Add grid" onClick={onEnableGrid} />
           {/* Trailing header toggle, OFF face (Composa#661 item 4): panel-plus.
               A bare Plus read as a generic "add" rather than the off state of the
               auto-layout toggle whose on face lives in the Auto layout section. */}
@@ -961,6 +960,7 @@ interface LayoutAutoProps {
   flowMode?: ElementLayoutSettings["mode"];
   wrap?: boolean;
   rowGap?: number;
+  grid?: ElementGridSettings;
   widthMode?: "fixed" | "hug" | "fill";
   heightMode?: "fixed" | "hug" | "fill";
   gap?: number | "auto";
@@ -1006,6 +1006,7 @@ function LayoutAutoSection({
   flowMode,
   wrap: wrapProp,
   rowGap: rowGapProp,
+  grid,
   widthMode = "hug", heightMode = "fill",
   gap: gapProp,
   paddingTop = 16, paddingRight = 0, paddingBottom = 8, paddingLeft = 0,
@@ -1050,7 +1051,7 @@ function LayoutAutoSection({
   // from the trailing Auto-layout Settings entry point.
   const handleFlowChange = (v: string) => {
     setFlow(v as FlowValue);
-    // Grid is a peer flow mode with its own section (Composa#661).
+    // Grid is a fourth Auto-layout flow mode, not a sibling section.
     if (v === "grid") { onEnableGrid?.(); return; }
     const mode = v === "h" ? "horizontal" : v === "v" ? "vertical" : "none";
     // Wrap only survives on Horizontal; leaving Horizontal clears it.
@@ -1115,9 +1116,7 @@ function LayoutAutoSection({
   );
 
   const settingsValue = {
-    // Grid never renders this auto-layout section (it has its own), so coerce it
-    // away to satisfy the auto-layout settings contract.
-    mode: (flowMode === "grid" ? "none" : flowMode) ?? (renderedFlow === "h" ? "horizontal" : renderedFlow === "v" ? "vertical" : "none"),
+    mode: flowMode ?? (renderedFlow === "h" ? "horizontal" : renderedFlow === "v" ? "vertical" : renderedFlow === "grid" ? "grid" : "none"),
     textBaseline: textBaselineMixed ? "mixed" : textBaseline,
     strokeSizing: strokeSizingMixed ? "mixed" : strokeSizing,
     canvasStacking: canvasStackingMixed ? "mixed" : canvasStacking,
@@ -1128,6 +1127,7 @@ function LayoutAutoSection({
       open={settingsOpen}
       value={settingsValue}
       disabled={settingsDisabled}
+      grid={renderedFlow === "grid" ? grid : undefined}
       trigger={<PanelActionBtn
         // Every settings entry point in the inspector (Type, Stroke, Template)
         // is the slider glyph; the auto-layout one used the Freeform *layout*
@@ -1138,6 +1138,7 @@ function LayoutAutoSection({
         onClick={settingsDisabled ? undefined : () => { setSettingsOpen(true); onAutoLayoutSettingsRequest?.(); }}
       />}
       onChange={patch => onLayoutChange?.(patch)}
+      onGridChange={patch => grid && onLayoutChange?.({ grid: { ...grid, ...patch } })}
       onClose={() => setSettingsOpen(false)}
     />
   );
@@ -1182,12 +1183,30 @@ function LayoutAutoSection({
         </div>
       </div>
 
-      {/* Alignment and Gap are the paired authoring row. While wrapping, the
+      {renderedFlow === "grid" && grid ? (
+      /* Figma node 342:3501: Grid 88px, Gap 88px, settings 24px. The grid face
+         opens dimensions; the trailing glyph opens the SAME Auto-layout settings. */
+      <div role="group" aria-label="Grid and gap" className="flex items-start gap-[8px] px-[16px] pt-[8px] pb-[4px]">
+        <div className="shrink-0">
+          <div className={subLabel}>Grid</div>
+          <GridDimensionsPicker grid={grid} onChange={patch => onLayoutChange?.({ grid: { ...grid, ...patch } })} />
+        </div>
+        <div className="w-[88px] min-w-0 flex flex-col gap-[4px]">
+          <div>
+            <div className={subLabel}>Gap</div>
+            <NumericInput ariaLabel="Column gap" iconLead={<AutoLayoutSpacingIcon kind="gap" axis="horizontal" />} value={grid.columnGap} onChange={columnGap => onLayoutChange?.({ grid: { ...grid, columnGap: Math.max(0, columnGap) } })} min={0} suffix="px" className="w-full" />
+          </div>
+          <NumericInput ariaLabel="Row gap" iconLead={<AutoLayoutSpacingIcon kind="gap" axis="vertical" />} value={grid.rowGap} onChange={rowGap => onLayoutChange?.({ grid: { ...grid, rowGap: Math.max(0, rowGap) } })} min={0} suffix="px" className="w-full" />
+        </div>
+        <div className="shrink-0 pt-[17px]">{settingsTriggerButton}</div>
+      </div>
+      ) : (
+      /* Alignment and Gap are the paired authoring row. While wrapping, the
           cross-axis Row gap joins the SAME gap column instead of getting its own
           full-width row below the alignment block (Composa#661 item 2) — the two
           gaps are one pair, and the 240px inspector cannot fit the 88px alignment
           control plus two side-by-side numeric fields without shrinking both to
-          ~36px. Auto remains unavailable while wrapping. */}
+          ~36px. Auto remains unavailable while wrapping. */
       <div role="group" aria-label="Alignment and gap" className="flex items-start gap-[8px] px-[16px] pt-[8px] pb-[4px]">
         <div className="shrink-0">
           <div className={subLabel}>Alignment</div>
@@ -1234,6 +1253,7 @@ function LayoutAutoSection({
         </div>
         <div className="shrink-0 pt-[17px]">{settingsTriggerButton}</div>
       </div>
+      )}
 
       {/* Padding — cross layout. Combined (default): Vertical + Horizontal, two
           fields. Expanded (toggle): all four sides independently. */}
@@ -3663,11 +3683,10 @@ export function PropertyPanel(props: PropertyPanelProps) {
   const controlledAutoLayout = layout ? layout.mode !== "none" : undefined;
   useEffect(() => setAutoLayoutOn(elementType === "frame-auto"), [elementType]);
   const resolvedAutoLayout = controlledAutoLayout ?? autoLayoutOn;
-  // Grid is a distinct layout type (Reading A): it preempts the plain-frame and
-  // auto-layout sections. Driven by the live layout mode when present, else the type.
+  // Grid is a persisted layout mode but shares the Auto-layout Inspector section.
   const isGrid = isFrameLike && (layout ? layout.mode === "grid" : elementType === "frame-grid");
   const isFrame = isFrameLike && !resolvedAutoLayout && !isGrid;
-  const isAutoLayout = isFrameLike && resolvedAutoLayout && !isGrid;
+  const isAutoLayout = isFrameLike && (resolvedAutoLayout || isGrid);
 
   const emitSizing = (axis: ElementSizingAxis, change: ElementSizingChange) => {
     if (onSizingChange) { onSizingChange(axis, change); return; }
@@ -3976,21 +3995,11 @@ export function PropertyPanel(props: PropertyPanelProps) {
 
           {/* Layout — polymorphic */}
           {(isFrame)       && <LayoutFrameSection width={width} height={height} sizing={sizingContract} spatialSelectionLayout={props.spatialSelectionLayout} clipContent={layout?.clipsContent} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onClipContentChange={onLayoutChange ? value => onLayoutChange({ clipsContent: value }) : undefined} onEnableAutoLayout={() => { setAutoLayoutOn(true); onLayoutChange?.({ mode: "vertical" }); }} onEnableGrid={onLayoutChange ? () => onLayoutChange({ mode: "grid" }) : undefined} />}
-          {(isGrid)        && layout?.grid && <LayoutGridSection width={width} height={height}
-            grid={layout.grid}
-            widthMode={layout?.widthMode} heightMode={layout?.heightMode}
-            paddingTop={layout?.padding.top} paddingRight={layout?.padding.right} paddingBottom={layout?.padding.bottom} paddingLeft={layout?.padding.left}
-            paddingDisabled={layout?.paddingDisabled}
-            clipContent={layout?.clipsContent}
-            sizing={sizingContract}
-            spatialSelectionLayout={props.spatialSelectionLayout}
-            onLayoutChange={onLayoutChange}
-            onPaddingChange={props.onPaddingChange ?? (onLayoutChange ? padding => onLayoutChange({ padding }) : undefined)}
-            onClipContentChange={onLayoutChange ? clipsContent => onLayoutChange({ clipsContent }) : undefined} />}
           {(isAutoLayout)  && <LayoutAutoSection width={width} height={height}
             onEnableGrid={onLayoutChange ? () => onLayoutChange({ mode: "grid" }) : undefined}
             onDisableAutoLayout={() => { setAutoLayoutOn(false); onLayoutChange?.({ mode: "none" }); }}
             flowMode={layout?.mode}
+            grid={layout?.grid}
             wrap={layout?.wrap} rowGap={layout?.rowGap}
             gap={layout?.gap} paddingTop={layout?.padding.top} paddingRight={layout?.padding.right} paddingBottom={layout?.padding.bottom} paddingLeft={layout?.padding.left}
             paddingTopMixed={layout?.paddingTopMixed} paddingRightMixed={layout?.paddingRightMixed}
