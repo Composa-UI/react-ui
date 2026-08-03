@@ -97,6 +97,19 @@ describe("AgentPanel controlled contracts", () => {
     act(() => renderer!.unmount());
   });
 
+  it("suppresses browser text selection on conversation cards without affecting editable chat surfaces", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = renderAgent(props()); });
+
+    // The whole card owns the interaction contract so title, time, preview, and
+    // private badge cannot acquire a native selection highlight while dragging.
+    expect(String(button(renderer!.root, "Open chat Today chat").props.className).split(/\s+/)).toContain("select-none");
+    // Search remains a normal editable input; selection suppression must not be
+    // applied at panel scope where it would block text-field behavior.
+    expect(String(renderer!.root.findByProps({ "aria-label": "Search chats" }).props.className).split(/\s+/)).not.toContain("select-none");
+    act(() => renderer!.unmount());
+  });
+
   it("renders every persisted message variant without inventing action controls", () => {
     let renderer: ReturnType<typeof create>;
     act(() => { renderer = renderAgent(props({ activeConversation })); });

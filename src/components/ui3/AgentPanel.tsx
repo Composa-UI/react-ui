@@ -434,7 +434,7 @@ function ConversationCard({
       type="button"
       onClick={onOpen}
       aria-label={`Open chat ${conversation.title}`}
-      className="w-full min-h-[64px] rounded-c-md px-[8px] py-[7px] flex items-start gap-[8px] text-left outline-none hover:bg-c-bg-hover focus-visible:ring-1 focus-visible:ring-c-focus-ring"
+      className="w-full min-h-[64px] rounded-c-md px-[8px] py-[7px] flex items-start gap-[8px] select-none text-left outline-none hover:bg-c-bg-hover focus-visible:ring-1 focus-visible:ring-c-focus-ring"
     >
       <span className="size-[24px] shrink-0 rounded-full bg-c-bg-secondary flex items-center justify-center text-c-icon">
         {conversation.leading ?? <CircleUserRound size={15} strokeWidth={1.5} />}
