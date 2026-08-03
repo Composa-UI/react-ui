@@ -59,12 +59,12 @@ describe("Grid is one Auto-layout mode", () => {
     act(() => renderer.unmount());
   });
 
-  it("opens one Auto layout settings dialog with Grid content alignment", () => {
-    const { renderer, onLayoutChange } = render();
+  it("opens one Auto layout settings dialog without unrelated Grid controls", () => {
+    const { renderer } = render();
     const dialog = renderer.root.findByType(AutoLayoutSettingsDialog);
-    expect(dialog.props.grid).toEqual(grid);
-    act(() => dialog.props.onGridChange({ justifyContent: "center" }));
-    expect(onLayoutChange).toHaveBeenCalledWith({ grid: { ...grid, justifyContent: "center" } });
+    expect(dialog.props.value.mode).toBe("grid");
+    expect(dialog.props.grid).toBeUndefined();
+    expect(dialog.props.onGridChange).toBeUndefined();
     act(() => renderer.unmount());
   });
 
