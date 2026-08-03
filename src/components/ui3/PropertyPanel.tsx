@@ -25,7 +25,7 @@ import { SegmentedControl } from "./SegmentedControl";
 import { AlignmentControl, type AlignmentValue } from "./AlignmentControl";
 import { Chit } from "./Chit";
 import { Checkbox } from "./Checkbox";
-import { ColorDialog } from "./ColorDialog";
+import { ColorDialog, type FillType, type GradientStop, type ImageAdjustment, type ImageAdjustments } from "./ColorDialog";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { AnimatePanel } from "./AnimatePanel";
 import { Avatar, type AvatarColor } from "./Avatar";
@@ -79,7 +79,17 @@ export type ExportFormat = "PNG" | "JPG";
  */
 export interface InspectorExportSetting { id: string; scale: number; suffix?: string; format: ExportFormat; }
 export type ProjectFrameRate = 24 | 25 | 30 | 60;
-export interface ElementFillSetting { id: string; color: string; opacity: number; visible: boolean; label?: string; }
+export interface ElementFillSetting {
+  id: string; color: string; opacity: number; visible: boolean; label?: string;
+  /** The controlled ColorDialog mode for this specific fill entry. */
+  fillType?: FillType;
+  gradientStops?: GradientStop[];
+  imageSourceLabel?: string;
+  videoSourceLabel?: string;
+  imageAdjustments?: Partial<ImageAdjustments>;
+  /** A host-owned visual track binding for a standalone drop-zone fill. */
+  dropZoneSourceId?: string;
+}
 export interface ElementStrokeSetting extends ElementFillSetting {
   weight: number;
   align: "inside" | "center" | "outside";
@@ -93,7 +103,7 @@ export interface ElementStrokeSetting extends ElementFillSetting {
 export interface ElementEffectSetting extends EffectDetailsValue { id: string; }
 export interface ElementLayoutGuideSetting { id: string; type: "Grid" | "Columns" | "Rows"; visible: boolean; size: number; }
 export interface ElementSelectionColorSetting { id: string; color: string; opacity: number; usageCount?: number; }
-export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; animationDelay?: boolean; }
+export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; dropZone?: boolean; animationDelay?: boolean; }
 export interface ElementTypographySettings {
   fontFamily: string; fontWeight: string; fontSize: number; lineHeight: number; letterSpacing: number;
   align: "left" | "center" | "right" | "justify"; verticalAlign: "top" | "middle" | "bottom"; styleName?: string;
@@ -1731,9 +1741,18 @@ function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes 
 
 type FillEntry = ElementFillSetting;
 
-function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities, activeStackDialog, onActiveStackDialogChange }: {
+function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
+  onFillTypeChange, onGradientStopsChange, onChooseImage, onChooseVideo,
+  onImageAdjustmentChange, dropZoneSources, onSelectDropZoneSource,
+  capabilities, activeStackDialog, onActiveStackDialogChange }: {
   entries?: FillEntry[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<FillEntry, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
+  onFillTypeChange?: (id: string, type: FillType) => void;
+  onGradientStopsChange?: (id: string, stops: GradientStop[]) => void;
+  onChooseImage?: (id: string) => void; onChooseVideo?: (id: string) => void;
+  onImageAdjustmentChange?: (id: string, adjustment: ImageAdjustment, value: number) => void;
+  dropZoneSources?: { id: string; label: string }[];
+  onSelectDropZoneSource?: (id: string, sourceId: string) => void;
   capabilities: Required<InspectorCapabilities>;
   activeStackDialog: string | null;
   onActiveStackDialogChange: (dialog: string | null) => void;
@@ -1790,6 +1809,25 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, 
               />}
               hex={fill.color.replace("#", "")}
               onHexChange={color => updateFill(fill.id, { color: `#${color.replace(/^#/, "")}` })}
+              fillType={fill.fillType}
+              onFillTypeChange={onFillTypeChange ? type => onFillTypeChange(fill.id, type) : undefined}
+              gradientStops={fill.gradientStops}
+              onStopsChange={onGradientStopsChange ? stops => onGradientStopsChange(fill.id, stops) : undefined}
+              imageSourceLabel={fill.imageSourceLabel}
+              onChooseImage={onChooseImage ? () => onChooseImage(fill.id) : undefined}
+              imageExposure={fill.imageAdjustments?.exposure}
+              imageContrast={fill.imageAdjustments?.contrast}
+              imageSaturation={fill.imageAdjustments?.saturation}
+              imageTemperature={fill.imageAdjustments?.temperature}
+              imageTint={fill.imageAdjustments?.tint}
+              imageHighlights={fill.imageAdjustments?.highlights}
+              imageShadows={fill.imageAdjustments?.shadows}
+              onImageAdjustmentChange={onImageAdjustmentChange ? (adjustment, value) => onImageAdjustmentChange(fill.id, adjustment, value) : undefined}
+              videoSourceLabel={fill.videoSourceLabel}
+              onChooseVideo={onChooseVideo ? () => onChooseVideo(fill.id) : undefined}
+              dropZoneSources={dropZoneSources}
+              dropZoneSourceId={fill.dropZoneSourceId}
+              onSelectDropZoneSource={onSelectDropZoneSource ? sourceId => onSelectDropZoneSource(fill.id, sourceId) : undefined}
             />
           </PanelEntry>
         </PanelReorderableEntry>
@@ -2111,7 +2149,7 @@ const DEMO_SELECTION_COLORS: ElementSelectionColorSetting[] = [
   { id: "demo-selection-6", color: "#9747FF", opacity: 100 },
 ];
 
-function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = { templates: true, styles: true, variables: true, libraries: true, videoFill: false, animationDelay: false } }: {
+function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = { templates: true, styles: true, variables: true, libraries: true, videoFill: false, dropZone: false, animationDelay: false } }: {
   colors?: ElementSelectionColorSetting[];
   onUpdate?: (id: string, patch: Partial<Omit<ElementSelectionColorSetting, "id">>) => void;
   onSelectAll?: (id: string) => void;
@@ -2982,6 +3020,14 @@ export interface PropertyPanelProps {
   fontWeights?: ReadonlyArray<FontWeightOption>;
   fills?: ElementFillSetting[];
   onAddFill?: () => void; onUpdateFill?: (id: string, patch: Partial<Omit<ElementFillSetting, "id">>) => void; onToggleFill?: (id: string, visible: boolean) => void; onReorderFill?: (id: string, targetId: string) => void; onRemoveFill?: (id: string) => void;
+  /** Detailed Fill/Color dialog seams. Values live on each fill; callbacks remain host-owned. */
+  onFillTypeChange?: (id: string, type: FillType) => void;
+  onFillGradientStopsChange?: (id: string, stops: GradientStop[]) => void;
+  onChooseFillImage?: (id: string) => void;
+  onChooseFillVideo?: (id: string) => void;
+  onFillImageAdjustmentChange?: (id: string, adjustment: ImageAdjustment, value: number) => void;
+  fillDropZoneSources?: { id: string; label: string }[];
+  onSelectFillDropZoneSource?: (id: string, sourceId: string) => void;
   strokes?: ElementStrokeSetting[];
   /** Locked or inherited-locked selections may inspect Stroke Settings but cannot mutate them. */
   strokeReadOnly?: boolean;
@@ -3597,6 +3643,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
     variables: capabilityOverrides?.variables ?? true,
     libraries: capabilityOverrides?.libraries ?? true,
     videoFill: capabilityOverrides?.videoFill ?? false,
+    dropZone: capabilityOverrides?.dropZone ?? false,
     // #222: animation "starts automatically" + delay authoring — default OFF (unlike the
     // other capabilities) so the delay is removed from the default path until re-enabled.
     animationDelay: capabilityOverrides?.animationDelay ?? false,
@@ -4016,7 +4063,12 @@ export function PropertyPanel(props: PropertyPanelProps) {
           {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} fonts={fonts} fontSizes={fontSizes} fontWeights={fontWeights} />}
 
           {/* Stackable sections */}
-          <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill} capabilities={capabilities}
+          <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill}
+            onFillTypeChange={props.onFillTypeChange} onGradientStopsChange={props.onFillGradientStopsChange}
+            onChooseImage={props.onChooseFillImage} onChooseVideo={props.onChooseFillVideo}
+            onImageAdjustmentChange={props.onFillImageAdjustmentChange}
+            dropZoneSources={props.fillDropZoneSources} onSelectDropZoneSource={props.onSelectFillDropZoneSource}
+            capabilities={capabilities}
             activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
           <StrokeSection entries={strokes} onAdd={onAddStroke} onUpdate={onUpdateStroke} onToggle={onToggleStroke} onReorder={onReorderStroke} onRemove={onRemoveStroke} capabilities={capabilities}
             readOnly={strokeReadOnly} activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
