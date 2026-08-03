@@ -48,19 +48,12 @@ const ROW_BLOCK = 62;     // master-view lane height — two-row header ([icon][
 // DS component that owns the lane; the host still re-checks kind before placing.
 const VIDEO_LANE_DROP_ACCEPT = ["image/", "video/"] as const;
 const AUDIO_LANE_DROP_ACCEPT = ["audio/"] as const;
-// Width of the header's right-hand cluster (zoom slider + collapse control + padding
-// + border). It is ALSO the gutter every time-plot row reserves on its right, so the
-// playhead can never travel underneath that cluster: the owner's mental model is that
-// the playhead behaves like a scrollbar thumb, which stops at the end of its track
-// rather than sliding under the chrome next to it (Composa#661). Before the gutter,
-// time mapped across the full row width, so at maximum zoom-out t=duration drew the
-// handle (z-20) straight over the zoom slider (z-10).
+// Width of the header's right-hand zoom/collapse cluster. The time plot deliberately
+// spans underneath this absolute overlay, matching the pre-Iteration-1 geometry
+// requested in owner-feedback row 10 (Composa#699). This value remains useful only
+// when revealing a keyframe, where it provides a readable margin from the overlay.
 const RIGHT_OVERLAY_W = 148;
-// The playhead's pentagon handle is centred on the time position, so half of it
-// overhangs whatever pixel that is. The reserved gutter has to cover the cluster AND
-// that overhang, or the tip still crosses the divider at t=duration.
 const PLAYHEAD_HANDLE_W = 12;
-const PLOT_RIGHT_GUTTER = RIGHT_OVERLAY_W + PLAYHEAD_HANDLE_W / 2;
 // Transport geometry, named because the track headers below have to line up with it.
 const TRANSPORT_PAD_X = 8;    // horizontal inset of the transport row
 const TRANSPORT_BTN = 24;     // TransportIconButton hit box
@@ -1059,7 +1052,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
   return (
     <>
       {/* layer row */}
-      <div className="group/selection-row relative flex" style={{ height: ROW_LAYER, paddingRight: PLOT_RIGHT_GUTTER }} data-composa-row-state={selectionState}>
+      <div className="group/selection-row relative flex" style={{ height: ROW_LAYER }} data-composa-row-state={selectionState}>
         <span
           aria-hidden
           data-composa-row-highlight="timeline-full-lane"
@@ -1132,7 +1125,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
       {expanded && track.bars?.map((preset, childIndex) => {
         const presetProjection = timelineDurationBarProjection(preset.timeRange, viewport);
         return (
-        <div key={preset.id} className={clsx("group/preset flex", preset.hidden && "opacity-40")} style={{ height: ROW_PROP, paddingRight: PLOT_RIGHT_GUTTER }}>
+        <div key={preset.id} className={clsx("group/preset flex", preset.hidden && "opacity-40")} style={{ height: ROW_PROP }}>
           <div className="relative shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
             <TimelineChildConnector index={childIndex} count={childCount} depth={depth} />
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate text-c-text-secondary")}>{preset.label}</span>
@@ -1165,7 +1158,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
         return (
         <div key={i}
           className={clsx("flex", p.hidden && "opacity-40", propSelected ? "bg-c-bg-selected" : rowGraySelected && "bg-c-bg-secondary")}
-          style={{ height: ROW_PROP, paddingRight: PLOT_RIGHT_GUTTER }}
+          style={{ height: ROW_PROP }}
           onClick={event => { if (!(event.target as Element).closest?.("button,[data-keyframe-id],[data-easing-segment]")) onPropertyRowSelect?.(propertyId); }}>
           <div className="group/prop relative shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
             <TimelineChildConnector index={presetCount + i} count={childCount} depth={depth} />
@@ -1352,7 +1345,7 @@ function TimelineTimeScrollbar({ viewport, duration, plotWidth, columnStroke = t
     try { event.currentTarget.releasePointerCapture(event.pointerId); } catch {}
   };
   return (
-    <div className="flex shrink-0 h-[12px] border-t border-c-border bg-c-bg" data-timeline-time-scrollbar style={{ paddingRight: PLOT_RIGHT_GUTTER }}>
+    <div className="flex shrink-0 h-[12px] border-t border-c-border bg-c-bg" data-timeline-time-scrollbar>
       <div className={clsx("shrink-0", columnStroke && COLUMN_STROKE)} style={{ width: LEFT_W }} />
       <div className="relative flex-1 min-w-0">
         <div
@@ -1537,7 +1530,7 @@ function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onC
   const dimmed = laneIsDisabled(header);
   const locked = laneIsLocked(header);
   return (
-    <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK, paddingRight: PLOT_RIGHT_GUTTER }}>
+    <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK }}>
       {/* left header — [icon][label][+] + [vis][solo][mute][lock] */}
       <MasterLaneHeader {...header} />
       {/* block lane */}
@@ -1736,7 +1729,7 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
   const dimmed = laneIsDisabled(header);
   const locked = laneIsLocked(header);
   return (
-    <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK, paddingRight: PLOT_RIGHT_GUTTER }}>
+    <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK }}>
       <MasterLaneHeader {...header} />
       <div {...dropHandlers} data-timeline-pan-surface data-lane-drop-active={dragActive || undefined} className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Base video track" : "Base video track (empty)"}>
         {dragActive && <LaneDropOverlay hint={dropHint ?? "Drop media here"} />}
@@ -1941,7 +1934,7 @@ function AudioTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDr
   const dimmed = laneIsDisabled(header);
   const locked = laneIsLocked(header);
   return (
-    <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK, paddingRight: PLOT_RIGHT_GUTTER }}>
+    <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK }}>
       <MasterLaneHeader {...header} />
       <div {...dropHandlers} data-timeline-pan-surface data-lane-drop-active={dragActive || undefined} className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Audio track" : "Audio track (empty)"}>
         {dragActive && <LaneDropOverlay hint={dropHint ?? "Drop audio here"} />}
@@ -2216,10 +2209,9 @@ export function Timeline({
   const loop = controlledLoop ?? internalLoop;
   const viewport = normalizeViewport(controlledViewport ?? internalViewport, duration);
   const viewportRef = useRef(viewport);
-  // Effective track-list width — 0 while the left column is collapsed (Composa#582),
-  // so the ruler + lanes reflow to full width and stay aligned header-to-body.
-  // The plot spans the row minus the track-list column AND the reserved right gutter.
-  const plotWidth = Math.max(1, timelineWidth - LEFT_W - PLOT_RIGHT_GUTTER);
+  // Pre-Iteration-1 geometry: the plot spans the full row after the track-list
+  // column. The right chrome is an overlay rather than reserved plot space (#699).
+  const plotWidth = Math.max(1, timelineWidth - LEFT_W);
   // Build the shared header contract for one master lane: resolves its control
   // state and only binds a callback when the host supplied the matching handler,
   // so an unwired affordance stays visible-but-disabled rather than a no-op.
@@ -2251,9 +2243,7 @@ export function Timeline({
   const edgeDrag = useTimelineEdgeDragAutoScroll(viewportRef, duration, setViewport);
   const revealTime = (timeMs: number) => {
     if (timelineWidth <= LEFT_W + 1) return;
-    // Symmetric padding: the right cluster no longer sits over the plot, so the
-    // extra right margin that used to compensate for it would now double-count.
-    const next = revealTimeInViewport(viewport, timeMs, duration, 0.05, 0.05);
+    const next = revealTimeInViewport(viewport, timeMs, duration, 0.05, Math.max(0.1, RIGHT_OVERLAY_W / plotWidth));
     if (next.startMs !== viewport.startMs || next.endMs !== viewport.endMs) setViewport(next, "keyframe-reveal");
   };
 
@@ -2374,10 +2364,9 @@ export function Timeline({
           height (master lanes are ROW_BLOCK tall) so the ruler row and the lanes
           below read on one grid. Slide-local rows are shorter, so the transport
           keeps its compact 40px there. */}
-      {/* `paddingRight` reserves the right cluster's gutter so the ruler — and with it
-          the playhead — stops where the zoom slider begins (see RIGHT_OVERLAY_W). The
-          cluster itself is absolutely positioned, so it still reaches the row's edge. */}
-      <div className="relative flex shrink-0 border-b border-c-border" style={{ height: master ? ROW_BLOCK : 40, paddingRight: PLOT_RIGHT_GUTTER }}>
+      {/* The right cluster is an absolute overlay. The ruler and playhead retain the
+          pre-Iteration-1 full-width geometry beneath it (owner feedback #699). */}
+      <div className="relative flex shrink-0 border-b border-c-border" style={{ height: master ? ROW_BLOCK : 40 }}>
         <div className="shrink-0 flex">
           <Transport current={playhead} duration={duration} mode={mode} playing={playing} loop={loop} onPlayingChange={setPlaying} onLoopChange={setLoop}
             columnStroke={!master}
@@ -2508,7 +2497,7 @@ export function Timeline({
             spans header-ruler-bottom through the last lane at any scroll position,
             instead of only the visible viewport height. Gated on `seekable` — the
             slide-local null state has nothing to seek, so no line (LT-2). */}
-        {seekable && <div className="absolute top-0 bottom-0 z-20 overflow-hidden pointer-events-none" style={{ left: LEFT_W, right: PLOT_RIGHT_GUTTER }}>
+        {seekable && <div className="absolute top-0 bottom-0 right-0 z-20 overflow-hidden pointer-events-none" style={{ left: LEFT_W }}>
           <div className="absolute top-0 bottom-0 w-px" style={{ left: percent(playhead, viewport), backgroundColor: autoKeyframe ? "#ff3b30" : BLUE }} />
         </div>}
       </ScrollArea>
