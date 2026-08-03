@@ -1,5 +1,6 @@
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { describe, expect, it } from "vitest";
+import { Timer } from "lucide-react";
 import { PanelFieldRow } from "./Panel";
 import { PropertyPanel } from "./PropertyPanel";
 
@@ -32,10 +33,20 @@ describe("slide/composition inspector — trailing-slot + Duration column", () =
   });
 
   it("reserves the trailing slot AND pins Duration to one column", () => {
-    const duration = rowByLabel(render({ mode: "slide", slideStart: 0, slideDuration: 4 }), "Duration")!;
+    const renderer = render({ mode: "slide", slideStart: 0, slideDuration: 4 });
+    const duration = rowByLabel(renderer, "Duration")!;
     expect(duration.props.reserveRightSlot).toBe(true);
     // A half-width spacer occupies the second column → Duration is 1-col wide.
     expect(duration.props.right).toBeTruthy();
+    expect(renderer.root.findAllByType(Timer)).toHaveLength(1);
+  });
+
+  it("hides Layout guide by default and exposes it only through the fidelity-tools capability", () => {
+    const defaultPanel = render({ mode: "slide", layoutGuides: [] });
+    expect(defaultPanel.root.findAll(node => node.props.title === "Layout guide")).toHaveLength(0);
+
+    const fidelityPanel = render({ mode: "slide", layoutGuides: [], capabilities: { layoutFidelityTools: true } });
+    expect(fidelityPanel.root.findAll(node => node.props.title === "Layout guide")).toHaveLength(1);
   });
 
   it("reserves the trailing slot on the Background Fill type row", () => {

@@ -10,7 +10,7 @@ import {
   Minus, EyeOff, AlignJustify, Maximize, ChevronDown, Ruler,
   MoveHorizontal, MoveVertical, Play, Pause, MonitorPlay,
   Image as ImageIcon, Clock, SquareSquare,
-  ArrowRightFromLine, Grid2x2,
+  ArrowRightFromLine, Grid2x2, Timer,
 } from "lucide-react";
 import { CirclesFour } from "@phosphor-icons/react";
 import { ProposedSquareText, ProposedTextMargins } from "../../icons/proposed-lucide";
@@ -105,7 +105,7 @@ export interface ElementStrokeSetting extends ElementFillSetting {
 export interface ElementEffectSetting extends EffectDetailsValue { id: string; }
 export interface ElementLayoutGuideSetting { id: string; type: "Grid" | "Columns" | "Rows"; visible: boolean; size: number; }
 export interface ElementSelectionColorSetting { id: string; color: string; opacity: number; usageCount?: number; }
-export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; dropZone?: boolean; animationDelay?: boolean; }
+export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; dropZone?: boolean; animationDelay?: boolean; layoutFidelityTools?: boolean; }
 export interface ElementTypographySettings {
   fontFamily: string; fontWeight: string; fontSize: number; lineHeight: number; letterSpacing: number;
   align: "left" | "center" | "right" | "justify"; verticalAlign: "top" | "middle" | "bottom"; styleName?: string;
@@ -2027,7 +2027,7 @@ const DEMO_SELECTION_COLORS: ElementSelectionColorSetting[] = [
   { id: "demo-selection-6", color: "#9747FF", opacity: 100 },
 ];
 
-function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = { templates: true, styles: true, variables: true, libraries: true, videoFill: false, dropZone: false, animationDelay: false } }: {
+function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = { templates: true, styles: true, variables: true, libraries: true, videoFill: false, dropZone: false, animationDelay: false, layoutFidelityTools: false } }: {
   colors?: ElementSelectionColorSetting[];
   onUpdate?: (id: string, patch: Partial<Omit<ElementSelectionColorSetting, "id">>) => void;
   onSelectAll?: (id: string) => void;
@@ -2209,7 +2209,7 @@ function SlideTimingSection({
               ariaLabel="Duration"
               dropdownAriaLabel={`Duration mode: ${hugging ? "Hug" : "Fixed"}`}
               idleLabel={hugging ? "Hug" : undefined}
-              iconLead={<span className={FONT}>↔</span>}
+              iconLead={<Timer data-icon-semantic="duration-timer" size={16} strokeWidth={1.5} />}
               value={renderedDuration}
               onChange={value => { if (hugging) onDurationModeChange("fixed"); commitDuration(value); }}
               min={0}
@@ -2225,7 +2225,7 @@ function SlideTimingSection({
           ) : (
             <NumericInput
               ariaLabel="Duration"
-              iconLead={<span className={FONT}>↔</span>}
+              iconLead={<Timer data-icon-semantic="duration-timer" size={16} strokeWidth={1.5} />}
               value={renderedDuration}
               onChange={commitDuration}
               min={0}
@@ -3532,6 +3532,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
     // #222: animation "starts automatically" + delay authoring — default OFF (unlike the
     // other capabilities) so the delay is removed from the default path until re-enabled.
     animationDelay: capabilityOverrides?.animationDelay ?? false,
+    // Fidelity authoring tools such as guides and future slide rulers stay out
+    // of the default product until their canvas behavior reaches release fidelity.
+    layoutFidelityTools: capabilityOverrides?.layoutFidelityTools ?? false,
   };
   const [uncontrolledTab, setUncontrolledTab] = useState<"design" | "animate" | "prototype">("design");
   const [activeStackDialog, setActiveStackDialog] = useState<string | null>(null);
@@ -3747,7 +3750,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onColorChange={onSlideBackgroundColorChange}
             onOpacityChange={onSlideBackgroundOpacityChange}
           />
-          <LayoutGuideSection entries={layoutGuides} onAdd={onAddLayoutGuide} onUpdate={onUpdateLayoutGuide} onRemove={onRemoveLayoutGuide} />
+          {capabilities.layoutFidelityTools && <LayoutGuideSection entries={layoutGuides} onAdd={onAddLayoutGuide} onUpdate={onUpdateLayoutGuide} onRemove={onRemoveLayoutGuide} />}
           {/* Selection colors — reuse the existing element-mode section */}
           <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} capabilities={capabilities} />
           <ExportSection settings={exportSettings} mode={exportMode} onModeChange={onExportModeChange} targetName={exportTargetName ?? renderedSlideName}
