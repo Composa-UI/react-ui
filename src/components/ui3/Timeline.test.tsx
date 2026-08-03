@@ -120,6 +120,8 @@ describe("Timeline DOM contracts", () => {
     expect(visible).toContain("group-hover/track:opacity-100");
     expect(visible).toContain('aria-label="Height value"');
     expect(visible).toContain('value="274"');
+    expect(visible).toContain("data-timeline-property-value");
+    expect(visible).not.toMatch(/data-timeline-property-value[^>]*opacity-0/);
     expect(hidden).toContain('aria-label="Show Hero"');
     expect(hidden).toContain('aria-pressed="true"');
     expect(hidden).toContain("opacity-40");

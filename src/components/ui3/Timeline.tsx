@@ -1176,9 +1176,9 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
             <button type="button" aria-label={`Next ${p.name} keyframe`} onClick={() => onPropertyStepKeyframe?.(trackId, p.id ?? `property-${i}`, "next")} className="shrink-0 flex items-center justify-center opacity-0 group-hover/prop:opacity-100 disabled:opacity-0" disabled={!onPropertyStepKeyframe}>
               <ChevronRight size={14} strokeWidth={1.5} className="text-c-icon-secondary" />
             </button>
-            {/* inline value at the playhead — between the stepper and the eye, revealed on hover/selection (Composa#343b) */}
+            {/* Inline value at the playhead stays visible beside keyframe state, matching the canonical row anatomy. */}
             {p.value !== undefined && (
-              <div className={clsx("shrink-0 w-[56px] select-text", !(propSelected || rowGraySelected) && "opacity-0 group-hover/prop:opacity-100 focus-within:opacity-100")}>
+              <div data-timeline-property-value className="shrink-0 w-[56px] select-text">
                 <NumericInput ariaLabel={`${p.name} value`} value={p.value} size="small" disabled={p.valueEditable === false}
                   onChange={value => onPropertyValueChange?.(trackId, propertyId, value)} />
               </div>
