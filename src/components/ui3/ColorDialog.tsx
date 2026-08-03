@@ -8,7 +8,7 @@ import { hexToHsb, hsbToHex } from "../../lib/color";
 import { Tabs } from "./Tabs";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { Slider, PickerHandle, GradientStopHandle } from "./Slider";
-import { InputField, ColorInput, NumericInputMulti } from "./Input";
+import { InputField, ColorInput, NumericInput, NumericInputMulti } from "./Input";
 import { Button } from "./Button";
 import { Dropdown } from "./Dropdown";
 import { Chit } from "./Chit";
@@ -22,6 +22,13 @@ export interface GradientStop {
   position: number;
   color: string;    // hex without #
   opacity: number;  // 0–100
+}
+
+export interface ColorDialogKeyframeControl { active: boolean; onToggle: () => void; }
+export interface GradientStopKeyframeControls {
+  position?: ColorDialogKeyframeControl;
+  color?: ColorDialogKeyframeControl;
+  opacity?: ColorDialogKeyframeControl;
 }
 
 export interface ColorDialogCapabilities { styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; dropZone?: boolean; }
@@ -57,6 +64,8 @@ export interface ColorDialogProps {
   onHexChange?: (h: string) => void;
   gradientStops?: GradientStop[];
   onStopsChange?: (stops: GradientStop[]) => void;
+  /** Stable stop-id keyed motion bindings. Omitted controls render no diamond. */
+  gradientStopKeyframes?: Record<string, GradientStopKeyframeControls>;
   /** Library groups for the Libraries tab. Defaults to demo data so the
    * playground/stories keep working; hosts inject document tokens here. */
   libraries?: LibraryGroup[];
@@ -351,10 +360,11 @@ function AdjustRow({ label, value, onChange }: {
 const stopHexLabel = (index: number) => `Stop ${index + 1} hex`;
 
 function StopRow({
-  stop, index, onPosition, onOpacity, onColor, onRemove, onFocusHex,
+  stop, index, keyframes, onPosition, onOpacity, onColor, onRemove, onFocusHex,
 }: {
   stop: GradientStop;
   index: number;
+  keyframes?: GradientStopKeyframeControls;
   onPosition: (id: string, v: number) => void;
   onOpacity: (id: string, v: number) => void;
   onColor: (id: string, hex: string) => void;
@@ -364,14 +374,16 @@ function StopRow({
   return (
     <div className="flex items-center gap-[8px] px-[16px] h-[32px]">
       {/* position % */}
-      <div className="w-[52px] flex items-center h-[24px] rounded-c-md bg-c-bg ring-1 ring-inset ring-c-border overflow-hidden">
-        <input
-          aria-label={`Stop ${index + 1} position`}
-          value={String(stop.position)}
-          onChange={e => onPosition(stop.id, parseFloat(e.target.value) || 0)}
-          className={clsx("flex-1 min-w-0 h-full bg-transparent outline-none px-[6px]", FONT, "text-[11px] text-c-text")}
+      <div className={keyframes?.position ? "w-[76px]" : "w-[52px]"}>
+        <NumericInput
+          ariaLabel={`Stop ${index + 1} position`}
+          value={stop.position}
+          min={0}
+          max={100}
+          suffix="%"
+          keyframe={keyframes?.position}
+          onChange={value => onPosition(stop.id, value)}
         />
-        <span className={clsx(FONT, "text-[11px] text-c-text-secondary pr-[6px]")}>%</span>
       </div>
       {/* The stop color uses the same ColorInput as the panels. `onSwatchClick`
           is what keeps the browser's native colour picker out of it: without a
@@ -383,6 +395,8 @@ function StopRow({
           ariaLabel={`Stop ${index + 1}`}
           color={`#${stop.color}`}
           opacity={stop.opacity}
+          colorKeyframe={keyframes?.color}
+          opacityKeyframe={keyframes?.opacity}
           onSwatchClick={() => onFocusHex(stop.id)}
           onColorChange={v => onColor(stop.id, v)}
           onOpacityChange={v => onOpacity(stop.id, v)}
@@ -435,6 +449,7 @@ export function ColorDialog({
   onHexChange,
   gradientStops: stopsProp,
   onStopsChange,
+  gradientStopKeyframes,
   libraries = MOCK_LIBRARY,
   onSelectLibraryColor,
   capabilities,
@@ -864,6 +879,7 @@ export function ColorDialog({
                   key={stop.id}
                   stop={stop}
                   index={index}
+                  keyframes={gradientStopKeyframes?.[stop.id]}
                   onPosition={handleStopPos}
                   onOpacity={handleStopOp}
                   onColor={handleStopColor}

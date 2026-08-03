@@ -21,6 +21,10 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     const onVideo = vi.fn();
     const onAdjust = vi.fn();
     const onDropZone = vi.fn();
+    const stopPosition = { active: true, onToggle: vi.fn() };
+    const stopColor = { active: false, onToggle: vi.fn() };
+    const stopOpacity = { active: false, onToggle: vi.fn() };
+    const paintOpacity = { active: true, onToggle: vi.fn() };
     const stops = [
       { id: "a", position: 0, color: "ff0000", opacity: 100 },
       { id: "b", position: 100, color: "0000ff", opacity: 70 },
@@ -34,6 +38,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
         fills={[{
           id: "fill-1", color: "#ff0000", opacity: 80, visible: true,
           fillType: "linear", gradientStops: stops,
+          keyframes: { opacity: paintOpacity, gradientStops: { a: { position: stopPosition, color: stopColor, opacity: stopOpacity } } },
           imageSourceLabel: "cover.png", videoSourceLabel: "clip.mp4",
           imageAdjustments: { exposure: 12, contrast: -4, saturation: 9, temperature: 3, tint: 2, highlights: -8, shadows: 6 },
           dropZoneSourceId: "track:video",
@@ -51,6 +56,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     const props = capture.props!;
     expect(props.fillType).toBe("linear");
     expect(props.gradientStops).toEqual(stops);
+    expect(props.gradientStopKeyframes).toEqual({ a: { position: stopPosition, color: stopColor, opacity: stopOpacity } });
     expect(props.imageSourceLabel).toBe("cover.png");
     expect(props.videoSourceLabel).toBe("clip.mp4");
     expect(props.imageExposure).toBe(12);
