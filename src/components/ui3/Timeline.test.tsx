@@ -77,13 +77,15 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain('data-timeline-child-index="0" data-timeline-child-count="3"');
     expect(html).toContain('data-timeline-child-index="2" data-timeline-child-count="3"');
     expect(html.match(/data-timeline-child-connector-gap="4"/g)).toHaveLength(3);
-    expect(html.match(/left:28px;width:16px/g)).toHaveLength(3);
+    expect(html).toContain('data-timeline-child-trunk-origin="icon-bottom"');
+    expect(html).toContain('left:40px;top:calc(50% + 8px)');
+    expect(html.match(/left:40px;width:4px/g)).toHaveLength(3);
     expect(html).toContain('data-composa-row-highlight="timeline-full-lane"');
     expect(html).toContain('data-timeline-preset-bar="pulse"');
     expect(html).toContain('data-keyframe-id="opacity-0"');
   });
 
-  it("keeps preset-only disclosure semantics unchanged while respecting controlled collapse", () => {
+  it("lets the parent disclosure collapse preset-only children", () => {
     const expanded = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[{
       id: "hero", name: "Hero", type: "frame", expanded: true, props: [], bars: [
         { id: "pulse", label: "A deliberately long animation preset name", timeRange: [100, 700] },
@@ -96,13 +98,31 @@ describe("Timeline DOM contracts", () => {
     }]} onTrackExpandedChange={() => undefined} />);
     expect(expanded).toContain('data-timeline-child-connector="elbow"');
     expect(expanded).toContain("truncate");
-    expect(expanded).not.toContain('aria-label="Collapse Hero"');
-    expect(expanded).not.toContain('aria-expanded="true"');
-    expect(collapsed).not.toContain('aria-label="Expand Hero"');
-    expect(collapsed).not.toContain('aria-expanded="false"');
+    expect(expanded).toContain('aria-label="Collapse Hero"');
+    expect(expanded).toContain('aria-expanded="true"');
+    expect(collapsed).toContain('aria-label="Expand Hero"');
+    expect(collapsed).toContain('aria-expanded="false"');
     expect(collapsed).not.toContain("data-timeline-child-trunk");
     expect(collapsed).not.toContain("data-timeline-child-connector");
     expect(collapsed).not.toContain("A deliberately long animation preset name");
+  });
+
+  it("projects a hover-revealed parent visibility affordance", () => {
+    const visible = renderToStaticMarkup(<Timeline height={220} tracks={[{
+      id: "hero", name: "Hero", type: "frame", visible: true, props: [
+        { id: "height", name: "Height", value: 274, keyframes: [] },
+      ],
+    }]} onTrackVisibilityChange={() => undefined} onPropertyValueChange={() => undefined} />);
+    const hidden = renderToStaticMarkup(<Timeline height={220} tracks={[{
+      id: "hero", name: "Hero", type: "frame", visible: false, props: [],
+    }]} onTrackVisibilityChange={() => undefined} />);
+    expect(visible).toContain('aria-label="Hide Hero"');
+    expect(visible).toContain("group-hover/track:opacity-100");
+    expect(visible).toContain('aria-label="Height value"');
+    expect(visible).toContain('value="274"');
+    expect(hidden).toContain('aria-label="Show Hero"');
+    expect(hidden).toContain('aria-pressed="true"');
+    expect(hidden).toContain("opacity-40");
   });
 
   it("lets an editable neutral bar select-and-move while reserving trim handles for the selected bar", () => {
