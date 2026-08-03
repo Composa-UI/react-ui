@@ -2253,11 +2253,9 @@ function SlideTimingSection({
   durationMode?: SlideDurationMode;
   onDurationModeChange?: (mode: SlideDurationMode) => void;
   controlled?: boolean;
-  /** Reserve the Design-tab trailing-icon column (24px + 8px gap) so the
-   *  slide/composition inspector's Range and Duration fields line up with the
-   *  Position/Scale/Opacity fields. When set, Duration is also pinned to a
-   *  single column (a half-width spacer fills the second column). The video-clip
-   *  Timeline usage leaves this false and stays edge-to-edge as before. */
+  /** Reserve the standard trailing-action column (24px + 8px gap) so timing
+   *  fields align with other inspector value rows. When set, Duration is also
+   *  pinned to one column while an empty second column preserves the pair. */
   reserveTrailingSlot?: boolean;
 }) {
   const [internalStart, setInternalStart] = useState(start);
