@@ -284,6 +284,31 @@ describe("AnimatePanel — Comp transition reflects the slide's real value (issu
     );
     expect(html).not.toContain(">Fade<");
   });
+
+  it("offers the full house easing set and routes Custom to the host", () => {
+    const changes: string[] = [];
+    const custom = vi.fn();
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<AnimatePanel
+        selectionType="slide"
+        compTransition={{ style: "fade", direction: "right", durationMs: 300, easing: "ease-in-out" }}
+        compTransitionCallbacks={{ onEasingChange: value => changes.push(value), onCustomEasingRequest: custom }}
+        anims={[]}
+      />);
+    });
+    const popover = renderer!.root.findAllByType(PopoverMenu)
+      .find(item => item.props.trigger?.props?.ariaLabel === "Transition easing")!;
+    const menu = popover.props.children(vi.fn());
+    const rows = (menu.props.children.flat() as Array<{ props?: { label?: string; onClick?: () => void } }>).filter(Boolean);
+    expect(rows.map(row => row.props?.label).filter(Boolean))
+      .toEqual([...EASING_PRESETS.map(preset => preset.label), "Custom…"]);
+    act(() => rows.find(row => row.props?.label === "Ease in (strong)")!.props!.onClick!());
+    expect(changes).toEqual(["ease-in-strong"]);
+    act(() => rows.find(row => row.props?.label === "Custom…")!.props!.onClick!());
+    expect(custom).toHaveBeenCalledOnce();
+    act(() => renderer!.unmount());
+  });
 });
 
 describe("AnimatePanel — object tint and exact-card focus stay distinct (issue #305)", () => {
