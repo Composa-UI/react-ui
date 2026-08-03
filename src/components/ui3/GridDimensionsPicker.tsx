@@ -68,7 +68,7 @@ export function GridDimensionsPicker({ grid, onChange }: GridDimensionsPickerPro
       <span className="absolute inset-0 flex items-center justify-center font-[family-name:var(--composa-font-family)] text-[11px] font-[450] leading-[16px]">{summary}</span>
     </button>}
   >
-    {() => <Menu minWidth={224} className="gap-[8px] py-[8px]" >
+    {() => <Menu className="gap-[8px] py-[8px]" >
       <div role="group" aria-label="Grid dimensions" className="flex flex-col gap-[8px]">
         <div>
           <div className="px-[8px] pb-[3px] font-[family-name:var(--composa-font-family)] text-[9px] font-[450] leading-[14px] text-c-text-secondary">Columns</div>

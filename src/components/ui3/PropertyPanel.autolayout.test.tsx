@@ -83,9 +83,9 @@ describe("Flow is a four-way layout-mode selector (Composa#661 item 1)", () => {
     expect(auto).toContain('aria-label="Remove auto-layout"');
     // "Switch to grid" occupied this slot; grid is reached from Flow now.
     expect(auto).not.toContain('aria-label="Switch to grid"');
-    // The plain-frame header keeps its "Add grid" action (app e2e entry point);
-    // the Flow segment is an additional route, not a replacement there.
-    expect(renderToStaticMarkup(<PropertyPanel elementType="frame" />)).toContain('aria-label="Add grid"');
+    // Grid is only a Flow mode: plain frames must not expose a second Add-grid
+    // side door that creates a sibling section/dialog topology.
+    expect(renderToStaticMarkup(<PropertyPanel elementType="frame" />)).not.toContain('aria-label="Add grid"');
   });
 });
 
