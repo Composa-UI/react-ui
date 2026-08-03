@@ -4,19 +4,19 @@ import {
   RotateCw, FlipHorizontal2, FlipVertical2,
   Link2, Link2Off, MoreHorizontal,
   Maximize2, Minimize2, Plus, Eye,
-  Rows2, Columns,
+  Columns,
   BookOpen,
-  Crosshair, Grid3x3, ExternalLink, Unlink,
+  Crosshair, Grid3x3, ExternalLink, Link, Unlink,
   Minus, EyeOff, AlignJustify, Maximize, ChevronDown, Ruler,
   MoveHorizontal, MoveVertical, Play, Pause, MonitorPlay,
   Image as ImageIcon, Clock, SquareSquare,
-  ArrowRightFromLine, Columns2, Grid2x2,
+  ArrowRightFromLine, Grid2x2, Timer,
 } from "lucide-react";
 import { CirclesFour } from "@phosphor-icons/react";
 import { ProposedSquareText, ProposedTextMargins } from "../../icons/proposed-lucide";
 import {
   PanelSection, PanelFieldRow, PanelSegmentedRow, PanelFullRow, PanelRow,
-  IconButtonRow, PanelActionBtn, PanelEntry, PanelReorderableEntry, ScrollArea, type IconBtn,
+  IconButtonRow, PanelActionBtn, PanelEntry, PanelReorderableEntry, ScrollArea, PANEL_W, type IconBtn,
 } from "./Panel";
 import { Tabs } from "./Tabs";
 import { NumericEditSessionProvider, NumericInput, NumericComboInput, NumericPairInput, InputField, ColorInput, ComboInput, formatNumericDisplay } from "./Input";
@@ -25,7 +25,7 @@ import { SegmentedControl } from "./SegmentedControl";
 import { AlignmentControl, type AlignmentValue } from "./AlignmentControl";
 import { Chit } from "./Chit";
 import { Checkbox } from "./Checkbox";
-import { ColorDialog } from "./ColorDialog";
+import { ColorDialog, type FillType, type GradientStop, type ImageAdjustment, type ImageAdjustments } from "./ColorDialog";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { AnimatePanel } from "./AnimatePanel";
 import { Avatar, type AvatarColor } from "./Avatar";
@@ -34,6 +34,7 @@ import { Button } from "./Button";
 import { Tooltip } from "./Tooltip";
 import { EffectDetailsDialog, type EffectDetailsValue } from "./EffectDetailsDialog";
 import { AutoLayoutSettingsDialog } from "./AutoLayoutSettingsDialog";
+import { GridDimensionsPicker } from "./GridDimensionsPicker";
 import {
   StrokeSettingsDialog,
   type StrokeCap,
@@ -44,7 +45,7 @@ import { EasingInspectorSection, type EasingInspectorSectionProps, type EasingIn
 import { Dial } from "./Dial";
 import { Slider } from "./Slider";
 import { ColorAdjustmentsDialog, type ColorAdjustmentGroup } from "./ColorAdjustmentsDialog";
-import type { EasingApplyScope } from "./easing";
+import type { EasingApplyScope, EasingPreset } from "./easing";
 import { iconForSemantic } from "./IconSemantics";
 import { AutoLayoutSpacingIcon } from "./AutoLayoutSpacingIcon";
 import { TypeSettingsDialog } from "./TypeSettingsDialog";
@@ -67,9 +68,11 @@ export const CLIP_BLEND_MODES: ClipBlendMode[] = ["Normal", "Add", "Subtract", "
 export type SlideBackgroundType = "solid" | "gradient" | "image" | "video";
 export type SlideTransitionType = "none" | "fade" | "push" | "slide" | "wipe";
 export type SlideTransitionDirection = "left" | "right" | "up" | "down";
-export type SlideTransitionEasing = "linear" | "ease-in" | "ease-out" | "ease-in-out";
+export type SlideTransitionEasing = EasingPreset;
 export type ClipSpeed = 0.25 | 0.5 | 0.75 | 1 | 1.25 | 1.5 | 2 | 4;
 export type ExportFormat = "PNG" | "JPG";
+/** Static exports authored values; Frame exports one evaluated playhead still. */
+export type InspectorExportMode = "static" | "frame";
 /**
  * `suffix` is vestigial: Composa#661 removed the Suffix field, and nothing in this
  * component reads it any more. Kept OPTIONAL rather than deleted because the app
@@ -78,7 +81,17 @@ export type ExportFormat = "PNG" | "JPG";
  */
 export interface InspectorExportSetting { id: string; scale: number; suffix?: string; format: ExportFormat; }
 export type ProjectFrameRate = 24 | 25 | 30 | 60;
-export interface ElementFillSetting { id: string; color: string; opacity: number; visible: boolean; label?: string; }
+export interface ElementFillSetting {
+  id: string; color: string; opacity: number; visible: boolean; label?: string;
+  /** The controlled ColorDialog mode for this specific fill entry. */
+  fillType?: FillType;
+  gradientStops?: GradientStop[];
+  imageSourceLabel?: string;
+  videoSourceLabel?: string;
+  imageAdjustments?: Partial<ImageAdjustments>;
+  /** A host-owned visual track binding for a standalone drop-zone fill. */
+  dropZoneSourceId?: string;
+}
 export interface ElementStrokeSetting extends ElementFillSetting {
   weight: number;
   align: "inside" | "center" | "outside";
@@ -92,7 +105,7 @@ export interface ElementStrokeSetting extends ElementFillSetting {
 export interface ElementEffectSetting extends EffectDetailsValue { id: string; }
 export interface ElementLayoutGuideSetting { id: string; type: "Grid" | "Columns" | "Rows"; visible: boolean; size: number; }
 export interface ElementSelectionColorSetting { id: string; color: string; opacity: number; usageCount?: number; }
-export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; animationDelay?: boolean; }
+export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; dropZone?: boolean; animationDelay?: boolean; layoutFidelityTools?: boolean; }
 export interface ElementTypographySettings {
   fontFamily: string; fontWeight: string; fontSize: number; lineHeight: number; letterSpacing: number;
   align: "left" | "center" | "right" | "justify"; verticalAlign: "top" | "middle" | "bottom"; styleName?: string;
@@ -242,14 +255,17 @@ function DualField({
   left,
   rightLabel,
   right,
+  reserveRightSlot = true,
 }: {
   leftLabel?: string;
   left: ReactNode;
   rightLabel?: string;
   right: ReactNode;
+  /** Preserve the standard 24px trailing-action column plus its 8px gap. */
+  reserveRightSlot?: boolean;
 }) {
   return (
-    <div className="h-[48px] flex items-center gap-[8px] px-[16px]">
+    <div data-composa-dual-field data-reserve-right-slot={reserveRightSlot ? "true" : "false"} className="h-[48px] flex items-center gap-[8px] px-[16px]">
       <div className="flex-1 min-w-0 flex flex-col pt-[3px] pb-[4px]">
         {leftLabel && <span className={clsx(SUBLABEL, "mb-[3px]")}>{leftLabel}</span>}
         <div className="min-h-[24px] flex items-center">{left}</div>
@@ -258,6 +274,7 @@ function DualField({
         {rightLabel && <span className={clsx(SUBLABEL, "mb-[3px]")}>{rightLabel}</span>}
         <div className="min-h-[24px] flex items-center">{right}</div>
       </div>
+      {reserveRightSlot && <span aria-hidden className="block w-[24px] shrink-0" />}
     </div>
   );
 }
@@ -459,6 +476,28 @@ export function lockedAspectCounterpart(axis: ElementSizingAxis, nextValue: numb
   return Number.isFinite(paired) ? paired : undefined;
 }
 
+/**
+ * The glyph for a chain-link aspect toggle, given whether the axes are CURRENTLY
+ * locked.
+ *
+ * The owner's mapping, stated twice and still not honoured before this: a
+ * SLASHED link (`Link2Off`, the one lucide draws a 2,2→22,22 line across) means
+ * the two axes are locked RIGHT NOW, and pressing it breaks the link. An
+ * unslashed link (`Link2`) means they are free right now, and pressing it joins
+ * them. i.e. the icon reports the CURRENT state, not the action — the inverse of
+ * the "icon shows what you will get" reading a previous pass applied.
+ *
+ * This lives in exactly one place because the inspector has two of these
+ * toggles (Dimensions and Scale). They were written out separately and would
+ * otherwise drift, leaving one chain-link contradicting the other in the same
+ * panel. `active` on the button follows the same truth: active === locked.
+ */
+export function aspectLockIcon(locked: boolean) {
+  return locked
+    ? <Link2Off size={16} strokeWidth={1.5} />
+    : <Link2 size={16} strokeWidth={1.5} />;
+}
+
 export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
   const [localWidthMode, setLocalWidthMode] = useState<ElementSizingMode>(props.widthMode ?? "fixed");
   const [localHeightMode, setLocalHeightMode] = useState<ElementSizingMode>(props.heightMode ?? "fixed");
@@ -526,7 +565,7 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
       label="Dimensions"
       left={<SizingComboField axis="width" value={props.width} mode={widthMode} mixed={props.widthMixed} valueMixed={props.widthValueMixed} availableModes={props.availableWidthModes} minValue={values.minWidth} maxValue={values.maxWidth} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("width", change)} onConstraintChange={(constraint, value) => changeConstraint("width", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("width") : undefined} keyframe={props.dimensionsKeyframe} />}
       right={<SizingComboField axis="height" value={props.height} mode={heightMode} mixed={props.heightMixed} valueMixed={props.heightValueMixed} availableModes={props.availableHeightModes} minValue={values.minHeight} maxValue={values.maxHeight} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("height", change)} onConstraintChange={(constraint, value) => changeConstraint("height", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("height") : undefined} keyframe={props.dimensionsKeyframe} />}
-      rightAction={<PanelActionBtn icon={lockAspect ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />} label="Lock aspect ratio" active={lockAspect} onClick={() => setLockAspect(value => !value)} />}
+      rightAction={<PanelActionBtn icon={aspectLockIcon(lockAspect)} label="Lock aspect ratio" active={lockAspect} onClick={() => setLockAspect(value => !value)} />}
     />
     {hasConstraints && <div className="flex flex-col gap-y-[6px] px-[16px] pb-[8px]">
       {packedConstraintRows.map((row, rowIndex) => <div key={rowIndex} className="flex items-end gap-[8px]">
@@ -636,6 +675,8 @@ export interface InspectorKeyframeControls {
   rotation?: InspectorKeyframeControl;
   opacity?: InspectorKeyframeControl;
   dimensions?: InspectorKeyframeControl;
+  /** Scalar corner radius only. Hosts omit this for independent per-corner values. */
+  cornerRadius?: InspectorKeyframeControl;
 }
 
 // ─── Section: Position ────────────────────────────────────────────────────────
@@ -784,6 +825,22 @@ function PositionSection({
           label="Position"
           left={<NumericInput ariaLabel="Position X" iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>X</span>} value={x} onChange={onXChange} defaultValue={0} mixed={xMixed} keyframe={positionKeyframe} />}
           right={<NumericInput ariaLabel="Position Y" iconLead={<span className={clsx(FONT, "text-[11px] font-normal")}>Y</span>} value={y} onChange={onYChange} defaultValue={0} mixed={yMixed} keyframe={positionKeyframe} />}
+          // The separate branch used to render NO rightAction, so pressing
+          // "Separate dimensions" destroyed the only control that could undo it —
+          // the trip was one-way for the rest of the session. The mirror action
+          // costs no layout: PanelFieldRow reserves the 24px right slot either
+          // way, so the affordance was literally a hole. Gated on the same
+          // callback the combined branch is, which is how a host that FORCES
+          // separation (the master view) keeps the row from offering a combine it
+          // would not honour.
+          rightAction={onPositionPresentationChange
+            ? <PanelActionBtn
+                icon={<Link size={16} strokeWidth={1.5} />}
+                label="Combine dimensions"
+                tooltip="Combine dimensions"
+                onClick={() => onPositionPresentationChange("combined")}
+              />
+            : undefined}
         />
       )}
 
@@ -799,7 +856,7 @@ function PositionSection({
               keyframe={scaleKeyframe}
             />
           }
-          rightAction={<PanelActionBtn icon={scaleLocked ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />} label="Lock scale aspect ratio" active={scaleLocked} onClick={() => setScaleLocked(value => !value)} />}
+          rightAction={<PanelActionBtn icon={aspectLockIcon(scaleLocked)} label="Lock scale aspect ratio" active={scaleLocked} onClick={() => setScaleLocked(value => !value)} />}
         />
       )}
 
@@ -855,8 +912,9 @@ interface LayoutFrameProps {
   onClipContentChange?: (value: boolean) => void;
   /** Auto-layout is reached from here two ways: the "+" button, or moving Flow
    * off its first ("Freeform") option. Both call this. */
-  onEnableAutoLayout?: () => void;
-  /** Grid is a distinct layout type (Reading A), entered via its own action. */
+  /** Omitted mode means the generic header toggle; hosts may infer from geometry. */
+  onEnableAutoLayout?: (mode?: "vertical" | "horizontal") => void;
+  /** Grid is the fourth Auto-layout flow mode. */
   onEnableGrid?: () => void;
   spatialSelectionLayout?: SpatialSelectionLayoutControl;
 }
@@ -876,10 +934,9 @@ function LayoutFrameSection({
 
   const handleFlowChange = (v: string) => {
     setFlow(v as FlowValue);
-    // Grid is a peer flow mode with its own section — it is entered from the Flow
-    // control now, not from a separate header action (Composa#661).
+    // Grid is entered from Flow; there is no separate Add Grid action.
     if (v === "grid") { onEnableGrid?.(); return; }
-    if (v !== "none") onEnableAutoLayout?.();
+    if (v === "v" || v === "h") onEnableAutoLayout?.(v === "h" ? "horizontal" : "vertical");
   };
 
   return (
@@ -888,7 +945,6 @@ function LayoutFrameSection({
       rightActions={
         <>
           <PanelActionBtn icon={<Maximize2 size={16} strokeWidth={1.5} />} label="Resize to fit" />
-          <PanelActionBtn icon={<Grid2x2 size={16} strokeWidth={1.5} />} label="Add grid" onClick={onEnableGrid} />
           {/* Trailing header toggle, OFF face (Composa#661 item 4): panel-plus.
               A bare Plus read as a generic "add" rather than the off state of the
               auto-layout toggle whose on face lives in the Auto layout section. */}
@@ -922,6 +978,7 @@ interface LayoutAutoProps {
   flowMode?: ElementLayoutSettings["mode"];
   wrap?: boolean;
   rowGap?: number;
+  grid?: ElementGridSettings;
   widthMode?: "fixed" | "hug" | "fill";
   heightMode?: "fixed" | "hug" | "fill";
   gap?: number | "auto";
@@ -967,6 +1024,7 @@ function LayoutAutoSection({
   flowMode,
   wrap: wrapProp,
   rowGap: rowGapProp,
+  grid,
   widthMode = "hug", heightMode = "fill",
   gap: gapProp,
   paddingTop = 16, paddingRight = 0, paddingBottom = 8, paddingLeft = 0,
@@ -1011,7 +1069,7 @@ function LayoutAutoSection({
   // from the trailing Auto-layout Settings entry point.
   const handleFlowChange = (v: string) => {
     setFlow(v as FlowValue);
-    // Grid is a peer flow mode with its own section (Composa#661).
+    // Grid is a fourth Auto-layout flow mode, not a sibling section.
     if (v === "grid") { onEnableGrid?.(); return; }
     const mode = v === "h" ? "horizontal" : v === "v" ? "vertical" : "none";
     // Wrap only survives on Horizontal; leaving Horizontal clears it.
@@ -1076,9 +1134,7 @@ function LayoutAutoSection({
   );
 
   const settingsValue = {
-    // Grid never renders this auto-layout section (it has its own), so coerce it
-    // away to satisfy the auto-layout settings contract.
-    mode: (flowMode === "grid" ? "none" : flowMode) ?? (renderedFlow === "h" ? "horizontal" : renderedFlow === "v" ? "vertical" : "none"),
+    mode: flowMode ?? (renderedFlow === "h" ? "horizontal" : renderedFlow === "v" ? "vertical" : renderedFlow === "grid" ? "grid" : "none"),
     textBaseline: textBaselineMixed ? "mixed" : textBaseline,
     strokeSizing: strokeSizingMixed ? "mixed" : strokeSizing,
     canvasStacking: canvasStackingMixed ? "mixed" : canvasStacking,
@@ -1089,6 +1145,7 @@ function LayoutAutoSection({
       open={settingsOpen}
       value={settingsValue}
       disabled={settingsDisabled}
+      grid={renderedFlow === "grid" ? grid : undefined}
       trigger={<PanelActionBtn
         // Every settings entry point in the inspector (Type, Stroke, Template)
         // is the slider glyph; the auto-layout one used the Freeform *layout*
@@ -1099,6 +1156,7 @@ function LayoutAutoSection({
         onClick={settingsDisabled ? undefined : () => { setSettingsOpen(true); onAutoLayoutSettingsRequest?.(); }}
       />}
       onChange={patch => onLayoutChange?.(patch)}
+      onGridChange={patch => grid && onLayoutChange?.({ grid: { ...grid, ...patch } })}
       onClose={() => setSettingsOpen(false)}
     />
   );
@@ -1143,12 +1201,30 @@ function LayoutAutoSection({
         </div>
       </div>
 
-      {/* Alignment and Gap are the paired authoring row. While wrapping, the
+      {renderedFlow === "grid" && grid ? (
+      /* Figma node 342:3501: Grid 88px, Gap 88px, settings 24px. The grid face
+         opens dimensions; the trailing glyph opens the SAME Auto-layout settings. */
+      <div role="group" aria-label="Grid and gap" className="flex items-start gap-[8px] px-[16px] pt-[8px] pb-[4px]">
+        <div className="shrink-0">
+          <div className={subLabel}>Grid</div>
+          <GridDimensionsPicker grid={grid} onChange={patch => onLayoutChange?.({ grid: { ...grid, ...patch } })} />
+        </div>
+        <div className="w-[88px] min-w-0 flex flex-col gap-[4px]">
+          <div>
+            <div className={subLabel}>Gap</div>
+            <NumericInput ariaLabel="Column gap" iconLead={<AutoLayoutSpacingIcon kind="gap" axis="horizontal" />} value={grid.columnGap} onChange={columnGap => onLayoutChange?.({ grid: { ...grid, columnGap: Math.max(0, columnGap) } })} min={0} suffix="px" className="w-full" />
+          </div>
+          <NumericInput ariaLabel="Row gap" iconLead={<AutoLayoutSpacingIcon kind="gap" axis="vertical" />} value={grid.rowGap} onChange={rowGap => onLayoutChange?.({ grid: { ...grid, rowGap: Math.max(0, rowGap) } })} min={0} suffix="px" className="w-full" />
+        </div>
+        <div className="shrink-0 pt-[17px]">{settingsTriggerButton}</div>
+      </div>
+      ) : (
+      /* Alignment and Gap are the paired authoring row. While wrapping, the
           cross-axis Row gap joins the SAME gap column instead of getting its own
           full-width row below the alignment block (Composa#661 item 2) — the two
           gaps are one pair, and the 240px inspector cannot fit the 88px alignment
           control plus two side-by-side numeric fields without shrinking both to
-          ~36px. Auto remains unavailable while wrapping. */}
+          ~36px. Auto remains unavailable while wrapping. */
       <div role="group" aria-label="Alignment and gap" className="flex items-start gap-[8px] px-[16px] pt-[8px] pb-[4px]">
         <div className="shrink-0">
           <div className={subLabel}>Alignment</div>
@@ -1176,8 +1252,10 @@ function LayoutAutoSection({
             />
           </div>
           {wrapping && (
+            // No second title: the "Gap" above heads the pair. Kept identical to the
+            // grid section's gap column so the two blocks stay structurally the same
+            // ("row gap does not need a title row gap").
             <div>
-              <div className={subLabel}>Row gap</div>
               <NumericInput
                 ariaLabel="Row gap"
                 iconLead={<AutoLayoutSpacingIcon kind="gap" axis="vertical" />}
@@ -1193,6 +1271,7 @@ function LayoutAutoSection({
         </div>
         <div className="shrink-0 pt-[17px]">{settingsTriggerButton}</div>
       </div>
+      )}
 
       {/* Padding — cross layout. Combined (default): Vertical + Horizontal, two
           fields. Expanded (toggle): all four sides independently. */}
@@ -1249,217 +1328,7 @@ function LayoutAutoSection({
   );
 }
 
-// ─── Section: Layout — Grid (grid-and-wrap-spec §3 / §5 Reading A) ─────────────
-// FLAGGED FOR OWNER REVIEW — track-editor layout choices (see PR body):
-//  • Grid is a DISTINCT layout type (Reading A): entered from the "Grid" action in
-//    the plain-frame / auto-layout Layout header; its own section replaces the flow
-//    controls. Wrap and Grid never coexist.
-//  • Columns and Rows are each an explicit vertical list of track editors; each track
-//    is a NumericComboInput whose menu picks Fixed(px)/Hug (no `fr` — Phase B). A
-//    per-track "–" removes; an "Add column/row" button appends a Hug track.
-//  • Two gaps (Column gap / Row gap) reuse the wrap section's linked-pair idiom.
-//  • Item alignment reuses the 3×3 AlignmentControl (justify/align items → cell
-//    placement). `stretch` is NOT on the 3×3 — it is reached via a child's Fill
-//    sizing (Phase A). Content alignment is a second 3×3 (justify/align content →
-//    track-block placement in a larger frame). Owner may prefer a distribute-style
-//    control; the mapping to the engine model is the load-bearing part.
-
-const gridItemsCode = (grid: ElementGridSettings): AlignmentValue => {
-  const h = grid.justifyItems === "center" ? "c" : grid.justifyItems === "end" ? "r" : "l";
-  const v = grid.alignItems === "center" ? "m" : grid.alignItems === "end" ? "b" : "t";
-  return `${v}${h}` as AlignmentValue;
-};
-const gridContentCode = (grid: ElementGridSettings): AlignmentValue => {
-  const h = grid.justifyContent === "center" ? "c" : grid.justifyContent === "end" ? "r" : "l";
-  const v = grid.alignContent === "center" ? "m" : grid.alignContent === "end" ? "b" : "t";
-  return `${v}${h}` as AlignmentValue;
-};
-const codeToItems = (code: AlignmentValue) => ({
-  justifyItems: (code[1] === "c" ? "center" : code[1] === "r" ? "end" : "start") as GridItemAlign,
-  alignItems: (code[0] === "m" ? "center" : code[0] === "b" ? "end" : "start") as GridItemAlign,
-});
-const codeToContent = (code: AlignmentValue) => ({
-  justifyContent: (code[1] === "c" ? "center" : code[1] === "r" ? "end" : "start") as GridContentAlign,
-  alignContent: (code[0] === "m" ? "center" : code[0] === "b" ? "end" : "start") as GridContentAlign,
-});
-
-function GridTrackEditor({ axis, tracks, onChange }: { axis: "row" | "column"; tracks: ElementGridTrack[]; onChange: (tracks: ElementGridTrack[]) => void }) {
-  const label = axis === "column" ? "Column" : "Row";
-  const setTrack = (index: number, next: ElementGridTrack) => onChange(tracks.map((track, i) => (i === index ? next : track)));
-  const removeTrack = (index: number) => { if (tracks.length <= 1) return; onChange(tracks.filter((_, i) => i !== index)); };
-  const trackMenu = (index: number, track: ElementGridTrack) => (close: () => void) => (
-    <Menu>
-      <MenuRow type="checkmark" label="Fixed" checked={track.mode === "fixed"} onClick={() => { setTrack(index, { mode: "fixed", size: track.size || 100 }); close(); }} />
-      <MenuRow type="checkmark" label="Hug" checked={track.mode === "hug"} onClick={() => { setTrack(index, { mode: "hug", size: track.size }); close(); }} />
-    </Menu>
-  );
-  return (
-    <div className="flex flex-col gap-[4px]" role="group" aria-label={`${label} tracks`}>
-      {tracks.map((track, index) => (
-        <div key={index} className="flex items-center gap-[4px]">
-          <div className="flex-1 min-w-0">
-            <NumericComboInput
-              dataMode={track.mode}
-              ariaLabel={`${label} ${index + 1} size`}
-              dropdownAriaLabel={`${label} ${index + 1} sizing mode: ${track.mode === "hug" ? "Hug" : "Fixed"}`}
-              iconLead={axis === "column" ? <Columns2 size={16} strokeWidth={1.5} /> : <Rows2 size={16} strokeWidth={1.5} />}
-              // Hug shows a "Hug" idle label but stays type-to-convert (Figma parity):
-              // typing a px value on a hug track atomically switches it to Fixed.
-              idleLabel={track.mode === "hug" ? "Hug" : undefined}
-              value={track.mode === "fixed" ? track.size : undefined}
-              defaultValue={track.size || 100}
-              onChange={size => setTrack(index, { mode: "fixed", size })}
-              min={0}
-              suffix="px"
-              menu={trackMenu(index, track)}
-              className="w-full"
-            />
-          </div>
-          <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label={`Remove ${label.toLowerCase()} ${index + 1}`} disabled={tracks.length <= 1} onClick={() => removeTrack(index)} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-interface LayoutGridProps {
-  width?: number; height?: number;
-  grid: ElementGridSettings;
-  widthMode?: "fixed" | "hug" | "fill";
-  heightMode?: "fixed" | "hug" | "fill";
-  paddingTop?: number; paddingRight?: number; paddingBottom?: number; paddingLeft?: number;
-  paddingDisabled?: boolean;
-  clipContent?: boolean;
-  sizing?: Omit<DimensionSizingFieldsProps, "width" | "height" | "widthMode" | "heightMode">;
-  spatialSelectionLayout?: SpatialSelectionLayoutControl;
-  onLayoutChange?: (patch: Partial<ElementLayoutSettings>) => void;
-  onPaddingChange?: (value: ElementLayoutSettings["padding"], changedEdges: readonly ElementPaddingEdge[]) => void;
-  onClipContentChange?: (value: boolean) => void;
-}
-
-function LayoutGridSection({
-  width = 0, height = 0, grid,
-  widthMode = "fixed", heightMode = "fixed",
-  paddingTop = 0, paddingRight = 0, paddingBottom = 0, paddingLeft = 0, paddingDisabled = false,
-  clipContent = false,
-  sizing, spatialSelectionLayout,
-  onLayoutChange, onPaddingChange, onClipContentChange,
-}: LayoutGridProps) {
-  const [gapsLinked, setGapsLinked] = useState(grid.rowGap === grid.columnGap);
-  const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
-  const emitGrid = (patch: Partial<ElementGridSettings>) => onLayoutChange?.({ grid: { ...grid, ...patch } });
-  const emitColumnGap = (value: number) => {
-    const next = Math.max(0, value);
-    emitGrid(gapsLinked ? { columnGap: next, rowGap: next } : { columnGap: next });
-  };
-  const emitRowGap = (value: number) => {
-    const next = Math.max(0, value);
-    emitGrid(gapsLinked ? { columnGap: next, rowGap: next } : { rowGap: next });
-  };
-  const toggleGapsLinked = () => {
-    const next = !gapsLinked;
-    setGapsLinked(next);
-    if (next && grid.columnGap !== grid.rowGap) emitGrid({ rowGap: grid.columnGap });
-  };
-  // Grid is the fourth Flow segment (Composa#661), so this section renders the
-  // same control — otherwise choosing Grid made the selector vanish and the only
-  // way back out was the header's "Remove grid" action.
-  const handleFlowChange = (v: string) => {
-    if (v === "grid") return;
-    onLayoutChange?.({ mode: v === "h" ? "horizontal" : v === "v" ? "vertical" : "none" });
-  };
-
-  return (
-    <PanelSection
-      title="Grid"
-      rightActions={
-        <>
-          <PanelActionBtn icon={<Maximize2 size={16} strokeWidth={1.5} />} label="Resize to fit" />
-          <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove grid" onClick={() => onLayoutChange?.({ mode: "none" })} />
-        </>
-      }
-    >
-      {/* Flow — same four-way selector as the plain-frame and auto-layout sections. */}
-      <div role="group" aria-label="Flow" className="flex items-start gap-[8px] px-[16px] pt-[8px]">
-        <div className="flex-1 min-w-0">
-          <div className={subLabel}>Flow</div>
-          <SegmentedControl segments={flowSegments} value="grid" onChange={handleFlowChange} className="w-full" />
-        </div>
-      </div>
-
-      {/* Columns */}
-      <div className="flex items-start gap-[8px] px-[16px] pt-[8px]">
-        <div className="flex-1 min-w-0">
-          <div className={subLabel}>Columns</div>
-          <GridTrackEditor axis="column" tracks={grid.columns} onChange={columns => emitGrid({ columns })} />
-        </div>
-        <div className="shrink-0 pt-[17px]">
-          <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add column" onClick={() => emitGrid({ columns: [...grid.columns, { mode: "hug", size: 100 }] })} />
-        </div>
-      </div>
-
-      {/* Rows */}
-      <div className="flex items-start gap-[8px] px-[16px] pt-[8px]">
-        <div className="flex-1 min-w-0">
-          <div className={subLabel}>Rows</div>
-          <GridTrackEditor axis="row" tracks={grid.rows} onChange={rows => emitGrid({ rows })} />
-        </div>
-        <div className="shrink-0 pt-[17px]">
-          <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add row" onClick={() => emitGrid({ rows: [...grid.rows, { mode: "hug", size: 100 }] })} />
-        </div>
-      </div>
-
-      {/* Two gaps — column + row, linked idiom (same as wrap's two gaps). */}
-      <div role="group" aria-label="Grid gaps" className="flex items-start gap-[8px] px-[16px] pt-[8px]">
-        <div className="flex-1 min-w-0">
-          <div className={subLabel}>Column gap</div>
-          <NumericInput ariaLabel="Column gap" iconLead={<AutoLayoutSpacingIcon kind="gap" axis="horizontal" />} value={grid.columnGap} defaultValue={grid.columnGap} onChange={emitColumnGap} min={0} suffix="px" className="w-full" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className={subLabel}>Row gap</div>
-          <NumericInput ariaLabel="Row gap" iconLead={<AutoLayoutSpacingIcon kind="gap" axis="vertical" />} value={grid.rowGap} defaultValue={grid.rowGap} onChange={emitRowGap} min={0} suffix="px" className="w-full" />
-        </div>
-        <div className="shrink-0 pt-[17px]">
-          <PanelActionBtn icon={gapsLinked ? <Link2 size={16} strokeWidth={1.5} /> : <Link2Off size={16} strokeWidth={1.5} />} label={gapsLinked ? "Unlink column and row gap" : "Link column and row gap"} active={gapsLinked} onClick={toggleGapsLinked} />
-        </div>
-      </div>
-
-      {/* Alignment — item placement within cells (left) and track-block placement
-          within the frame (right). Two 3×3 controls (flagged). */}
-      <div className="flex items-start gap-[16px] px-[16px] pt-[8px] pb-[4px]">
-        <div className="shrink-0">
-          <div className={subLabel}>Align items</div>
-          <AlignmentControl value={gridItemsCode(grid)} onChange={code => emitGrid(codeToItems(code))} />
-        </div>
-        <div className="shrink-0">
-          <div className={subLabel}>Align content</div>
-          <AlignmentControl value={gridContentCode(grid)} onChange={code => emitGrid(codeToContent(code))} />
-        </div>
-      </div>
-
-      {/* Padding (combined) */}
-      <div className="px-[16px] pt-[4px] pb-[4px]">
-        <div className={subLabel}>Padding</div>
-        <div className="flex items-center gap-[4px]">
-          <div className="flex-1 min-w-0">
-            <NumericInput ariaLabel="Vertical padding" iconLead={<AutoLayoutSpacingIcon kind="padding" axis="vertical" />} value={paddingTop} defaultValue={paddingTop} disabled={paddingDisabled} onChange={vertical => onPaddingChange?.({ top: vertical, right: paddingRight, bottom: vertical, left: paddingLeft }, ["top", "bottom"])} min={0} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <NumericInput ariaLabel="Horizontal padding" iconLead={<AutoLayoutSpacingIcon kind="padding" axis="horizontal" />} value={paddingLeft} defaultValue={paddingLeft} disabled={paddingDisabled} onChange={horizontal => onPaddingChange?.({ top: paddingTop, right: horizontal, bottom: paddingBottom, left: horizontal }, ["right", "left"])} min={0} />
-          </div>
-        </div>
-      </div>
-
-      <DimensionSizingFields {...sizing} width={width} height={height} widthMode={widthMode} heightMode={heightMode} />
-      <SpatialSelectionLayoutFields value={spatialSelectionLayout} />
-
-      <PanelFullRow height={28}>
-        <Checkbox checked={onClipContentChange ? clipContent : undefined} defaultChecked={clipContent} onChange={onClipContentChange} label="Clip content" />
-      </PanelFullRow>
-    </PanelSection>
-  );
-}
-
+// ─── Section: Appearance ──────────────────────────────────────────────────────
 // ─── Section: Appearance ──────────────────────────────────────────────────────
 
 interface AppearanceSectionProps {
@@ -1478,13 +1347,14 @@ interface AppearanceSectionProps {
    *  (Figma-parity list, but never a silent no-op). Omit = all enabled. */
   supportedBlendModes?: readonly BlendMode[];
   opacityKeyframe?: InspectorKeyframeControl;
+  cornerRadiusKeyframe?: InspectorKeyframeControl;
 }
 
 function AppearanceSection({
   opacity = 100, blendMode = "Pass through", cornerRadius = 0, onOpacityChange, onBlendModeChange, onCornerRadiusChange, blendControlled = false, cornerControlled = false,
   supportedBlendModes,
   opacityMixed = false, cornerRadiusMixed = false,
-  opacityKeyframe,
+  opacityKeyframe, cornerRadiusKeyframe,
 }: AppearanceSectionProps) {
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
   const [indivCorners, setIndivCorners] = useState(typeof cornerRadius === "object");
@@ -1523,7 +1393,7 @@ function AppearanceSection({
         </div>
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Corner radius</div>
-          <NumericInput ariaLabel="Corner radius" iconLead={<Maximize size={16} strokeWidth={1.5} />} value={corners.topLeft} onChange={setCornerValue} min={0} mixed={cornerRadiusMixed && !indivCorners} disabled={indivCorners} />
+          <NumericInput ariaLabel="Corner radius" iconLead={<Maximize size={16} strokeWidth={1.5} />} value={corners.topLeft} onChange={setCornerValue} min={0} mixed={cornerRadiusMixed && !indivCorners} disabled={indivCorners} keyframe={indivCorners ? undefined : cornerRadiusKeyframe} />
         </div>
         <PanelActionBtn icon={<Maximize size={16} strokeWidth={1.5} />} label="Independent corners" selected={indivCorners} onClick={() => setIndivCorners(v => !v)} />
       </div>
@@ -1738,9 +1608,18 @@ function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes 
 
 type FillEntry = ElementFillSetting;
 
-function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities, activeStackDialog, onActiveStackDialogChange }: {
+function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
+  onFillTypeChange, onGradientStopsChange, onChooseImage, onChooseVideo,
+  onImageAdjustmentChange, dropZoneSources, onSelectDropZoneSource,
+  capabilities, activeStackDialog, onActiveStackDialogChange }: {
   entries?: FillEntry[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<FillEntry, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
+  onFillTypeChange?: (id: string, type: FillType) => void;
+  onGradientStopsChange?: (id: string, stops: GradientStop[]) => void;
+  onChooseImage?: (id: string) => void; onChooseVideo?: (id: string) => void;
+  onImageAdjustmentChange?: (id: string, adjustment: ImageAdjustment, value: number) => void;
+  dropZoneSources?: { id: string; label: string }[];
+  onSelectDropZoneSource?: (id: string, sourceId: string) => void;
   capabilities: Required<InspectorCapabilities>;
   activeStackDialog: string | null;
   onActiveStackDialogChange: (dialog: string | null) => void;
@@ -1797,6 +1676,25 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, 
               />}
               hex={fill.color.replace("#", "")}
               onHexChange={color => updateFill(fill.id, { color: `#${color.replace(/^#/, "")}` })}
+              fillType={fill.fillType}
+              onFillTypeChange={onFillTypeChange ? type => onFillTypeChange(fill.id, type) : undefined}
+              gradientStops={fill.gradientStops}
+              onStopsChange={onGradientStopsChange ? stops => onGradientStopsChange(fill.id, stops) : undefined}
+              imageSourceLabel={fill.imageSourceLabel}
+              onChooseImage={onChooseImage ? () => onChooseImage(fill.id) : undefined}
+              imageExposure={fill.imageAdjustments?.exposure}
+              imageContrast={fill.imageAdjustments?.contrast}
+              imageSaturation={fill.imageAdjustments?.saturation}
+              imageTemperature={fill.imageAdjustments?.temperature}
+              imageTint={fill.imageAdjustments?.tint}
+              imageHighlights={fill.imageAdjustments?.highlights}
+              imageShadows={fill.imageAdjustments?.shadows}
+              onImageAdjustmentChange={onImageAdjustmentChange ? (adjustment, value) => onImageAdjustmentChange(fill.id, adjustment, value) : undefined}
+              videoSourceLabel={fill.videoSourceLabel}
+              onChooseVideo={onChooseVideo ? () => onChooseVideo(fill.id) : undefined}
+              dropZoneSources={dropZoneSources}
+              dropZoneSourceId={fill.dropZoneSourceId}
+              onSelectDropZoneSource={onSelectDropZoneSource ? sourceId => onSelectDropZoneSource(fill.id, sourceId) : undefined}
             />
           </PanelEntry>
         </PanelReorderableEntry>
@@ -1963,9 +1861,11 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
 
 // ─── Section: Export ──────────────────────────────────────────────────────────
 
-function ExportSection({ settings, targetName = "selection", onAdd, onRemove, onUpdate, onExport }: {
+function ExportSection({ settings, targetName = "selection", mode = "static", onModeChange, onAdd, onRemove, onUpdate, onExport }: {
   settings?: InspectorExportSetting[];
   targetName?: string;
+  mode?: InspectorExportMode;
+  onModeChange?: (mode: InspectorExportMode) => void;
   onAdd?: () => void;
   onRemove?: (id: string) => void;
   onUpdate?: (id: string, patch: Partial<Omit<InspectorExportSetting, "id">>) => void;
@@ -1992,6 +1892,15 @@ function ExportSection({ settings, targetName = "selection", onAdd, onRemove, on
       muted={exports.length === 0}
       rightActions={<PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add export" onClick={add} />}
     >
+      <div className="px-[16px] pt-[4px] pb-[8px]">
+        <SegmentedControl
+          ariaLabel="Export mode"
+          segments={[{ value: "static", label: "Static" }, { value: "frame", label: "Frame" }]}
+          value={mode}
+          onChange={value => onModeChange?.(value as InspectorExportMode)}
+          className="w-full"
+        />
+      </div>
       {exports.map(exp => (
         <div key={exp.id} className="group/row flex items-center h-[32px] pr-[16px]">
           {/* Single-item stacks have nothing to reorder, so suppress the grip while
@@ -2013,7 +1922,7 @@ function ExportSection({ settings, targetName = "selection", onAdd, onRemove, on
         </div>
       ))}
       {exports.length > 0 && <PanelFullRow height={40}>
-        <Button label={`Export ${targetName}`} variant="Secondary" size="wide" onClick={onExport} />
+        <Button label={mode === "frame" ? "Export frame" : `Export ${targetName}`} variant="Secondary" size="wide" onClick={onExport} />
       </PanelFullRow>}
     </PanelSection>
   );
@@ -2118,7 +2027,7 @@ const DEMO_SELECTION_COLORS: ElementSelectionColorSetting[] = [
   { id: "demo-selection-6", color: "#9747FF", opacity: 100 },
 ];
 
-function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = { templates: true, styles: true, variables: true, libraries: true, videoFill: false, animationDelay: false } }: {
+function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = { templates: true, styles: true, variables: true, libraries: true, videoFill: false, dropZone: false, animationDelay: false, layoutFidelityTools: false } }: {
   colors?: ElementSelectionColorSetting[];
   onUpdate?: (id: string, patch: Partial<Omit<ElementSelectionColorSetting, "id">>) => void;
   onSelectAll?: (id: string) => void;
@@ -2260,11 +2169,9 @@ function SlideTimingSection({
   durationMode?: SlideDurationMode;
   onDurationModeChange?: (mode: SlideDurationMode) => void;
   controlled?: boolean;
-  /** Reserve the Design-tab trailing-icon column (24px + 8px gap) so the
-   *  slide/composition inspector's Range and Duration fields line up with the
-   *  Position/Scale/Opacity fields. When set, Duration is also pinned to a
-   *  single column (a half-width spacer fills the second column). The video-clip
-   *  Timeline usage leaves this false and stays edge-to-edge as before. */
+  /** Reserve the standard trailing-action column (24px + 8px gap) so timing
+   *  fields align with other inspector value rows. When set, Duration is also
+   *  pinned to one column while an empty second column preserves the pair. */
   reserveTrailingSlot?: boolean;
 }) {
   const [internalStart, setInternalStart] = useState(start);
@@ -2276,38 +2183,14 @@ function SlideTimingSection({
   const commitDuration = (value: number) => { if (!controlled) setInternalEnd(renderedStart + value); onDurationChange?.(value); };
   return (
     <PanelSection title={title} landmark={landmark}>
-      {/* Start / End as their own labeled rows (Composa#574). "Start"/"End" are words,
-          not single glyphs like X/Y or W/H, so they read as the row's sub-label — the
-          same labeled-field pattern the Design-tab rows use — instead of being squeezed
-          into the NumericInput's icon-lead slot. Each field pins to the left column so
-          it lines up with Duration below. */}
-      <PanelFieldRow
-        label="Start"
+      <DualField
+        leftLabel="Start"
+        left={<NumericInput ariaLabel="Start" value={renderedStart}
+          onChange={value => { if (!controlled) setInternalStart(value); onStartChange?.(value); }} min={0} suffix="s" />}
+        rightLabel="End"
+        right={<NumericInput ariaLabel="End" value={renderedEnd}
+          onChange={value => { if (!controlled) setInternalEnd(value); onEndChange?.(value); }} min={0} suffix="s" />}
         reserveRightSlot={reserveTrailingSlot}
-        right={reserveTrailingSlot ? <span aria-hidden className="block" /> : undefined}
-        left={
-          <NumericInput
-            ariaLabel="Start"
-            value={renderedStart}
-            onChange={value => { if (!controlled) setInternalStart(value); onStartChange?.(value); }}
-            min={0}
-            suffix="s"
-          />
-        }
-      />
-      <PanelFieldRow
-        label="End"
-        reserveRightSlot={reserveTrailingSlot}
-        right={reserveTrailingSlot ? <span aria-hidden className="block" /> : undefined}
-        left={
-          <NumericInput
-            ariaLabel="End"
-            value={renderedEnd}
-            onChange={value => { if (!controlled) setInternalEnd(value); onEndChange?.(value); }}
-            min={0}
-            suffix="s"
-          />
-        }
       />
       <PanelFieldRow
         label="Duration"
@@ -2326,7 +2209,7 @@ function SlideTimingSection({
               ariaLabel="Duration"
               dropdownAriaLabel={`Duration mode: ${hugging ? "Hug" : "Fixed"}`}
               idleLabel={hugging ? "Hug" : undefined}
-              iconLead={<span className={FONT}>↔</span>}
+              iconLead={<Timer data-icon-semantic="duration-timer" size={16} strokeWidth={1.5} />}
               value={renderedDuration}
               onChange={value => { if (hugging) onDurationModeChange("fixed"); commitDuration(value); }}
               min={0}
@@ -2342,7 +2225,7 @@ function SlideTimingSection({
           ) : (
             <NumericInput
               ariaLabel="Duration"
-              iconLead={<span className={FONT}>↔</span>}
+              iconLead={<Timer data-icon-semantic="duration-timer" size={16} strokeWidth={1.5} />}
               value={renderedDuration}
               onChange={commitDuration}
               min={0}
@@ -2640,6 +2523,7 @@ function ClipTrimSection({
         left={<NumericInput ariaLabel="Trim in" iconLead={<Crosshair size={16} strokeWidth={1.5} />} value={renderedTrimIn} onChange={value => { if (!controlled) setInternalTrimIn(value); onTrimInChange?.(value); }} min={0} suffix="s" />}
         rightLabel="Trim out"
         right={<NumericInput ariaLabel="Trim out" iconLead={<Crosshair size={16} strokeWidth={1.5} />} value={renderedTrimOut} onChange={value => { if (!controlled) setInternalTrimOut(value); onTrimOutChange?.(value); }} min={0} suffix="s" />}
+        reserveRightSlot
       />
       <PanelFullRow label="Clipped duration" height={24}>
         <span className={clsx(FONT, "text-[11px] text-c-text-secondary")}>{Math.max(0, renderedTrimOut - renderedTrimIn)}s</span>
@@ -2959,6 +2843,7 @@ export interface PropertyPanelProps {
   easing?: EasingInspectorValue;
   easingContext?: "keyframe" | "segment";
   easingApplyScope?: EasingApplyScope;
+  easingApplyToLabel?: string;
   onEasingChange?: EasingInspectorSectionProps["onChange"];
   onEasingApplyScopeChange?: EasingInspectorSectionProps["onApplyScopeChange"];
   onEasingCurveEditStart?: () => void;
@@ -2981,6 +2866,9 @@ export interface PropertyPanelProps {
   onCornerRadiusChange?: AppearanceSectionProps["onCornerRadiusChange"];
   layout?: ElementLayoutSettings;
   onLayoutChange?: (patch: Partial<ElementLayoutSettings>) => void;
+  /** Generic plain-frame Auto-layout toggle. Unlike an explicit Flow segment,
+   * this intent carries no requested axis so the host can infer from geometry. */
+  onAutoLayoutEnable?: () => void;
   /** Reports the exact physical side(s) edited so controlled multi-selection hosts
    * can preserve every untouched side on each selected object. */
   onPaddingChange?: (value: ElementLayoutSettings["padding"], changedEdges: readonly ElementPaddingEdge[]) => void;
@@ -3013,6 +2901,14 @@ export interface PropertyPanelProps {
   fontWeights?: ReadonlyArray<FontWeightOption>;
   fills?: ElementFillSetting[];
   onAddFill?: () => void; onUpdateFill?: (id: string, patch: Partial<Omit<ElementFillSetting, "id">>) => void; onToggleFill?: (id: string, visible: boolean) => void; onReorderFill?: (id: string, targetId: string) => void; onRemoveFill?: (id: string) => void;
+  /** Detailed Fill/Color dialog seams. Values live on each fill; callbacks remain host-owned. */
+  onFillTypeChange?: (id: string, type: FillType) => void;
+  onFillGradientStopsChange?: (id: string, stops: GradientStop[]) => void;
+  onChooseFillImage?: (id: string) => void;
+  onChooseFillVideo?: (id: string) => void;
+  onFillImageAdjustmentChange?: (id: string, adjustment: ImageAdjustment, value: number) => void;
+  fillDropZoneSources?: { id: string; label: string }[];
+  onSelectFillDropZoneSource?: (id: string, sourceId: string) => void;
   strokes?: ElementStrokeSetting[];
   /** Locked or inherited-locked selections may inspect Stroke Settings but cannot mutate them. */
   strokeReadOnly?: boolean;
@@ -3076,7 +2972,9 @@ export interface PropertyPanelProps {
   accountPhotoUrl?: string;
   /** Shared element/selection/slide still-image export contract. */
   exportSettings?: InspectorExportSetting[];
+  exportMode?: InspectorExportMode;
   exportTargetName?: string;
+  onExportModeChange?: (mode: InspectorExportMode) => void;
   onAddExportSetting?: () => void;
   onRemoveExportSetting?: (id: string) => void;
   onUpdateExportSetting?: (id: string, patch: Partial<Omit<InspectorExportSetting, "id">>) => void;
@@ -3109,6 +3007,7 @@ export interface PropertyPanelProps {
   onSlideTransitionDirectionChange?: (value: SlideTransitionDirection) => void;
   onSlideTransitionDurationChange?: (value: number) => void;
   onSlideTransitionEasingChange?: (value: SlideTransitionEasing) => void;
+  onCustomSlideTransitionEasingRequest?: () => void;
   onApplySlideTransitionToAll?: () => void;
   onDuplicateSlide?: () => void;
   onDeleteSlide?: () => void;
@@ -3517,7 +3416,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onXChange, onYChange, onRotationChange, onRotate90Clockwise, onFlipHorizontal, onFlipVertical, onScaleXChange, onScaleYChange, onAlignmentAction,
   scaleApplicable = false, keyframeControls,
   onNumericEditStart, onNumericEditCommit, onNumericEditCancel,
-  easing, easingContext = "keyframe", easingApplyScope, onEasingChange, onEasingApplyScopeChange,
+  easing, easingContext = "keyframe", easingApplyScope, easingApplyToLabel, onEasingChange, onEasingApplyScopeChange,
   onEasingCurveEditStart, onEasingCurveEditCommit, onEasingCurveEditCancel,
   width = 1200, height = 115,
   onWidthChange, onHeightChange,
@@ -3526,7 +3425,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   blendMode = "Pass through",
   supportedBlendModes,
   cornerRadius = 0, onBlendModeChange, onCornerRadiusChange,
-  layout, onLayoutChange, onSizingChange, onSizingConstraintChange, onApplySizingVariable,
+  layout, onLayoutChange, onAutoLayoutEnable, onSizingChange, onSizingConstraintChange, onApplySizingVariable,
   textSizingMode, availableTextSizingModes, textSizingModeDisabled = false, onTextSizingModeChange,
   positionPresentation = "separate", onPositionPresentationChange,
   onAutoLayoutSettingsRequest, typography, onTypographyChange, fonts, fontSizes, fontWeights,
@@ -3560,7 +3459,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
   accountColor,
   accountPhotoUrl,
   exportSettings,
+  exportMode = "static",
   exportTargetName,
+  onExportModeChange,
   onAddExportSetting,
   onRemoveExportSetting,
   onUpdateExportSetting,
@@ -3590,6 +3491,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onSlideTransitionDirectionChange,
   onSlideTransitionDurationChange,
   onSlideTransitionEasingChange,
+  onCustomSlideTransitionEasingRequest,
   onApplySlideTransitionToAll,
   onDuplicateSlide,
   onDeleteSlide,
@@ -3626,9 +3528,13 @@ export function PropertyPanel(props: PropertyPanelProps) {
     variables: capabilityOverrides?.variables ?? true,
     libraries: capabilityOverrides?.libraries ?? true,
     videoFill: capabilityOverrides?.videoFill ?? false,
+    dropZone: capabilityOverrides?.dropZone ?? false,
     // #222: animation "starts automatically" + delay authoring — default OFF (unlike the
     // other capabilities) so the delay is removed from the default path until re-enabled.
     animationDelay: capabilityOverrides?.animationDelay ?? false,
+    // Fidelity authoring tools such as guides and future slide rulers stay out
+    // of the default product until their canvas behavior reaches release fidelity.
+    layoutFidelityTools: capabilityOverrides?.layoutFidelityTools ?? false,
   };
   const [uncontrolledTab, setUncontrolledTab] = useState<"design" | "animate" | "prototype">("design");
   const [activeStackDialog, setActiveStackDialog] = useState<string | null>(null);
@@ -3674,11 +3580,10 @@ export function PropertyPanel(props: PropertyPanelProps) {
   const controlledAutoLayout = layout ? layout.mode !== "none" : undefined;
   useEffect(() => setAutoLayoutOn(elementType === "frame-auto"), [elementType]);
   const resolvedAutoLayout = controlledAutoLayout ?? autoLayoutOn;
-  // Grid is a distinct layout type (Reading A): it preempts the plain-frame and
-  // auto-layout sections. Driven by the live layout mode when present, else the type.
+  // Grid is a persisted layout mode but shares the Auto-layout Inspector section.
   const isGrid = isFrameLike && (layout ? layout.mode === "grid" : elementType === "frame-grid");
   const isFrame = isFrameLike && !resolvedAutoLayout && !isGrid;
-  const isAutoLayout = isFrameLike && resolvedAutoLayout && !isGrid;
+  const isAutoLayout = isFrameLike && (resolvedAutoLayout || isGrid);
 
   const emitSizing = (axis: ElementSizingAxis, change: ElementSizingChange) => {
     if (onSizingChange) { onSizingChange(axis, change); return; }
@@ -3731,10 +3636,12 @@ export function PropertyPanel(props: PropertyPanelProps) {
         panels (CompositionPanel / AssetsPanel), flipped to a left border since it
         sits to the right of the canvas. No inset ring on top/right/bottom — a single
         border-l against the canvas (Composa#250, analogous to #33). */}
-    {/* w-[290px]: 50px wider than the original 240 (Composa#661 item 3) — at 240
-        the two-column rows clipped most values ("758.46" read as "758…"). Hosts
-        that own a resizable rail still override this with their own width. */}
-    <div data-composa-inspector-surface className={clsx("relative w-[290px] shrink-0 h-full flex flex-col bg-c-bg border-l border-c-border overflow-hidden", className)}>
+    {/* Width comes from PANEL_W, the one right-slot width (RP-5). It used to be a
+        hand-written w-[290px] here and another in SlideInspector, which is how
+        the right-hand panels drifted apart the last time the rail was widened.
+        Hosts that own a resizable rail still override it — a `!w-full` class
+        beats this inline width, same as it beat the utility class before. */}
+    <div data-composa-inspector-surface style={{ width: PANEL_W }} className={clsx("relative shrink-0 h-full flex flex-col bg-c-bg border-l border-c-border overflow-hidden", className)}>
       {/* Multiplayer tools — above the tabs; shared across all modes */}
       <MultiplayerBar
         previewPlaying={previewPlaying}
@@ -3797,6 +3704,11 @@ export function PropertyPanel(props: PropertyPanelProps) {
           </div>
 
           {tab === "design" && <div role="tabpanel" id="slide-design-panel" aria-labelledby="slide-design-panel-tab" className="contents"><ScrollArea>
+          {easing && easingContext === "segment" ? (
+            <EasingInspectorSection key={easing.interactionKey} value={easing} applyScope={easingApplyScope} applyToLabel={easingApplyToLabel}
+              onChange={onEasingChange} onApplyScopeChange={onEasingApplyScopeChange}
+              onCurveEditStart={onEasingCurveEditStart} onCurveEditCommit={onEasingCurveEditCommit} onCurveEditCancel={onEasingCurveEditCancel} />
+          ) : <>
           {/* Panel header — inline-editable slide name + options IconButton */}
           <div className="h-[40px] flex items-center gap-[8px] px-[16px] border-b border-c-border">
             <div className="flex-1 min-w-0">
@@ -3838,11 +3750,12 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onColorChange={onSlideBackgroundColorChange}
             onOpacityChange={onSlideBackgroundOpacityChange}
           />
-          <LayoutGuideSection entries={layoutGuides} onAdd={onAddLayoutGuide} onUpdate={onUpdateLayoutGuide} onRemove={onRemoveLayoutGuide} />
+          {capabilities.layoutFidelityTools && <LayoutGuideSection entries={layoutGuides} onAdd={onAddLayoutGuide} onUpdate={onUpdateLayoutGuide} onRemove={onRemoveLayoutGuide} />}
           {/* Selection colors — reuse the existing element-mode section */}
           <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} capabilities={capabilities} />
-          <ExportSection settings={exportSettings} targetName={exportTargetName ?? renderedSlideName}
+          <ExportSection settings={exportSettings} mode={exportMode} onModeChange={onExportModeChange} targetName={exportTargetName ?? renderedSlideName}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
+          </>}
           </ScrollArea></div>}
 
           {tab === "animate" && <div role="tabpanel" id="slide-animate-panel" aria-labelledby="slide-animate-panel-tab" className="contents"><AnimatePanel anims={objectAnimations}
@@ -3856,6 +3769,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
               onDirectionChange: value => { if (slideTransitionDirection === undefined) setDemoTransitionDirection(value); onSlideTransitionDirectionChange?.(value); },
               onDurationChange: value => { if (slideTransitionDuration === undefined) setDemoTransitionDuration(value); onSlideTransitionDurationChange?.(value); },
               onEasingChange: value => { if (slideTransitionEasing === undefined) setDemoTransitionEasing(value); onSlideTransitionEasingChange?.(value); },
+              onCustomEasingRequest: onCustomSlideTransitionEasingRequest,
               onApplyToAll: onApplySlideTransitionToAll,
             }} /></div>}
         </>
@@ -3883,7 +3797,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <ClipSourceSection file={clipSourceFile} resolution={clipSourceResolution} sourceDuration={clipSourceDuration} />
           {/* Demo data kept consistent per spec: Clipped duration (trimOut −
               trimIn = 8s) equals the Timeline duration (end − start = 8s). */}
-          <SlideTimingSection title="Timeline" landmark start={clipStart} end={clipStart + clipDuration}
+          <SlideTimingSection title="Timeline" landmark reserveTrailingSlot start={clipStart} end={clipStart + clipDuration}
             controlled={props.clipStart !== undefined || props.clipDuration !== undefined}
             onStartChange={onClipStartChange}
             onEndChange={value => onClipDurationChange?.(Math.max(0, value - clipStart))}
@@ -3948,7 +3862,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
       {tab === "design" && (
         <div role="tabpanel" id="element-design-panel" aria-labelledby="element-design-panel-tab" className="contents"><ScrollArea>
           {easing && easingContext === "segment" ? (
-            <EasingInspectorSection key={easing.interactionKey} value={easing} applyScope={easingApplyScope}
+            <EasingInspectorSection key={easing.interactionKey} value={easing} applyScope={easingApplyScope} applyToLabel={easingApplyToLabel}
               onChange={onEasingChange} onApplyScopeChange={onEasingApplyScopeChange}
               onCurveEditStart={onEasingCurveEditStart} onCurveEditCommit={onEasingCurveEditCommit} onCurveEditCancel={onEasingCurveEditCancel} />
           ) : <>
@@ -3984,22 +3898,12 @@ export function PropertyPanel(props: PropertyPanelProps) {
           />
 
           {/* Layout — polymorphic */}
-          {(isFrame)       && <LayoutFrameSection width={width} height={height} sizing={sizingContract} spatialSelectionLayout={props.spatialSelectionLayout} clipContent={layout?.clipsContent} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onClipContentChange={onLayoutChange ? value => onLayoutChange({ clipsContent: value }) : undefined} onEnableAutoLayout={() => { setAutoLayoutOn(true); onLayoutChange?.({ mode: "vertical" }); }} onEnableGrid={onLayoutChange ? () => onLayoutChange({ mode: "grid" }) : undefined} />}
-          {(isGrid)        && layout?.grid && <LayoutGridSection width={width} height={height}
-            grid={layout.grid}
-            widthMode={layout?.widthMode} heightMode={layout?.heightMode}
-            paddingTop={layout?.padding.top} paddingRight={layout?.padding.right} paddingBottom={layout?.padding.bottom} paddingLeft={layout?.padding.left}
-            paddingDisabled={layout?.paddingDisabled}
-            clipContent={layout?.clipsContent}
-            sizing={sizingContract}
-            spatialSelectionLayout={props.spatialSelectionLayout}
-            onLayoutChange={onLayoutChange}
-            onPaddingChange={props.onPaddingChange ?? (onLayoutChange ? padding => onLayoutChange({ padding }) : undefined)}
-            onClipContentChange={onLayoutChange ? clipsContent => onLayoutChange({ clipsContent }) : undefined} />}
+          {(isFrame)       && <LayoutFrameSection width={width} height={height} sizing={sizingContract} spatialSelectionLayout={props.spatialSelectionLayout} clipContent={layout?.clipsContent} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onClipContentChange={onLayoutChange ? value => onLayoutChange({ clipsContent: value }) : undefined} onEnableAutoLayout={mode => { setAutoLayoutOn(true); if (mode) onLayoutChange?.({ mode }); else if (onAutoLayoutEnable) onAutoLayoutEnable(); else onLayoutChange?.({ mode: "vertical" }); }} onEnableGrid={onLayoutChange ? () => onLayoutChange({ mode: "grid" }) : undefined} />}
           {(isAutoLayout)  && <LayoutAutoSection width={width} height={height}
             onEnableGrid={onLayoutChange ? () => onLayoutChange({ mode: "grid" }) : undefined}
             onDisableAutoLayout={() => { setAutoLayoutOn(false); onLayoutChange?.({ mode: "none" }); }}
             flowMode={layout?.mode}
+            grid={layout?.grid}
             wrap={layout?.wrap} rowGap={layout?.rowGap}
             gap={layout?.gap} paddingTop={layout?.padding.top} paddingRight={layout?.padding.right} paddingBottom={layout?.padding.bottom} paddingLeft={layout?.padding.left}
             paddingTopMixed={layout?.paddingTopMixed} paddingRightMixed={layout?.paddingRightMixed}
@@ -4030,13 +3934,18 @@ export function PropertyPanel(props: PropertyPanelProps) {
           )}
 
           {/* Appearance — always present */}
-          <AppearanceSection opacity={opacity} blendMode={blendMode} supportedBlendModes={supportedBlendModes} cornerRadius={cornerRadius} opacityMixed={opacityMixed} cornerRadiusMixed={cornerRadiusMixed} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} />
+          <AppearanceSection opacity={opacity} blendMode={blendMode} supportedBlendModes={supportedBlendModes} cornerRadius={cornerRadius} opacityMixed={opacityMixed} cornerRadiusMixed={cornerRadiusMixed} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} cornerRadiusKeyframe={keyframeControls?.cornerRadius} />
 
           {/* Typography — text only */}
           {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} fonts={fonts} fontSizes={fontSizes} fontWeights={fontWeights} />}
 
           {/* Stackable sections */}
-          <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill} capabilities={capabilities}
+          <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill}
+            onFillTypeChange={props.onFillTypeChange} onGradientStopsChange={props.onFillGradientStopsChange}
+            onChooseImage={props.onChooseFillImage} onChooseVideo={props.onChooseFillVideo}
+            onImageAdjustmentChange={props.onFillImageAdjustmentChange}
+            dropZoneSources={props.fillDropZoneSources} onSelectDropZoneSource={props.onSelectFillDropZoneSource}
+            capabilities={capabilities}
             activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
           <StrokeSection entries={strokes} onAdd={onAddStroke} onUpdate={onUpdateStroke} onToggle={onToggleStroke} onReorder={onReorderStroke} onRemove={onRemoveStroke} capabilities={capabilities}
             readOnly={strokeReadOnly} activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
@@ -4046,9 +3955,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
           {/* Selection Colors — multi-select only (§5.8), positioned right after Effects */}
           {multiSelect && <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} capabilities={capabilities} />}
 
-          <ExportSection settings={exportSettings} targetName={exportTargetName ?? elementLabel[elementType]}
+          <ExportSection settings={exportSettings} mode={exportMode} onModeChange={onExportModeChange} targetName={exportTargetName ?? elementLabel[elementType]}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
-          {easing && <EasingInspectorSection key={easing.interactionKey} value={easing} applyScope={easingApplyScope}
+          {easing && <EasingInspectorSection key={easing.interactionKey} value={easing} applyScope={easingApplyScope} applyToLabel={easingApplyToLabel}
             onChange={onEasingChange} onApplyScopeChange={onEasingApplyScopeChange}
             onCurveEditStart={onEasingCurveEditStart} onCurveEditCommit={onEasingCurveEditCommit} onCurveEditCancel={onEasingCurveEditCancel} />}
           </>}
@@ -4071,6 +3980,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           onDirectionChange: value => { if (slideTransitionDirection === undefined) setDemoTransitionDirection(value); onSlideTransitionDirectionChange?.(value); },
           onDurationChange: value => { if (slideTransitionDuration === undefined) setDemoTransitionDuration(value); onSlideTransitionDurationChange?.(value); },
           onEasingChange: value => { if (slideTransitionEasing === undefined) setDemoTransitionEasing(value); onSlideTransitionEasingChange?.(value); },
+          onCustomEasingRequest: onCustomSlideTransitionEasingRequest,
           onApplyToAll: onApplySlideTransitionToAll,
         }} /></div>}
 

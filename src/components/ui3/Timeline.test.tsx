@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { laneDropAcceptedFiles, laneDropPayloadAccepted, shouldActivateTimelineTrackKey, shouldBeginTimelineMiddlePan, shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, timelineDurationBarProjection, timelineDurationBarTargetRange, timelineTimeAtClientX, timelineTrackExpansionForKey, timelineTrackNavigationIndex, Timeline, type Track } from "./Timeline";
+import { laneDropAcceptedFiles, laneDropPayloadAccepted, masterLaneDisabled, MASTER_LANES, shouldActivateTimelineTrackKey, shouldBeginTimelineMiddlePan, shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, timelineDurationBarProjection, timelineDurationBarTargetRange, timelineTimeAtClientX, timelineTrackExpansionForKey, timelineTrackNavigationIndex, Timeline, type Track } from "./Timeline";
 
 const VIDEO_ACCEPT = ["image/", "video/"] as const;
 const AUDIO_ACCEPT = ["audio/"] as const;
@@ -158,7 +158,7 @@ describe("Timeline DOM contracts", () => {
 
   it("shares canonical layer icons and exposes controlled multiselection", () => {
     const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[
-      { id: "stack", name: "Stack", type: "frame", autoLayoutMode: "vertical", selected: true, props: [] },
+      { id: "stack", name: "Stack", type: "frame", autoLayoutMode: "vertical", autoLayoutAlign: "center", selected: true, props: [] },
       { id: "shape", name: "Shape", type: "shape", props: [] },
     ]} onTrackSelect={() => undefined} />);
     expect(html).toContain('role="listbox"');
@@ -169,6 +169,9 @@ describe("Timeline DOM contracts", () => {
     expect(html).toContain('data-layer-icon-type="frame"');
     expect(html).toContain('data-auto-layout-mode="vertical"');
     expect(html).toContain('data-icon-semantic="auto-layout-vertical-center"');
+    // Alignment reaches the element row too, so Layers and the timeline cannot draw
+    // two different glyphs for the same frame (Composa#661).
+    expect(html).toContain('data-auto-layout-align="center"');
     expect(html).not.toMatch(/grid/i);
   });
 
@@ -361,8 +364,10 @@ describe("Timeline DOM contracts", () => {
   });
 
   // Playhead full-lanes-height contract (owner bug: the line came up short whenever the
-  // lanes overflowed the scroll viewport — master view + under scroll — and in the empty
-  // null state). jsdom has no layout engine, so we assert the structural invariant that
+  // lanes overflowed the scroll viewport — master view + under scroll). The slide-local
+  // NULL state is no longer part of this contract: it draws no playhead at all now
+  // (LT-2), and is covered by its own describe below.
+  // jsdom has no layout engine, so we assert the structural invariant that
   // *produces* a full-height line: the playhead wrapper spans `top-0 bottom-0` and resolves
   // against the scroll CONTENT (the full lanes region, `min-h-full`), which must therefore
   // carry `relative` so it — not the shorter scroll viewport — is the positioning context.
@@ -374,7 +379,7 @@ describe("Timeline DOM contracts", () => {
     expect(contentTag).toContain("min-h-full");
     expect(contentTag).toContain("relative");
     // The playhead line spans the full height of that content, and lives inside it.
-    const wrapperIdx = html.indexOf("absolute top-0 bottom-0 z-20 overflow-hidden pointer-events-none");
+    const wrapperIdx = html.indexOf("absolute top-0 bottom-0 right-0 z-20 overflow-hidden pointer-events-none");
     expect(wrapperIdx).toBeGreaterThan(contentIdx);
     expect(html).toContain('class="absolute top-0 bottom-0 w-px"');
   };
@@ -385,8 +390,8 @@ describe("Timeline DOM contracts", () => {
     playheadContract(html);
   });
 
-  it("spans the playhead across the full lanes region in the empty/null slide-local state", () => {
-    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[]} />);
+  it("spans the playhead across the full lanes region in slide-local view (survives vertical overflow)", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[numericTrack]} />);
     playheadContract(html);
   });
 });
@@ -810,27 +815,20 @@ describe("master track header aligns with the transport above it (Composa#661)",
   });
 });
 
-describe("time plot reserves the zoom/collapse gutter (Composa#661)", () => {
-  // 154px = the header's right cluster (91px zoom track + 8px gap + 24px collapse
-  // button + 2x12px padding + 1px border = 148) plus half the 12px playhead handle,
-  // which is centred on the time position and so overhangs it. Time used to map
-  // across the FULL row width, so at maximum zoom-out the handle (z-20) drew over
-  // that cluster (z-10). Every plot row now stops short of it, like a scrollbar track.
-  const GUTTER = 154;
+describe("time plot uses the pre-Iteration-1 full-width geometry (Composa#699)", () => {
   const html = master({ audioClips: [{ id: "a1", name: "vo", range: [0, 1_000] }] });
 
-  it("insets the ruler row, every lane row and the time scrollbar by the same gutter", () => {
+  it("does not reserve the feedback-pass-only 154px gutter in any plot row", () => {
     // Guard: the master chrome rendered, so counting below is not counting zero.
     expect(html).toContain('aria-label="Playhead"');
-    // ruler/transport header + Compositions + Video + Audio + scrollbar = 5 rows.
-    expect(html.match(new RegExp(`padding-right:\\s*${GUTTER}px`, "g"))?.length).toBe(5);
+    expect(html).not.toMatch(/padding-right:\s*154px/);
   });
 
-  it("insets the body playhead overlay by the same gutter", () => {
-    const wrapperIdx = html.indexOf("absolute top-0 bottom-0 z-20 overflow-hidden pointer-events-none");
+  it("lets the body playhead overlay reach the right edge", () => {
+    const wrapperIdx = html.indexOf("absolute top-0 bottom-0 right-0 z-20 overflow-hidden pointer-events-none");
     expect(wrapperIdx).toBeGreaterThan(-1);
     const wrapper = html.slice(html.lastIndexOf("<div", wrapperIdx), html.indexOf(">", wrapperIdx) + 1);
-    expect(wrapper).toContain(`right:${GUTTER}px`);
+    expect(wrapper).not.toMatch(/right:\s*154px/);
   });
 });
 
@@ -850,23 +848,183 @@ describe("video clips carry an audio strip (Composa#661)", () => {
   });
 });
 
-describe("a muted lane dims its bars (Composa#661)", () => {
-  // Muting from the lane header used to be invisible below the header: `muted` was
-  // read only by the speaker icon and never reached the bars.
-  const bars: [string, string, Record<string, unknown>][] = [
-    ["slides", "Intro", { blocks: [{ id: "s1", name: "Intro", range: [0, 1_000] }] }],
-    ["video", "shot", { baseClips: [{ id: "v1", name: "shot", range: [0, 1_000] }] }],
-    ["audio", "vo", { audioClips: [{ id: "a1", name: "vo", range: [0, 1_000] }] }],
-  ];
+// ── the master track headers as a SET (iteration-3) ────────────────────────────
+// "all the track headers need to be thought of. Ie what does locking mean and is
+// that functionality hooked up?" Three rules come out of that, and they are only
+// coherent together:
+//   • the disabled treatment belongs to the EYE, not the speaker — a REVERSAL of
+//     the previous pass, which scoped dimming to mute on two of the three lanes
+//     (TL-3: "it should be more associated with the eye visibility than audio");
+//   • solo renders the OTHER lanes disabled — the same treatment, since it is the
+//     same idea ("this lane is switched off right now");
+//   • lock takes away retiming and nothing else.
+// One bar per lane, so each assertion lands on a single element (see tagWithLabel).
+const LANE_BARS: [string, string, Record<string, unknown>][] = [
+  ["slides", "Intro", { blocks: [{ id: "s1", name: "Intro", range: [0, 1_000] }] }],
+  ["video", "shot", { baseClips: [{ id: "v1", name: "shot", range: [0, 1_000], waveform: [0.2, 0.9, 0.4] }] }],
+  ["audio", "vo", { audioClips: [{ id: "a1", name: "vo", range: [0, 1_000], waveform: [0.3, 0.7] }] }],
+];
 
-  describe.each(bars)("%s lane", (lane, label, props) => {
-    it("dims the bar while the lane is muted", () => {
-      expect(tagWithLabel(master({ ...props, laneControls: { [lane]: { muted: true } } }), label)).toContain("opacity-40");
+// Opening tag of a lane's waveform strip, so an opacity assertion lands on the
+// strip and not on some other dimmed thing in the markup.
+function waveformStripTag(html: string, hook: "clip" | "audio"): string {
+  const tag = new RegExp(`<div data-timeline-${hook}-waveform[^>]*>`).exec(html)?.[0];
+  if (!tag) throw new Error(`no ${hook} waveform strip in the markup`);
+  return tag;
+}
+
+describe("the eye owns the disabled treatment on every lane (TL-3, iteration-3)", () => {
+  describe.each(LANE_BARS)("%s lane", (lane, label, props) => {
+    it("dims the bar while the lane is hidden", () => {
+      expect(tagWithLabel(master({ ...props, laneControls: { [lane]: { visible: false } } }), label)).toContain("opacity-40");
     });
 
-    it("leaves the bar at full opacity while it is not", () => {
-      expect(tagWithLabel(master({ ...props, laneControls: { [lane]: { muted: false } } }), label)).not.toContain("opacity-40");
+    it("leaves the bar at full opacity while the lane is visible", () => {
+      expect(tagWithLabel(master({ ...props, laneControls: { [lane]: { visible: true } } }), label)).not.toContain("opacity-40");
     });
+
+    it("does not dim the bar on mute — the speaker is not the eye", () => {
+      expect(tagWithLabel(master({ ...props, laneControls: { [lane]: { muted: true } } }), label)).not.toContain("opacity-40");
+    });
+  });
+});
+
+describe("mute dims the waveform and nothing else (TL-3, iteration-3)", () => {
+  it("scopes the Video lane's mute to its audio strip", () => {
+    const html = master({ ...LANE_BARS[1][2], laneControls: { video: { muted: true } } });
+    expect(waveformStripTag(html, "clip")).toContain("opacity-40");
+    expect(tagWithLabel(html, "shot")).not.toContain("opacity-40");
+  });
+
+  it("scopes the Audio lane's mute to its waveform, not the whole clip", () => {
+    const html = master({ ...LANE_BARS[2][2], laneControls: { audio: { muted: true } } });
+    expect(waveformStripTag(html, "audio")).toContain("opacity-40");
+    expect(tagWithLabel(html, "vo")).not.toContain("opacity-40");
+  });
+
+  it("leaves both strips lit at rest", () => {
+    const html = master({ ...LANE_BARS[1][2], ...LANE_BARS[2][2], laneControls: { video: { muted: false }, audio: { muted: false } } });
+    expect(waveformStripTag(html, "clip")).not.toContain("opacity-40");
+    expect(waveformStripTag(html, "audio")).not.toContain("opacity-40");
+  });
+
+  it("gives the Compositions lane no mute treatment at all — it has no waveform", () => {
+    const html = master({ ...LANE_BARS[0][2], laneControls: { slides: { muted: true } } });
+    expect(tagWithLabel(html, "Intro")).not.toContain("opacity-40");
+    expect(html).not.toContain("data-timeline-audio-waveform");
+    expect(html).not.toContain("data-timeline-clip-waveform");
+  });
+});
+
+describe("solo renders the OTHER lanes disabled (iteration-3)", () => {
+  // Solo was inert: `solo` was read once, to colour its own button, and never
+  // reached a lane body. Soloing therefore looked identical to doing nothing.
+  const allThree = { ...LANE_BARS[0][2], ...LANE_BARS[1][2], ...LANE_BARS[2][2] };
+
+  it("dims every lane except the soloed one", () => {
+    const html = master({ ...allThree, laneControls: { video: { solo: true } } });
+    expect(tagWithLabel(html, "shot")).not.toContain("opacity-40");
+    expect(tagWithLabel(html, "Intro")).toContain("opacity-40");
+    expect(tagWithLabel(html, "vo")).toContain("opacity-40");
+  });
+
+  it("dims nothing while no lane is soloed", () => {
+    const html = master(allThree);
+    expect(tagWithLabel(html, "shot")).not.toContain("opacity-40");
+    expect(tagWithLabel(html, "Intro")).not.toContain("opacity-40");
+    expect(tagWithLabel(html, "vo")).not.toContain("opacity-40");
+  });
+
+  it("keeps two soloed lanes lit and dims only the third", () => {
+    const html = master({ ...allThree, laneControls: { video: { solo: true }, audio: { solo: true } } });
+    expect(tagWithLabel(html, "shot")).not.toContain("opacity-40");
+    expect(tagWithLabel(html, "vo")).not.toContain("opacity-40");
+    expect(tagWithLabel(html, "Intro")).toContain("opacity-40");
+  });
+
+  it("still dims a soloed lane whose own eye is closed — the eye is the stronger statement", () => {
+    const html = master({ ...allThree, laneControls: { video: { solo: true, visible: false } } });
+    expect(tagWithLabel(html, "shot")).toContain("opacity-40");
+  });
+});
+
+describe("masterLaneDisabled resolves the eye/solo rule without a DOM", () => {
+  it("rests every lane lit", () => {
+    expect(MASTER_LANES.map(lane => masterLaneDisabled(undefined, lane))).toEqual([false, false, false]);
+  });
+
+  it("switches off a hidden lane and leaves its siblings alone", () => {
+    expect(MASTER_LANES.map(lane => masterLaneDisabled({ audio: { visible: false } }, lane))).toEqual([false, false, true]);
+  });
+
+  it("switches off every lane but the soloed one", () => {
+    expect(MASTER_LANES.map(lane => masterLaneDisabled({ slides: { solo: true } }, lane))).toEqual([false, true, true]);
+  });
+
+  it("does not treat mute or lock as switched off", () => {
+    expect(masterLaneDisabled({ video: { muted: true, locked: true } }, "video")).toBe(false);
+  });
+});
+
+describe("a locked lane loses retiming, not the lane (iteration-3)", () => {
+  // Lock was inert in both repos and has no lane-level engine model to hook to.
+  // Rather than remove the control, it reuses the convention this file already
+  // carries for a lock — a non-editable duration bar renders no move/scale target
+  // (see "exposes independently operable move and scale targets…" above). Reading
+  // the lane, selecting a clip and opening its context menu all survive.
+  describe.each(LANE_BARS)("%s lane", (lane, label, props) => {
+    const menuHandlers = { onBlockContextMenu: () => undefined, onClipContextMenu: () => undefined, onAudioClipContextMenu: () => undefined };
+
+    it("renders no trim handles while locked", () => {
+      const html = master({ ...props, laneControls: { [lane]: { locked: true } } });
+      // Guard: the bar itself IS there, so the two absences below mean something.
+      expect(() => tagWithLabel(html, label)).not.toThrow();
+      expect(html).not.toContain(`aria-label="Trim start of ${label}"`);
+      expect(html).not.toContain(`aria-label="Trim end of ${label}"`);
+    });
+
+    it("keeps them while unlocked", () => {
+      const html = master({ ...props, laneControls: { [lane]: { locked: false } } });
+      expect(html).toContain(`aria-label="Trim start of ${label}"`);
+      expect(html).toContain(`aria-label="Trim end of ${label}"`);
+    });
+
+    it("still selects and raises a context menu while locked", () => {
+      const html = master({ ...props, ...menuHandlers, laneControls: { [lane]: { locked: true } } });
+      const bar = tagWithLabel(html, label);
+      expect(bar).toContain('role="button"');
+      expect(bar).toContain('aria-haspopup="menu"');
+    });
+
+    it("does not dim a locked lane — lock is not the disabled treatment", () => {
+      expect(tagWithLabel(master({ ...props, laneControls: { [lane]: { locked: true } } }), label)).not.toContain("opacity-40");
+    });
+  });
+});
+
+describe("the timeline's left column carries no right stroke (feedback row 19)", () => {
+  // "if we can, lets hide the track headers right stroke". The stroke is one
+  // declaration per LEFT_W-wide cell, so dropping only the lane-header one would
+  // leave orphan stubs of vertical rule above (transport) and below (scrollbar).
+  it("drops it from the lane header while keeping the header's right padding", () => {
+    const header = /<div[^>]*data-timeline-lane-header="Compositions"[^>]*>/.exec(master())?.[0];
+    expect(header).toBeDefined();
+    expect(header).not.toContain("border-r");
+    expect(header).toContain("pr-[8px]");
+  });
+
+  it("leaves no stub above or below it — the whole master column is unruled", () => {
+    const html = master();
+    // Guard: the transport and the scrollbar, the two other LEFT_W cells, rendered.
+    expect(html).toContain('aria-label="Play"');
+    expect(html).toContain("data-timeline-time-scrollbar");
+    expect(html).not.toContain("border-r");
+  });
+
+  it("removes the slide-local rule without removing its tree guides", () => {
+    const html = renderToStaticMarkup(<Timeline mode="slide" height={220} duration={4_000} tracks={[numericTrack]} />);
+    expect(html).not.toContain("border-r");
+    expect(html).toContain("data-timeline-child-trunk");
   });
 });
 
@@ -880,5 +1038,35 @@ describe("video clips raise a context menu (Composa#661)", () => {
   it("promises nothing when no host handler is wired", () => {
     // The bar must still be there — otherwise the missing attribute means nothing.
     expect(tagWithLabel(master(clip), "shot")).not.toContain("aria-haspopup");
+  });
+});
+
+describe("the slide-local null state has no playhead (LT-2)", () => {
+  // Asserted against the playhead's OWN markup rather than a marker attribute, so
+  // the absences below would have been false on the unfixed component instead of
+  // passing because the marker never existed.
+  const HANDLE = 'd="M0 0h12v4l-6 6-6-6V0Z"';           // the pentagon handle in the ruler
+  const BODY_LINE = 'class="absolute top-0 bottom-0 w-px"'; // the vertical line through the lanes
+  const slide = (extra: Record<string, unknown> = {}) =>
+    renderToStaticMarkup(<Timeline mode="slide" height={220} duration={4_000} tracks={[]} {...extra} />);
+
+  it("renders neither the handle nor the body line when there is nothing to seek", () => {
+    const html = slide();
+    // Guard: the ruler chrome IS there, so the two absences below mean something.
+    expect(html).toContain('aria-label="Playhead"');
+    expect(html).not.toContain(HANDLE);
+    expect(html).not.toContain(BODY_LINE);
+  });
+
+  it("brings both back as soon as the slide has a layer", () => {
+    const html = slide({ tracks: [numericTrack] });
+    expect(html).toContain(HANDLE);
+    expect(html).toContain(BODY_LINE);
+  });
+
+  it("keeps the playhead in master view even with no layers — the lanes are the composition", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={4_000} tracks={[]} blocks={[]} baseClips={[]} audioClips={[]} />);
+    expect(html).toContain(HANDLE);
+    expect(html).toContain(BODY_LINE);
   });
 });

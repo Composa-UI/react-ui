@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 vi.mock("./Dialog", () => ({
   MODAL_WIDTHS: { compact: 240, dialog: 320, standard: 480 },
   Modal: ({ children }: { children: ReactNode }) => <div data-modal>{children}</div>,
+  ModalCard: ({ children }: { children: ReactNode }) => <div data-modal-card>{children}</div>,
   ModalHeader: ({ title, actions }: { title?: string; actions?: ReactNode }) => (
     <div data-modal-header><span data-title>{title}</span>{actions}</div>
   ),

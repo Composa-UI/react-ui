@@ -6,29 +6,29 @@ import {
   COMPOSA_INSPECTOR_SURFACE_SELECTOR,
   COMPOSA_OVERLAY_BOUNDARY_SELECTOR,
 } from "./AnchoredInspectorOverlay";
-import { AutoLayoutSettingsDialog, type AutoLayoutSettingsValue } from "./AutoLayoutSettingsDialog";
+import { GridSettingsDialog } from "./GridSettingsDialog";
+import type { ElementGridSettings } from "./PropertyPanel";
 
-// Composa#661 item 3: this dialog was 288px wide (every other inspector dialog is
-// 240) and passed NO sideOffset and NO anchorSurfaceSelector, so Radix anchored it
-// to the trigger and it opened ON TOP of the inspector instead of beside it. The
-// isolated unit test could not see that — it mocked InspectorDialog away. This
-// exercises the REAL InspectorDialog → AnchoredInspectorOverlay chain (only Radix
-// is mocked), the same way ExportDialog/FontPickerDialog do.
+// RP-16: the grid track editors moved out of the inline panel into this dialog.
+// A dialog that opens ON TOP of the inspector would be a worse answer than the
+// inline controls it replaced, so this exercises the REAL InspectorDialog →
+// AnchoredInspectorOverlay chain (only Radix is mocked), exactly as
+// AutoLayoutSettingsDialog.anchored.test.tsx does for its peer. The isolated
+// unit test cannot see placement — it mocks InspectorDialog away.
 vi.mock("@radix-ui/react-popover", async () => {
   const React = await import("react");
   const boundary = (name: string) => ({ children, ...props }: { children?: React.ReactNode } & Record<string, unknown>) =>
     React.createElement("div", { [`data-radix-${name}`]: true, ...props }, children);
-  // The dialog nests PopoverMenu dropdowns, which also use Trigger.
   return { Root: boundary("root"), Anchor: boundary("anchor"), Portal: boundary("portal"), Content: boundary("content"), Trigger: boundary("trigger") };
 });
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const VALUE: AutoLayoutSettingsValue = {
-  mode: "horizontal",
-  textBaseline: false,
-  strokeSizing: "excluded",
-  canvasStacking: "last-on-top",
+const GRID: ElementGridSettings = {
+  rows: [{ mode: "fixed", size: 100 }, { mode: "fixed", size: 100 }],
+  columns: [{ mode: "fixed", size: 100 }, { mode: "fixed", size: 100 }],
+  rowGap: 10, columnGap: 10,
+  justifyItems: "start", alignItems: "start", justifyContent: "start", alignContent: "start",
 };
 
 // The trigger is the 24px action button at the right end of the Alignment/Gap
@@ -53,8 +53,8 @@ function renderOpen(onClose = vi.fn()) {
   let renderer: ReturnType<typeof create>;
   act(() => {
     renderer = create(
-      <AutoLayoutSettingsDialog open value={VALUE} onClose={onClose}
-        trigger={<button type="button" aria-label="Auto-layout settings">Settings</button>} />,
+      <GridSettingsDialog open grid={GRID} onClose={onClose}
+        trigger={<button type="button" aria-label="Grid settings">Settings</button>} />,
       { createNodeMock: element => element.type === "span" ? { querySelector: () => trigger } : null },
     );
   });
@@ -62,18 +62,17 @@ function renderOpen(onClose = vi.fn()) {
 }
 
 function radix(root: ReactTestInstance, name: string) {
-  // The nested PopoverMenu dropdowns render mocked Content nodes too, so
+  // The nested track-sizing PopoverMenus render mocked Content nodes too, so
   // disambiguate the outer inspector dialog by its role="dialog".
   if (name === "content") return root.find(node => node.props["data-radix-content"] && node.props.role === "dialog");
   return root.find(node => node.props[`data-radix-${name}`]);
 }
 
-describe("AutoLayoutSettingsDialog — anchored InspectorDialog contract (Composa#661)", () => {
+describe("GridSettingsDialog — anchored InspectorDialog contract (RP-16)", () => {
   it("is the same 240px, elevation-400, left-anchored dialog as its inspector peers", () => {
     const { renderer, collisionBoundary } = renderOpen();
     const content = radix(renderer.root, "content");
-    expect(content.props["aria-label"]).toBe("Auto layout settings");
-    // The reported symptom: it was WIDER than the other inspector dialogs.
+    expect(content.props["aria-label"]).toBe("Grid Settings");
     expect(content.props.style.width).toBe(240);
     expect(content.props.style.boxShadow).toBe("var(--elevation-400)");
     expect(content.props.side).toBe("left");
@@ -87,7 +86,6 @@ describe("AutoLayoutSettingsDialog — anchored InspectorDialog contract (Compos
 
   it("anchors the side axis to the inspector SURFACE left edge, not the trigger", () => {
     const { renderer } = renderOpen();
-    // The reported symptom: it did not open at the SIDE of the inspector panel.
     // A trigger-anchored dialog would place from triggerRect.x (920) and land on
     // top of the panel; a surface-anchored one collapses onto the surface edge.
     const rect = radix(renderer.root, "anchor").props.virtualRef.current.getBoundingClientRect();

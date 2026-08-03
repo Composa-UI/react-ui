@@ -1,4 +1,6 @@
-import { Children, cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
+import { Children, cloneElement, isValidElement, type HTMLAttributes, type ReactElement, type ReactNode } from "react";
+import { clsx } from "clsx";
+import { X } from "lucide-react";
 import { AnchoredInspectorOverlay, COMPOSA_INSPECTOR_SURFACE_SELECTOR } from "./AnchoredInspectorOverlay";
 import type { AnchoredInspectorOverlayAlign, AnchoredInspectorOverlayElevation } from "./AnchoredInspectorOverlay";
 
@@ -40,15 +42,32 @@ export const TYPE_SETTINGS_INSPECTOR_SIDE_OFFSET = 8;
 // to the inspector surface's LEFT edge gives the approved 8px gutter regardless
 // of trigger position or panel width.
 export const AUTO_LAYOUT_SETTINGS_INSPECTOR_SIDE_OFFSET = 8;
+// The Grid settings trigger occupies the same Alignment/Gap action gutter as the
+// Auto Layout one, so it anchors identically. It exists as its own constant
+// rather than reusing the auto-layout name because the two triggers are separate
+// surfaces that could diverge; sharing the name would hide that.
+export const GRID_SETTINGS_INSPECTOR_SIDE_OFFSET = 8;
 export const INSPECTOR_DIALOG_DRAG_HANDLE_SELECTOR = "[data-composa-inspector-dialog-drag-handle]";
 
 export interface InspectorDialogProps {
   open: boolean;
   onClose: () => void;
-  trigger: ReactElement;
+  /** Omit for a free-floating dialog; pass `anchorSelector` instead. */
+  trigger?: ReactElement;
+  /**
+   * Positions a dialog that has no persistent trigger against the element this
+   * selector names (see `AnchoredInspectorOverlay`'s free-floating mode).
+   */
+  anchorSelector?: string;
   children: ReactNode;
   ariaLabel: string;
-  width?: number;
+  /**
+   * A string width (a CSS `min()`/`clamp()`) is allowed for surfaces sized
+   * against the viewport rather than the 240/320 inspector grid; only numeric
+   * widths pin `minWidth`, since a viewport-relative `minWidth` would fight the
+   * overlay's own `max-w` clamp.
+   */
+  width?: number | string;
   sideOffset?: number;
   align?: AnchoredInspectorOverlayAlign;
   blockOutsideDismiss?: boolean;
@@ -78,14 +97,15 @@ function withInspectorDialogDragHandle(children: ReactNode): ReactNode {
 }
 
 /** Non-modal inspector dialog anchored to the captured trigger and portalled above the canvas. */
-export function InspectorDialog({ open, onClose, trigger, children, ariaLabel, width = 320, sideOffset, align, blockOutsideDismiss = false, triggerClassName = "block w-full", className, elevation = 400, draggable = true, anchorSurfaceSelector }: InspectorDialogProps) {
+export function InspectorDialog({ open, onClose, trigger, anchorSelector, children, ariaLabel, width = 320, sideOffset, align, blockOutsideDismiss = false, triggerClassName = "block w-full", className, elevation = 400, draggable = true, anchorSurfaceSelector }: InspectorDialogProps) {
   return <AnchoredInspectorOverlay
     open={open}
     onClose={onClose}
     trigger={trigger}
+    anchorSelector={anchorSelector}
     ariaLabel={ariaLabel}
     width={width}
-    minWidth={width}
+    minWidth={typeof width === "number" ? width : undefined}
     sideOffset={sideOffset}
     align={align}
     trapFocus={false}
@@ -98,4 +118,52 @@ export function InspectorDialog({ open, onClose, trigger, children, ariaLabel, w
   >
     {draggable ? withInspectorDialogDragHandle(children) : children}
   </AnchoredInspectorOverlay>;
+}
+
+// ─── InspectorDialogHeader ────────────────────────────────────────────────────
+// The 40px title bar every floating inspector dialog opens with: title, an
+// optional actions slot, and the close X. Colour, animation styles, effects and
+// the rest each hand-rolled this markup; it is extracted here so a new floating
+// surface reuses it instead of adding a sixth copy that can drift.
+//
+// It spreads unknown props onto its root on purpose: `InspectorDialog` tags its
+// first element child as the drag handle by cloning a data attribute onto it, so
+// a header that swallowed unknown props would silently stop being draggable.
+//
+// This is deliberately NOT `ModalHeader` — that one renders `RadixDialog.Title`
+// and `RadixDialog.Close`, which throw outside a `Dialog.Root`, so it cannot be
+// used on the Popover-based floating surface.
+
+export interface InspectorDialogHeaderProps extends Omit<HTMLAttributes<HTMLDivElement>, "title"> {
+  title: string;
+  /** Rendered between the title and the close X (e.g. an "Open in new tab" button). */
+  actions?: ReactNode;
+  onClose?: () => void;
+}
+
+export function InspectorDialogHeader({ title, actions, onClose, className, ...rest }: InspectorDialogHeaderProps) {
+  return (
+    <div
+      {...rest}
+      className={clsx(
+        "flex items-center h-[40px] shrink-0 pl-[16px] pr-[8px] gap-[4px] border-b border-c-border",
+        className,
+      )}
+    >
+      <span className="font-[family-name:var(--composa-font-family)] flex-1 min-w-0 text-[11px] font-[550] leading-[16px] tracking-[0.055px] text-c-text truncate">
+        {title}
+      </span>
+      {actions && <div className="shrink-0 flex items-center gap-[4px]">{actions}</div>}
+      {onClose && (
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={onClose}
+          className="shrink-0 flex items-center justify-center size-[24px] rounded-c-md text-c-icon-secondary hover:bg-c-bg-hover"
+        >
+          <X size={16} strokeWidth={1.5} />
+        </button>
+      )}
+    </div>
+  );
 }

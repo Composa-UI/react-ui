@@ -1,6 +1,6 @@
-import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { clsx } from "clsx";
-import { Plus, Trash2, MonitorPlay, Clock, ArrowRight, ArrowDown, Type, Play, GripVertical } from "lucide-react";
+import { Plus, Trash2, MonitorPlay, Clock, Type, Play, GripVertical } from "lucide-react";
 import { PanelSection, PanelActionBtn, ScrollArea } from "./Panel";
 import { Dropdown } from "./Dropdown";
 import { ComboInput, NumericInput } from "./Input";
@@ -8,6 +8,7 @@ import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { Button } from "./Button";
 import { AnimationStylesDialog } from "./AnimationStylesDialog";
 import { iconForSemantic } from "./IconSemantics";
+import { EASING_PRESETS, easingPresetLabel, type EasingPreset, type NamedEasingPreset } from "./easing";
 
 // ─── Animate panel ──────────────────────────────────────────────────────────────
 // The "Animate" tab body. Two always-present sections (Slide transition · Object
@@ -36,11 +37,11 @@ export interface ObjectAnimationItem {
   /** Exact timeline-selected Animate unit. Takes precedence over element selection when opening cards. */
   focused?: boolean;
   selected?: boolean;
-  /** Slide-local start of this action, in ms. Host-supplied (derived from the engine's
-   *  order + duration + delay timing). When two actions on the same object both carry a
-   *  `startMs`, the combined card DERIVES the signed "delay between" as the start-to-start
-   *  offset (`following.startMs - preceding.startMs`) — see motion-mental-model.md. */
-  startMs?: number;
+  /** Timing curve this preset runs on. Host-supplied; when absent the card falls back to
+   *  the engine's per-phase default (build-in → ease-out · action → linear · build-out →
+   *  ease-in, `engine/easing-presets.ts` OBJECT_ANIMATION_PHASE_EASING) so the row reads
+   *  the curve the preset actually runs on rather than a made-up one. */
+  easing?: EasingPreset;
 }
 export type ObjectAnimationPhase = "build-in" | "action" | "build-out";
 export interface ObjectAnimationSequenceSettings { start: "on-click" | "automatically"; delayMs: number; }
@@ -53,11 +54,18 @@ export interface ObjectAnimationCallbacks {
   onDeliveryChange?: (id: string, delivery: "all-at-once" | "by-object" | "by-word" | "by-character") => void;
   onIntensityChange?: (id: string, intensity: "small" | "medium" | "large") => void;
   onReorder?: (id: string, targetId: string, placement: "before" | "after" | "with") => void;
-  /** Combined-card "delay between" edit. `gapMs` is the signed start-to-start offset the
-   *  FOLLOWING action should have relative to the PRECEDING one — negative means overlap
-   *  (the following action starts before the preceding one ends). The host maps this to a
-   *  start-offset change on `followingId`; the value is NEVER clamped at this layer. */
-  onDelayBetweenChange?: (precedingId: string, followingId: string, gapMs: number) => void;
+  /** A house easing preset picked on the card. Every preset card offers this, not only the
+   *  bounce-style actions (iteration-2 RP-10).
+   *  REQUIRED to see the control: the Easing row renders only when this is supplied, so an
+   *  unwired host shows no Easing row rather than one that silently discards the pick. */
+  onEasingChange?: (id: string, preset: NamedEasingPreset) => void;
+  /** "Custom…" — the host opens the EXISTING custom-easing editor (`EasingInspectorSection`)
+   *  scoped to this animation. The card deliberately does NOT nest a second curve editor;
+   *  there is one custom-easing surface in the product and this is a route into it.
+   *  REQUIRED to see the row: "Custom…" renders only when this is supplied. It is a route
+   *  into a host surface, so a host that does not own that surface must not advertise it
+   *  (iteration-3: "clicking on the custom menu option does nothing"). */
+  onCustomEasingRequest?: (id: string) => void;
   onStartChange?: (start: ObjectAnimationSequenceSettings["start"]) => void;
   onDelayChange?: (delayMs: number) => void;
   /** Play back every object animation on the current selection. Host-wired to real
@@ -69,7 +77,7 @@ export const ACTION_STYLE_OPTIONS = ["move", "opacity", "rotate", "scale", "puls
 
 export type CompTransitionStyle = "none" | "fade" | "push" | "slide" | "wipe";
 export type CompTransitionDirection = "left" | "right" | "up" | "down";
-export type CompTransitionEasing = "linear" | "ease-in" | "ease-out" | "ease-in-out";
+export type CompTransitionEasing = EasingPreset;
 export interface CompTransitionSettings {
   style: CompTransitionStyle;
   direction: CompTransitionDirection;
@@ -80,7 +88,9 @@ export interface CompTransitionCallbacks {
   onStyleChange?: (value: CompTransitionStyle) => void;
   onDirectionChange?: (value: CompTransitionDirection) => void;
   onDurationChange?: (value: number) => void;
-  onEasingChange?: (value: CompTransitionEasing) => void;
+  onEasingChange?: (value: NamedEasingPreset) => void;
+  /** Route Custom into the host-owned canonical Easing inspector. */
+  onCustomEasingRequest?: () => void;
   onApplyToAll?: () => void;
 }
 
@@ -98,11 +108,6 @@ function LabeledRow({ label, children }: { label: string; children: ReactNode })
       <div className="flex-1 min-w-0">{children}</div>
     </div>
   );
-}
-
-function KindGlyph({ kind }: { kind: AnimKind }) {
-  const Icon = kind === "Action" ? ArrowDown : ArrowRight;
-  return <Icon size={12} strokeWidth={1.5} className="text-c-icon-secondary shrink-0" />;
 }
 
 // ── Shared expandable animation card ──────────────────────────────────────────────
@@ -148,12 +153,25 @@ function AnimationCard({ icon, title, badge, expanded, selected = false, onToggl
 
 const STYLE_LABELS: Record<CompTransitionStyle, string> = { none: "None", fade: "Fade", push: "Push", slide: "Slide", wipe: "Wipe" };
 const DIRECTION_LABELS: Record<CompTransitionDirection, string> = { left: "Left", right: "Right", up: "Up", down: "Down" };
-const EASING_LABELS: Record<CompTransitionEasing, string> = { linear: "Linear", "ease-in": "Ease in", "ease-out": "Ease out", "ease-in-out": "Ease in out" };
-
 function ChoiceDropdown<T extends string>({ ariaLabel, value, options, labels, onChange }: { ariaLabel?: string; value: T; options: readonly T[]; labels: Record<T, string>; onChange?: (value: T) => void }) {
   return <PopoverMenu align="right" className="w-full" trigger={<Dropdown ariaLabel={ariaLabel} value={labels[value]} fullWidth />}>
     {close => <Menu>{options.map(option => <MenuRow key={option} type="checkmark" selectionRole="radio" checked={option === value} label={labels[option]} onClick={() => { onChange?.(option); close(); }} />)}</Menu>}
   </PopoverMenu>;
+}
+
+function TransitionEasingChoice({ value, callbacks }: { value: CompTransitionEasing; callbacks?: CompTransitionCallbacks }) {
+  return (
+    <PopoverMenu align="right" className="w-full" trigger={<Dropdown ariaLabel="Transition easing" value={easingPresetLabel(value)} fullWidth />}>
+      {close => <Menu>
+        {EASING_PRESETS.map(preset => <MenuRow key={preset.value} type="checkmark" selectionRole="radio"
+          checked={value === preset.value} label={preset.label}
+          onClick={() => { callbacks?.onEasingChange?.(preset.value); close(); }} />)}
+        {callbacks?.onCustomEasingRequest && <MenuRow type="divider" />}
+        {callbacks?.onCustomEasingRequest && <MenuRow type="checkmark" selectionRole="radio" checked={value === "custom"} label="Custom…"
+          onClick={() => { callbacks.onCustomEasingRequest?.(); close(); }} />}
+      </Menu>}
+    </PopoverMenu>
+  );
 }
 
 // ── Composition transition ───────────────────────────────────────────────────────
@@ -204,7 +222,7 @@ function CompTransitionSection({ value, callbacks, contextKey, selectionType, an
           <LabeledRow label="Style"><ChoiceDropdown value={rendered.style} options={["none", "fade", "push", "slide", "wipe"]} labels={STYLE_LABELS} onChange={setStyle} /></LabeledRow>
           {rendered.style !== "none" && <>
             {directional && <LabeledRow label="Direction"><ChoiceDropdown value={rendered.direction} options={["left", "right", "up", "down"]} labels={DIRECTION_LABELS} onChange={direction => { update({ direction }); callbacks?.onDirectionChange?.(direction); }} /></LabeledRow>}
-            <LabeledRow label="Easing"><ChoiceDropdown value={rendered.easing} options={["linear", "ease-in", "ease-out", "ease-in-out"]} labels={EASING_LABELS} onChange={easing => { update({ easing }); callbacks?.onEasingChange?.(easing); }} /></LabeledRow>
+            <LabeledRow label="Easing"><TransitionEasingChoice value={rendered.easing} callbacks={callbacks} /></LabeledRow>
             <LabeledRow label="Duration"><NumericInput value={rendered.durationMs} min={0} suffix="ms" className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} commitOnBlur onChange={durationMs => { update({ durationMs }); callbacks?.onDurationChange?.(durationMs); }} /></LabeledRow>
             <Button label="Apply to all compositions" variant="Secondary" size="wide" onClick={callbacks?.onApplyToAll} />
           </>}
@@ -224,143 +242,70 @@ function DurationPill({ duration, kind }: { duration: string; kind: AnimKind }) 
   );
 }
 
-// ── Combined card (multiple actions on ONE object) ─────────────────────────────────
-// When an object carries more than one action, its per-action cards render as normal
-// action cards (NOT boxed in a heavy container) and a thin VERTICAL CONNECTOR LINE
-// links them — that line is what now communicates "these are the same object" (owner
-// feedback: the container grouping felt too heavy; no bordered box, no group header /
-// "N actions" label). When a "delay between" is present the connector breaks around the
-// Between control (line from the preceding card → Between → line into the following
-// card); with no delay the line is continuous. N same-object cards each labelled "1" was
-// the bug this replaces. Objects with a single action (or no shared elementId) render
-// unchanged (a plain card, no connector).
-interface AnimationRowRef { item: ObjectAnimationItem; index: number; }
-type AnimationUnit =
-  | { kind: "single"; row: AnimationRowRef }
-  | { kind: "combined"; elementId: string; rows: AnimationRowRef[] };
+// ── Per-card easing (RP-10) ────────────────────────────────────────────────────────
+// Easing is a property of EVERY preset card, not just the bounce action. The card offers
+// the house set (`EASING_PRESETS`) and routes "Custom…" back to the host, which opens the
+// one custom-easing editor the product already has (`EasingInspectorSection`). Nesting a
+// second curve editor inside a 32px-row card would fork that surface.
 
-export function buildAnimationUnits(anims: ObjectAnimationItem[]): AnimationUnit[] {
-  const counts = new Map<string, number>();
-  for (const item of anims) if (item.elementId) counts.set(item.elementId, (counts.get(item.elementId) ?? 0) + 1);
-  const combinedByElement = new Map<string, Extract<AnimationUnit, { kind: "combined" }>>();
-  const units: AnimationUnit[] = [];
-  anims.forEach((item, index) => {
-    const row: AnimationRowRef = { item, index };
-    const elementId = item.elementId;
-    if (elementId && (counts.get(elementId) ?? 0) >= 2) {
-      let unit = combinedByElement.get(elementId);
-      if (!unit) { unit = { kind: "combined", elementId, rows: [] }; combinedByElement.set(elementId, unit); units.push(unit); }
-      unit.rows.push(row);
-    } else {
-      units.push({ kind: "single", row });
-    }
-  });
-  return units;
-}
+/** Curve a preset runs on when the host supplies none. Mirrors the engine's
+ *  OBJECT_ANIMATION_PHASE_EASING (engine/easing-presets.ts) so an unwired card shows the
+ *  curve the animation actually plays with instead of a placeholder. */
+const PHASE_DEFAULT_EASING: Record<ObjectAnimationPhase, EasingPreset> = {
+  "build-in": "ease-out",
+  action: "linear",
+  "build-out": "ease-in",
+};
 
-/** The signed start-to-start "delay between" two consecutive actions in a combined card.
- *  gap=0 fire together · gap>0 stagger · gap<0 overlap. Never clamped — `min` is left unset
- *  so the numeric field accepts negatives (motion-mental-model.md: "Gap is measured
- *  start-to-start (locked)"). Owner refinement: no leading label — a compact, value-hugging
- *  field centered in the connector gap, reading like `600ms between` (trailing text). */
-function DelayBetweenRow({ precedingId, followingId, gapMs, onChange }: {
-  precedingId: string; followingId: string; gapMs: number;
-  onChange?: ObjectAnimationCallbacks["onDelayBetweenChange"];
-}) {
-  // FieldShell is `w-full`, so the compact width is imposed by a fixed-width wrapper
-  // (the field fills it) and the whole thing is centered in the connector gap.
+// iteration-3: "Easing is nice but clicking on the custom menu option does nothing."
+// Both halves of this control render only when the host has actually wired them.
+// A menu row that closes the menu and changes nothing is the bug being fixed, and a
+// component cannot fix it by disabling the row — a greyed control still promises a
+// capability. So the rule here is one rule, applied to both halves: RENDER WHAT THE
+// HOST WIRED.
+//
+//   no `onEasingChange`        → no Easing row at all
+//   no `onCustomEasingRequest` → preset rows only, no "Custom…"
+//
+// This is deliberately not a deletion. The contract, the row and the tests stay, so the
+// day a host owns a per-animation curve the control lights up with no change here. As of
+// this commit no host wires either one (composa's InspectorPanel objectAnimationCallbacks
+// supplies neither), because the engine has nowhere to store a per-animation easing —
+// `ObjectAnimation` has no `easing` field and the curve is read from a per-phase constant.
+// Until that field exists the honest thing for this package to show is nothing.
+function EasingChoice({ id, value, callbacks }: { id: string; value: EasingPreset; callbacks?: ObjectAnimationCallbacks }) {
+  const onCustom = callbacks?.onCustomEasingRequest;
   return (
-    <div data-delay-between-preceding={precedingId} data-delay-between-following={followingId} className="flex justify-center">
-      <div className="w-[124px]">
-        <NumericInput ariaLabel="Delay between" value={gapMs} suffix="ms between" commitOnBlur
-          iconLead={<Clock size={16} strokeWidth={1.5} />}
-          onChange={ms => onChange?.(precedingId, followingId, ms)} />
-      </div>
-    </div>
+    <PopoverMenu align="right" className="w-full" trigger={
+      <Dropdown ariaLabel="Easing" aria-haspopup="menu" value={easingPresetLabel(value)} fullWidth />
+    }>
+      {close => <Menu>
+        {EASING_PRESETS.map(preset => <MenuRow key={preset.value} type="checkmark" selectionRole="radio"
+          checked={value === preset.value} label={preset.label}
+          onClick={() => { callbacks?.onEasingChange?.(id, preset.value); close(); }} />)}
+        {onCustom && <MenuRow type="divider" />}
+        {onCustom && <MenuRow type="checkmark" selectionRole="radio" checked={value === "custom"} label="Custom…"
+          onClick={() => { onCustom(id); close(); }} />}
+      </Menu>}
+    </PopoverMenu>
   );
 }
 
-/** A vertical segment of the connector line, using the DS border token. Centered on the
- *  card column so it reads as a single line running through the stack. */
-function ConnectorSegment({ className }: { className?: string }) {
-  return <div aria-hidden className={clsx("w-px self-center bg-c-border", className)} />;
-}
+// ── Ordered animation blocks ───────────────────────────────────────────────────────
+// iteration-2 RP-12: presets sequenced after one another are their OWN ordered blocks
+// (1, 2, …) — not cards wired together by a connector line with a "delay between" field
+// in the middle. The number is the engine's `ObjectAnimation.order`, forwarded on the
+// item as `n`; the panel presents that ordering rather than deriving a second one from
+// its own render position. Grouping actions by `elementId` (the old combined card) is
+// gone with it, so an object's two actions read as block 1 and block 2 like everything
+// else in the list.
 
-/** Sequential index for a UNIT in the object-animations list. A unit is either a
- *  standalone action OR a whole combined card, so a combined card carries exactly ONE
- *  number for the entire card (NOT one per action-row inside it) — the fix for #78's
- *  over-correction that dropped all numbers. Small muted label sitting on top of the
- *  unit, matching the pre-#78 placement but promoted from the row level to the unit
- *  level. `pl-[2px]` keeps it aligned to the card's left edge so the card can still take
- *  the full available width. */
-function UnitNumberLabel({ n }: { n: number }) {
+/** The block's ordinal. Small muted label sitting on top of the card, outside the card's
+ *  own `group` box so it never shifts the flush-left card or the hover-revealed drag
+ *  handle. `pl-[2px]` keeps it aligned to the card's left edge. */
+function BlockNumberLabel({ n }: { n: number }) {
   return (
-    <div data-animation-unit-number={n} className={clsx(FONT, "h-[16px] flex items-center pl-[2px] text-[9px] font-[450] leading-[14px] tracking-[0.045px] text-c-text-secondary")}>{n}</div>
-  );
-}
-
-function CombinedAnimationCard({ elementId, rows, renderRow, onDelayBetweenChange }: {
-  elementId: string;
-  rows: AnimationRowRef[];
-  renderRow: (item: ObjectAnimationItem, index: number, tintOverride?: boolean) => ReactNode;
-  onDelayBetweenChange?: ObjectAnimationCallbacks["onDelayBetweenChange"];
-}) {
-  // Two-tier selection: an object selection lights EVERY row (no focused sibling); a
-  // single-action (focused) selection lights ONLY that row. A lit sibling next to a
-  // focused row reads as "also selected" and is wrong — so focus suppresses sibling tint.
-  // No container box or header now — the connector line alone carries the grouping, so
-  // the wrapper is a bare flex column (crucially, no `overflow-hidden`: that used to clip
-  // the hover-revealed reorder drag handle sitting at `-left-[16px]`).
-  const groupFocused = rows.some(row => row.item.focused);
-  const groupSelected = rows.some(row => row.item.selected);
-  const rowId = (row: AnimationRowRef) => row.item.id ?? String(row.index);
-  return (
-    <div
-      data-combined-card-element-id={elementId}
-      data-animation-card-state={groupFocused ? "focused" : groupSelected ? "selected" : "neutral"}
-      className="flex flex-col"
-    >
-      {rows.map((row, k) => {
-        const tint = groupFocused ? !!row.item.focused : !!row.item.selected;
-        const preceding = rows[k - 1];
-        const hasGap = k > 0 && preceding !== undefined
-          && Number.isFinite(preceding.item.startMs) && Number.isFinite(row.item.startMs);
-        const gapMs = hasGap ? (row.item.startMs! - preceding!.item.startMs!) : 0;
-        return (
-          <Fragment key={rowId(row)}>
-            {k > 0 && (
-              hasGap
-                // Delay present: the line runs FLUSH out of the preceding card's bottom
-                // edge, meets the Between control cleanly (line → control → line, all
-                // touching), then continues FLUSH into the following card's top edge. No
-                // vertical padding on the wrapper — a gap there would detach the line from
-                // the cards, so the two rows would stop reading as one connected unit.
-                ? (
-                  <div data-combined-connector="gap" className="flex flex-col">
-                    <ConnectorSegment className="h-[10px]" />
-                    <DelayBetweenRow
-                      precedingId={rowId(preceding!)}
-                      followingId={rowId(row)}
-                      gapMs={gapMs}
-                      onChange={onDelayBetweenChange}
-                    />
-                    <ConnectorSegment className="h-[10px]" />
-                  </div>
-                )
-                // No delay: one continuous line that TOUCHES both cards — flush to the
-                // preceding card's bottom edge and the following card's top edge (no
-                // padding gap), so the pair reads as a single connected unit.
-                : (
-                  <div data-combined-connector="continuous" className="flex justify-center">
-                    <ConnectorSegment className="h-[16px]" />
-                  </div>
-                )
-            )}
-            {renderRow(row.item, row.index, tint)}
-          </Fragment>
-        );
-      })}
-    </div>
+    <div data-animation-block-number={n} className={clsx(FONT, "h-[16px] flex items-center pl-[2px] text-[9px] font-[450] leading-[14px] tracking-[0.045px] text-c-text-secondary")}>{n}</div>
   );
 }
 
@@ -435,12 +380,16 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
       ) : (
         <div className="px-[16px] pb-[8px] flex flex-col gap-[8px]">
           {(() => {
-            // Per-action row renderer. `tintOverride` lets a combined card impose the
-            // two-tier highlight (object → all rows; focused action → only that row),
-            // while standalone rows fall back to the item's own `selected` flag.
-            const renderActionRow = (a: ObjectAnimationItem, i: number, tintOverride?: boolean) => {
+            // Two-tier selection, kept from the combined card whose grouping RP-12 removes:
+            // an object selection lights every row belonging to that object, but focusing
+            // ONE action lights only that row — a lit sibling beside the focused row reads
+            // as "also selected" and is wrong.
+            const focusedElementIds = new Set(anims.flatMap(a => a.focused && a.elementId ? [a.elementId] : []));
+            // Per-action row renderer.
+            const renderActionRow = (a: ObjectAnimationItem, i: number) => {
             const id = a.id ?? String(i);
-            const tinted = tintOverride ?? !!a.selected;
+            const siblingOfFocused = !a.focused && !!a.elementId && focusedElementIds.has(a.elementId);
+            const tinted = !!a.focused || (!siblingOfFocused && !!a.selected);
             const phase = a.kind === "In" ? "build-in" : a.kind === "Out" ? "build-out" : "action";
             const phaseLabel = phase === "build-in" ? "Build in" : phase === "build-out" ? "Build out" : "Action";
             const styleOptions = phase === "build-in" ? ["fade-in", "move-in", "slide-in", "wipe-in"] : phase === "build-out" ? ["fade-out", "move-out", "slide-out", "wipe-out"] : ACTION_STYLE_OPTIONS;
@@ -535,10 +484,13 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                   {sequenceTarget("after")}
                 </div>
               )}
+              {/* RP-11: no phase arrow in the collapsed badge. Not every parametric has a
+                  direction, so the arrow promised a reading the card cannot always keep;
+                  the DurationPill's In/Out/Action text carries the phase on its own. */}
               <AnimationCard
                   icon={<Type size={14} strokeWidth={1.5} />}
                   title={a.name}
-                  badge={<><KindGlyph kind={a.kind} /><DurationPill duration={a.duration} kind={a.kind} /></>}
+                  badge={<DurationPill duration={a.duration} kind={a.kind} />}
                   expanded={expanded === id}
                   selected={tinted}
                   onToggle={() => { setExpanded(current => current === id ? null : id); setActiveStyleDialog(null); }}
@@ -564,34 +516,22 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                     />
                   </LabeledRow>
                   <LabeledRow label="Duration"><NumericInput value={Number.parseFloat(a.buildDuration ?? a.duration) * (a.buildDuration?.includes("ms") ? 1 : 1000)} min={0} suffix="ms" commitOnBlur className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} onChange={durationMs => callbacks?.onDurationChange?.(id, durationMs)} /></LabeledRow>
+                  {callbacks?.onEasingChange && <LabeledRow label="Easing"><EasingChoice id={id} value={a.easing ?? PHASE_DEFAULT_EASING[phase]} callbacks={callbacks} /></LabeledRow>}
                   {directional && <LabeledRow label="Direction"><ChoiceDropdown value={a.direction ?? "left"} options={["left", "right", "up", "down"]} labels={{ left: phase === "build-out" ? "To left" : "From left", right: phase === "build-out" ? "To right" : "From right", up: phase === "build-out" ? "To top" : "From top", down: phase === "build-out" ? "To bottom" : "From bottom" }} onChange={direction => callbacks?.onDirectionChange?.(id, direction)} /></LabeledRow>}
                   {deliveryValue && <LabeledRow label="Delivery"><ChoiceDropdown value={deliveryValue} options={["all-at-once", "by-object", "by-word", "by-character"]} labels={deliveryLabels} onChange={delivery => callbacks?.onDeliveryChange?.(id, delivery)} /></LabeledRow>}
                   {phase === "action" && <LabeledRow label="Intensity"><ChoiceDropdown ariaLabel="Intensity" value={a.intensity ?? "medium"} options={["small", "medium", "large"]} labels={{ small: "Small", medium: "Medium", large: "Large" }} onChange={intensity => callbacks?.onIntensityChange?.(id, intensity)} /></LabeledRow>}
                 </AnimationCard>
             </div>;
             };
-            // Group each object's actions into ONE combined card; single-action objects
-            // (or rows with no shared elementId) render standalone, exactly as before.
-            // Each UNIT (a standalone action OR a whole combined card) carries a single
-            // sequential number: a combined card is ONE number, not one per row. The label
-            // sits on top of the unit, outside the card's own `group` box so it never
-            // shifts the flush-left card or the hover-revealed drag handle.
-            return buildAnimationUnits(anims).map((unit, unitIndex) => {
-              const unitNumber = unitIndex + 1;
-              const key = unit.kind === "combined"
-                ? `combined:${unit.elementId}`
-                : (unit.row.item.id ?? String(unit.row.index));
+            // RP-12: one ordered block per animation. The ordinal is the engine's
+            // `order` (carried on the item as `n`), so the panel presents the sequence the
+            // document already holds instead of inventing a second one from render position.
+            return anims.map((a, index) => {
+              const id = a.id ?? String(index);
               return (
-                <div key={key} data-animation-unit={unitNumber} className="flex flex-col">
-                  <UnitNumberLabel n={unitNumber} />
-                  {unit.kind === "combined"
-                    ? <CombinedAnimationCard
-                        elementId={unit.elementId}
-                        rows={unit.rows}
-                        renderRow={renderActionRow}
-                        onDelayBetweenChange={callbacks?.onDelayBetweenChange}
-                      />
-                    : renderActionRow(unit.row.item, unit.row.index)}
+                <div key={id} data-animation-block={id} className="flex flex-col">
+                  <BlockNumberLabel n={a.n} />
+                  {renderActionRow(a, index)}
                 </div>
               );
             });

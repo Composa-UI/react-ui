@@ -1,8 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from "react";
+import { LockSimpleIcon } from "@phosphor-icons/react";
 import { clsx } from "clsx";
-import { ChevronRight, Eye, EyeOff, Lock, LockOpen } from "lucide-react";
+import { ChevronRight, Eye, EyeOff, LockOpen } from "lucide-react";
 import { ScrollArea } from "./Panel";
-import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
+import { suppressNativeDragImage } from "./dragImage";
+import { LayerTypeIcon, type LayerAutoLayoutAlign, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
 import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSelectionState";
 
 // ─── Layer list ─────────────────────────────────────────────────────────────────
@@ -30,6 +32,7 @@ export interface LayerNode {
   locked?: boolean;
   inheritedLocked?: boolean;
   autoLayoutMode?: LayerAutoLayoutMode;
+  autoLayoutAlign?: LayerAutoLayoutAlign;
 }
 
 const DEMO_LAYERS: LayerNode[] = [
@@ -274,7 +277,7 @@ function LayerRow({ row, hasChildren, open, focused, renaming, renameDraft, onRe
         <span className="size-[16px] shrink-0" />
       )}
       {/* type icon */}
-      <LayerTypeIcon type={node.type} autoLayoutMode={node.autoLayoutMode} className="relative" />
+      <LayerTypeIcon type={node.type} autoLayoutMode={node.autoLayoutMode} autoLayoutAlign={node.autoLayoutAlign} className="relative" />
       {/* name */}
       {renaming ? (
         <input
@@ -300,7 +303,10 @@ function LayerRow({ row, hasChildren, open, focused, renaming, renameDraft, onRe
           made an engaged lock/hidden-eye read as disabled. The leading
           disclosure chevron stays secondary — it is structure, not an action. */}
       <button type="button" tabIndex={-1} disabled={!!node.inheritedLocked && !node.locked} aria-label={node.inheritedLocked && !node.locked ? `${node.name} locked by parent` : node.locked ? `Unlock ${node.name}` : `Lock ${node.name}`} onClick={event => { event.stopPropagation(); onLockChange?.(); }} className={clsx("relative shrink-0 size-[14px] flex items-center justify-center text-c-icon focus-visible:opacity-100", !effectivelyLocked && "opacity-0 group-hover/layer:opacity-100")}>
-        {effectivelyLocked ? <Lock size={14} strokeWidth={1.5} /> : <LockOpen size={14} strokeWidth={1.5} />}
+        {/* The locked state uses a true duotone glyph: a 20%-opacity body plus the
+            primary-colour outline remains readable at 14px without becoming the
+            solid black block produced by filling a Lucide outline (Composa#687). */}
+        {effectivelyLocked ? <LockSimpleIcon size={14} weight="duotone" data-layer-lock-icon="duotone" /> : <LockOpen size={14} strokeWidth={1.5} />}
       </button>
       <button type="button" tabIndex={-1} aria-label={node.hidden ? `Show ${node.name}` : `Hide ${node.name}`} onClick={event => { event.stopPropagation(); onVisibilityChange?.(); }} className={clsx("relative shrink-0 size-[14px] flex items-center justify-center text-c-icon focus-visible:opacity-100", !node.hidden && "opacity-0 group-hover/layer:opacity-100")}>
         {node.hidden ? <EyeOff size={14} strokeWidth={1.5} /> : <Eye size={14} strokeWidth={1.5} />}
@@ -632,6 +638,11 @@ export function LayerList({
                   if (!roots.length) { event.preventDefault(); setDraggedIds([]); setDropTarget(null); return; }
                   setDraggedIds(roots); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("application/x-composa-layers", JSON.stringify(roots));
                   event.dataTransfer.setData("text/plain", roots[0] ?? rowId);
+                  // No translucent row snapshot under the cursor — the insertion
+                  // line is the drop feedback the owner wants (iteration-3).
+                  // Below the !roots.length early-return, so an aborted drag is
+                  // untouched.
+                  suppressNativeDragImage(event);
                 }}
                 onDragEnd={() => { setDraggedIds([]); setDropTarget(null); }}
                 onDragOver={event => {

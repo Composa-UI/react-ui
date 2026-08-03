@@ -91,3 +91,88 @@ describe("LayerList draws each primitive with its own glyph", () => {
     act(() => renderer.unmount());
   });
 });
+
+// ── LF-5 · the row icon must follow the frame's auto-layout alignment ───────────
+// The glyph was derived from the auto-layout MODE only and hardcoded to `-center`,
+// and `LayerNode` had no alignment field at all, so no caller could have moved it.
+// These assert through <LayerList>, not <LayerTypeIcon>, so a re-broken plumb
+// (node.autoLayoutAlign not forwarded to the icon) fails here too.
+describe("LayerList row icon follows the frame's auto-layout alignment", () => {
+  const aligned = (mode: "horizontal" | "vertical", align: "start" | "center" | "end"): LayerNode[] =>
+    [{ id: "f", name: "Stack", type: "frame", autoLayoutMode: mode, autoLayoutAlign: align }];
+
+  const semanticFor = (mode: "horizontal" | "vertical", align: "start" | "center" | "end") => {
+    const renderer = renderLayers(aligned(mode, align));
+    const semantic = String(rowIcon(renderer.root, "Stack").props["data-icon-semantic"]);
+    act(() => renderer.unmount());
+    return semantic;
+  };
+
+  it("gives a horizontal frame three different glyphs for top / centre / bottom", () => {
+    expect(semanticFor("horizontal", "start")).toBe("auto-layout-horizontal-top");
+    expect(semanticFor("horizontal", "center")).toBe("auto-layout-horizontal-center");
+    expect(semanticFor("horizontal", "end")).toBe("auto-layout-horizontal-bottom");
+  });
+
+  it("gives a vertical frame three different glyphs for left / centre / right", () => {
+    expect(semanticFor("vertical", "start")).toBe("auto-layout-vertical-left");
+    expect(semanticFor("vertical", "center")).toBe("auto-layout-vertical-center");
+    expect(semanticFor("vertical", "end")).toBe("auto-layout-vertical-right");
+  });
+
+  it("draws a different glyph when only the alignment changes", () => {
+    // The defect in one line: same mode, same everything else, different alignment.
+    const glyphOf = (align: "start" | "center" | "end") => {
+      const renderer = renderLayers(aligned("horizontal", align));
+      const className = String(rowIcon(renderer.root, "Stack").props.className);
+      act(() => renderer.unmount());
+      return className;
+    };
+    const glyphs = new Set([glyphOf("start"), glyphOf("center"), glyphOf("end")]);
+    expect(glyphs.size, "three alignments must render three distinct glyphs").toBe(3);
+  });
+
+  it("still ignores alignment for a frame with no auto layout", () => {
+    const renderer = renderLayers([{ id: "f", name: "Board", type: "frame", autoLayoutAlign: "end" }]);
+    expect(rowIcon(renderer.root, "Board").props["data-icon-semantic"]).toBe("frame");
+    act(() => renderer.unmount());
+  });
+});
+
+// ── LF-4 · a locked row uses readable duotone anatomy ─────────────────────────
+describe("LayerList paints an engaged lock as a duotone glyph", () => {
+  /** The lock <button> AND its contents, so the assertion cannot match the eye. */
+  function lockButton(html: string, label: string) {
+    const match = html.match(new RegExp(`<button[^>]*aria-label="${label}"[^>]*>.*?</button>`, "s"))?.[0];
+    expect(match, `${label} button`).toBeTruthy();
+    return match!;
+  }
+
+  it("uses a 20%-tone body plus outline once the layer is locked", () => {
+    const html = renderToStaticMarkup(<LayerList layers={[{ id: "a", name: "Motto", type: "text", locked: true }]} selectedIds={[]} />);
+    const button = lockButton(html, "Unlock Motto");
+
+    expect(button).toContain('data-layer-lock-icon="duotone"');
+    expect(button).toContain('opacity="0.2"');
+    expect(button).not.toContain("fill-current");
+  });
+
+  it("leaves the hover-only open padlock unfilled", () => {
+    const html = renderToStaticMarkup(<LayerList layers={[{ id: "a", name: "Motto", type: "text" }]} selectedIds={[]} />);
+    const button = lockButton(html, "Lock Motto");
+
+    // Assert the control rendered before asserting the absence of the fill.
+    expect(hasClass(button, "lucide-lock-open"), "open padlock").toBe(true);
+    expect(button).not.toContain("fill-current");
+  });
+
+  it("uses the same duotone padlock for a child locked by its parent", () => {
+    const html = renderToStaticMarkup(
+      <LayerList layers={[{ id: "g", name: "Sheet", type: "frame", locked: true, children: [{ id: "c", name: "Face", type: "shape", inheritedLocked: true }] }]} selectedIds={[]} />,
+    );
+    const button = lockButton(html, "Face locked by parent");
+    expect(button).toContain('data-layer-lock-icon="duotone"');
+    expect(button).toContain('opacity="0.2"');
+    expect(button).not.toContain("fill-current");
+  });
+});

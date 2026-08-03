@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
 import { clsx } from "clsx";
-import { Play, Pause, Square, Circle, Diamond, Repeat, PanelBottomClose, PanelBottomOpen, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, Layers, SquarePlay, AudioLines } from "lucide-react";
+import { Play, Pause, Square, Diamond, Repeat, PanelBottomClose, PanelBottomOpen, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, Layers, SquarePlay, AudioLines } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { collectAggregateKeyframes, createTimelineEdgeDragController, formatMasterRulerTick, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineAnchorRatioAtX, timelineDragDeltaMs, timelinePointerPanDelta, timelineScrollbarPan, timelineScrollbarThumb, timelineScrollTop, timelineViewportChanged, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
-import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
+import { LayerTypeIcon, type LayerAutoLayoutAlign, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
 import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSelectionState";
 import { ScrollArea, IconButtonRow, type IconBtn } from "./Panel";
 import { Menu, MenuRow } from "./Menu";
 import { Tooltip } from "./Tooltip";
+import { ProposedDiamondCircle } from "../../icons/proposed-lucide";
 import { NumericInput } from "./Input";
 import { useComposaMode } from "./useComposaMode";
 import { EASING_PRESETS, easingControlPoints, easingPresetLabel, easingSvgPath, type EasingPreset, type NamedEasingPreset } from "./easing";
@@ -25,6 +26,9 @@ import { EASING_PRESETS, easingControlPoints, easingPresetLabel, easingSvgPath, 
 
 const FONT = "font-[family-name:var(--composa-font-family)]";
 const LEFT_W = 297;       // track-list width
+// The LEFT_W column is deliberately unruled in both master and slide-local views.
+// A divider assembled one cell at a time (transport, headers, scrollbar) leaves
+// visible stubs as rows scroll, so the whole column follows one no-stroke contract.
 const ROW_LAYER = 28;
 const ROW_PROP = 28;      // raised from 24 → contains the 20px bar with 4px above/below
 const ROW_BLOCK = 62;     // master-view lane height — two-row header ([icon][label][+] + [vis][solo][mute][lock], Figma 2-4060); the lane's clip bar fills this row height (inset 4px). Raised 56→62 for more top/bottom header inset (the two header rows were vertically cramped) — the extra height reads as ~3pt of breathing room above and below via the header's justify-center, and gives the Audio lane's stacked name+waveform room.
@@ -35,19 +39,12 @@ const ROW_BLOCK = 62;     // master-view lane height — two-row header ([icon][
 // DS component that owns the lane; the host still re-checks kind before placing.
 const VIDEO_LANE_DROP_ACCEPT = ["image/", "video/"] as const;
 const AUDIO_LANE_DROP_ACCEPT = ["audio/"] as const;
-// Width of the header's right-hand cluster (zoom slider + collapse control + padding
-// + border). It is ALSO the gutter every time-plot row reserves on its right, so the
-// playhead can never travel underneath that cluster: the owner's mental model is that
-// the playhead behaves like a scrollbar thumb, which stops at the end of its track
-// rather than sliding under the chrome next to it (Composa#661). Before the gutter,
-// time mapped across the full row width, so at maximum zoom-out t=duration drew the
-// handle (z-20) straight over the zoom slider (z-10).
+// Width of the header's right-hand zoom/collapse cluster. The time plot deliberately
+// spans underneath this absolute overlay, matching the pre-Iteration-1 geometry
+// requested in owner-feedback row 10 (Composa#699). This value remains useful only
+// when revealing a keyframe, where it provides a readable margin from the overlay.
 const RIGHT_OVERLAY_W = 148;
-// The playhead's pentagon handle is centred on the time position, so half of it
-// overhangs whatever pixel that is. The reserved gutter has to cover the cluster AND
-// that overhang, or the tip still crosses the divider at t=duration.
 const PLAYHEAD_HANDLE_W = 12;
-const PLOT_RIGHT_GUTTER = RIGHT_OVERLAY_W + PLAYHEAD_HANDLE_W / 2;
 // Transport geometry, named because the track headers below have to line up with it.
 const TRANSPORT_PAD_X = 8;    // horizontal inset of the transport row
 const TRANSPORT_BTN = 24;     // TransportIconButton hit box
@@ -156,6 +153,9 @@ export interface Track {
    */
   selectionState?: RowSelectionState;
   autoLayoutMode?: LayerAutoLayoutMode;
+  /** Counter-axis alignment, forwarded alongside the mode so an element row draws the
+      same glyph the Layers panel draws for the same object (Composa#661). */
+  autoLayoutAlign?: LayerAutoLayoutAlign;
   /** Host-authorized duration editing. False preserves duration presentation without exposing inert controls. */
   durationBarEditable?: boolean;
 }
@@ -210,6 +210,8 @@ export interface AudioClipBlock {
 // The three master lanes ("Slides", "Video", "Audio"). Used to disambiguate the
 // shared header control callbacks (`onLaneAdd`, `onLaneVisibilityToggle`, …).
 export type MasterLane = "slides" | "video" | "audio";
+/** Every master lane, in the order they stack in the master view. */
+export const MASTER_LANES: readonly MasterLane[] = ["slides", "video", "audio"];
 // Per-lane header control state. Every field defaults to its "resting" value
 // (visible, not soloed/muted/locked) when a lane is absent from `laneControls`.
 // These are presentation flags: the host decides what, if anything, they mean.
@@ -219,10 +221,38 @@ export interface MasterLaneControlState {
   muted?: boolean;     // default false — speaker/speaker-off
   locked?: boolean;    // default false — padlock
 }
-// How a muted lane's bars read. Reuses the timeline's existing "this row is switched
-// off" treatment (the hidden property/preset rows) rather than inventing a second
-// disabled look for the same idea.
+// How a switched-off bar (or part of one) reads. Reuses the timeline's existing
+// "this row is switched off" treatment (the hidden property/preset rows) rather than
+// inventing a second disabled look for the same idea.
+//
+// It belongs to the EYE, not the speaker (i3 feedback on TL-3: "it should be more
+// associated with the eye visibility than audio toggle"). Across all three lanes:
+//   • eye closed  → the whole bar dims (the lane is switched off)
+//   • another lane soloed → the whole bar dims, for the same reason
+//   • muted       → the WAVEFORM dims and nothing else, because the speaker owns
+//                   the audio and not the picture. The Compositions lane has no
+//                   waveform, so mute has no bar treatment there at all.
 const MUTED_BAR = "opacity-40";
+
+/**
+ * Whether a master lane reads as switched off.
+ *
+ * Two independent reasons, one treatment (`MUTED_BAR`): the lane's own eye is
+ * closed, or SOME OTHER lane is soloed — which is what solo means, and was the
+ * missing half of the control ("solo should render the other tracks disabled").
+ * A soloed lane whose own eye is closed still reads off; the eye is the stronger
+ * statement. Mute is deliberately not a reason — see `MUTED_BAR`.
+ *
+ * Pure + exported so the rule can be unit-tested without a DOM.
+ */
+export function masterLaneDisabled(
+  controls: Partial<Record<MasterLane, MasterLaneControlState>> | undefined,
+  lane: MasterLane,
+): boolean {
+  if ((controls?.[lane]?.visible ?? true) === false) return true;
+  const soloed = MASTER_LANES.filter(candidate => controls?.[candidate]?.solo === true);
+  return soloed.length > 0 && !soloed.includes(lane);
+}
 
 const DEMO_TRACKS: Track[] = [
   { name: "Top Buttons", type: "group", bar: [2600, 8000], props: [
@@ -1013,13 +1043,13 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
   return (
     <>
       {/* layer row */}
-      <div className="group/selection-row relative flex" style={{ height: ROW_LAYER, paddingRight: PLOT_RIGHT_GUTTER }} data-composa-row-state={selectionState}>
+      <div className="group/selection-row relative flex" style={{ height: ROW_LAYER }} data-composa-row-state={selectionState}>
         <span
           aria-hidden
           data-composa-row-highlight="timeline-full-lane"
           className={clsx("pointer-events-none absolute inset-0", rowSelectionHighlightClassName(selectionState))}
         />
-        <div className="relative shrink-0 flex items-center gap-[8px] pr-[8px] border-r border-c-border"
+        <div className="relative shrink-0 flex items-center gap-[8px] pr-[8px]"
           style={{ width: LEFT_W, paddingLeft: 8 + depth * 16 }}>
           {/* tree guides: a vertical line at each ancestor indent level (Composa#343) */}
           {Array.from({ length: depth }).map((_, level) => (
@@ -1056,7 +1086,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
               onTrackSelect(trackId, { toggle: event.metaKey || event.ctrlKey, range: event.shiftKey });
             } : undefined}
             className={clsx("flex flex-1 min-w-0 h-full items-center gap-[8px] outline-none", onTrackSelect && "cursor-pointer focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-border-selected-strong")}>
-            <LayerTypeIcon type={track.type} autoLayoutMode={track.autoLayoutMode} tone="secondary" />
+            <LayerTypeIcon type={track.type} autoLayoutMode={track.autoLayoutMode} autoLayoutAlign={track.autoLayoutAlign} tone="secondary" />
             <span className={clsx(FONT, "text-[11px] text-c-text truncate", selectionState === "selected" ? "font-[550]" : "font-[450]")}>{track.name}</span>
           </div>
         </div>
@@ -1086,8 +1116,8 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
       {expanded && track.bars?.map((preset, childIndex) => {
         const presetProjection = timelineDurationBarProjection(preset.timeRange, viewport);
         return (
-        <div key={preset.id} className={clsx("group/preset flex", preset.hidden && "opacity-40")} style={{ height: ROW_PROP, paddingRight: PLOT_RIGHT_GUTTER }}>
-          <div className="relative shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
+        <div key={preset.id} className={clsx("group/preset flex", preset.hidden && "opacity-40")} style={{ height: ROW_PROP }}>
+          <div className="relative shrink-0 flex items-center gap-[6px] pr-[8px]" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
             <TimelineChildConnector index={childIndex} count={childCount} depth={depth} />
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate text-c-text-secondary")}>{preset.label}</span>
             {preset.editable !== false && <button type="button"
@@ -1119,9 +1149,9 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
         return (
         <div key={i}
           className={clsx("flex", p.hidden && "opacity-40", propSelected ? "bg-c-bg-selected" : rowGraySelected && "bg-c-bg-secondary")}
-          style={{ height: ROW_PROP, paddingRight: PLOT_RIGHT_GUTTER }}
+          style={{ height: ROW_PROP }}
           onClick={event => { if (!(event.target as Element).closest?.("button,[data-keyframe-id],[data-easing-segment]")) onPropertyRowSelect?.(propertyId); }}>
-          <div className="group/prop relative shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
+          <div className="group/prop relative shrink-0 flex items-center gap-[6px] pr-[8px]" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
             <TimelineChildConnector index={presetCount + i} count={childCount} depth={depth} />
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate", p.accent ? "text-[#8638e5]" : "text-c-text-secondary")}>{p.name}</span>
             {/* keyframe stepper: ◀ prev-keyframe · ◇ toggle-at-playhead · ▶ next-keyframe */}
@@ -1184,7 +1214,7 @@ function Transport({ current, duration, mode, playing, loop, autoKeyframe = fals
     : (n: number) => (n / 1000).toFixed(2) + "s";
   const tcW = slide ? 42 : 54; // timecode cell width — ms strings are narrower than "4.20s"
   return (
-    <div className="shrink-0 flex items-center gap-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: TRANSPORT_PAD_X, paddingRight: TRANSPORT_PAD_X }}>
+    <div className="shrink-0 flex items-center gap-[8px]" style={{ width: LEFT_W, paddingLeft: TRANSPORT_PAD_X, paddingRight: TRANSPORT_PAD_X }}>
       {/* shared transport controls */}
       <TransportIconButton label={playing ? "Pause" : "Play"} active={playing} onClick={() => onPlayingChange(!playing)}>{playing ? <Pause size={TRANSPORT_GLYPH} strokeWidth={1.5} /> : <Play size={TRANSPORT_GLYPH} strokeWidth={1.5} />}</TransportIconButton>
       <TransportIconButton label="Stop" onClick={onStop}><Square size={14} strokeWidth={1.5} /></TransportIconButton>
@@ -1195,7 +1225,16 @@ function Transport({ current, duration, mode, playing, loop, autoKeyframe = fals
         <Tooltip label="Auto-keyframe">
           <button aria-label="Auto-keyframe" aria-pressed={autoKeyframe} onClick={() => onAutoKeyframeChange(!autoKeyframe)}
             className={clsx("size-[24px] rounded-c-md flex items-center justify-center hover:bg-c-bg-hover", autoKeyframe ? "text-[#ff3b30]" : "text-c-icon")}>
-            <Circle size={14} strokeWidth={1.5} className={clsx(autoKeyframe && "fill-current")} />
+            {/* Armed = record dot INSIDE the keyframe diamond, so the fill is scoped to the
+                inner <circle> only (owner: "in the fill state of the shape only the circle
+                should be filled"). A bare `fill-current` is CSS and so beats lucide's
+                `fill="none"` presentation attribute for BOTH children — the closed diamond
+                path then fills solid and swallows the circle. Keying the variant on the
+                ELEMENT NAME rather than a class of ours keeps this working verbatim after
+                lucide#4615 merges and ProposedDiamondCircle becomes the real DiamondCircle,
+                which emits the same `<circle>` child. A fill-rule cannot express this: even-odd
+                only applies between subpaths of one path, and these are two sibling elements. */}
+            <ProposedDiamondCircle size={14} strokeWidth={1.5} className={clsx(autoKeyframe && "[&>circle]:fill-current")} />
           </button>
         </Tooltip>
       )}
@@ -1293,8 +1332,8 @@ function TimelineTimeScrollbar({ viewport, duration, plotWidth, onPan }: {
     try { event.currentTarget.releasePointerCapture(event.pointerId); } catch {}
   };
   return (
-    <div className="flex shrink-0 h-[12px] border-t border-c-border bg-c-bg" data-timeline-time-scrollbar style={{ paddingRight: PLOT_RIGHT_GUTTER }}>
-      <div className="shrink-0 border-r border-c-border" style={{ width: LEFT_W }} />
+    <div className="flex shrink-0 h-[12px] border-t border-c-border bg-c-bg" data-timeline-time-scrollbar>
+      <div className="shrink-0" style={{ width: LEFT_W }} />
       <div className="relative flex-1 min-w-0">
         <div
           role="scrollbar"
@@ -1329,11 +1368,38 @@ interface MasterLaneHeaderProps {
   icon: React.ReactNode;
   label: string;
   control?: MasterLaneControlState;
+  /**
+   * Whether the lane reads as switched off, resolved ACROSS lanes by
+   * `masterLaneDisabled` — solo needs to know about the other lanes, and a lane
+   * body cannot see them. Falls back to this lane's own eye when the host builds
+   * header props by hand.
+   */
+  laneDisabled?: boolean;
   onAdd?: () => void;
   onVisibilityToggle?: () => void;
   onSoloToggle?: () => void;
   onMuteToggle?: () => void;
   onLockToggle?: () => void;
+}
+
+/** `MUTED_BAR` applies to this lane's bars — see `masterLaneDisabled`. */
+function laneIsDisabled(header: MasterLaneHeaderProps): boolean {
+  return header.laneDisabled ?? (header.control?.visible ?? true) === false;
+}
+
+/**
+ * A locked lane keeps everything that READS (select, open, context menu, drop) and
+ * loses everything that RETIMES: the bars stop responding to move/trim drags and
+ * their trim handles are not rendered at all.
+ *
+ * This is the convention the timeline already uses for a lock — a non-editable
+ * duration bar renders as `role="img"` with no move/scale targets rather than a
+ * disabled control (see `TimelinePresetBar.editable` / `Track.durationBarEditable`).
+ * Reusing it means lock finally means something without inventing a lane-level
+ * engine model, which does not exist: `locked` is per-object in the engine today.
+ */
+function laneIsLocked(header: MasterLaneHeaderProps): boolean {
+  return header.control?.locked ?? false;
 }
 
 function MasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onSoloToggle, onMuteToggle, onLockToggle }: MasterLaneHeaderProps) {
@@ -1381,8 +1447,10 @@ function MasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onS
       onClick: onLockToggle,
     },
   ];
+  // No right stroke — the shared left-column contract is unruled in both views.
+  // `pr-[8px]` stays so the controls never slide into the plot.
   return (
-    <div data-timeline-lane-header={label} className="shrink-0 flex flex-col justify-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, height: ROW_BLOCK, paddingLeft: TRACK_HEADER_PAD_L }}>
+    <div data-timeline-lane-header={label} className="shrink-0 flex flex-col justify-center gap-[6px] pr-[8px]" style={{ width: LEFT_W, height: ROW_BLOCK, paddingLeft: TRACK_HEADER_PAD_L }}>
       {/* top row — [type icon] [label] [+ add]. Icons use the primary c-icon token. */}
       <div className="flex items-center gap-[6px]">
         <span className={clsx("shrink-0 flex items-center", visible ? "text-c-icon" : "text-c-icon opacity-60")} aria-hidden>{icon}</span>
@@ -1444,9 +1512,12 @@ function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onC
     if (active.kind === "start") onTrim?.(id, "start", Math.min(active.range[1], Math.max(0, active.range[0] + delta)));
     if (active.kind === "end") onTrim?.(id, "end", Math.max(active.range[0], active.range[1] + delta));
   };
-  const muted = header.control?.muted ?? false;
+  // Dimming follows the EYE (and solo), never the speaker — this lane carries no
+  // audio strip at all, so mute has nothing to dim here. See `MUTED_BAR`.
+  const dimmed = laneIsDisabled(header);
+  const locked = laneIsLocked(header);
   return (
-    <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK, paddingRight: PLOT_RIGHT_GUTTER }}>
+    <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK }}>
       {/* left header — [icon][label][+] + [vis][solo][mute][lock] */}
       <MasterLaneHeader {...header} />
       {/* block lane */}
@@ -1481,18 +1552,22 @@ function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onC
                   event.preventDefault(); event.stopPropagation(); finish(true);
                 }
               }}
-              onPointerDown={event => begin(event, b, "move")}
-              onPointerMove={event => update(event, b)}
-              onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
+              {...(locked ? {} : {
+                onPointerDown: (event: React.PointerEvent) => begin(event, b, "move"),
+                onPointerMove: (event: React.PointerEvent) => update(event, b),
+                onPointerUp: () => finish(false),
+                onPointerCancel: () => finish(true),
+                onLostPointerCapture: () => finish(true),
+              })}
               className={clsx(
                 // outline-none + focus-visible ring: focusable bars must never leak the
                 // raw UA focus outline (Composa#584) — keyboard focus shows the DS ring,
                 // mouse click shows nothing.
                 "absolute inset-y-[4px] rounded-[4px] flex items-center px-[10px] overflow-hidden border outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring",
-                // A muted lane's bars read the same way a hidden property row does
-                // (Composa#661): muting from the header used to change nothing below
-                // it, so the toggle looked broken.
-                muted && MUTED_BAR,
+                // A switched-off lane's bars read the same way a hidden property row
+                // does (Composa#661 / TL-3): the eye — or another lane's solo — is
+                // what dims them.
+                dimmed && MUTED_BAR,
                 // Selection wins over active: it is the more recent, more
                 // deliberate statement of what the user is looking at. Same
                 // tokens as a selected audio clip, so one convention reads
@@ -1506,9 +1581,13 @@ function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onC
               )}
               style={{ left, width }}
             >
-              {/* trim handles (edge-drag to trim start/end) */}
-              <span aria-label={`Trim start of ${b.name}`} role="slider" aria-valuemin={0} aria-valuemax={b.range[1]} aria-valuenow={b.range[0]} tabIndex={0} onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(id, "start", Math.min(b.range[1], Math.max(0, b.range[0] + (event.key === "ArrowLeft" ? -100 : 100)))); } }} onPointerDown={event => begin(event, b, "start")} onPointerMove={event => update(event, b)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} className="absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />
-              <span aria-label={`Trim end of ${b.name}`} role="slider" aria-valuemin={b.range[0]} aria-valuemax={Number.MAX_SAFE_INTEGER} aria-valuenow={b.range[1]} tabIndex={0} onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(id, "end", Math.max(b.range[0], b.range[1] + (event.key === "ArrowLeft" ? -100 : 100))); } }} onPointerDown={event => begin(event, b, "end")} onPointerMove={event => update(event, b)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} className="absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full bg-c-icon-secondary cursor-ew-resize outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring" />
+              {/* trim handles (edge-drag to trim start/end) — a LOCKED lane renders
+                  none, the same way a non-editable duration bar renders no move or
+                  scale target rather than a disabled one (see `laneIsLocked`). */}
+              {!locked && <>
+              <span aria-label={`Trim start of ${b.name}`} role="slider" aria-valuemin={0} aria-valuemax={b.range[1]} aria-valuenow={b.range[0]} tabIndex={0} onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(id, "start", Math.min(b.range[1], Math.max(0, b.range[0] + (event.key === "ArrowLeft" ? -100 : 100)))); } }} onPointerDown={event => begin(event, b, "start")} onPointerMove={event => update(event, b)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} className={clsx("absolute left-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full cursor-ew-resize outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring", b.selected ? "bg-white" : "bg-c-icon-secondary")} />
+              <span aria-label={`Trim end of ${b.name}`} role="slider" aria-valuemin={b.range[0]} aria-valuemax={Number.MAX_SAFE_INTEGER} aria-valuenow={b.range[1]} tabIndex={0} onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(id, "end", Math.max(b.range[0], b.range[1] + (event.key === "ArrowLeft" ? -100 : 100))); } }} onPointerDown={event => begin(event, b, "end")} onPointerMove={event => update(event, b)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} className={clsx("absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full cursor-ew-resize outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring", b.selected ? "bg-white" : "bg-c-icon-secondary")} />
+              </>}
               <span className={clsx(FONT, "text-[11px] font-[450] truncate", b.selected ? "text-white" : b.active ? "text-c-text" : "text-c-text-secondary")}>{b.name}</span>
             </div>
           );
@@ -1628,9 +1707,16 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
     if (active.kind === "start") onTrim?.(clip.id, "start", Math.min(active.range[1], Math.max(0, active.range[0] + delta)), timelineClipTrimDetail("pointer", viewport, plotWidth));
     if (active.kind === "end") onTrim?.(clip.id, "end", Math.max(active.range[0], active.range[1] + delta), timelineClipTrimDetail("pointer", viewport, plotWidth));
   };
+  // Mute and visibility are two different controls, so they get two different
+  // treatments (Composa i2 TL-3): the speaker owns the clip's AUDIO, so muting dims
+  // only the waveform strip; the eye owns whether the clip renders at all, so hiding
+  // dims the whole bar. Dimming the picture on mute conflated them — the two toggles
+  // were indistinguishable by eye. This rule now holds on all three lanes.
   const muted = header.control?.muted ?? false;
+  const dimmed = laneIsDisabled(header);
+  const locked = laneIsLocked(header);
   return (
-    <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK, paddingRight: PLOT_RIGHT_GUTTER }}>
+    <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK }}>
       <MasterLaneHeader {...header} />
       <div {...dropHandlers} data-timeline-pan-surface data-lane-drop-active={dragActive || undefined} className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Base video track" : "Base video track (empty)"}>
         {dragActive && <LaneDropOverlay hint={dropHint ?? "Drop media here"} />}
@@ -1667,7 +1753,13 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
                 event.preventDefault(); event.stopPropagation(); finish(true);
               }
             }}
-            onPointerDown={event => begin(event, clip, "move")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
+            {...(locked ? {} : {
+              onPointerDown: (event: React.PointerEvent) => begin(event, clip, "move"),
+              onPointerMove: (event: React.PointerEvent) => update(event, clip),
+              onPointerUp: () => finish(false),
+              onPointerCancel: () => finish(true),
+              onLostPointerCapture: () => finish(true),
+            })}
             className={clsx("absolute inset-y-[4px] rounded-[4px] flex items-center px-[10px] overflow-hidden border outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring",
               // Blue hover highlight on rest (Composa#583); focus ring instead of the raw
               // UA outline (Composa#584).
@@ -1675,7 +1767,9 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
               // bar. An earlier pass kept the thumbnail visible by tinting the scrim
               // instead; the owner reversed that — one selected treatment across every
               // lane beats protecting the frame (Composa#661).
-              muted && MUTED_BAR,
+              // Hidden (eye) or solo-suppressed dims the whole bar; muted (speaker)
+              // does not — TL-3.
+              dimmed && MUTED_BAR,
               clip.selected ? "border-c-border-selected-strong bg-c-bg-brand" : "border-c-border bg-c-bg-secondary hover:border-c-border-selected")}
             style={{ left, width,
               backgroundColor: !clip.selected && !clip.thumbnail && !tintIsImage ? clip.tint : undefined,
@@ -1683,12 +1777,16 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
               backgroundSize: "cover", backgroundPosition: "center" }}>
             {/* Audio strip — video with sound reads at a glance the way the Audio lane
                 does, reusing that lane's renderer rather than a second one. Pinned to
-                the bottom so it never competes with the clip name (Composa#661). */}
+                the bottom so it never competes with the clip name (Composa#661).
+                The lane's mute dims THIS strip only — see the `muted`/`visible` note
+                above (TL-3). */}
             {clip.waveform?.length ? (
-              <div data-timeline-clip-waveform className="absolute inset-x-0 bottom-[2px] h-[14px]">
+              <div data-timeline-clip-waveform className={clsx("absolute inset-x-0 bottom-[2px] h-[14px]", muted && MUTED_BAR)}>
                 <AudioLaneWaveform id={clip.id} peaks={clip.waveform} active={onArtwork} />
               </div>
             ) : null}
+            {/* No trim handles on a locked lane — see `laneIsLocked`. */}
+            {!locked && <>
             <span aria-label={`Trim start of ${clip.name}`} role="slider" aria-valuemin={0} aria-valuemax={clip.range[1]} aria-valuenow={clip.range[0]} tabIndex={0}
               onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "start", Math.min(clip.range[1], Math.max(0, clip.range[0] + (event.key === "ArrowLeft" ? -100 : 100))), timelineClipTrimDetail("keyboard", viewport, plotWidth)); } }}
               onPointerDown={event => begin(event, clip, "start")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
@@ -1697,6 +1795,7 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
               onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "end", Math.max(clip.range[0], clip.range[1] + (event.key === "ArrowLeft" ? -100 : 100)), timelineClipTrimDetail("keyboard", viewport, plotWidth)); } }}
               onPointerDown={event => begin(event, clip, "end")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
               className={clsx("absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full cursor-ew-resize outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring", clip.selected ? "bg-white" : "bg-c-icon-secondary")} />
+            </>}
             <span className={clsx(FONT, "relative text-[11px] font-[450] truncate", onArtwork ? "text-white" : "text-c-text-secondary")}>{clip.name}</span>
           </div>;
         })}
@@ -1815,9 +1914,14 @@ function AudioTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDr
     if (active.kind === "start") onTrim?.(clip.id, "start", Math.min(active.range[1], Math.max(0, active.range[0] + delta)), timelineClipTrimDetail("pointer", viewport, plotWidth));
     if (active.kind === "end") onTrim?.(clip.id, "end", Math.max(active.range[0], active.range[1] + delta), timelineClipTrimDetail("pointer", viewport, plotWidth));
   };
+  // Same split as the Video lane (TL-3): the eye (or another lane's solo) dims the
+  // whole clip; the speaker dims the waveform only. The bar is not "the audio" — it
+  // also carries the clip's name and selection, which mute has no business greying.
   const muted = header.control?.muted ?? false;
+  const dimmed = laneIsDisabled(header);
+  const locked = laneIsLocked(header);
   return (
-    <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK, paddingRight: PLOT_RIGHT_GUTTER }}>
+    <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK }}>
       <MasterLaneHeader {...header} />
       <div {...dropHandlers} data-timeline-pan-surface data-lane-drop-active={dragActive || undefined} className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Audio track" : "Audio track (empty)"}>
         {dragActive && <LaneDropOverlay hint={dropHint ?? "Drop audio here"} />}
@@ -1846,20 +1950,28 @@ function AudioTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDr
                 event.preventDefault(); event.stopPropagation(); finish(true);
               }
             }}
-            onPointerDown={event => begin(event, clip, "move")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
+            {...(locked ? {} : {
+              onPointerDown: (event: React.PointerEvent) => begin(event, clip, "move"),
+              onPointerMove: (event: React.PointerEvent) => update(event, clip),
+              onPointerUp: () => finish(false),
+              onPointerCancel: () => finish(true),
+              onLostPointerCapture: () => finish(true),
+            })}
             className={clsx("absolute inset-y-[4px] rounded-[4px] flex flex-col justify-center gap-[2px] px-[8px] py-[5px] overflow-hidden border outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring",
               // Selection mirrors the local (slide) timeline bar (owner): blue fill
               // + strong border; the name, waveform, and trim handles go white on it.
               // Blue hover highlight on rest (Composa#583); focus ring not raw UA outline (Composa#584).
-              // A muted lane's clips dim, so the header's speaker toggle has a visible
-              // consequence on the lane it controls (Composa#661).
-              muted && MUTED_BAR,
+              // Hidden (eye) or solo-suppressed dims the whole clip — TL-3.
+              dimmed && MUTED_BAR,
               clip.selected ? "border-c-border-selected-strong bg-c-bg-brand" : "border-c-border bg-c-bg-secondary hover:border-c-border-selected")}
             style={{ left, width }}>
             {/* vertical stack (owner): clip name on top, waveform below — not the old
                 side-by-side (name overlaid on a full-bleed waveform). */}
             <span className={clsx(FONT, "relative z-10 shrink-0 text-[11px] font-[450] truncate leading-none", clip.selected ? "text-white" : "text-c-text-secondary")}>{clip.name}</span>
-            <div className="relative flex-1 min-h-0 w-full"><AudioLaneWaveform id={clip.id} peaks={clip.waveform} active={clip.selected} /></div>
+            {/* The lane's mute dims THIS strip only, matching the Video lane (TL-3). */}
+            <div data-timeline-audio-waveform className={clsx("relative flex-1 min-h-0 w-full", muted && MUTED_BAR)}><AudioLaneWaveform id={clip.id} peaks={clip.waveform} active={clip.selected} /></div>
+            {/* No trim handles on a locked lane — see `laneIsLocked`. */}
+            {!locked && <>
             <span aria-label={`Trim start of ${clip.name}`} role="slider" aria-valuemin={0} aria-valuemax={clip.range[1]} aria-valuenow={clip.range[0]} tabIndex={0}
               onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "start", Math.min(clip.range[1], Math.max(0, clip.range[0] + (event.key === "ArrowLeft" ? -100 : 100))), timelineClipTrimDetail("keyboard", viewport, plotWidth)); } }}
               onPointerDown={event => begin(event, clip, "start")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
@@ -1868,6 +1980,7 @@ function AudioTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDr
               onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onTrim?.(clip.id, "end", Math.max(clip.range[0], clip.range[1] + (event.key === "ArrowLeft" ? -100 : 100)), timelineClipTrimDetail("keyboard", viewport, plotWidth)); } }}
               onPointerDown={event => begin(event, clip, "end")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
               className={clsx("absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full cursor-ew-resize z-10 outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring", clip.selected ? "bg-white" : "bg-c-icon-secondary")} />
+            </>}
           </div>;
         })}
       </div>
@@ -2060,6 +2173,12 @@ export function Timeline({
   onTimelineCollapsedChange?: (collapsed: boolean) => void;
 }) {
   const master = mode === "master";
+  // A playhead promises there is something to scrub through. The slide-local null
+  // state (drilled into a slide that has no layers yet) has nothing to seek, so the
+  // handle and the body line both drop out rather than pointing at an empty plot
+  // (Composa i2 LT-2). Master view always keeps them — its lanes are the composition
+  // itself and exist even when empty.
+  const seekable = master || tracks.length > 0;
   const [internalPlayhead, setInternalPlayhead] = useState(defaultPlayhead);
   const [internalPlaying, setInternalPlaying] = useState(defaultPlaying);
   const [internalLoop, setInternalLoop] = useState(defaultLoop);
@@ -2077,16 +2196,18 @@ export function Timeline({
   const loop = controlledLoop ?? internalLoop;
   const viewport = normalizeViewport(controlledViewport ?? internalViewport, duration);
   const viewportRef = useRef(viewport);
-  // Effective track-list width — 0 while the left column is collapsed (Composa#582),
-  // so the ruler + lanes reflow to full width and stay aligned header-to-body.
-  // The plot spans the row minus the track-list column AND the reserved right gutter.
-  const plotWidth = Math.max(1, timelineWidth - LEFT_W - PLOT_RIGHT_GUTTER);
+  // Pre-Iteration-1 geometry: the plot spans the full row after the track-list
+  // column. The right chrome is an overlay rather than reserved plot space (#699).
+  const plotWidth = Math.max(1, timelineWidth - LEFT_W);
   // Build the shared header contract for one master lane: resolves its control
   // state and only binds a callback when the host supplied the matching handler,
   // so an unwired affordance stays visible-but-disabled rather than a no-op.
   const laneHeaderProps = (lane: MasterLane, icon: React.ReactNode, label: string): MasterLaneHeaderProps => ({
     icon, label,
     control: laneControls?.[lane],
+    // Resolved here, not in the lane body: solo is a statement about the OTHER
+    // lanes, and only this scope can see them all (`masterLaneDisabled`).
+    laneDisabled: masterLaneDisabled(laneControls, lane),
     onAdd: onLaneAdd ? () => onLaneAdd(lane) : undefined,
     onVisibilityToggle: onLaneVisibilityToggle ? () => onLaneVisibilityToggle(lane) : undefined,
     onSoloToggle: onLaneSoloToggle ? () => onLaneSoloToggle(lane) : undefined,
@@ -2109,9 +2230,7 @@ export function Timeline({
   const edgeDrag = useTimelineEdgeDragAutoScroll(viewportRef, duration, setViewport);
   const revealTime = (timeMs: number) => {
     if (timelineWidth <= LEFT_W + 1) return;
-    // Symmetric padding: the right cluster no longer sits over the plot, so the
-    // extra right margin that used to compensate for it would now double-count.
-    const next = revealTimeInViewport(viewport, timeMs, duration, 0.05, 0.05);
+    const next = revealTimeInViewport(viewport, timeMs, duration, 0.05, Math.max(0.1, RIGHT_OVERLAY_W / plotWidth));
     if (next.startMs !== viewport.startMs || next.endMs !== viewport.endMs) setViewport(next, "keyframe-reveal");
   };
 
@@ -2232,10 +2351,9 @@ export function Timeline({
           height (master lanes are ROW_BLOCK tall) so the ruler row and the lanes
           below read on one grid. Slide-local rows are shorter, so the transport
           keeps its compact 40px there. */}
-      {/* `paddingRight` reserves the right cluster's gutter so the ruler — and with it
-          the playhead — stops where the zoom slider begins (see RIGHT_OVERLAY_W). The
-          cluster itself is absolutely positioned, so it still reaches the row's edge. */}
-      <div className="relative flex shrink-0 border-b border-c-border" style={{ height: master ? ROW_BLOCK : 40, paddingRight: PLOT_RIGHT_GUTTER }}>
+      {/* The right cluster is an absolute overlay. The ruler and playhead retain the
+          pre-Iteration-1 full-width geometry beneath it (owner feedback #699). */}
+      <div className="relative flex shrink-0 border-b border-c-border" style={{ height: master ? ROW_BLOCK : 40 }}>
         <div className="shrink-0 flex">
           <Transport current={playhead} duration={duration} mode={mode} playing={playing} loop={loop} onPlayingChange={setPlaying} onLoopChange={setLoop}
             autoKeyframe={autoKeyframe} onAutoKeyframeChange={onAutoKeyframeChange}
@@ -2273,11 +2391,11 @@ export function Timeline({
           {master ? <SecondRuler viewport={viewport} width={plotWidth} /> : <Ruler viewport={viewport} width={plotWidth} />}
           {/* continuous playhead stroke through the header ruler, joining the body line
               below so the playhead reads unbroken (Composa#342, gated by #344) */}
-          {PLAYHEAD_CONNECTED && <div className="absolute top-[10px] bottom-0 w-px z-[15] -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport), backgroundColor: autoKeyframe ? "#ff3b30" : BLUE }} />}
+          {seekable && PLAYHEAD_CONNECTED && <div className="absolute top-[10px] bottom-0 w-px z-[15] -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport), backgroundColor: autoKeyframe ? "#ff3b30" : BLUE }} />}
           {/* playhead handle — recolors red when auto-keyframe/record is armed (Composa#330) */}
-          <div className="absolute top-[4px] z-20 -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport) }}>
+          {seekable && <div className="absolute top-[4px] z-20 -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport) }}>
             <svg width={PLAYHEAD_HANDLE_W} height="10" viewBox="0 0 12 10"><path d="M0 0h12v4l-6 6-6-6V0Z" fill={autoKeyframe ? "#ff3b30" : BLUE} /></svg>
-          </div>
+          </div>}
         </div>
         <div className="absolute z-10 right-0 top-0 bottom-0 flex items-center gap-[8px] px-[12px] border-l border-c-border bg-c-bg">
           {/* Zoom is the one unlabelled non-icon affordance in this chrome — a bare
@@ -2337,7 +2455,7 @@ export function Timeline({
                 type="button"
                 onClick={onBack}
                 aria-label="Back to project"
-                className={clsx(FONT, "shrink-0 flex items-center gap-[4px] pl-[8px] pr-[8px] h-full border-r border-c-border text-[11px] font-[450] text-c-text-secondary hover:text-c-text")}
+                className={clsx(FONT, "shrink-0 flex items-center gap-[4px] pl-[8px] pr-[8px] h-full text-[11px] font-[450] text-c-text-secondary hover:text-c-text")}
                 style={{ width: LEFT_W }}
               >
                 <ChevronLeftBack size={14} strokeWidth={1.5} className="shrink-0" />
@@ -2362,11 +2480,12 @@ export function Timeline({
         {/* shared playhead line spanning the FULL lanes region — above the keyframe
             diamonds (Composa#320). The wrapper's `top-0 bottom-0` resolves against the
             relatively-positioned scroll content (see `contentClassName` above), so it
-            spans header-ruler-bottom through the last lane at any scroll position and in
-            the empty/null state, instead of only the visible viewport height. */}
-        <div className="absolute top-0 bottom-0 z-20 overflow-hidden pointer-events-none" style={{ left: LEFT_W, right: PLOT_RIGHT_GUTTER }}>
+            spans header-ruler-bottom through the last lane at any scroll position,
+            instead of only the visible viewport height. Gated on `seekable` — the
+            slide-local null state has nothing to seek, so no line (LT-2). */}
+        {seekable && <div className="absolute top-0 bottom-0 right-0 z-20 overflow-hidden pointer-events-none" style={{ left: LEFT_W }}>
           <div className="absolute top-0 bottom-0 w-px" style={{ left: percent(playhead, viewport), backgroundColor: autoKeyframe ? "#ff3b30" : BLUE }} />
-        </div>
+        </div>}
       </ScrollArea>
       {/* horizontal time-axis scrollbar — visible, draggable pan of the viewport window */}
       <TimelineTimeScrollbar viewport={viewport} duration={duration} plotWidth={plotWidth} onPan={next => setViewport(next, "pointer-pan")} />

@@ -31,6 +31,12 @@ function barClass(markup: string, label: string): string {
   return /class="([^"]*)"/.exec(tag)?.[1] ?? "";
 }
 
+function trimClass(markup: string, edge: "start" | "end", label: string): string {
+  const tag = new RegExp(`<span[^>]*aria-label="Trim ${edge} of ${label}"[^>]*>`).exec(markup)?.[0];
+  if (!tag) throw new Error(`no ${edge} trim handle for "${label}" in the markup`);
+  return /class="([^"]*)"/.exec(tag)?.[1] ?? "";
+}
+
 const lanes: [string, string, (selected: boolean) => Record<string, unknown>][] = [
   ["audio clip", "vo", selected => ({ audioClips: [{ id: "a", name: "vo", range: [0, 1000], selected }] })],
   ["composition bar", "Intro", selected => ({ blocks: [{ id: "s1", name: "Intro", range: [0, 4000], selected }] })],
@@ -62,6 +68,27 @@ describe("selection and active are different things", () => {
   it("selection wins when a composition is both", () => {
     const cls = barClass(render({ blocks: [{ id: "s1", name: "Intro", range: [0, 4000], active: true, selected: true }] }), "Intro");
     expect(cls).toContain(SELECTED_FILL);
+  });
+});
+
+describe("composition trim handles", () => {
+  it("renders both grips white on the selected blue bar", () => {
+    const markup = render({ blocks: [{ id: "s1", name: "Intro", range: [0, 4000], selected: true }] });
+    for (const edge of ["start", "end"] as const) {
+      expect(trimClass(markup, edge, "Intro")).toContain("bg-white");
+      expect(trimClass(markup, edge, "Intro")).not.toContain("bg-c-icon-secondary");
+    }
+  });
+
+  it.each([
+    ["neutral", {}],
+    ["active", { active: true }],
+  ])("keeps %s bar grips secondary gray", (_state, state) => {
+    const markup = render({ blocks: [{ id: "s1", name: "Intro", range: [0, 4000], ...state }] });
+    for (const edge of ["start", "end"] as const) {
+      expect(trimClass(markup, edge, "Intro")).toContain("bg-c-icon-secondary");
+      expect(trimClass(markup, edge, "Intro")).not.toContain("bg-white");
+    }
   });
 });
 

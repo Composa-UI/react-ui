@@ -63,6 +63,27 @@ describe("Flow is a four-way layout-mode selector (Composa#661 item 1)", () => {
     act(() => renderer!.unmount());
   });
 
+  it("keeps explicit plain-frame directions distinct from the generic inferred toggle", () => {
+    const onLayoutChange = vi.fn();
+    const onAutoLayoutEnable = vi.fn();
+    let renderer: ReactTestRenderer;
+    act(() => { renderer = create(<PropertyPanel elementType="frame" onLayoutChange={onLayoutChange} onAutoLayoutEnable={onAutoLayoutEnable} />); });
+    act(() => renderer!.root.find(node => node.type === "button" && node.props["aria-label"] === "Horizontal").props.onClick());
+    expect(onLayoutChange).toHaveBeenLastCalledWith({ mode: "horizontal" });
+    act(() => renderer!.unmount());
+
+    act(() => { renderer = create(<PropertyPanel elementType="frame" onLayoutChange={onLayoutChange} onAutoLayoutEnable={onAutoLayoutEnable} />); });
+    act(() => renderer!.root.find(node => node.type === "button" && node.props["aria-label"] === "Vertical").props.onClick());
+    expect(onLayoutChange).toHaveBeenLastCalledWith({ mode: "vertical" });
+    expect(onAutoLayoutEnable).not.toHaveBeenCalled();
+    act(() => renderer!.unmount());
+
+    act(() => { renderer = create(<PropertyPanel elementType="frame" onLayoutChange={onLayoutChange} onAutoLayoutEnable={onAutoLayoutEnable} />); });
+    act(() => action(renderer!, "Add auto-layout")!.props.onClick());
+    expect(onAutoLayoutEnable).toHaveBeenCalledTimes(1);
+    act(() => renderer!.unmount());
+  });
+
   it("keeps the Flow control on screen with Grid selected once the frame IS a grid", () => {
     // Before #661 choosing Grid swapped in a Grid section with no Flow control at
     // all, so the fourth option was a one-way door that hid itself.
@@ -83,9 +104,9 @@ describe("Flow is a four-way layout-mode selector (Composa#661 item 1)", () => {
     expect(auto).toContain('aria-label="Remove auto-layout"');
     // "Switch to grid" occupied this slot; grid is reached from Flow now.
     expect(auto).not.toContain('aria-label="Switch to grid"');
-    // The plain-frame header keeps its "Add grid" action (app e2e entry point);
-    // the Flow segment is an additional route, not a replacement there.
-    expect(renderToStaticMarkup(<PropertyPanel elementType="frame" />)).toContain('aria-label="Add grid"');
+    // Grid is only a Flow mode: plain frames must not expose a second Add-grid
+    // side door that creates a sibling section/dialog topology.
+    expect(renderToStaticMarkup(<PropertyPanel elementType="frame" />)).not.toContain('aria-label="Add grid"');
   });
 });
 

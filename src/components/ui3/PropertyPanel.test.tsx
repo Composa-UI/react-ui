@@ -5,6 +5,15 @@ import { PANEL_W } from "./Panel";
 import { TooltipProvider } from "./Tooltip";
 
 describe("Timeline easing inspector composition", () => {
+  it("labels a host-owned Animate-card target without inventing an engine scope", () => {
+    const html = renderToStaticMarkup(<PropertyPanel elementType="text" easingContext="segment"
+      easing={{ preset: "custom", controlPoints: [0.2, 0, 0.8, 1], editable: true }}
+      easingApplyToLabel="This animation" onEasingChange={() => undefined} />);
+    expect(html).toContain("This animation");
+    expect(html).toContain('aria-label="Apply easing to"');
+    expect(html).toContain("disabled");
+  });
+
   it("renders segment easing as the only Design inspector section", () => {
     const html = renderToStaticMarkup(<PropertyPanel elementType="text" easingContext="segment"
       easing={{ preset: "custom", controlPoints: [0.2, 0, 0.8, 1], editable: true }}
@@ -12,6 +21,16 @@ describe("Timeline easing inspector composition", () => {
     expect(html).toContain(">Easing</span>");
     expect(html).not.toContain(">Position</span>");
     expect(html).not.toContain(">Appearance</span>");
+  });
+
+  it("renders a transition curve as the only slide Design inspector section", () => {
+    const html = renderToStaticMarkup(<PropertyPanel mode="slide" easingContext="segment"
+      easing={{ preset: "custom", controlPoints: [0.34, 0, 1, 1], editable: true }}
+      easingApplyToLabel="This transition" onEasingChange={() => undefined} />);
+    expect(html).toContain("This transition");
+    expect(html).toContain(">Easing</span>");
+    expect(html).not.toContain("Composition name");
+    expect(html).not.toContain(">Background</span>");
   });
 
   it("appends keyframe easing to the normal element inspector", () => {
@@ -45,6 +64,22 @@ describe("Motion inspector rows", () => {
     expect(html).toContain("data-composa-relative-mode-label");
     expect(html).not.toContain('aria-label="Width keyframe"');
     expect(html).not.toContain('aria-label="Height keyframe"');
+  });
+
+  it("renders the host-owned scalar Corner radius keyframe control", () => {
+    const html = renderToStaticMarkup(<PropertyPanel elementType="shape" cornerRadius={12}
+      keyframeControls={{ cornerRadius: { active: true, onToggle: () => undefined } }} />);
+
+    expect(html).toContain('aria-label="Corner radius keyframe"');
+    expect(html).toMatch(/aria-label="Corner radius keyframe"[^>]*aria-pressed="true"/);
+  });
+
+  it("omits the scalar Corner radius keyframe control for independent corners", () => {
+    const html = renderToStaticMarkup(<PropertyPanel elementType="shape"
+      cornerRadius={{ topLeft: 4, topRight: 8, bottomLeft: 12, bottomRight: 16 }}
+      keyframeControls={{ cornerRadius: { active: false, onToggle: () => undefined } }} />);
+
+    expect(html).not.toContain('aria-label="Corner radius keyframe"');
   });
 
   it("accepts a host-controlled Animate tab so timeline selection can reveal its matching card", () => {
@@ -108,7 +143,10 @@ describe("Project shell seams", () => {
     expect(html).toMatch(/aria-label="Present and preview options"[^>]*aria-haspopup="menu"/);
     // Menu is closed in static markup, so its rows are not present yet.
     expect(html).not.toContain(">Preview</span>");
-    expect(html).not.toContain(">Share</span>");
+    // The other side of the same gate: no `onShare`, no Share trigger. Asserted
+    // only AFTER the cluster above is proven to have rendered, so this cannot
+    // pass vacuously on an empty tree.
+    expect(html).not.toMatch(/<button[^>]*><span>Share<\/span><\/button>/);
     expect(html).toContain('tabindex="0" aria-label="Project video format unavailable: Video export coming soon"');
     expect(html).toContain('tabindex="0" aria-label="Export project unavailable: Video export coming soon"');
     expect(html).toContain('aria-label="Project video format"');
@@ -149,7 +187,12 @@ describe("Project shell seams", () => {
     expect(enabled).toContain('aria-label="Present and preview options"');
     expect(enabled).toContain('aria-label="Presence and spotlight"');
     // Share is its own button beside the split group, not folded into it.
-    expect(enabled).toContain(">Share</span>");
+    // Scoped to the BUTTON element, not a bare substring of the whole tree: a
+    // substring match would also be satisfied by the word appearing in a menu
+    // row or a tooltip, so it could not tell "the Share trigger renders" from
+    // "the string Share appears somewhere". This is the assertion that fails if
+    // the trigger ever stops rendering while `onShare` is supplied.
+    expect(enabled).toMatch(/<button[^>]*><span>Share<\/span><\/button>/);
   });
 
   it("disables only the primary Present segment when no present action is wired, keeping the chevron menu reachable (#575)", () => {
@@ -184,10 +227,12 @@ describe("Project shell seams", () => {
       onPreviewToggle={() => undefined}
       onShare={() => undefined}
     /></TooltipProvider>);
-    expect(html).toContain(`w-[${PANEL_W}px]`);
+    // PANEL_W now sizes the column directly (RP-5) instead of via a w-[290px]
+    // utility that only coincidentally agreed with the constant.
+    expect(html).toContain(`style="width:${PANEL_W}px"`);
     expect(html).toMatch(/class="flex w-full min-w-0 items-center/);
     // Share button renders in the same contained cluster.
-    expect(html).toContain(">Share</span>");
+    expect(html).toMatch(/<button[^>]*><span>Share<\/span><\/button>/);
   });
 });
 
