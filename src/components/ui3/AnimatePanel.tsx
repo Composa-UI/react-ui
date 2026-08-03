@@ -77,7 +77,7 @@ export const ACTION_STYLE_OPTIONS = ["move", "opacity", "rotate", "scale", "puls
 
 export type CompTransitionStyle = "none" | "fade" | "push" | "slide" | "wipe";
 export type CompTransitionDirection = "left" | "right" | "up" | "down";
-export type CompTransitionEasing = "linear" | "ease-in" | "ease-out" | "ease-in-out";
+export type CompTransitionEasing = EasingPreset;
 export interface CompTransitionSettings {
   style: CompTransitionStyle;
   direction: CompTransitionDirection;
@@ -88,7 +88,9 @@ export interface CompTransitionCallbacks {
   onStyleChange?: (value: CompTransitionStyle) => void;
   onDirectionChange?: (value: CompTransitionDirection) => void;
   onDurationChange?: (value: number) => void;
-  onEasingChange?: (value: CompTransitionEasing) => void;
+  onEasingChange?: (value: NamedEasingPreset) => void;
+  /** Route Custom into the host-owned canonical Easing inspector. */
+  onCustomEasingRequest?: () => void;
   onApplyToAll?: () => void;
 }
 
@@ -151,12 +153,25 @@ function AnimationCard({ icon, title, badge, expanded, selected = false, onToggl
 
 const STYLE_LABELS: Record<CompTransitionStyle, string> = { none: "None", fade: "Fade", push: "Push", slide: "Slide", wipe: "Wipe" };
 const DIRECTION_LABELS: Record<CompTransitionDirection, string> = { left: "Left", right: "Right", up: "Up", down: "Down" };
-const EASING_LABELS: Record<CompTransitionEasing, string> = { linear: "Linear", "ease-in": "Ease in", "ease-out": "Ease out", "ease-in-out": "Ease in out" };
-
 function ChoiceDropdown<T extends string>({ ariaLabel, value, options, labels, onChange }: { ariaLabel?: string; value: T; options: readonly T[]; labels: Record<T, string>; onChange?: (value: T) => void }) {
   return <PopoverMenu align="right" className="w-full" trigger={<Dropdown ariaLabel={ariaLabel} value={labels[value]} fullWidth />}>
     {close => <Menu>{options.map(option => <MenuRow key={option} type="checkmark" selectionRole="radio" checked={option === value} label={labels[option]} onClick={() => { onChange?.(option); close(); }} />)}</Menu>}
   </PopoverMenu>;
+}
+
+function TransitionEasingChoice({ value, callbacks }: { value: CompTransitionEasing; callbacks?: CompTransitionCallbacks }) {
+  return (
+    <PopoverMenu align="right" className="w-full" trigger={<Dropdown ariaLabel="Transition easing" value={easingPresetLabel(value)} fullWidth />}>
+      {close => <Menu>
+        {EASING_PRESETS.map(preset => <MenuRow key={preset.value} type="checkmark" selectionRole="radio"
+          checked={value === preset.value} label={preset.label}
+          onClick={() => { callbacks?.onEasingChange?.(preset.value); close(); }} />)}
+        {callbacks?.onCustomEasingRequest && <MenuRow type="divider" />}
+        {callbacks?.onCustomEasingRequest && <MenuRow type="checkmark" selectionRole="radio" checked={value === "custom"} label="Custom…"
+          onClick={() => { callbacks.onCustomEasingRequest?.(); close(); }} />}
+      </Menu>}
+    </PopoverMenu>
+  );
 }
 
 // ── Composition transition ───────────────────────────────────────────────────────
@@ -207,7 +222,7 @@ function CompTransitionSection({ value, callbacks, contextKey, selectionType, an
           <LabeledRow label="Style"><ChoiceDropdown value={rendered.style} options={["none", "fade", "push", "slide", "wipe"]} labels={STYLE_LABELS} onChange={setStyle} /></LabeledRow>
           {rendered.style !== "none" && <>
             {directional && <LabeledRow label="Direction"><ChoiceDropdown value={rendered.direction} options={["left", "right", "up", "down"]} labels={DIRECTION_LABELS} onChange={direction => { update({ direction }); callbacks?.onDirectionChange?.(direction); }} /></LabeledRow>}
-            <LabeledRow label="Easing"><ChoiceDropdown value={rendered.easing} options={["linear", "ease-in", "ease-out", "ease-in-out"]} labels={EASING_LABELS} onChange={easing => { update({ easing }); callbacks?.onEasingChange?.(easing); }} /></LabeledRow>
+            <LabeledRow label="Easing"><TransitionEasingChoice value={rendered.easing} callbacks={callbacks} /></LabeledRow>
             <LabeledRow label="Duration"><NumericInput value={rendered.durationMs} min={0} suffix="ms" className="w-full" iconLead={<Clock size={16} strokeWidth={1.5} />} commitOnBlur onChange={durationMs => { update({ durationMs }); callbacks?.onDurationChange?.(durationMs); }} /></LabeledRow>
             <Button label="Apply to all compositions" variant="Secondary" size="wide" onClick={callbacks?.onApplyToAll} />
           </>}

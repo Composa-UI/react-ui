@@ -45,7 +45,7 @@ import { EasingInspectorSection, type EasingInspectorSectionProps, type EasingIn
 import { Dial } from "./Dial";
 import { Slider } from "./Slider";
 import { ColorAdjustmentsDialog, type ColorAdjustmentGroup } from "./ColorAdjustmentsDialog";
-import type { EasingApplyScope } from "./easing";
+import type { EasingApplyScope, EasingPreset } from "./easing";
 import { iconForSemantic } from "./IconSemantics";
 import { AutoLayoutSpacingIcon } from "./AutoLayoutSpacingIcon";
 import { TypeSettingsDialog } from "./TypeSettingsDialog";
@@ -68,7 +68,7 @@ export const CLIP_BLEND_MODES: ClipBlendMode[] = ["Normal", "Add", "Subtract", "
 export type SlideBackgroundType = "solid" | "gradient" | "image" | "video";
 export type SlideTransitionType = "none" | "fade" | "push" | "slide" | "wipe";
 export type SlideTransitionDirection = "left" | "right" | "up" | "down";
-export type SlideTransitionEasing = "linear" | "ease-in" | "ease-out" | "ease-in-out";
+export type SlideTransitionEasing = EasingPreset;
 export type ClipSpeed = 0.25 | 0.5 | 0.75 | 1 | 1.25 | 1.5 | 2 | 4;
 export type ExportFormat = "PNG" | "JPG";
 /**
@@ -3099,6 +3099,7 @@ export interface PropertyPanelProps {
   onSlideTransitionDirectionChange?: (value: SlideTransitionDirection) => void;
   onSlideTransitionDurationChange?: (value: number) => void;
   onSlideTransitionEasingChange?: (value: SlideTransitionEasing) => void;
+  onCustomSlideTransitionEasingRequest?: () => void;
   onApplySlideTransitionToAll?: () => void;
   onDuplicateSlide?: () => void;
   onDeleteSlide?: () => void;
@@ -3580,6 +3581,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onSlideTransitionDirectionChange,
   onSlideTransitionDurationChange,
   onSlideTransitionEasingChange,
+  onCustomSlideTransitionEasingRequest,
   onApplySlideTransitionToAll,
   onDuplicateSlide,
   onDeleteSlide,
@@ -3848,6 +3850,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
               onDirectionChange: value => { if (slideTransitionDirection === undefined) setDemoTransitionDirection(value); onSlideTransitionDirectionChange?.(value); },
               onDurationChange: value => { if (slideTransitionDuration === undefined) setDemoTransitionDuration(value); onSlideTransitionDurationChange?.(value); },
               onEasingChange: value => { if (slideTransitionEasing === undefined) setDemoTransitionEasing(value); onSlideTransitionEasingChange?.(value); },
+              onCustomEasingRequest: onCustomSlideTransitionEasingRequest,
               onApplyToAll: onApplySlideTransitionToAll,
             }} /></div>}
         </>
@@ -4063,6 +4066,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           onDirectionChange: value => { if (slideTransitionDirection === undefined) setDemoTransitionDirection(value); onSlideTransitionDirectionChange?.(value); },
           onDurationChange: value => { if (slideTransitionDuration === undefined) setDemoTransitionDuration(value); onSlideTransitionDurationChange?.(value); },
           onEasingChange: value => { if (slideTransitionEasing === undefined) setDemoTransitionEasing(value); onSlideTransitionEasingChange?.(value); },
+          onCustomEasingRequest: onCustomSlideTransitionEasingRequest,
           onApplyToAll: onApplySlideTransitionToAll,
         }} /></div>}
 
