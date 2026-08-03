@@ -1836,6 +1836,7 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
               {close => <Menu>{STROKE_WEIGHT_MODES.map(mode => <MenuRow
                 key={mode}
                 type="checkmark"
+                selectionRole="radio"
                 checked={(stroke.weightMode ?? "all") === mode}
                 leading={strokeWeightModeIcon(mode, 14)}
                 label={strokeWeightModeLabel(mode)}

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { NumericInput } from "./Input";
 import { PanelActionBtn } from "./Panel";
 import { PropertyPanel, type ElementStrokeSetting, type InspectorKeyframeControl } from "./PropertyPanel";
+import { MenuRow, PopoverMenu } from "./Menu";
 import { Tooltip } from "./Tooltip";
 
 const keyframe = (): InspectorKeyframeControl => ({ active: false, onToggle: vi.fn() });
@@ -68,6 +69,31 @@ describe("Iteration 4 stroke controls", () => {
     });
     act(() => end.props.onChange(75));
     expect(onUpdateStroke).toHaveBeenCalledWith("stroke-1", { pathTrimEnd: 75 });
+    act(() => customStroke.keyframes?.weight.onToggle());
+    expect(customStroke.keyframes?.weight.onToggle).toHaveBeenCalledOnce();
+    act(() => renderer.unmount());
+  });
+
+  it("exposes a radio menu and emits a controlled side-mode change", () => {
+    const onUpdateStroke = vi.fn();
+    const renderer = renderStroke(onUpdateStroke);
+    const popover = renderer.root.findAllByType(PopoverMenu).find(candidate =>
+      candidate.props.trigger?.props?.label === "Stroke sides: Custom",
+    )!;
+    const close = vi.fn();
+    const menu = popover.props.children(close);
+    let menuRenderer: ReactTestRenderer;
+    act(() => { menuRenderer = create(menu); });
+    const rows = menuRenderer!.root.findAllByType(MenuRow);
+
+    expect(rows).toHaveLength(6);
+    expect(rows.every(row => row.props.selectionRole === "radio")).toBe(true);
+    expect(rows.find(row => row.props.label === "Custom")?.props.checked).toBe(true);
+    act(() => rows.find(row => row.props.label === "Top")!.props.onClick());
+    expect(onUpdateStroke).toHaveBeenCalledWith("stroke-1", { weightMode: "top" });
+    expect(close).toHaveBeenCalledOnce();
+
+    act(() => menuRenderer!.unmount());
     act(() => renderer.unmount());
   });
 });
