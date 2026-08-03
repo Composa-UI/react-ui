@@ -379,7 +379,7 @@ describe("Timeline DOM contracts", () => {
     expect(contentTag).toContain("min-h-full");
     expect(contentTag).toContain("relative");
     // The playhead line spans the full height of that content, and lives inside it.
-    const wrapperIdx = html.indexOf("absolute top-0 bottom-0 z-20 overflow-hidden pointer-events-none");
+    const wrapperIdx = html.indexOf("absolute top-0 bottom-0 right-0 z-20 overflow-hidden pointer-events-none");
     expect(wrapperIdx).toBeGreaterThan(contentIdx);
     expect(html).toContain('class="absolute top-0 bottom-0 w-px"');
   };
@@ -815,27 +815,20 @@ describe("master track header aligns with the transport above it (Composa#661)",
   });
 });
 
-describe("time plot reserves the zoom/collapse gutter (Composa#661)", () => {
-  // 154px = the header's right cluster (91px zoom track + 8px gap + 24px collapse
-  // button + 2x12px padding + 1px border = 148) plus half the 12px playhead handle,
-  // which is centred on the time position and so overhangs it. Time used to map
-  // across the FULL row width, so at maximum zoom-out the handle (z-20) drew over
-  // that cluster (z-10). Every plot row now stops short of it, like a scrollbar track.
-  const GUTTER = 154;
+describe("time plot uses the pre-Iteration-1 full-width geometry (Composa#699)", () => {
   const html = master({ audioClips: [{ id: "a1", name: "vo", range: [0, 1_000] }] });
 
-  it("insets the ruler row, every lane row and the time scrollbar by the same gutter", () => {
+  it("does not reserve the feedback-pass-only 154px gutter in any plot row", () => {
     // Guard: the master chrome rendered, so counting below is not counting zero.
     expect(html).toContain('aria-label="Playhead"');
-    // ruler/transport header + Compositions + Video + Audio + scrollbar = 5 rows.
-    expect(html.match(new RegExp(`padding-right:\\s*${GUTTER}px`, "g"))?.length).toBe(5);
+    expect(html).not.toMatch(/padding-right:\s*154px/);
   });
 
-  it("insets the body playhead overlay by the same gutter", () => {
-    const wrapperIdx = html.indexOf("absolute top-0 bottom-0 z-20 overflow-hidden pointer-events-none");
+  it("lets the body playhead overlay reach the right edge", () => {
+    const wrapperIdx = html.indexOf("absolute top-0 bottom-0 right-0 z-20 overflow-hidden pointer-events-none");
     expect(wrapperIdx).toBeGreaterThan(-1);
     const wrapper = html.slice(html.lastIndexOf("<div", wrapperIdx), html.indexOf(">", wrapperIdx) + 1);
-    expect(wrapper).toContain(`right:${GUTTER}px`);
+    expect(wrapper).not.toMatch(/right:\s*154px/);
   });
 });
 
