@@ -74,4 +74,16 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
 
     act(() => renderer.unmount());
   });
+
+  it("forwards stable fill-scoped adjustment diamonds", () => {
+    const onToggle = vi.fn();
+    let renderer!: ReactTestRenderer;
+    act(() => { renderer = create(<PropertyPanel elementType="shape" fills={[{
+        id: "image-fill", color: "#ffffff", opacity: 100, visible: true, fillType: "image",
+        imageSourceLabel: "photo.jpg", imageAdjustments: { exposure: 12 },
+        keyframes: { imageAdjustments: { exposure: { active: true, onToggle } } },
+      }]} onFillImageAdjustmentChange={() => undefined} />); });
+    expect(capture.props?.imageAdjustmentKeyframes?.exposure).toEqual({ active: true, onToggle });
+    act(() => renderer.unmount());
+  });
 });

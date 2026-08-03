@@ -88,6 +88,7 @@ export interface ElementFillSetting {
   keyframes?: {
     color?: InspectorKeyframeControl;
     opacity?: InspectorKeyframeControl;
+    imageAdjustments?: Partial<Record<ImageAdjustment, InspectorKeyframeControl>>;
   };
   /** The controlled ColorDialog mode for this specific fill entry. */
   fillType?: FillType;
@@ -1775,6 +1776,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
               imageTint={fill.imageAdjustments?.tint}
               imageHighlights={fill.imageAdjustments?.highlights}
               imageShadows={fill.imageAdjustments?.shadows}
+              imageAdjustmentKeyframes={fill.keyframes?.imageAdjustments}
               onImageAdjustmentChange={onImageAdjustmentChange ? (adjustment, value) => onImageAdjustmentChange(fill.id, adjustment, value) : undefined}
               videoSourceLabel={fill.videoSourceLabel}
               onChooseVideo={onChooseVideo ? () => onChooseVideo(fill.id) : undefined}
