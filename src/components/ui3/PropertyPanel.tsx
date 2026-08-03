@@ -673,6 +673,8 @@ export interface InspectorKeyframeControls {
   rotation?: InspectorKeyframeControl;
   opacity?: InspectorKeyframeControl;
   dimensions?: InspectorKeyframeControl;
+  /** Scalar corner radius only. Hosts omit this for independent per-corner values. */
+  cornerRadius?: InspectorKeyframeControl;
 }
 
 // ─── Section: Position ────────────────────────────────────────────────────────
@@ -1481,13 +1483,14 @@ interface AppearanceSectionProps {
    *  (Figma-parity list, but never a silent no-op). Omit = all enabled. */
   supportedBlendModes?: readonly BlendMode[];
   opacityKeyframe?: InspectorKeyframeControl;
+  cornerRadiusKeyframe?: InspectorKeyframeControl;
 }
 
 function AppearanceSection({
   opacity = 100, blendMode = "Pass through", cornerRadius = 0, onOpacityChange, onBlendModeChange, onCornerRadiusChange, blendControlled = false, cornerControlled = false,
   supportedBlendModes,
   opacityMixed = false, cornerRadiusMixed = false,
-  opacityKeyframe,
+  opacityKeyframe, cornerRadiusKeyframe,
 }: AppearanceSectionProps) {
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
   const [indivCorners, setIndivCorners] = useState(typeof cornerRadius === "object");
@@ -1526,7 +1529,7 @@ function AppearanceSection({
         </div>
         <div className="flex-1 min-w-0">
           <div className={subLabel}>Corner radius</div>
-          <NumericInput ariaLabel="Corner radius" iconLead={<Maximize size={16} strokeWidth={1.5} />} value={corners.topLeft} onChange={setCornerValue} min={0} mixed={cornerRadiusMixed && !indivCorners} disabled={indivCorners} />
+          <NumericInput ariaLabel="Corner radius" iconLead={<Maximize size={16} strokeWidth={1.5} />} value={corners.topLeft} onChange={setCornerValue} min={0} mixed={cornerRadiusMixed && !indivCorners} disabled={indivCorners} keyframe={indivCorners ? undefined : cornerRadiusKeyframe} />
         </div>
         <PanelActionBtn icon={<Maximize size={16} strokeWidth={1.5} />} label="Independent corners" selected={indivCorners} onClick={() => setIndivCorners(v => !v)} />
       </div>
@@ -4057,7 +4060,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           )}
 
           {/* Appearance — always present */}
-          <AppearanceSection opacity={opacity} blendMode={blendMode} supportedBlendModes={supportedBlendModes} cornerRadius={cornerRadius} opacityMixed={opacityMixed} cornerRadiusMixed={cornerRadiusMixed} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} />
+          <AppearanceSection opacity={opacity} blendMode={blendMode} supportedBlendModes={supportedBlendModes} cornerRadius={cornerRadius} opacityMixed={opacityMixed} cornerRadiusMixed={cornerRadiusMixed} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} cornerRadiusKeyframe={keyframeControls?.cornerRadius} />
 
           {/* Typography — text only */}
           {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} fonts={fonts} fontSizes={fontSizes} fontWeights={fontWeights} />}
