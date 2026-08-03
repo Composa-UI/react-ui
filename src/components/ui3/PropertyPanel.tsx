@@ -1865,10 +1865,10 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
           <div className="px-[16px] pb-[6px]">
             <div className={subLabel}>Path trim</div>
             <div data-composa-path-trim-row className="flex items-center gap-[8px]">
-              <Tooltip label="Path trim start" direction="Left" delayDuration={300}>
+              <Tooltip label="Start position along the path (0% is the path origin)" direction="Left" delayDuration={300}>
                 <span className="block flex-1 min-w-0"><NumericInput ariaLabel="Path trim start" iconLead={<ArrowRightFromLine size={14} strokeWidth={1.5} />} value={stroke.pathTrimStart ?? 0} onChange={pathTrimStart => update(stroke.id, { pathTrimStart })} min={0} max={100} suffix="%" keyframe={stroke.keyframes?.pathTrimStart} /></span>
               </Tooltip>
-              <Tooltip label="Path trim end" direction="Left" delayDuration={300}>
+              <Tooltip label="End position along the path (100% is the path end)" direction="Left" delayDuration={300}>
                 <span className="block flex-1 min-w-0"><NumericInput ariaLabel="Path trim end" iconLead={<ArrowLeftFromLine size={14} strokeWidth={1.5} />} value={stroke.pathTrimEnd ?? 100} onChange={pathTrimEnd => update(stroke.id, { pathTrimEnd })} min={0} max={100} suffix="%" keyframe={stroke.keyframes?.pathTrimEnd} /></span>
               </Tooltip>
               {/* Match the Stroke row above: the two values occupy its field columns,

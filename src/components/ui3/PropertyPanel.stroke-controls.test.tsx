@@ -53,7 +53,10 @@ describe("Iteration 4 stroke controls", () => {
     expect(byLabel.get("Path trim end")).toMatchObject({ value: 90, min: 0, max: 100, suffix: "%", keyframe: customStroke.keyframes?.pathTrimEnd });
 
     const tooltips = renderer.root.findAllByType(Tooltip).map(tooltip => tooltip.props.label);
-    expect(tooltips).toEqual(expect.arrayContaining(["Path trim start", "Path trim end"]));
+    expect(tooltips).toEqual(expect.arrayContaining([
+      "Start position along the path (0% is the path origin)",
+      "End position along the path (100% is the path end)",
+    ]));
     act(() => renderer.unmount());
   });
 
