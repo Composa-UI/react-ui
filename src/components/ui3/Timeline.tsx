@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
 import { clsx } from "clsx";
-import { Play, Pause, Square, Diamond, Repeat, PanelBottomClose, PanelBottomOpen, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, Layers, SquarePlay, AudioLines } from "lucide-react";
+import { Play, Pause, Square, Diamond, Repeat, PanelBottomClose, PanelBottomOpen, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, Layers } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { collectAggregateKeyframes, createTimelineEdgeDragController, formatMasterRulerTick, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineAnchorRatioAtX, timelineDragDeltaMs, timelinePointerPanDelta, timelineScrollbarPan, timelineScrollbarThumb, timelineScrollTop, timelineViewportChanged, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
 import { LayerTypeIcon, type LayerAutoLayoutAlign, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
@@ -12,6 +12,7 @@ import { ProposedDiamondCircle } from "../../icons/proposed-lucide";
 import { NumericInput } from "./Input";
 import { useComposaMode } from "./useComposaMode";
 import { EASING_PRESETS, easingControlPoints, easingPresetLabel, easingSvgPath, type EasingPreset, type NamedEasingPreset } from "./easing";
+import { iconForSemantic } from "./IconSemantics";
 
 // ─── Timeline ───────────────────────────────────────────────────────────────────
 // Polymorphic timeline region (Composa editor spec: docs/composa/specs/timeline.md).
@@ -59,6 +60,8 @@ const BLUE = "#0d99ff";
 // handle in the header, separate body line — Samuel's preference); true = the
 // continuous stroke through the header ruler (#342). Flip this one constant to switch.
 const PLAYHEAD_CONNECTED = false;
+const VideoMediaIcon = iconForSemantic("media-video");
+const AudioMediaIcon = iconForSemantic("media-audio");
 
 export type TimelineMode = "master" | "slide";
 export type TimelineFrameRate = 24 | 25 | 30 | 60;
@@ -2444,8 +2447,8 @@ export function Timeline({
         {master ? (
           <>
             <BlockTrack header={laneHeaderProps("slides", <Layers size={16} strokeWidth={1.5} />, "Compositions")} blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
-            <BaseVideoTrack header={laneHeaderProps("video", <SquarePlay size={16} strokeWidth={1.5} />, "Video")} clips={baseClips} viewport={viewport} plotWidth={plotWidth} accept={VIDEO_LANE_DROP_ACCEPT} dropHint="Drop image or video here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("video", files) : undefined} onSelect={onClipSelect} onOpen={onClipOpen} onContextMenu={onClipContextMenu} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
-            <AudioTrack header={laneHeaderProps("audio", <AudioLines size={16} strokeWidth={1.5} />, "Audio")} clips={audioClips} viewport={viewport} plotWidth={plotWidth} accept={AUDIO_LANE_DROP_ACCEPT} dropHint="Drop audio here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("audio", files) : undefined} onSelect={onAudioClipSelect} onOpen={onAudioClipOpen} onContextMenu={onAudioClipContextMenu} onMove={onAudioClipMove} onTrim={onAudioClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <BaseVideoTrack header={laneHeaderProps("video", <VideoMediaIcon data-icon-semantic="media-video" size={16} strokeWidth={1.5} />, "Video")} clips={baseClips} viewport={viewport} plotWidth={plotWidth} accept={VIDEO_LANE_DROP_ACCEPT} dropHint="Drop image or video here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("video", files) : undefined} onSelect={onClipSelect} onOpen={onClipOpen} onContextMenu={onClipContextMenu} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <AudioTrack header={laneHeaderProps("audio", <AudioMediaIcon data-icon-semantic="media-audio" size={16} strokeWidth={1.5} />, "Audio")} clips={audioClips} viewport={viewport} plotWidth={plotWidth} accept={AUDIO_LANE_DROP_ACCEPT} dropHint="Drop audio here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("audio", files) : undefined} onSelect={onAudioClipSelect} onOpen={onAudioClipOpen} onContextMenu={onAudioClipContextMenu} onMove={onAudioClipMove} onTrim={onAudioClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
           </>
         ) : (
           <>

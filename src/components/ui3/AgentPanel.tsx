@@ -26,9 +26,10 @@ import { ModelPicker } from "./ModelPicker";
 import { RatingBar } from "./RatingBar";
 import { ScrollArea } from "./Panel";
 import { Tooltip } from "./Tooltip";
+import { iconForSemantic } from "./IconSemantics";
 
 export type AgentConversationTimeGroup = "today" | "yesterday" | "last-7-days" | "earlier";
-export type AgentContextKind = "frame" | "text" | "shape" | "image" | "clip" | "composition" | "selection";
+export type AgentContextKind = "frame" | "text" | "shape" | "image" | "clip" | "video" | "audio" | "composition" | "selection";
 
 export interface AgentContextReference {
   id: string;
@@ -347,7 +348,7 @@ function relativeTime(updatedAt: number, now = Date.now()) {
 // Composa#218: a context chip's icon must match the icon the layer list uses for
 // that object type — so a frame reads as a frame, not a wrench. Route every kind
 // through the shared LayerTypeIcon mapping.
-const CONTEXT_KIND_TO_LAYER: Record<AgentContextKind, LayerIconType> = {
+const CONTEXT_KIND_TO_LAYER: Record<Exclude<AgentContextKind, "video" | "audio">, LayerIconType> = {
   frame: "frame",
   text: "text",
   shape: "shape",
@@ -358,6 +359,11 @@ const CONTEXT_KIND_TO_LAYER: Record<AgentContextKind, LayerIconType> = {
 };
 
 function ContextIcon({ kind }: { kind: AgentContextKind }) {
+  if (kind === "video" || kind === "audio") {
+    const semantic = kind === "video" ? "media-video" : "media-audio";
+    const Icon = iconForSemantic(semantic);
+    return <Icon data-icon-semantic={semantic} size={13} strokeWidth={1.5} />;
+  }
   return <LayerTypeIcon type={CONTEXT_KIND_TO_LAYER[kind]} size={13} strokeWidth={1.5} />;
 }
 

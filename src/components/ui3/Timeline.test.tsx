@@ -11,6 +11,14 @@ const numericTrack: Track = { id: "hero", name: "Hero", type: "frame", props: [
 ] };
 
 describe("Timeline DOM contracts", () => {
+  it("marks the canonical master media header glyph semantics (#749)", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={260} duration={2_000} />);
+    expect(html).toContain('data-icon-semantic="media-video"');
+    expect(html).toContain('data-icon-semantic="media-audio"');
+    expect(html).toContain("lucide-square-play");
+    expect(html).toContain("lucide-audio-lines");
+  });
+
   it("exposes stable composition block identity for controlled context-menu adapters", () => {
     const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={2_000}
       blocks={[{ id: "intro", name: "Intro", range: [0, 1_000] }]} onBlockContextMenu={() => undefined} />);

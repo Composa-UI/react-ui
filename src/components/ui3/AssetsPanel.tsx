@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type DragEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { SidePanel } from "./SidePanel";
 import { clsx } from "clsx";
-import { Upload, Search, Image as ImageIcon, Film, Volume2, Trash2, Plus, Pencil, ChevronRight, Library } from "lucide-react";
+import { Upload, Search, Image as ImageIcon, Trash2, Plus, Pencil, ChevronRight, Library } from "lucide-react";
 import { Dropdown } from "./Dropdown";
 import { Tabs } from "./Tabs";
 import { FieldShell, InputField } from "./Input";
@@ -9,6 +9,7 @@ import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { Modal, ModalBody, ModalFooter, ModalHeader, MODAL_WIDTHS } from "./Dialog";
 import { Button } from "./Button";
 import { Waveform } from "./Waveform";
+import { iconForSemantic } from "./IconSemantics";
 
 // ─── Assets pane ──────────────────────────────────────────────────────────────
 // Left-panel content shown when the Assets nav-rail icon is active — replaces the
@@ -39,6 +40,8 @@ const ASSET_TABS = [
   { value: "library", label: "Library", panelId: LIBRARY_PANEL_ID },
   { value: "community", label: "Community", panelId: COMMUNITY_PANEL_ID },
 ];
+const VideoMediaIcon = iconForSemantic("media-video");
+const AudioMediaIcon = iconForSemantic("media-audio");
 
 /** A named grouping of assets inside the Library tab. */
 export interface AssetLibrary {
@@ -51,8 +54,8 @@ export interface AssetLibrary {
 const FILTER_OPTIONS: { value: AssetFilter; label: string; icon?: React.ReactNode }[] = [
   { value: "all", label: "All" },
   { value: "images", label: "Images", icon: <ImageIcon size={14} strokeWidth={1.75} /> },
-  { value: "videos", label: "Videos", icon: <Film size={14} strokeWidth={1.75} /> },
-  { value: "audio", label: "Audio", icon: <Volume2 size={14} strokeWidth={1.75} /> },
+  { value: "videos", label: "Videos", icon: <VideoMediaIcon data-icon-semantic="media-video" size={14} strokeWidth={1.75} /> },
+  { value: "audio", label: "Audio", icon: <AudioMediaIcon data-icon-semantic="media-audio" size={14} strokeWidth={1.75} /> },
 ];
 const FILTER_LABELS = Object.fromEntries(FILTER_OPTIONS.map((o) => [o.value, o.label])) as Record<AssetFilter, string>;
 
@@ -729,7 +732,7 @@ export function AssetsPanel({
           <div className="fixed z-30" style={{ left: contextAsset.x, top: contextAsset.y }}>
             <Menu>
               <MenuRow label={contextAsset.item.kind === "video" || contextAsset.item.kind === "audio" ? "Add to timeline" : "Insert on slide"}
-                leading={contextAsset.item.kind === "video" ? <Film size={14} /> : contextAsset.item.kind === "audio" ? <Volume2 size={14} /> : <Plus size={14} />}
+                leading={contextAsset.item.kind === "video" ? <VideoMediaIcon data-icon-semantic="media-video" size={14} /> : contextAsset.item.kind === "audio" ? <AudioMediaIcon data-icon-semantic="media-audio" size={14} /> : <Plus size={14} />}
                 onClick={() => { insertAsset(contextAsset.item); setContextAsset(null); }} />
               <MenuRow label="Rename" leading={<Pencil size={14} />} onClick={() => requestRename(contextAsset.item)} />
               <MenuRow type="divider" />

@@ -1,6 +1,10 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { act, create } from "react-test-renderer";
 import { describe, expect, it } from "vitest";
 import { AssetsPanel, type AssetItem, type AssetFilter } from "./AssetsPanel";
+import { PopoverMenu } from "./Menu";
+
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const AUDIO_TINT = "linear-gradient(135deg,#312e81,#6d28d9)";
 
@@ -33,6 +37,18 @@ describe("AssetsPanel — audio thumbnail is a waveform, not a colour", () => {
 });
 
 describe("AssetsPanel — type filter is a dropdown, not a segmented control", () => {
+  it("uses the canonical media semantics in the filter menu (#749)", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<AssetsPanel assets={ASSETS} filter="all" />); });
+    const filter = renderer!.root.findAllByType(PopoverMenu)
+      .find(popover => popover.props.trigger?.props?.ariaLabel === "Filter by type");
+    expect(filter).toBeTruthy();
+    const menu = renderToStaticMarkup(filter!.props.children(() => undefined));
+    expect(menu).toContain('data-icon-semantic="media-video"');
+    expect(menu).toContain('data-icon-semantic="media-audio"');
+    act(() => renderer!.unmount());
+  });
+
   it("renders a single dropdown trigger, not four segmented buttons", () => {
     const html = renderToStaticMarkup(<AssetsPanel assets={ASSETS} filter="all" />);
     expect(html).toContain('aria-label="Filter by type"');
