@@ -153,6 +153,47 @@ describe("Wrapped gap placement (Composa#661 item 2)", () => {
   });
 });
 
+describe("Auto-layout gap keyframe affordances (#625)", () => {
+  const control = () => ({ active: false, onToggle: vi.fn() });
+
+  it("projects fixed item and wrapped row-gap diamonds", () => {
+    const item = control(), row = control();
+    let renderer: ReactTestRenderer;
+    act(() => { renderer = create(<PropertyPanel elementType="frame-auto"
+      layout={autoLayout({ wrap: true, rowGap: 24 })}
+      keyframeControls={{ layoutGap: item, layoutCounterGap: row }} />); });
+    const scope = group(renderer!.root, "Alignment and gap");
+    expect(scope.findByType(NumericComboInput).props.keyframe).toBe(item);
+    expect(scope.findAllByType(NumericInput).find(node => node.props.ariaLabel === "Row gap")!.props.keyframe).toBe(row);
+    act(() => scope.findByType(NumericComboInput).props.keyframe.onToggle());
+    act(() => scope.findAllByType(NumericInput).find(node => node.props.ariaLabel === "Row gap")!.props.keyframe.onToggle());
+    expect(item.onToggle).toHaveBeenCalledOnce();
+    expect(row.onToggle).toHaveBeenCalledOnce();
+    act(() => renderer!.unmount());
+  });
+
+  it("omits the item-gap diamond while spacing is Auto", () => {
+    const item = control();
+    let renderer: ReactTestRenderer;
+    act(() => { renderer = create(<PropertyPanel elementType="frame-auto"
+      layout={autoLayout({ gap: "auto" })} keyframeControls={{ layoutGap: item }} />); });
+    expect(group(renderer!.root, "Alignment and gap").findByType(NumericComboInput).props.keyframe).toBeUndefined();
+    act(() => renderer!.unmount());
+  });
+
+  it("projects independent Grid column-gap and row-gap diamonds", () => {
+    const column = control(), row = control();
+    let renderer: ReactTestRenderer;
+    act(() => { renderer = create(<PropertyPanel elementType="frame-grid"
+      layout={autoLayout({ mode: "grid", grid: gridSettings })}
+      keyframeControls={{ gridColumnGap: column, gridRowGap: row }} />); });
+    const scope = group(renderer!.root, "Grid and gap");
+    expect(scope.findAllByType(NumericInput).find(node => node.props.ariaLabel === "Column gap")!.props.keyframe).toBe(column);
+    expect(scope.findAllByType(NumericInput).find(node => node.props.ariaLabel === "Row gap")!.props.keyframe).toBe(row);
+    act(() => renderer!.unmount());
+  });
+});
+
 describe("Auto-layout header toggle (Composa#661 item 4)", () => {
   it("pins the toggle faces to the lucide panel-plus / panel-check glyphs", () => {
     expect(composaIconSemantics["auto-layout-add"]).toBe(ProposedLayoutPanelLeftPlus);

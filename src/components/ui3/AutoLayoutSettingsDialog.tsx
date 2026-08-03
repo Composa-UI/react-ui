@@ -1,6 +1,5 @@
 import { Check, Minus, X } from "lucide-react";
 import { type ReactElement } from "react";
-import { AlignmentControl, type AlignmentValue } from "./AlignmentControl";
 import { Dropdown } from "./Dropdown";
 import {
   AUTO_LAYOUT_SETTINGS_INSPECTOR_SIDE_OFFSET,
@@ -11,7 +10,6 @@ import {
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { SegmentedControl } from "./SegmentedControl";
 import { Tooltip } from "./Tooltip";
-import type { ElementGridSettings, GridContentAlign } from "./PropertyPanel";
 
 export interface AutoLayoutSettingsValue {
   mode: "none" | "horizontal" | "vertical" | "grid";
@@ -26,8 +24,6 @@ export interface AutoLayoutSettingsDialogProps {
   value: AutoLayoutSettingsValue;
   trigger: ReactElement;
   disabled?: boolean;
-  grid?: ElementGridSettings;
-  onGridChange?: (patch: Partial<ElementGridSettings>) => void;
   onChange?: (patch: {
     textBaseline?: boolean;
     strokeSizing?: "excluded" | "included";
@@ -52,23 +48,12 @@ export function AutoLayoutSettingsDialog({
   value,
   trigger,
   disabled = false,
-  grid,
-  onGridChange,
   onChange,
   onClose,
 }: AutoLayoutSettingsDialogProps) {
   const baselineApplicable = value.baselineApplicable ?? value.mode === "horizontal";
   const strokeLabel = value.strokeSizing === "mixed" ? "Mixed" : value.strokeSizing === "included" ? "Included" : "Excluded";
   const stackingLabel = value.canvasStacking === "mixed" ? "Mixed" : value.canvasStacking === "first-on-top" ? "First on top" : "Last on top";
-  const gridContentCode = (gridValue: ElementGridSettings): AlignmentValue => {
-    const horizontal = gridValue.justifyContent === "center" ? "c" : gridValue.justifyContent === "end" ? "r" : "l";
-    const vertical = gridValue.alignContent === "center" ? "m" : gridValue.alignContent === "end" ? "b" : "t";
-    return `${vertical}${horizontal}` as AlignmentValue;
-  };
-  const codeToGridContent = (code: AlignmentValue) => ({
-    justifyContent: (code[1] === "c" ? "center" : code[1] === "r" ? "end" : "start") as GridContentAlign,
-    alignContent: (code[0] === "m" ? "center" : code[0] === "b" ? "end" : "start") as GridContentAlign,
-  });
   return (
     <InspectorDialog
       open={open}
@@ -112,7 +97,7 @@ export function AutoLayoutSettingsDialog({
             )}
           </PopoverMenu>
         </SettingRow>
-        <SettingRow label="Canvas stacking">
+        {value.mode !== "grid" && <SettingRow label="Canvas stacking">
           <PopoverMenu
             align="left"
             trigger={<Dropdown ariaLabel={`Canvas stacking: ${stackingLabel}`} value={stackingLabel} mixed={value.canvasStacking === "mixed"} disabled={disabled} fullWidth />}
@@ -124,8 +109,8 @@ export function AutoLayoutSettingsDialog({
               </Menu>
             )}
           </PopoverMenu>
-        </SettingRow>
-        <SettingRow label="Text baseline">
+        </SettingRow>}
+        {value.mode !== "grid" && <SettingRow label="Text baseline">
           <Tooltip
             label="Only applicable for horizontal layouts"
             direction="Left"
@@ -145,11 +130,7 @@ export function AutoLayoutSettingsDialog({
               />
             </span>
           </Tooltip>
-        </SettingRow>
-        {grid && <div className="pt-[4px]">
-          <div className="mb-[3px] text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary">Grid content alignment</div>
-          <AlignmentControl ariaLabel="Grid content alignment" value={gridContentCode(grid)} onChange={code => onGridChange?.(codeToGridContent(code))} />
-        </div>}
+        </SettingRow>}
       </div>
     </InspectorDialog>
   );

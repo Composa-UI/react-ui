@@ -693,6 +693,13 @@ export interface InspectorKeyframeControls {
   dimensions?: InspectorKeyframeControl;
   /** Scalar corner radius only. Hosts omit this for independent per-corner values. */
   cornerRadius?: InspectorKeyframeControl;
+  /** Fixed Auto-layout item gap. Omitted while the gap is Auto. */
+  layoutGap?: InspectorKeyframeControl;
+  /** Wrapped Auto-layout row gap. */
+  layoutCounterGap?: InspectorKeyframeControl;
+  /** Grid column and row gaps. */
+  gridColumnGap?: InspectorKeyframeControl;
+  gridRowGap?: InspectorKeyframeControl;
 }
 
 // ─── Section: Position ────────────────────────────────────────────────────────
@@ -1024,6 +1031,10 @@ interface LayoutAutoProps {
   onDisableAutoLayout?: () => void;
   sizing?: Omit<DimensionSizingFieldsProps, "width" | "height" | "widthMode" | "heightMode">;
   spatialSelectionLayout?: SpatialSelectionLayoutControl;
+  gapKeyframe?: InspectorKeyframeControl;
+  rowGapKeyframe?: InspectorKeyframeControl;
+  gridColumnGapKeyframe?: InspectorKeyframeControl;
+  gridRowGapKeyframe?: InspectorKeyframeControl;
 }
 
 export function reconcileAutoLayoutGap(
@@ -1057,6 +1068,7 @@ function LayoutAutoSection({
   settingsBaselineApplicable,
   settingsDisabled = false,
   onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onAutoLayoutSettingsRequest, onEnableGrid, onDisableAutoLayout, sizing, spatialSelectionLayout,
+  gapKeyframe, rowGapKeyframe, gridColumnGapKeyframe, gridRowGapKeyframe,
 }: LayoutAutoProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const controlled = flowMode !== undefined;
@@ -1161,7 +1173,6 @@ function LayoutAutoSection({
       open={settingsOpen}
       value={settingsValue}
       disabled={settingsDisabled}
-      grid={renderedFlow === "grid" ? grid : undefined}
       trigger={<PanelActionBtn
         // Every settings entry point in the inspector (Type, Stroke, Template)
         // is the slider glyph; the auto-layout one used the Freeform *layout*
@@ -1172,7 +1183,6 @@ function LayoutAutoSection({
         onClick={settingsDisabled ? undefined : () => { setSettingsOpen(true); onAutoLayoutSettingsRequest?.(); }}
       />}
       onChange={patch => onLayoutChange?.(patch)}
-      onGridChange={patch => grid && onLayoutChange?.({ grid: { ...grid, ...patch } })}
       onClose={() => setSettingsOpen(false)}
     />
   );
@@ -1228,9 +1238,9 @@ function LayoutAutoSection({
         <div className="w-[88px] min-w-0 flex flex-col gap-[4px]">
           <div>
             <div className={subLabel}>Gap</div>
-            <NumericInput ariaLabel="Column gap" iconLead={<AutoLayoutSpacingIcon kind="gap" axis="horizontal" />} value={grid.columnGap} onChange={columnGap => onLayoutChange?.({ grid: { ...grid, columnGap: Math.max(0, columnGap) } })} min={0} suffix="px" className="w-full" />
+            <NumericInput ariaLabel="Column gap" iconLead={<AutoLayoutSpacingIcon kind="gap" axis="horizontal" />} value={grid.columnGap} onChange={columnGap => onLayoutChange?.({ grid: { ...grid, columnGap: Math.max(0, columnGap) } })} min={0} suffix="px" keyframe={gridColumnGapKeyframe} className="w-full" />
           </div>
-          <NumericInput ariaLabel="Row gap" iconLead={<AutoLayoutSpacingIcon kind="gap" axis="vertical" />} value={grid.rowGap} onChange={rowGap => onLayoutChange?.({ grid: { ...grid, rowGap: Math.max(0, rowGap) } })} min={0} suffix="px" className="w-full" />
+          <NumericInput ariaLabel="Row gap" iconLead={<AutoLayoutSpacingIcon kind="gap" axis="vertical" />} value={grid.rowGap} onChange={rowGap => onLayoutChange?.({ grid: { ...grid, rowGap: Math.max(0, rowGap) } })} min={0} suffix="px" keyframe={gridRowGapKeyframe} className="w-full" />
         </div>
         <div className="shrink-0 pt-[17px]">{settingsTriggerButton}</div>
       </div>
@@ -1261,6 +1271,7 @@ function LayoutAutoSection({
               value={gapControlled && typeof renderedGap === "number" ? renderedGap : undefined}
               defaultValue={lastFixedGap}
               onChange={emitGap}
+              keyframe={gapMode === "fixed" ? gapKeyframe : undefined}
               min={0}
               suffix="px"
               menu={gapMenu}
@@ -1278,6 +1289,7 @@ function LayoutAutoSection({
                 value={renderedRowGap}
                 defaultValue={renderedRowGap}
                 onChange={emitRowGap}
+                keyframe={rowGapKeyframe}
                 min={0}
                 suffix="px"
                 className="w-full"
@@ -3988,6 +4000,10 @@ export function PropertyPanel(props: PropertyPanelProps) {
             widthMode={layout?.widthMode} heightMode={layout?.heightMode}
             sizing={sizingContract}
             spatialSelectionLayout={props.spatialSelectionLayout}
+            gapKeyframe={keyframeControls?.layoutGap}
+            rowGapKeyframe={keyframeControls?.layoutCounterGap}
+            gridColumnGapKeyframe={keyframeControls?.gridColumnGap}
+            gridRowGapKeyframe={keyframeControls?.gridRowGap}
             onLayoutChange={onLayoutChange} onPaddingChange={props.onPaddingChange ?? (onLayoutChange ? padding => onLayoutChange({ padding }) : undefined)}
             onAlignChange={onLayoutChange ? align => onLayoutChange({ align }) : undefined} onClipContentChange={onLayoutChange ? clipsContent => onLayoutChange({ clipsContent }) : undefined}
             onAutoLayoutSettingsRequest={onAutoLayoutSettingsRequest} />}

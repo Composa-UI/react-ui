@@ -111,7 +111,11 @@ export function InspectorDialog({ open, onClose, trigger, anchorSelector, childr
     trapFocus={false}
     blockOutsideDismiss={blockOutsideDismiss}
     triggerClassName={triggerClassName}
-    className={className}
+    // Inspector dialogs behave like application chrome: labels and empty space
+    // do not start browser text selection. Native editors explicitly opt back
+    // into text selection so drag-select, Select All, and caret editing remain
+    // untouched inside inputs and textareas (#625).
+    className={clsx("select-none [&_input]:select-text [&_textarea]:select-text", className)}
     elevation={elevation}
     dragHandleSelector={draggable ? INSPECTOR_DIALOG_DRAG_HANDLE_SELECTOR : undefined}
     anchorSurfaceSelector={anchorSurfaceSelector}

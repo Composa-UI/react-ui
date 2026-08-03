@@ -39,7 +39,10 @@ to the control that launched them.
   an approved dialog reference requires it.
 
 `InspectorDialog` remains a compatibility wrapper and opts out of focus
-trapping for existing non-modal Effects behavior.
+trapping for existing non-modal Effects behavior. Its chrome is non-selectable
+by default so dragging across labels or empty dialog space cannot create a
+browser selection. Native `input` and `textarea` descendants explicitly restore
+text selection, caret editing, drag selection, and Select All.
 
 Use `?view=issue-77-anchored-overlay` in the playground for light/dark,
 clipped-panel, workspace-boundary, and viewport-edge verification.
