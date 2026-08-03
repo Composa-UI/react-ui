@@ -65,6 +65,17 @@ describe("NumericInput presentation contract", () => {
     />);
     expect(pair).toMatch(/aria-label="Position X\/Position Y keyframe"[^>]*class="[^"]*bg-c-bg-selected/);
   });
+
+  it("makes a disabled numeric field's keyframe affordance inert", () => {
+    const onToggle = vi.fn();
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<NumericInput ariaLabel="Locked padding" value={12} disabled keyframe={{ active: true, onToggle }} />); });
+    const button = renderer!.root.findByProps({ "aria-label": "Locked padding keyframe" });
+    expect(button.props.disabled).toBe(true);
+    act(() => button.props.onClick({ stopPropagation: () => undefined }));
+    expect(onToggle).not.toHaveBeenCalled();
+    act(() => renderer!.unmount());
+  });
 });
 
 describe("ColorInput motion controls", () => {

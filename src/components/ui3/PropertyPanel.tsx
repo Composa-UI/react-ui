@@ -1072,6 +1072,7 @@ interface LayoutAutoProps {
   gridColumnGapKeyframe?: InspectorKeyframeControl;
   gridRowGapKeyframe?: InspectorKeyframeControl;
   gridTrackSizeKeyframes?: Record<string, InspectorKeyframeControl>;
+  onAddGridTrack?: (axis: "row" | "column") => void;
   paddingTopKeyframe?: InspectorKeyframeControl;
   paddingRightKeyframe?: InspectorKeyframeControl;
   paddingBottomKeyframe?: InspectorKeyframeControl;
@@ -1109,7 +1110,7 @@ function LayoutAutoSection({
   settingsBaselineApplicable,
   settingsDisabled = false,
   onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onAutoLayoutSettingsRequest, onEnableGrid, onDisableAutoLayout, sizing, spatialSelectionLayout,
-  gapKeyframe, rowGapKeyframe, gridColumnGapKeyframe, gridRowGapKeyframe, gridTrackSizeKeyframes,
+  gapKeyframe, rowGapKeyframe, gridColumnGapKeyframe, gridRowGapKeyframe, gridTrackSizeKeyframes, onAddGridTrack,
   paddingTopKeyframe, paddingRightKeyframe, paddingBottomKeyframe, paddingLeftKeyframe,
 }: LayoutAutoProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -1279,7 +1280,7 @@ function LayoutAutoSection({
       <div role="group" aria-label="Grid and gap" className="flex items-start gap-[8px] px-[16px] pt-[8px] pb-[4px]">
         <div className="shrink-0">
           <div className={subLabel}>Grid</div>
-          <GridDimensionsPicker grid={grid} keyframes={gridTrackSizeKeyframes} onChange={patch => onLayoutChange?.({ grid: { ...grid, ...patch } })} />
+          <GridDimensionsPicker grid={grid} keyframes={gridTrackSizeKeyframes} onChange={patch => onLayoutChange?.({ grid: { ...grid, ...patch } })} onAddTrack={onAddGridTrack} />
         </div>
         <div className="w-[88px] min-w-0 flex flex-col gap-[4px]">
           <div>
@@ -1433,6 +1434,11 @@ function AppearanceSection({
 }: AppearanceSectionProps) {
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
   const [indivCorners, setIndivCorners] = useState(typeof cornerRadius === "object");
+  const independentCornerTopology = typeof cornerRadius === "object";
+  // Selection/controlled-prop topology changes reset the presentation to the
+  // truthful shape. A same-topology user toggle is preserved because this
+  // effect depends only on the scalar/object boundary, not the numeric values.
+  useEffect(() => setIndivCorners(independentCornerTopology), [independentCornerTopology]);
   const [blend, setBlend] = useState<BlendMode>(blendMode);
   const [internalCornerRadius, setInternalCornerRadius] = useState(cornerRadius);
   const renderedBlend = blendControlled ? blendMode : blend;
@@ -3015,6 +3021,8 @@ export interface PropertyPanelProps {
   /** Reports the exact physical side(s) edited so controlled multi-selection hosts
    * can preserve every untouched side on each selected object. */
   onPaddingChange?: (value: ElementLayoutSettings["padding"], changedEdges: readonly ElementPaddingEdge[]) => void;
+  /** Requests creation of a grid track. The host creates its durable ID and applies the document command. */
+  onAddGridTrack?: (axis: "row" | "column") => void;
   /** Preferred atomic sizing seam. Numeric edits from Hug/Fill emit Fixed + value together. */
   onSizingChange?: (axis: ElementSizingAxis, change: ElementSizingChange) => void;
   onSizingConstraintChange?: (axis: ElementSizingAxis, constraint: ElementSizingConstraint, value: number | undefined) => void;
@@ -3568,7 +3576,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   blendMode = "Pass through",
   supportedBlendModes,
   cornerRadius = 0, onBlendModeChange, onCornerRadiusChange,
-  layout, onLayoutChange, onAutoLayoutEnable, onSizingChange, onSizingConstraintChange, onApplySizingVariable,
+  layout, onLayoutChange, onAutoLayoutEnable, onAddGridTrack, onSizingChange, onSizingConstraintChange, onApplySizingVariable,
   textSizingMode, availableTextSizingModes, textSizingModeDisabled = false, onTextSizingModeChange,
   positionPresentation = "separate", onPositionPresentationChange,
   onAutoLayoutSettingsRequest, typography, onTypographyChange, fonts, fontSizes, fontWeights,
@@ -4064,6 +4072,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             gridColumnGapKeyframe={keyframeControls?.gridColumnGap}
             gridRowGapKeyframe={keyframeControls?.gridRowGap}
             gridTrackSizeKeyframes={keyframeControls?.gridTrackSizes}
+            onAddGridTrack={onAddGridTrack}
             paddingTopKeyframe={keyframeControls?.paddingTop}
             paddingRightKeyframe={keyframeControls?.paddingRight}
             paddingBottomKeyframe={keyframeControls?.paddingBottom}

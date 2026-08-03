@@ -54,6 +54,21 @@ describe("TypeSettingsDialog", () => {
     expect(html).not.toContain("Weight keyframe");
   });
 
+  it("keeps metric keyframes inert for a read-only selection", () => {
+    const onToggle = vi.fn();
+    let renderer: ReactTestRenderer;
+    act(() => { renderer = create(<TypeSettingsDialog
+      open readOnly value={BASE} trigger={<button>Type</button>} onClose={() => undefined}
+      keyframes={{ lineHeight: { active: true, onToggle }, letterSpacing: { active: false, onToggle } }}
+      onChange={() => undefined}
+    />); });
+    const button = findButton(renderer!, "Type settings line height keyframe");
+    expect(button.props.disabled).toBe(true);
+    act(() => button.props.onClick({ stopPropagation: () => undefined }));
+    expect(onToggle).not.toHaveBeenCalled();
+    act(() => renderer!.unmount());
+  });
+
   it("uses the shared anchored inspector shell with the canonical width + elevation-400", () => {
     const html = renderToStaticMarkup(
       <TypeSettingsDialog

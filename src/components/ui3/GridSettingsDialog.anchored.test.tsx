@@ -36,7 +36,7 @@ const GRID: ElementGridSettings = {
 const triggerRect = { x: 920, y: 80, width: 24, height: 24, top: 80, right: 944, bottom: 104, left: 920, toJSON: () => ({}) } as DOMRect;
 const surfaceRect = { x: 760, y: 0, width: 240, height: 500, top: 0, right: 1_000, bottom: 500, left: 760, toJSON: () => ({}) } as DOMRect;
 
-function renderOpen(onClose = vi.fn()) {
+function renderOpen(onClose = vi.fn(), onAddTrack?: (axis: "row" | "column") => void) {
   const collisionBoundary = {
     dataset: { composaOverlayBoundary: "" },
     getBoundingClientRect: () => ({ top: 0, right: 1_000, bottom: 500, left: 0 }),
@@ -54,6 +54,7 @@ function renderOpen(onClose = vi.fn()) {
   act(() => {
     renderer = create(
       <GridSettingsDialog open grid={GRID} onClose={onClose}
+        onAddTrack={onAddTrack}
         trigger={<button type="button" aria-label="Grid settings">Settings</button>} />,
       { createNodeMock: element => element.type === "span" ? { querySelector: () => trigger } : null },
     );
@@ -103,5 +104,20 @@ describe("GridSettingsDialog — anchored InspectorDialog contract (RP-16)", () 
     act(() => radix(renderer.root, "content").props.onEscapeKeyDown(escape));
     expect(onClose).toHaveBeenCalledOnce();
     act(() => renderer.unmount());
+  });
+
+  it("delegates track creation to the host and disables it when the seam is absent", () => {
+    const onAddTrack = vi.fn();
+    const { renderer } = renderOpen(vi.fn(), onAddTrack);
+    const addColumn = renderer.root.findByProps({ "aria-label": "Add column" });
+    expect(addColumn.props.disabled).toBe(false);
+    act(() => addColumn.props.onClick());
+    expect(onAddTrack).toHaveBeenCalledWith("column");
+    act(() => renderer.unmount());
+
+    const withoutHost = renderOpen().renderer;
+    expect(withoutHost.root.findByProps({ "aria-label": "Add column" }).props.disabled).toBe(true);
+    expect(withoutHost.root.findByProps({ "aria-label": "Add row" }).props.disabled).toBe(true);
+    act(() => withoutHost.unmount());
   });
 });

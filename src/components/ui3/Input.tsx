@@ -564,10 +564,12 @@ export function NumericInput({
           type="button"
           aria-label={ariaLabel ? `${ariaLabel} keyframe` : "Toggle keyframe"}
           aria-pressed={keyframe.active}
-          onClick={event => { event.stopPropagation(); keyframe.onToggle(); }}
+          disabled={disabled}
+          onClick={event => { event.stopPropagation(); if (!disabled) keyframe.onToggle(); }}
           className={clsx(
             "shrink-0 flex items-center justify-center size-[24px] rounded-c-sm hover:bg-c-bg-hover",
             keyframe.active && "bg-c-bg-selected",
+            disabled && "cursor-not-allowed opacity-60 hover:bg-transparent",
           )}
         >
           <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active ? "fill-current text-c-text-brand" : "text-c-icon-secondary")} />
@@ -686,10 +688,12 @@ export function NumericPairInput({ a, b, keyframe, trailing, size = "medium", di
           type="button"
           aria-label={`${a.ariaLabel}/${b.ariaLabel} keyframe`}
           aria-pressed={keyframe.active}
-          onClick={event => { event.stopPropagation(); keyframe.onToggle(); }}
+          disabled={disabled}
+          onClick={event => { event.stopPropagation(); if (!disabled) keyframe.onToggle(); }}
           className={clsx(
             "shrink-0 flex items-center justify-center size-[24px] hover:bg-c-bg-hover",
             keyframe.active && "bg-c-bg-selected",
+            disabled && "cursor-not-allowed opacity-60 hover:bg-transparent",
             trailing && "border-r border-c-bg",
           )}
         >
@@ -1264,10 +1268,12 @@ export function ComboInput({
           type="button"
           aria-label={ariaLabel ? `${ariaLabel} keyframe` : "Toggle keyframe"}
           aria-pressed={keyframe.active}
-          onClick={event => { event.stopPropagation(); keyframe.onToggle(); }}
+          disabled={disabled}
+          onClick={event => { event.stopPropagation(); if (!disabled) keyframe.onToggle(); }}
           className={clsx(
             "shrink-0 flex items-center justify-center size-[24px] bg-c-bg-secondary hover:bg-c-bg-hover",
             keyframe.active && "bg-c-bg-selected",
+            disabled && "cursor-not-allowed opacity-60 hover:bg-c-bg-secondary",
           )}
         >
           <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active ? "fill-current text-c-text-brand" : "text-c-icon-secondary")} />

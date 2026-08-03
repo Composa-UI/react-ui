@@ -86,15 +86,12 @@ export interface GridSettingsDialogProps {
   /** Patches merge into the host's ElementGridSettings — the same contract the
    *  inline section emits, so the app's onLayoutChange handler is unchanged. */
   onChange?: (patch: Partial<ElementGridSettings>) => void;
+  /** Semantic creation intent. The host owns durable track identity and document mutation. */
+  onAddTrack?: (axis: "row" | "column") => void;
   onClose: () => void;
 }
 
-export function GridSettingsDialog({ open, grid, trigger, onChange, onClose }: GridSettingsDialogProps) {
-  const createTrack = (axis: "row" | "column"): ElementGridTrack => ({
-    id: `grid-track-${axis}-${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`}`,
-    mode: "hug",
-    size: 100,
-  });
+export function GridSettingsDialog({ open, grid, trigger, onChange, onAddTrack, onClose }: GridSettingsDialogProps) {
   return (
     <InspectorDialog
       open={open}
@@ -127,7 +124,7 @@ export function GridSettingsDialog({ open, grid, trigger, onChange, onClose }: G
             <GridTrackEditor axis="column" tracks={grid.columns} onChange={columns => onChange?.({ columns })} />
           </div>
           <div className="shrink-0 pt-[17px]">
-            <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add column" onClick={() => onChange?.({ columns: [...grid.columns, createTrack("column")] })} />
+            <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add column" disabled={!onAddTrack} onClick={() => onAddTrack?.("column")} />
           </div>
         </div>
 
@@ -137,7 +134,7 @@ export function GridSettingsDialog({ open, grid, trigger, onChange, onClose }: G
             <GridTrackEditor axis="row" tracks={grid.rows} onChange={rows => onChange?.({ rows })} />
           </div>
           <div className="shrink-0 pt-[17px]">
-            <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add row" onClick={() => onChange?.({ rows: [...grid.rows, createTrack("row")] })} />
+            <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add row" disabled={!onAddTrack} onClick={() => onAddTrack?.("row")} />
           </div>
         </div>
 

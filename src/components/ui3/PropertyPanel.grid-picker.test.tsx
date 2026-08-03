@@ -16,13 +16,13 @@ const grid: ElementGridSettings = {
 };
 const layout: ElementLayoutSettings = { mode: "grid", grid, gap: 0, padding: { top: 0, right: 0, bottom: 0, left: 0 }, align: "tl", widthMode: "fixed", heightMode: "fixed", clipsContent: false };
 
-function renderPickerMenu(value = grid, onChange = vi.fn()) {
+function renderPickerMenu(value = grid, onChange = vi.fn(), onAddTrack = vi.fn()) {
   let picker: ReactTestRenderer;
-  act(() => { picker = create(<GridDimensionsPicker grid={value} onChange={onChange} />); });
+  act(() => { picker = create(<GridDimensionsPicker grid={value} onChange={onChange} onAddTrack={onAddTrack} />); });
   const popover = picker!.root.findByType(PopoverMenu);
   let menu: ReactTestRenderer;
   act(() => { menu = create(popover.props.children(() => undefined)); });
-  return { picker: picker!, menu: menu!, onChange };
+  return { picker: picker!, menu: menu!, onChange, onAddTrack };
 }
 
 describe("Grid dimensions picker", () => {
@@ -45,24 +45,39 @@ describe("Grid dimensions picker", () => {
     act(() => { menuRenderer!.unmount(); renderedPicker!.unmount(); renderer!.unmount(); });
   });
 
-  it("adds a hug column without rewriting existing tracks", () => {
-    const { picker, menu, onChange } = renderPickerMenu();
+  it("delegates column creation to the host without manufacturing document identity", () => {
+    const { picker, menu, onChange, onAddTrack } = renderPickerMenu();
     act(() => menu.root.findAllByType(PanelActionBtn).find(action => action.props.label === "Add column")!.props.onClick());
-    const added = onChange.mock.calls[0][0].columns.at(-1);
-    expect(onChange.mock.calls[0][0].columns.slice(0, -1)).toEqual(grid.columns);
-    expect(added).toMatchObject({ mode: "hug", size: 100 });
-    expect(added.id).toMatch(/^grid-track-column-/);
+    expect(onAddTrack).toHaveBeenCalledWith("column");
+    expect(onChange).not.toHaveBeenCalled();
     act(() => { menu.unmount(); picker.unmount(); });
   });
 
-  it("adds a hug row without rewriting existing tracks", () => {
-    const { picker, menu, onChange } = renderPickerMenu();
+  it("delegates row creation to the host without manufacturing document identity", () => {
+    const { picker, menu, onChange, onAddTrack } = renderPickerMenu();
     act(() => menu.root.findAllByType(PanelActionBtn).find(action => action.props.label === "Add row")!.props.onClick());
-    const added = onChange.mock.calls[0][0].rows.at(-1);
-    expect(onChange.mock.calls[0][0].rows.slice(0, -1)).toEqual(grid.rows);
-    expect(added).toMatchObject({ mode: "hug", size: 100 });
-    expect(added.id).toMatch(/^grid-track-row-/);
+    expect(onAddTrack).toHaveBeenCalledWith("row");
+    expect(onChange).not.toHaveBeenCalled();
     act(() => { menu.unmount(); picker.unmount(); });
+  });
+
+  it("disables creation when the host does not provide a semantic add callback", () => {
+    let picker: ReactTestRenderer;
+    act(() => { picker = create(<GridDimensionsPicker grid={grid} onChange={() => undefined} />); });
+    const popover = picker!.root.findByType(PopoverMenu);
+    let menu: ReactTestRenderer;
+    act(() => { menu = create(popover.props.children(() => undefined)); });
+    expect(menu!.root.findAllByType(PanelActionBtn).find(action => action.props.label === "Add column")!.props.disabled).toBe(true);
+    expect(menu!.root.findAllByType(PanelActionBtn).find(action => action.props.label === "Add row")!.props.disabled).toBe(true);
+    act(() => { menu!.unmount(); picker!.unmount(); });
+  });
+
+  it("forwards the PropertyPanel semantic add seam", () => {
+    const onAddGridTrack = vi.fn();
+    let renderer: ReactTestRenderer;
+    act(() => { renderer = create(<PropertyPanel elementType="frame-grid" layout={layout} onAddGridTrack={onAddGridTrack} />); });
+    expect(renderer!.root.findByType(GridDimensionsPicker).props.onAddTrack).toBe(onAddGridTrack);
+    act(() => renderer!.unmount());
   });
 
   it("removes one selected track while preserving its siblings", () => {

@@ -50,16 +50,12 @@ export interface GridDimensionsPickerProps {
   grid: ElementGridSettings;
   keyframes?: Record<string, InspectorKeyframeControl>;
   onChange?: (patch: Partial<ElementGridSettings>) => void;
+  /** Semantic creation intent. The host owns durable track identity and document mutation. */
+  onAddTrack?: (axis: "row" | "column") => void;
 }
 
-const createTrack = (axis: "row" | "column"): ElementGridTrack => ({
-  id: `grid-track-${axis}-${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`}`,
-  mode: "hug",
-  size: 100,
-});
-
 /** Compact Figma grid face. It edits dimensions in a menu; it is not a second Inspector section/dialog. */
-export function GridDimensionsPicker({ grid, keyframes, onChange }: GridDimensionsPickerProps) {
+export function GridDimensionsPicker({ grid, keyframes, onChange, onAddTrack }: GridDimensionsPickerProps) {
   const columns = grid.columns.length;
   const autoRows = grid.rows.every(track => track.mode === "hug");
   const summary = `${columns} × ${autoRows ? "Auto" : grid.rows.length}`;
@@ -82,12 +78,12 @@ export function GridDimensionsPicker({ grid, keyframes, onChange }: GridDimensio
         <div>
           <div className="px-[8px] pb-[3px] font-[family-name:var(--composa-font-family)] text-[9px] font-[450] leading-[14px] text-c-text-secondary">Columns</div>
           <TrackEditor axis="column" tracks={grid.columns} keyframes={keyframes} onChange={columnsValue => onChange?.({ columns: columnsValue })} />
-          <div className="px-[8px] pt-[4px]"><PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add column" disabled={grid.columns.length >= TRACK_LIMIT} onClick={() => onChange?.({ columns: [...grid.columns, createTrack("column")] })} /></div>
+          <div className="px-[8px] pt-[4px]"><PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add column" disabled={!onAddTrack || grid.columns.length >= TRACK_LIMIT} onClick={() => onAddTrack?.("column")} /></div>
         </div>
         <div>
           <div className="px-[8px] pb-[3px] font-[family-name:var(--composa-font-family)] text-[9px] font-[450] leading-[14px] text-c-text-secondary">Rows</div>
           <TrackEditor axis="row" tracks={grid.rows} keyframes={keyframes} onChange={rows => onChange?.({ rows })} />
-          <div className="px-[8px] pt-[4px]"><PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add row" disabled={grid.rows.length >= TRACK_LIMIT} onClick={() => onChange?.({ rows: [...grid.rows, createTrack("row")] })} /></div>
+          <div className="px-[8px] pt-[4px]"><PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add row" disabled={!onAddTrack || grid.rows.length >= TRACK_LIMIT} onClick={() => onAddTrack?.("row")} /></div>
         </div>
       </div>
     </Menu>}

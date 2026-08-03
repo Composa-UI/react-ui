@@ -118,6 +118,26 @@ describe("Motion inspector rows", () => {
     expect(changes).toEqual([{ topLeft: 4, topRight: 12, bottomLeft: 12, bottomRight: 12 }]);
   });
 
+  it("syncs corner topology across selections while preserving a same-topology user toggle", () => {
+    const controls = {
+      cornerRadiusTopLeft: { active: false, onToggle: () => undefined },
+      cornerRadiusTopRight: { active: false, onToggle: () => undefined },
+      cornerRadiusBottomRight: { active: false, onToggle: () => undefined },
+      cornerRadiusBottomLeft: { active: false, onToggle: () => undefined },
+    };
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<TooltipProvider><PropertyPanel elementType="shape" cornerRadius={12} keyframeControls={controls} /></TooltipProvider>); });
+    expect(renderer!.root.findAllByType(NumericInput).some(node => node.props.ariaLabel === "Top-left corner radius")).toBe(false);
+
+    act(() => { renderer!.update(<TooltipProvider><PropertyPanel elementType="shape" cornerRadius={{ topLeft: 4, topRight: 8, bottomLeft: 12, bottomRight: 16 }} keyframeControls={controls} /></TooltipProvider>); });
+    expect(renderer!.root.findAllByType(NumericInput).find(node => node.props.ariaLabel === "Top-left corner radius")?.props.keyframe).toBe(controls.cornerRadiusTopLeft);
+
+    act(() => { renderer!.root.findByProps({ "aria-label": "Independent corners" }).props.onClick(); });
+    expect(renderer!.root.findAllByType(NumericInput).some(node => node.props.ariaLabel === "Top-left corner radius")).toBe(false);
+    act(() => { renderer!.update(<TooltipProvider><PropertyPanel elementType="shape" cornerRadius={{ topLeft: 5, topRight: 9, bottomLeft: 13, bottomRight: 17 }} keyframeControls={controls} /></TooltipProvider>); });
+    expect(renderer!.root.findAllByType(NumericInput).some(node => node.props.ariaLabel === "Top-left corner radius")).toBe(false);
+  });
+
   it("accepts a host-controlled Animate tab so timeline selection can reveal its matching card", () => {
     const html = renderToStaticMarkup(<PropertyPanel elementType="text" activeTab="animate" objectAnimations={[
       { id: "pulse", n: 1, name: "Title", kind: "Action", duration: "0.6s", style: "pulse", focused: true },
