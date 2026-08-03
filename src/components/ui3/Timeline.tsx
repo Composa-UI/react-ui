@@ -2114,7 +2114,7 @@ export function Timeline({
   selectedTimelineRowId?: string | null;
   onPropertyRowSelect?: (propertyId: string) => void;
   /** Edit a property's value at the playhead from its inline timeline field (#343b). */
-  onPropertyValueChange?: (trackId: string, propertyId: string, value: number) => void;
+  onPropertyValueChange?: (trackId: string, propertyId: string, value: number | string) => void;
   /** Toggle a property track's visibility (eye) — muted when hidden (#322). */
   onPropertyToggleHidden?: (trackId: string, propertyId: string) => void;
   /** Toggle an Animate preset bar without changing its scheduled range (#349). */
