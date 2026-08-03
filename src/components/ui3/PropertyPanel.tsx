@@ -243,14 +243,17 @@ function DualField({
   left,
   rightLabel,
   right,
+  reserveRightSlot = true,
 }: {
   leftLabel?: string;
   left: ReactNode;
   rightLabel?: string;
   right: ReactNode;
+  /** Preserve the standard 24px trailing-action column plus its 8px gap. */
+  reserveRightSlot?: boolean;
 }) {
   return (
-    <div className="h-[48px] flex items-center gap-[8px] px-[16px]">
+    <div data-composa-dual-field data-reserve-right-slot={reserveRightSlot ? "true" : "false"} className="h-[48px] flex items-center gap-[8px] px-[16px]">
       <div className="flex-1 min-w-0 flex flex-col pt-[3px] pb-[4px]">
         {leftLabel && <span className={clsx(SUBLABEL, "mb-[3px]")}>{leftLabel}</span>}
         <div className="min-h-[24px] flex items-center">{left}</div>
@@ -259,6 +262,7 @@ function DualField({
         {rightLabel && <span className={clsx(SUBLABEL, "mb-[3px]")}>{rightLabel}</span>}
         <div className="min-h-[24px] flex items-center">{right}</div>
       </div>
+      {reserveRightSlot && <span aria-hidden className="block w-[24px] shrink-0" />}
     </div>
   );
 }
@@ -2265,38 +2269,14 @@ function SlideTimingSection({
   const commitDuration = (value: number) => { if (!controlled) setInternalEnd(renderedStart + value); onDurationChange?.(value); };
   return (
     <PanelSection title={title} landmark={landmark}>
-      {/* Start / End as their own labeled rows (Composa#574). "Start"/"End" are words,
-          not single glyphs like X/Y or W/H, so they read as the row's sub-label — the
-          same labeled-field pattern the Design-tab rows use — instead of being squeezed
-          into the NumericInput's icon-lead slot. Each field pins to the left column so
-          it lines up with Duration below. */}
-      <PanelFieldRow
-        label="Start"
+      <DualField
+        leftLabel="Start"
+        left={<NumericInput ariaLabel="Start" value={renderedStart}
+          onChange={value => { if (!controlled) setInternalStart(value); onStartChange?.(value); }} min={0} suffix="s" />}
+        rightLabel="End"
+        right={<NumericInput ariaLabel="End" value={renderedEnd}
+          onChange={value => { if (!controlled) setInternalEnd(value); onEndChange?.(value); }} min={0} suffix="s" />}
         reserveRightSlot={reserveTrailingSlot}
-        right={reserveTrailingSlot ? <span aria-hidden className="block" /> : undefined}
-        left={
-          <NumericInput
-            ariaLabel="Start"
-            value={renderedStart}
-            onChange={value => { if (!controlled) setInternalStart(value); onStartChange?.(value); }}
-            min={0}
-            suffix="s"
-          />
-        }
-      />
-      <PanelFieldRow
-        label="End"
-        reserveRightSlot={reserveTrailingSlot}
-        right={reserveTrailingSlot ? <span aria-hidden className="block" /> : undefined}
-        left={
-          <NumericInput
-            ariaLabel="End"
-            value={renderedEnd}
-            onChange={value => { if (!controlled) setInternalEnd(value); onEndChange?.(value); }}
-            min={0}
-            suffix="s"
-          />
-        }
       />
       <PanelFieldRow
         label="Duration"
@@ -2629,6 +2609,7 @@ function ClipTrimSection({
         left={<NumericInput ariaLabel="Trim in" iconLead={<Crosshair size={16} strokeWidth={1.5} />} value={renderedTrimIn} onChange={value => { if (!controlled) setInternalTrimIn(value); onTrimInChange?.(value); }} min={0} suffix="s" />}
         rightLabel="Trim out"
         right={<NumericInput ariaLabel="Trim out" iconLead={<Crosshair size={16} strokeWidth={1.5} />} value={renderedTrimOut} onChange={value => { if (!controlled) setInternalTrimOut(value); onTrimOutChange?.(value); }} min={0} suffix="s" />}
+        reserveRightSlot
       />
       <PanelFullRow label="Clipped duration" height={24}>
         <span className={clsx(FONT, "text-[11px] text-c-text-secondary")}>{Math.max(0, renderedTrimOut - renderedTrimIn)}s</span>
@@ -3874,7 +3855,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <ClipSourceSection file={clipSourceFile} resolution={clipSourceResolution} sourceDuration={clipSourceDuration} />
           {/* Demo data kept consistent per spec: Clipped duration (trimOut −
               trimIn = 8s) equals the Timeline duration (end − start = 8s). */}
-          <SlideTimingSection title="Timeline" landmark start={clipStart} end={clipStart + clipDuration}
+          <SlideTimingSection title="Timeline" landmark reserveTrailingSlot start={clipStart} end={clipStart + clipDuration}
             controlled={props.clipStart !== undefined || props.clipDuration !== undefined}
             onStartChange={onClipStartChange}
             onEndChange={value => onClipDurationChange?.(Math.max(0, value - clipStart))}

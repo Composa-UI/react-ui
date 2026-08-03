@@ -4,13 +4,13 @@ import { PanelFieldRow } from "./Panel";
 import { PropertyPanel } from "./PropertyPanel";
 
 // Slide/composition inspector layout contract (owner polish):
-//  1. Every Timing/Background field reserves the Design-tab trailing-icon slot
+//  1. Start and End share one DualField row and reserve the trailing-icon slot
 //     (24px + 8px gap) so the slide inspector's fields right-align with the
 //     Position/Scale/Opacity fields. Reference: PanelFieldRow defaults
 //     reserveRightSlot=true; the Design tab relies on that default.
 //  2. Duration is pinned to a single column — a half-width `right` spacer fills
 //     the second column so the control sits under Start.
-//  3. The video-clip Timeline usage is untouched (edge-to-edge, no spacer).
+//  3. Video Timeline and Trim use the same paired-row + trailing-slot contract.
 function render(props: Parameters<typeof PropertyPanel>[0]) {
   let renderer: ReactTestRenderer;
   act(() => { renderer = create(<PropertyPanel {...props} />); });
@@ -21,12 +21,14 @@ const rowByLabel = (renderer: ReactTestRenderer, label: string) =>
   renderer.root.findAllByType(PanelFieldRow).find(node => node.props.label === label);
 
 describe("slide/composition inspector — trailing-slot + Duration column", () => {
-  it("reserves the trailing-icon slot on the slide Start/End rows", () => {
+  it("puts slide Start and End in one paired row with the trailing slot reserved", () => {
     const renderer = render({ mode: "slide", slideStart: 0, slideDuration: 4 });
-    // Start and End are their own labeled rows (Composa#574), each reserving the slot
-    // (not the edge-to-edge false the panel used before).
-    expect(rowByLabel(renderer, "Start")!.props.reserveRightSlot).toBe(true);
-    expect(rowByLabel(renderer, "End")!.props.reserveRightSlot).toBe(true);
+    expect(rowByLabel(renderer, "Start")).toBeUndefined();
+    expect(rowByLabel(renderer, "End")).toBeUndefined();
+    const pair = renderer.root.findByProps({ "data-composa-dual-field": true });
+    expect(pair.findAllByProps({ "aria-label": "Start" })).toHaveLength(1);
+    expect(pair.findAllByProps({ "aria-label": "End" })).toHaveLength(1);
+    expect(pair.props["data-reserve-right-slot"]).toBe("true");
   });
 
   it("reserves the trailing slot AND pins Duration to one column", () => {
@@ -42,14 +44,15 @@ describe("slide/composition inspector — trailing-slot + Duration column", () =
     expect(fill.props.reserveRightSlot).not.toBe(false);
   });
 
-  it("leaves the video-clip Timeline edge-to-edge (no reserved slot, no Duration spacer)", () => {
+  it("pairs video Start/End and reserves trailing slots for Timeline and Trim", () => {
     const renderer = render({ mode: "video-clip", clipStart: 0, clipDuration: 8 });
-    const start = rowByLabel(renderer, "Start")!;
-    const end = rowByLabel(renderer, "End")!;
     const duration = rowByLabel(renderer, "Duration")!;
-    expect(start.props.reserveRightSlot).toBe(false);
-    expect(end.props.reserveRightSlot).toBe(false);
-    expect(duration.props.reserveRightSlot).toBe(false);
-    expect(duration.props.right).toBeUndefined();
+    const pairs = renderer.root.findAllByProps({ "data-composa-dual-field": true });
+    const pairWith = (label: string) => pairs.find(pair => pair.findAllByProps({ "aria-label": label }).length === 1)!;
+    for (const pair of pairs) expect(pair.props["data-reserve-right-slot"]).toBe("true");
+    expect(pairWith("Start").findAllByProps({ "aria-label": "End" })).toHaveLength(1);
+    expect(pairWith("Trim in").findAllByProps({ "aria-label": "Trim out" })).toHaveLength(1);
+    expect(duration.props.reserveRightSlot).toBe(true);
+    expect(duration.props.right).toBeTruthy();
   });
 });
