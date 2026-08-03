@@ -1,0 +1,73 @@
+import { act, create, type ReactTestRenderer } from "react-test-renderer";
+import { describe, expect, it, vi } from "vitest";
+import { NumericInput } from "./Input";
+import { PanelActionBtn } from "./Panel";
+import { PropertyPanel, type ElementStrokeSetting, type InspectorKeyframeControl } from "./PropertyPanel";
+import { Tooltip } from "./Tooltip";
+
+const keyframe = (): InspectorKeyframeControl => ({ active: false, onToggle: vi.fn() });
+
+const customStroke: ElementStrokeSetting = {
+  id: "stroke-1",
+  color: "#000000",
+  opacity: 100,
+  visible: true,
+  weight: 2,
+  align: "center",
+  weightMode: "custom",
+  edgeWeights: { top: 1, right: 2, bottom: 3, left: 4 },
+  pathTrimStart: 10,
+  pathTrimEnd: 90,
+  keyframes: { weight: keyframe(), pathTrimStart: keyframe(), pathTrimEnd: keyframe() },
+};
+
+function renderStroke(onUpdateStroke = vi.fn()) {
+  let renderer: ReactTestRenderer;
+  act(() => {
+    renderer = create(<PropertyPanel
+      elementType="shape"
+      strokes={[customStroke]}
+      onUpdateStroke={onUpdateStroke}
+      onToggleStroke={() => undefined}
+      onRemoveStroke={() => undefined}
+    />);
+  });
+  return renderer!;
+}
+
+describe("Iteration 4 stroke controls", () => {
+  it("exposes the Figma side selector, four Custom weights, and the two Path trim values", () => {
+    const renderer = renderStroke();
+    const inputs = renderer.root.findAllByType(NumericInput);
+    const byLabel = new Map(inputs.map(input => [input.props.ariaLabel, input.props]));
+
+    expect(renderer.root.findAllByType(PanelActionBtn).some(button => button.props.label === "Stroke sides: Custom")).toBe(true);
+    expect(byLabel.get("Stroke weight")?.keyframe).toBe(customStroke.keyframes?.weight);
+    expect(byLabel.get("Top stroke weight")?.value).toBe(1);
+    expect(byLabel.get("Right stroke weight")?.value).toBe(2);
+    expect(byLabel.get("Bottom stroke weight")?.value).toBe(3);
+    expect(byLabel.get("Left stroke weight")?.value).toBe(4);
+    expect(byLabel.get("Path trim start")).toMatchObject({ value: 10, min: 0, max: 100, suffix: "%", keyframe: customStroke.keyframes?.pathTrimStart });
+    expect(byLabel.get("Path trim end")).toMatchObject({ value: 90, min: 0, max: 100, suffix: "%", keyframe: customStroke.keyframes?.pathTrimEnd });
+
+    const tooltips = renderer.root.findAllByType(Tooltip).map(tooltip => tooltip.props.label);
+    expect(tooltips).toEqual(expect.arrayContaining(["Path trim start", "Path trim end"]));
+    act(() => renderer.unmount());
+  });
+
+  it("emits identity-preserving patches for a Custom side and Path trim", () => {
+    const onUpdateStroke = vi.fn();
+    const renderer = renderStroke(onUpdateStroke);
+    const inputs = renderer.root.findAllByType(NumericInput);
+    const top = inputs.find(input => input.props.ariaLabel === "Top stroke weight")!;
+    const end = inputs.find(input => input.props.ariaLabel === "Path trim end")!;
+
+    act(() => top.props.onChange(7));
+    expect(onUpdateStroke).toHaveBeenCalledWith("stroke-1", {
+      edgeWeights: { top: 7, right: 2, bottom: 3, left: 4 },
+    });
+    act(() => end.props.onChange(75));
+    expect(onUpdateStroke).toHaveBeenCalledWith("stroke-1", { pathTrimEnd: 75 });
+    act(() => renderer.unmount());
+  });
+});

@@ -10,7 +10,8 @@ import {
   Minus, EyeOff, AlignJustify, Maximize, ChevronDown, Ruler,
   MoveHorizontal, MoveVertical, Play, Pause, MonitorPlay,
   Image as ImageIcon, Clock, SquareSquare,
-  ArrowRightFromLine, Grid2x2, Timer,
+  ArrowLeftFromLine, ArrowRightFromLine, Grid2x2, Timer,
+  Square, PanelTop, PanelBottom, PanelLeft, PanelRight, SlidersVertical,
 } from "lucide-react";
 import { CirclesFour } from "@phosphor-icons/react";
 import { ProposedSquareText, ProposedTextMargins } from "../../icons/proposed-lucide";
@@ -92,9 +93,24 @@ export interface ElementFillSetting {
   /** A host-owned visual track binding for a standalone drop-zone fill. */
   dropZoneSourceId?: string;
 }
+export type StrokeWeightMode = "all" | "top" | "bottom" | "left" | "right" | "custom";
+export interface StrokeEdgeWeights { top: number; right: number; bottom: number; left: number; }
 export interface ElementStrokeSetting extends ElementFillSetting {
   weight: number;
   align: "inside" | "center" | "outside";
+  /** Which closed-shape edges receive the stroke. Undefined preserves legacy All. */
+  weightMode?: StrokeWeightMode;
+  /** Authored per-edge values used only while weightMode is Custom. */
+  edgeWeights?: StrokeEdgeWeights;
+  /** SVG-path trim percentages. Undefined preserves the full visible path. */
+  pathTrimStart?: number;
+  pathTrimEnd?: number;
+  /** Per-stroke motion bindings. The host supplies only genuinely supported controls. */
+  keyframes?: {
+    weight?: InspectorKeyframeControl;
+    pathTrimStart?: InspectorKeyframeControl;
+    pathTrimEnd?: InspectorKeyframeControl;
+  };
   style?: StrokeStyle;
   join?: StrokeJoin;
   cap?: StrokeCap;
@@ -1705,6 +1721,22 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
 
 // ─── Section: Stroke ──────────────────────────────────────────────────────────
 
+const STROKE_WEIGHT_MODES = ["all", "top", "bottom", "left", "right", "custom"] as const satisfies readonly StrokeWeightMode[];
+
+function strokeWeightModeLabel(mode: StrokeWeightMode): string {
+  return mode[0].toUpperCase() + mode.slice(1);
+}
+
+function strokeWeightModeIcon(mode: StrokeWeightMode, size = 16) {
+  const props = { size, strokeWidth: 1.5, "aria-hidden": true } as const;
+  if (mode === "top") return <PanelTop {...props} />;
+  if (mode === "bottom") return <PanelBottom {...props} />;
+  if (mode === "left") return <PanelLeft {...props} />;
+  if (mode === "right") return <PanelRight {...props} />;
+  if (mode === "custom") return <SlidersVertical {...props} />;
+  return <Square {...props} />;
+}
+
 function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities, readOnly, activeStackDialog, onActiveStackDialogChange }: {
   entries?: ElementStrokeSetting[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<ElementStrokeSetting, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
@@ -1716,7 +1748,7 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
   const [internal, setInternal] = useState<ElementStrokeSetting[]>([]);
   const strokes = entries ?? internal;
   const update = (id: string, patch: Partial<Omit<ElementStrokeSetting, "id">>) => { if (!entries) setInternal(s => s.map(x => x.id === id ? { ...x, ...patch } : x)); onUpdate?.(id, patch); };
-  const add = () => { if (!entries) setInternal(s => [...s, { id: String(Date.now()), color: "#000000", opacity: 100, visible: true, weight: 1, align: "center", style: "solid", join: "miter", cap: "none" }]); onAdd?.(); };
+  const add = () => { if (!entries) setInternal(s => [...s, { id: String(Date.now()), color: "#000000", opacity: 100, visible: true, weight: 1, align: "center", weightMode: "all", pathTrimStart: 0, pathTrimEnd: 100, style: "solid", join: "miter", cap: "none" }]); onAdd?.(); };
   const remove = (id: string) => { if (!entries) setInternal(s => s.filter(x => x.id !== id)); onRemove?.(id); };
   const toggle = (id: string) => { const stroke = strokes.find(item => item.id === id); if (!stroke) return; if (!entries) setInternal(items => items.map(item => item.id === id ? { ...item, visible: !item.visible } : item)); onToggle?.(id, !stroke.visible); };
   const strokeIds = strokes.map(stroke => stroke.id);
@@ -1764,7 +1796,7 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
               onHexChange={color => update(stroke.id, { color: `#${color.replace(/^#/, "")}` })}
             />
           </PanelEntry>
-          {/* Row 2 — Position · Weight · settings · sides */}
+          {/* Row 2 — Position · Weight · settings · edge targeting */}
           <div className="flex items-end gap-[8px] px-[16px] pb-[4px]">
             <div className="flex-1 min-w-0">
               <div className={subLabel}>Position</div>
@@ -1772,7 +1804,7 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
             </div>
             <div className="flex-1 min-w-0">
               <div className={subLabel}>Weight</div>
-              <NumericInput iconLead={<AlignJustify size={16} strokeWidth={1.5} />} value={stroke.weight} onChange={weight => update(stroke.id, { weight })} min={0} />
+              <NumericInput ariaLabel="Stroke weight" iconLead={<AlignJustify size={16} strokeWidth={1.5} />} value={stroke.weight} onChange={weight => update(stroke.id, { weight })} min={0} keyframe={stroke.keyframes?.weight} />
             </div>
             <StrokeSettingsDialog
               open={activeStackDialog === `stroke-settings:${stroke.id}`}
@@ -1794,12 +1826,51 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
                 onClick={() => onActiveStackDialogChange(`stroke-settings:${stroke.id}`)}
               />}
             />
-            {/* "Individual sides" (per-side stroke weights) is deliberately absent.
-                It shipped as a button with no handler, and it could not simply be
-                wired: the engine models a stroke as one `weight`, with no per-side
-                weights behind it (Composa#634). Per Composa DEC-055 an entry that
-                cannot be delivered is omitted rather than left inert. It returns with
-                the engine feature — Composa#635. */}
+            <PopoverMenu
+              align="right"
+              trigger={<PanelActionBtn
+                icon={strokeWeightModeIcon(stroke.weightMode ?? "all")}
+                label={`Stroke sides: ${strokeWeightModeLabel(stroke.weightMode ?? "all")}`}
+              />}
+            >
+              {close => <Menu>{STROKE_WEIGHT_MODES.map(mode => <MenuRow
+                key={mode}
+                type="checkmark"
+                checked={(stroke.weightMode ?? "all") === mode}
+                leading={strokeWeightModeIcon(mode, 14)}
+                label={strokeWeightModeLabel(mode)}
+                onClick={() => { update(stroke.id, {
+                  weightMode: mode,
+                  ...(mode === "custom" && !stroke.edgeWeights
+                    ? { edgeWeights: { top: stroke.weight, right: stroke.weight, bottom: stroke.weight, left: stroke.weight } }
+                    : {}),
+                }); close(); }}
+              />)}</Menu>}
+            </PopoverMenu>
+          </div>
+          {(stroke.weightMode ?? "all") === "custom" && <div className="grid grid-cols-2 gap-[4px] px-[16px] pb-[4px]">
+            {(["top", "right", "bottom", "left"] as const).map(side => <Tooltip key={side} label={`${strokeWeightModeLabel(side)} stroke weight`} direction="Left" delayDuration={300}>
+              <span className="block min-w-0">
+                <NumericInput
+                  ariaLabel={`${strokeWeightModeLabel(side)} stroke weight`}
+                  iconLead={strokeWeightModeIcon(side, 14)}
+                  value={stroke.edgeWeights?.[side] ?? stroke.weight}
+                  min={0}
+                  onChange={value => update(stroke.id, { edgeWeights: { top: stroke.edgeWeights?.top ?? stroke.weight, right: stroke.edgeWeights?.right ?? stroke.weight, bottom: stroke.edgeWeights?.bottom ?? stroke.weight, left: stroke.edgeWeights?.left ?? stroke.weight, [side]: value } })}
+                />
+              </span>
+            </Tooltip>)}
+          </div>}
+          <div className="px-[16px] pb-[6px]">
+            <div className={subLabel}>Path trim</div>
+            <div className="grid grid-cols-2 gap-[8px]">
+              <Tooltip label="Path trim start" direction="Left" delayDuration={300}>
+                <span className="block min-w-0"><NumericInput ariaLabel="Path trim start" iconLead={<ArrowRightFromLine size={14} strokeWidth={1.5} />} value={stroke.pathTrimStart ?? 0} onChange={pathTrimStart => update(stroke.id, { pathTrimStart })} min={0} max={100} suffix="%" keyframe={stroke.keyframes?.pathTrimStart} /></span>
+              </Tooltip>
+              <Tooltip label="Path trim end" direction="Left" delayDuration={300}>
+                <span className="block min-w-0"><NumericInput ariaLabel="Path trim end" iconLead={<ArrowLeftFromLine size={14} strokeWidth={1.5} />} value={stroke.pathTrimEnd ?? 100} onChange={pathTrimEnd => update(stroke.id, { pathTrimEnd })} min={0} max={100} suffix="%" keyframe={stroke.keyframes?.pathTrimEnd} /></span>
+              </Tooltip>
+            </div>
           </div>
         </PanelReorderableEntry>
       ))}
