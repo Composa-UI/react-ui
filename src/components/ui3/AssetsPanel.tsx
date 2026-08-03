@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type DragEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { SidePanel } from "./SidePanel";
 import { clsx } from "clsx";
 import { Upload, Search, Image as ImageIcon, Film, Volume2, Trash2, Plus, Pencil, ChevronRight, Library } from "lucide-react";
@@ -63,11 +63,32 @@ export interface AssetItem {
   thumb?: string;         // preview src (video = first-frame)
   tint?: string;          // solid fallback when no thumb (demo)
   duration?: string;      // video only, e.g. "0:24"
+  /** App-owned object URL and metadata for pointer-position video skimming.
+   *  The idle `thumb` remains the accessible/error/touch fallback. */
+  videoPreview?: {
+    src: string;
+    durationMs: number;
+  };
   status?: AssetStatus;   // default "ready"
   progress?: number;      // 0–100 when status="uploading"
   errorMessage?: string;  // optional upload error detail
   inUseCount?: number;    // project references; deletion requires confirmation when > 0
   libraryId?: string;     // groups the card under an AssetLibrary section (opt-in)
+}
+
+/** Map a horizontal pointer coordinate to a safe media seek position. The tiny
+ * end guard keeps the decoder on the final frame instead of entering `ended`. */
+export function videoScrubTimeSeconds(
+  clientX: number,
+  left: number,
+  width: number,
+  durationSeconds: number,
+): number {
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) return 0;
+  const maxSeek = Math.max(0, durationSeconds - 0.001);
+  if (!Number.isFinite(width) || width <= 0) return 0;
+  const ratio = Math.min(1, Math.max(0, (clientX - left) / width));
+  return ratio * maxSeek;
 }
 
 // ─── Type badge (IMG / VID) ───────────────────────────────────────────────────
@@ -97,6 +118,9 @@ function AssetCard({
   onDelete,
   onContextMenu,
   onRetry,
+  previewActive,
+  onPreviewStart,
+  onPreviewEnd,
 }: {
   item: AssetItem;
   selected: boolean;
@@ -107,15 +131,67 @@ function AssetCard({
   onDelete: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
   onRetry: () => void;
+  previewActive: boolean;
+  onPreviewStart: () => void;
+  onPreviewEnd: () => void;
 }) {
   const status = item.status ?? "ready";
   const uploading = status === "uploading";
   const error = status === "error";
+  const previewRef = useRef<HTMLVideoElement | null>(null);
+  const pendingSeek = useRef<{ clientX: number; left: number; width: number } | null>(null);
+  const [previewFailed, setPreviewFailed] = useState(false);
+  const previewInstructionId = useId();
+  const canPreview = item.kind === "video" && status === "ready" && !!item.videoPreview && !previewFailed;
+
+  const seekPreview = (video: HTMLVideoElement, pointer = pendingSeek.current) => {
+    if (!pointer) return;
+    const metadataDuration = Number.isFinite(video.duration) && video.duration > 0
+      ? video.duration
+      : (item.videoPreview?.durationMs ?? 0) / 1000;
+    try {
+      video.currentTime = videoScrubTimeSeconds(pointer.clientX, pointer.left, pointer.width, metadataDuration);
+    } catch {
+      // An unloaded/unsupported decoder keeps the static poster fallback. Its
+      // eventual metadata/error event will either retry this seek or end preview.
+    }
+  };
+  const handlePointerEnter = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "touch" || item.kind !== "video" || status !== "ready" || !item.videoPreview) return;
+    setPreviewFailed(false);
+    onPreviewStart();
+  };
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!previewActive || !canPreview) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    pendingSeek.current = { clientX: event.clientX, left: rect.left, width: rect.width };
+    if (previewRef.current) seekPreview(previewRef.current);
+  };
+  const handlePointerLeave = () => {
+    pendingSeek.current = null;
+    onPreviewEnd();
+  };
+
+  useEffect(() => {
+    if (!previewActive) return;
+    const video = previewRef.current;
+    return () => {
+      // The app owns/revokes the object URL. The kit only bounds decoder use by
+      // pausing and detaching its source when this one active preview unmounts.
+      video?.pause();
+      video?.removeAttribute("src");
+      video?.load();
+    };
+  }, [previewActive, item.videoPreview?.src]);
 
   return (
     <div className="flex flex-col gap-[4px] select-none">
       {/* thumbnail */}
       <div
+        data-asset-thumbnail={item.id}
+        onPointerEnter={handlePointerEnter}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
         className={clsx(
           "group/card relative w-full aspect-[4/3] rounded-c-md overflow-hidden outline-none",
           "bg-c-bg-secondary ring-1 ring-inset transition-shadow duration-100",
@@ -124,6 +200,7 @@ function AssetCard({
         )}
       >
         <button type="button" aria-label={item.name} aria-pressed={selected}
+          aria-describedby={item.kind === "video" && item.videoPreview ? previewInstructionId : undefined}
           onClick={onSelect} onDoubleClick={onDoubleClick} onContextMenu={onContextMenu}
           className="absolute inset-0 z-[1] size-full outline-none" />
         {/* preview — image/video use the thumb or a tint fallback; audio draws a
@@ -136,6 +213,25 @@ function AssetCard({
           </div>
         ) : (
           <div className="absolute inset-0" style={{ background: item.tint ?? "var(--color-c-bg-secondary)" }} />
+        )}
+        {previewActive && canPreview && (
+          <video
+            ref={previewRef}
+            data-asset-scrub-preview={item.id}
+            aria-hidden="true"
+            src={item.videoPreview?.src}
+            muted
+            playsInline
+            preload="metadata"
+            onLoadedMetadata={(event) => seekPreview(event.currentTarget)}
+            onError={() => { setPreviewFailed(true); onPreviewEnd(); }}
+            className="pointer-events-none absolute inset-0 size-full object-cover"
+          />
+        )}
+        {item.kind === "video" && item.videoPreview && (
+          <span id={previewInstructionId} className="sr-only">
+            Move the pointer horizontally over this thumbnail to preview the video. The static poster remains available for keyboard and touch input.
+          </span>
         )}
 
         {/* type badge */}
@@ -406,6 +502,7 @@ export function AssetsPanel({
   const [renameAsset, setRenameAsset] = useState<AssetItem | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [deleteAsset, setDeleteAsset] = useState<AssetItem | null>(null);
+  const [scrubPreviewId, setScrubPreviewId] = useState<string | null>(null);
 
   const activeTab = tab ?? tabInner;
   const setTab = (next: AssetsPanelTab) => {
@@ -512,6 +609,9 @@ export function AssetsPanel({
         onContextMenu?.(item.id, e);
       }}
       onRetry={() => onRetry?.(item.id)}
+      previewActive={scrubPreviewId === item.id}
+      onPreviewStart={() => setScrubPreviewId(item.id)}
+      onPreviewEnd={() => setScrubPreviewId(current => current === item.id ? null : current)}
     />
   );
   const renderGrid = (items: AssetItem[]) => <div className="grid grid-cols-2 gap-[8px]">{items.map(renderCard)}</div>;
