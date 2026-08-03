@@ -11,7 +11,7 @@ import {
   MoveHorizontal, MoveVertical, Play, Pause, MonitorPlay,
   Image as ImageIcon, Clock, SquareSquare,
   ArrowLeftFromLine, ArrowRightFromLine, Grid2x2, Timer,
-  Square, PanelTop, PanelBottom, PanelLeft, PanelRight,
+  Square, PanelTop, PanelBottom, PanelLeft, PanelRight, Diamond,
 } from "lucide-react";
 import { CirclesFour } from "@phosphor-icons/react";
 import { ProposedSquareText, ProposedTextMargins } from "../../icons/proposed-lucide";
@@ -725,8 +725,8 @@ export interface InspectorKeyframeControls {
   paddingRight?: InspectorKeyframeControl;
   paddingBottom?: InspectorKeyframeControl;
   paddingLeft?: InspectorKeyframeControl;
-  /** Continuous numeric text metrics. Font weight is intentionally excluded
-   * until its stepped/variable-font interpolation policy is specified. */
+  /** Continuous numeric typography values. */
+  fontWeight?: InspectorKeyframeControl;
   fontSize?: InspectorKeyframeControl;
   lineHeight?: InspectorKeyframeControl;
   letterSpacing?: InspectorKeyframeControl;
@@ -1555,7 +1555,7 @@ function weightsForFamily(
   return entry?.weights ?? hostWeights ?? DEFAULT_FONT_WEIGHTS;
 }
 
-function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes = DEFAULT_FONT_SIZES, fontWeights, keyframes }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean; fonts?: ReadonlyArray<FontEntry>; fontSizes?: ReadonlyArray<number>; fontWeights?: ReadonlyArray<FontWeightOption>; keyframes?: Pick<InspectorKeyframeControls, "fontSize" | "lineHeight" | "letterSpacing"> }) {
+function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes = DEFAULT_FONT_SIZES, fontWeights, keyframes }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean; fonts?: ReadonlyArray<FontEntry>; fontSizes?: ReadonlyArray<number>; fontWeights?: ReadonlyArray<FontWeightOption>; keyframes?: Pick<InspectorKeyframeControls, "fontWeight" | "fontSize" | "lineHeight" | "letterSpacing"> }) {
   const [internal, setInternal] = useState<ElementTypographySettings>({ fontFamily: "Inter", fontWeight: "Medium", fontSize: 11, lineHeight: 16, letterSpacing: 0, align: "left", verticalAlign: "top", decoration: "none", textCase: "none", weight: 500, styleName: "Title · 96/120" });
   const settings = value ?? internal;
   const update = (patch: Partial<ElementTypographySettings>) => { if (!value) setInternal(current => ({ ...current, ...patch })); onChange?.(patch); };
@@ -1631,7 +1631,7 @@ function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes 
                 (Composa#661) — and each pick emits BOTH the named weight and its
                 numeric value so a name outside the host's own name table (Thin,
                 Black, …) still persists as the right CSS weight. */}
-            <div className="flex-1 min-w-0"><ChoiceDropdown ariaLabel="Font weight" value={settings.fontWeight} options={weightOptions.map(option => option.label)} labels={weightLabels} onChange={label => { const picked = weightOptions.find(option => option.label === label); update({ fontWeight: label, ...(picked ? { weight: picked.value } : {}) }); }} /></div>
+            <div className="flex-1 min-w-0"><ChoiceDropdown ariaLabel="Font weight" value={settings.fontWeight} options={weightOptions.map(option => option.label)} labels={weightLabels} keyframe={keyframes?.fontWeight} onChange={label => { const picked = weightOptions.find(option => option.label === label); update({ fontWeight: label, ...(picked ? { weight: picked.value } : {}) }); }} /></div>
             <div className="flex-1 min-w-0">
               <ComboInput
                 ariaLabel="Font size"
@@ -1679,7 +1679,7 @@ function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes 
             onClose={() => setTypeSettingsOpen(false)}
             trigger={typeSettingsTrigger}
             value={settings}
-            keyframes={{ lineHeight: keyframes?.lineHeight, letterSpacing: keyframes?.letterSpacing }}
+            keyframes={{ weight: keyframes?.fontWeight, lineHeight: keyframes?.lineHeight, letterSpacing: keyframes?.letterSpacing }}
             onChange={update}
           />
         }
@@ -2596,24 +2596,31 @@ function SlideBackgroundSection({
   );
 }
 
-function ChoiceDropdown<T extends string>({ ariaLabel, value, options, labels, onChange }: {
+function ChoiceDropdown<T extends string>({ ariaLabel, value, options, labels, onChange, keyframe, disabled = false }: {
   ariaLabel?: string;
   value: T;
   options: readonly T[];
   labels: Record<T, string>;
   onChange?: (value: T) => void;
+  keyframe?: InspectorKeyframeControl;
+  disabled?: boolean;
 }) {
   // A roster-driven caller (the weight menu) can hold a value the current roster
   // doesn't list — e.g. the selection is Semibold and the newly chosen family
   // only ships Regular/Bold. Show the value verbatim rather than a blank field.
   const displayed = labels[value] ?? value;
-  return (
-    <PopoverMenu directTrigger align="right" className="w-full" trigger={<Dropdown aria-haspopup="menu" ariaLabel={ariaLabel ? `${ariaLabel}: ${displayed}` : undefined} value={displayed} fullWidth />}>
+  return <div className="flex min-w-0 w-full">
+    <PopoverMenu directTrigger align="right" className="min-w-0 flex-1" trigger={<Dropdown aria-haspopup="menu" ariaLabel={ariaLabel ? `${ariaLabel}: ${displayed}` : undefined} value={displayed} fullWidth disabled={disabled} />}>
       {close => <Menu>{options.map(option => (
-        <MenuRow key={option} type="checkmark" checked={option === value} label={labels[option]} onClick={() => { onChange?.(option); close(); }} />
+        <MenuRow key={option} type="checkmark" checked={option === value} label={labels[option]} disabled={disabled} onClick={() => { if (!disabled) onChange?.(option); close(); }} />
       ))}</Menu>}
     </PopoverMenu>
-  );
+    {keyframe && <button type="button" aria-label={`${ariaLabel ?? "Value"} keyframe`} aria-pressed={keyframe.active} disabled={disabled}
+      onClick={event => { event.stopPropagation(); if (!disabled) keyframe.onToggle(); }}
+      className={clsx("shrink-0 flex items-center justify-center size-[24px] rounded-c-sm hover:bg-c-bg-hover", keyframe.active && "bg-c-bg-selected", disabled && "cursor-not-allowed opacity-60 hover:bg-transparent")}>
+      <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active ? "fill-current text-c-text-brand" : "text-c-icon-secondary")} />
+    </button>}
+  </div>;
 }
 
 // ─── Video Clip mode sections ─────────────────────────────────────────────────

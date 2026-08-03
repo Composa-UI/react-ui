@@ -84,9 +84,10 @@ describe("Typography — font size presets (Composa#661: nothing dropped down)",
   });
 });
 
-describe("Typography — truthful numeric keyframes (#760)", () => {
-  it("binds font size, line height, and letter spacing without exposing font weight", () => {
+describe("Typography — truthful numeric keyframes", () => {
+  it("binds exact numeric font weight, size, line height, and letter spacing", () => {
     const controls = {
+      fontWeight: { active: false, onToggle: vi.fn() },
       fontSize: { active: true, onToggle: vi.fn() },
       lineHeight: { active: false, onToggle: vi.fn() },
       letterSpacing: { active: false, onToggle: vi.fn() },
@@ -97,7 +98,7 @@ describe("Typography — truthful numeric keyframes (#760)", () => {
     expect(fontSizeField(renderer!.root).props.keyframe).toBe(controls.fontSize);
     expect(renderer!.root.findAllByType(NumericInput).find(node => node.props.ariaLabel === "Line height")?.props.keyframe).toBe(controls.lineHeight);
     expect(renderer!.root.findAllByType(NumericInput).find(node => node.props.ariaLabel === "Letter spacing")?.props.keyframe).toBe(controls.letterSpacing);
-    expect(renderToStaticMarkup(<PropertyPanel elementType="text" typography={typography()} keyframeControls={controls} />)).not.toContain("Font weight keyframe");
+    expect(renderToStaticMarkup(<PropertyPanel elementType="text" typography={typography()} keyframeControls={controls} />)).toContain('aria-label="Font weight keyframe"');
     act(() => renderer!.unmount());
   });
 });

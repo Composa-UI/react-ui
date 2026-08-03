@@ -35,7 +35,7 @@ function findButton(renderer: ReactTestRenderer, ariaLabel: string) {
 }
 
 describe("TypeSettingsDialog", () => {
-  it("shares the host-owned line-height and letter-spacing keyframes, but never weight", () => {
+  it("shares the host-owned weight, line-height, and letter-spacing keyframes", () => {
     const html = renderToStaticMarkup(
       <TypeSettingsDialog
         open
@@ -43,6 +43,7 @@ describe("TypeSettingsDialog", () => {
         trigger={<button>Type</button>}
         value={BASE}
         keyframes={{
+          weight: { active: false, onToggle: () => undefined },
           lineHeight: { active: true, onToggle: () => undefined },
           letterSpacing: { active: false, onToggle: () => undefined },
         }}
@@ -51,7 +52,7 @@ describe("TypeSettingsDialog", () => {
     );
     expect(html).toContain('aria-label="Type settings line height keyframe"');
     expect(html).toContain('aria-label="Type settings letter spacing keyframe"');
-    expect(html).not.toContain("Weight keyframe");
+    expect(html).toContain('aria-label="Font weight keyframe"');
   });
 
   it("keeps metric keyframes inert for a read-only selection", () => {
@@ -59,13 +60,15 @@ describe("TypeSettingsDialog", () => {
     let renderer: ReactTestRenderer;
     act(() => { renderer = create(<TypeSettingsDialog
       open readOnly value={BASE} trigger={<button>Type</button>} onClose={() => undefined}
-      keyframes={{ lineHeight: { active: true, onToggle }, letterSpacing: { active: false, onToggle } }}
+      keyframes={{ weight: { active: false, onToggle }, lineHeight: { active: true, onToggle }, letterSpacing: { active: false, onToggle } }}
       onChange={() => undefined}
     />); });
     const button = findButton(renderer!, "Type settings line height keyframe");
     expect(button.props.disabled).toBe(true);
     act(() => button.props.onClick({ stopPropagation: () => undefined }));
     expect(onToggle).not.toHaveBeenCalled();
+    const weightButton = findButton(renderer!, "Font weight keyframe");
+    expect(weightButton.props.disabled).toBe(true);
     act(() => renderer!.unmount());
   });
 
