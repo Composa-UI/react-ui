@@ -1,4 +1,4 @@
-import { AlignCenter, AlignLeft, AlignRight, Circle, Grip, LayoutGrid, Settings2, Sun } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, AudioLines, Circle, Grip, LayoutGrid, Settings2, SquarePlay, Sun } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ProposedLayoutWrap } from "../../icons/proposed-lucide";
@@ -12,6 +12,11 @@ function settingsTrigger(html: string, label: string) {
 }
 
 describe("settings icon semantics", () => {
+  it("pins Video and Audio to the master timeline header glyphs (#749)", () => {
+    expect(iconForSemantic("media-video")).toBe(SquarePlay);
+    expect(iconForSemantic("media-audio")).toBe(AudioLines);
+  });
+
   it("maps every settings entry point to Lucide Settings2", () => {
     expect(composaIconSemantics.settings).toBe(Settings2);
     expect(iconForSemantic("settings")).toBe(Settings2);

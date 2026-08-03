@@ -12,6 +12,7 @@ import {
   AlignStartVertical,
   ArrowDownToLine,
   ArrowUpToLine,
+  AudioLines,
   Circle,
   Droplet,
   LayoutGrid,
@@ -107,6 +108,8 @@ export type ComposaIconSemantic =
   | "effect-spread"
   | "blend-mode"
   | "fill-video"
+  | "media-video"
+  | "media-audio"
   | "sizing-fixed"
   | "sizing-hug"
   | "sizing-fill"
@@ -189,6 +192,11 @@ export const composaIconSemantics = {
   // "blend-mode" (its meaning), the glyph is Droplet (mirrors layout-wrap → grid).
   "blend-mode": Droplet,
   "fill-video": SquarePlay,
+  // The master timeline track headers define the media-type glyph identity.
+  // Consumers resolve through these semantics so size/stroke may adapt without
+  // silently swapping Video or Audio to a different symbol (#749).
+  "media-video": SquarePlay,
+  "media-audio": AudioLines,
   "sizing-fixed": Square,
   "sizing-hug": Shrink,
   "sizing-fill": Frame,

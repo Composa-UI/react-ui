@@ -77,6 +77,17 @@ function renderAgent(panelProps: AgentPanelProps) {
 }
 
 describe("AgentPanel controlled contracts", () => {
+  it("renders media contexts with the canonical timeline glyph semantics (#749)", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = renderAgent(props({ activeConversation, context: { id: "video", label: "Demo.mp4", kind: "video" } }));
+    });
+    expect(renderer!.root.findByProps({ "data-icon-semantic": "media-video" })).toBeTruthy();
+    act(() => renderer!.update(<TooltipProvider><AgentPanel {...props({ activeConversation, context: { id: "audio", label: "Score.wav", kind: "audio" } })} /></TooltipProvider>));
+    expect(renderer!.root.findByProps({ "data-icon-semantic": "media-audio" })).toBeTruthy();
+    act(() => renderer!.unmount());
+  });
+
   it("groups controlled summaries and routes search, new, and open actions to the host", () => {
     const calls: string[] = [];
     let renderer: ReturnType<typeof create>;
