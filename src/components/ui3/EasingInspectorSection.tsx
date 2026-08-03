@@ -41,6 +41,10 @@ export interface EasingInspectorValue {
 export interface EasingInspectorSectionProps {
   value: EasingInspectorValue;
   applyScope?: EasingApplyScope;
+  /** Presentation label for a host-owned single target such as an Animate card.
+   *  This does not add a new engine scope; without an apply callback the row is
+   *  a truthful, disabled description of what the editor will update. */
+  applyToLabel?: string;
   onChange?: (value: { preset: EasingPreset; controlPoints?: CubicBezier }) => void;
   onApplyScopeChange?: (scope: EasingApplyScope) => void;
   onCurveEditStart?: () => void;
@@ -66,6 +70,7 @@ export function easingPointAtClient(rect: Pick<DOMRect, "left" | "top" | "width"
 export function EasingInspectorSection({
   value,
   applyScope = "segment",
+  applyToLabel,
   onChange,
   onApplyScopeChange,
   onCurveEditStart,
@@ -236,7 +241,7 @@ export function EasingInspectorSection({
 
       <PanelFullRow label="Apply to" height={40}>
         <PopoverMenu directTrigger align="right" className="w-full" trigger={
-          <Dropdown aria-haspopup="menu" ariaLabel="Apply easing to" value={EASING_SCOPE_LABELS[applyScope]} fullWidth disabled={!onApplyScopeChange || value.editable === false} />
+          <Dropdown aria-haspopup="menu" ariaLabel="Apply easing to" value={applyToLabel ?? EASING_SCOPE_LABELS[applyScope]} fullWidth disabled={!onApplyScopeChange || value.editable === false} />
         }>
           {close => <Menu>{(Object.keys(EASING_SCOPE_LABELS) as EasingApplyScope[]).map(scope =>
             <MenuRow key={scope} type="checkmark" selectionRole="radio" checked={scope === applyScope} label={EASING_SCOPE_LABELS[scope]}
