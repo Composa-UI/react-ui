@@ -139,8 +139,8 @@ describe("LayerList row icon follows the frame's auto-layout alignment", () => {
   });
 });
 
-// ── LF-4 · a locked row reads as filled, not as a second outline ───────────────
-describe("LayerList paints an engaged lock with a fill", () => {
+// ── LF-4 · a locked row uses readable duotone anatomy ─────────────────────────
+describe("LayerList paints an engaged lock as a duotone glyph", () => {
   /** The lock <button> AND its contents, so the assertion cannot match the eye. */
   function lockButton(html: string, label: string) {
     const match = html.match(new RegExp(`<button[^>]*aria-label="${label}"[^>]*>.*?</button>`, "s"))?.[0];
@@ -148,13 +148,13 @@ describe("LayerList paints an engaged lock with a fill", () => {
     return match!;
   }
 
-  it("fills the padlock once the layer is locked", () => {
+  it("uses a 20%-tone body plus outline once the layer is locked", () => {
     const html = renderToStaticMarkup(<LayerList layers={[{ id: "a", name: "Motto", type: "text", locked: true }]} selectedIds={[]} />);
     const button = lockButton(html, "Unlock Motto");
 
-    // `lucide-lock` as a whole class, so the open padlock cannot satisfy it.
-    expect(hasClass(button, "lucide-lock"), "closed padlock").toBe(true);
-    expect(hasClass(button, "fill-current"), "filled").toBe(true);
+    expect(button).toContain('data-layer-lock-icon="duotone"');
+    expect(button).toContain('opacity="0.2"');
+    expect(button).not.toContain("fill-current");
   });
 
   it("leaves the hover-only open padlock unfilled", () => {
@@ -166,10 +166,13 @@ describe("LayerList paints an engaged lock with a fill", () => {
     expect(button).not.toContain("fill-current");
   });
 
-  it("fills the padlock for a child locked by its parent", () => {
+  it("uses the same duotone padlock for a child locked by its parent", () => {
     const html = renderToStaticMarkup(
       <LayerList layers={[{ id: "g", name: "Sheet", type: "frame", locked: true, children: [{ id: "c", name: "Face", type: "shape", inheritedLocked: true }] }]} selectedIds={[]} />,
     );
-    expect(hasClass(lockButton(html, "Face locked by parent"), "fill-current"), "inherited lock filled").toBe(true);
+    const button = lockButton(html, "Face locked by parent");
+    expect(button).toContain('data-layer-lock-icon="duotone"');
+    expect(button).toContain('opacity="0.2"');
+    expect(button).not.toContain("fill-current");
   });
 });
