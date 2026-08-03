@@ -26,18 +26,9 @@ import { EASING_PRESETS, easingControlPoints, easingPresetLabel, easingSvgPath, 
 
 const FONT = "font-[family-name:var(--composa-font-family)]";
 const LEFT_W = 297;       // track-list width
-/**
- * The vertical rule closing the right edge of the left column.
- *
- * It is not one rule but one per cell, every cell `LEFT_W` wide: transport,
- * time-scrollbar spacer, lane header (master view) and back button, layer, preset,
- * property rows (slide-local view). The master view drops it — the owner asked to
- * "hide the track headers right stroke" — and has to drop it from all THREE of its
- * cells or the removed lane-header segment leaves orphan stubs above and below.
- * The slide-local column keeps it: its rows carry tree guides and indent rules that
- * need the boundary, and the feedback was written looking at the master timeline.
- */
-const COLUMN_STROKE = "border-r border-c-border";
+// The LEFT_W column is deliberately unruled in both master and slide-local views.
+// A divider assembled one cell at a time (transport, headers, scrollbar) leaves
+// visible stubs as rows scroll, so the whole column follows one no-stroke contract.
 const ROW_LAYER = 28;
 const ROW_PROP = 28;      // raised from 24 → contains the 20px bar with 4px above/below
 const ROW_BLOCK = 62;     // master-view lane height — two-row header ([icon][label][+] + [vis][solo][mute][lock], Figma 2-4060); the lane's clip bar fills this row height (inset 4px). Raised 56→62 for more top/bottom header inset (the two header rows were vertically cramped) — the extra height reads as ~3pt of breathing room above and below via the header's justify-center, and gives the Audio lane's stacked name+waveform room.
@@ -1065,7 +1056,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
           data-composa-row-highlight="timeline-full-lane"
           className={clsx("pointer-events-none absolute inset-0", rowSelectionHighlightClassName(selectionState))}
         />
-        <div className="relative shrink-0 flex items-center gap-[8px] pr-[8px] border-r border-c-border"
+        <div className="relative shrink-0 flex items-center gap-[8px] pr-[8px]"
           style={{ width: LEFT_W, paddingLeft: 8 + depth * 16 }}>
           {/* tree guides: a vertical line at each ancestor indent level (Composa#343) */}
           {Array.from({ length: depth }).map((_, level) => (
@@ -1133,7 +1124,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
         const presetProjection = timelineDurationBarProjection(preset.timeRange, viewport);
         return (
         <div key={preset.id} className={clsx("group/preset flex", preset.hidden && "opacity-40")} style={{ height: ROW_PROP, paddingRight: PLOT_RIGHT_GUTTER }}>
-          <div className="relative shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
+          <div className="relative shrink-0 flex items-center gap-[6px] pr-[8px]" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
             <TimelineChildConnector index={childIndex} count={childCount} depth={depth} />
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate text-c-text-secondary")}>{preset.label}</span>
             {preset.editable !== false && <button type="button"
@@ -1167,7 +1158,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
           className={clsx("flex", p.hidden && "opacity-40", propSelected ? "bg-c-bg-selected" : rowGraySelected && "bg-c-bg-secondary")}
           style={{ height: ROW_PROP, paddingRight: PLOT_RIGHT_GUTTER }}
           onClick={event => { if (!(event.target as Element).closest?.("button,[data-keyframe-id],[data-easing-segment]")) onPropertyRowSelect?.(propertyId); }}>
-          <div className="group/prop relative shrink-0 flex items-center gap-[6px] pr-[8px] border-r border-c-border" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
+          <div className="group/prop relative shrink-0 flex items-center gap-[6px] pr-[8px]" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
             <TimelineChildConnector index={presetCount + i} count={childCount} depth={depth} />
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate", p.accent ? "text-[#8638e5]" : "text-c-text-secondary")}>{p.name}</span>
             {/* keyframe stepper: ◀ prev-keyframe · ◇ toggle-at-playhead · ▶ next-keyframe */}
@@ -1219,10 +1210,8 @@ function TransportIconButton({ children, label, onClick, active }: { children: R
   );
 }
 
-function Transport({ current, duration, mode, playing, loop, autoKeyframe = false, columnStroke = true, onPlayingChange, onStop, onLoopChange, onAutoKeyframeChange }: {
+function Transport({ current, duration, mode, playing, loop, autoKeyframe = false, onPlayingChange, onStop, onLoopChange, onAutoKeyframeChange }: {
   current: number; duration: number; mode: TimelineMode; playing: boolean; loop: boolean; autoKeyframe?: boolean;
-  /** See `COLUMN_STROKE` — the master view drops the left column's right edge. */
-  columnStroke?: boolean;
   onPlayingChange: (playing: boolean) => void; onStop?: () => void; onLoopChange: (loop: boolean) => void;
   onAutoKeyframeChange?: (value: boolean) => void;
 }) {
@@ -1232,7 +1221,7 @@ function Transport({ current, duration, mode, playing, loop, autoKeyframe = fals
     : (n: number) => (n / 1000).toFixed(2) + "s";
   const tcW = slide ? 42 : 54; // timecode cell width — ms strings are narrower than "4.20s"
   return (
-    <div className={clsx("shrink-0 flex items-center gap-[8px]", columnStroke && COLUMN_STROKE)} style={{ width: LEFT_W, paddingLeft: TRANSPORT_PAD_X, paddingRight: TRANSPORT_PAD_X }}>
+    <div className="shrink-0 flex items-center gap-[8px]" style={{ width: LEFT_W, paddingLeft: TRANSPORT_PAD_X, paddingRight: TRANSPORT_PAD_X }}>
       {/* shared transport controls */}
       <TransportIconButton label={playing ? "Pause" : "Play"} active={playing} onClick={() => onPlayingChange(!playing)}>{playing ? <Pause size={TRANSPORT_GLYPH} strokeWidth={1.5} /> : <Play size={TRANSPORT_GLYPH} strokeWidth={1.5} />}</TransportIconButton>
       <TransportIconButton label="Stop" onClick={onStop}><Square size={14} strokeWidth={1.5} /></TransportIconButton>
@@ -1321,12 +1310,10 @@ function SecondRuler({ viewport, width }: { viewport: TimelineViewport; width: n
 // duration and drags to pan; when everything fits it spans the full track (nothing
 // to scroll). Complements the existing shift-wheel / trackpad-x pan, giving it a
 // readable position indicator. Uses the shared viewport math (timelineScrollbarPan).
-function TimelineTimeScrollbar({ viewport, duration, plotWidth, columnStroke = true, onPan }: {
+function TimelineTimeScrollbar({ viewport, duration, plotWidth, onPan }: {
   viewport: TimelineViewport;
   duration: number;
   plotWidth: number;
-  /** See `COLUMN_STROKE`. */
-  columnStroke?: boolean;
   onPan: (next: TimelineViewport) => void;
 }) {
   const drag = useRef<{ pointerId: number; startClientX: number; startViewport: TimelineViewport } | null>(null);
@@ -1353,7 +1340,7 @@ function TimelineTimeScrollbar({ viewport, duration, plotWidth, columnStroke = t
   };
   return (
     <div className="flex shrink-0 h-[12px] border-t border-c-border bg-c-bg" data-timeline-time-scrollbar style={{ paddingRight: PLOT_RIGHT_GUTTER }}>
-      <div className={clsx("shrink-0", columnStroke && COLUMN_STROKE)} style={{ width: LEFT_W }} />
+      <div className="shrink-0" style={{ width: LEFT_W }} />
       <div className="relative flex-1 min-w-0">
         <div
           role="scrollbar"
@@ -1467,7 +1454,7 @@ function MasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onS
       onClick: onLockToggle,
     },
   ];
-  // No right stroke — the master view's left column is unruled (`COLUMN_STROKE`).
+  // No right stroke — the shared left-column contract is unruled in both views.
   // `pr-[8px]` stays so the controls never slide into the plot.
   return (
     <div data-timeline-lane-header={label} className="shrink-0 flex flex-col justify-center gap-[6px] pr-[8px]" style={{ width: LEFT_W, height: ROW_BLOCK, paddingLeft: TRACK_HEADER_PAD_L }}>
@@ -2380,7 +2367,6 @@ export function Timeline({
       <div className="relative flex shrink-0 border-b border-c-border" style={{ height: master ? ROW_BLOCK : 40, paddingRight: PLOT_RIGHT_GUTTER }}>
         <div className="shrink-0 flex">
           <Transport current={playhead} duration={duration} mode={mode} playing={playing} loop={loop} onPlayingChange={setPlaying} onLoopChange={setLoop}
-            columnStroke={!master}
             autoKeyframe={autoKeyframe} onAutoKeyframeChange={onAutoKeyframeChange}
             onStop={() => { setPlaying(false); onStop?.(); }} />
         </div>
@@ -2480,7 +2466,7 @@ export function Timeline({
                 type="button"
                 onClick={onBack}
                 aria-label="Back to project"
-                className={clsx(FONT, "shrink-0 flex items-center gap-[4px] pl-[8px] pr-[8px] h-full border-r border-c-border text-[11px] font-[450] text-c-text-secondary hover:text-c-text")}
+                className={clsx(FONT, "shrink-0 flex items-center gap-[4px] pl-[8px] pr-[8px] h-full text-[11px] font-[450] text-c-text-secondary hover:text-c-text")}
                 style={{ width: LEFT_W }}
               >
                 <ChevronLeftBack size={14} strokeWidth={1.5} className="shrink-0" />
@@ -2513,7 +2499,7 @@ export function Timeline({
         </div>}
       </ScrollArea>
       {/* horizontal time-axis scrollbar — visible, draggable pan of the viewport window */}
-      <TimelineTimeScrollbar viewport={viewport} duration={duration} plotWidth={plotWidth} columnStroke={!master} onPan={next => setViewport(next, "pointer-pan")} />
+      <TimelineTimeScrollbar viewport={viewport} duration={duration} plotWidth={plotWidth} onPan={next => setViewport(next, "pointer-pan")} />
       </>)}
     </div>
   );

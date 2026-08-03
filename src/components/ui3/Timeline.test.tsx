@@ -1009,7 +1009,7 @@ describe("a locked lane loses retiming, not the lane (iteration-3)", () => {
   });
 });
 
-describe("the master view's left column carries no right stroke (iteration-3)", () => {
+describe("the timeline's left column carries no right stroke (feedback row 19)", () => {
   // "if we can, lets hide the track headers right stroke". The stroke is one
   // declaration per LEFT_W-wide cell, so dropping only the lane-header one would
   // leave orphan stubs of vertical rule above (transport) and below (scrollbar).
@@ -1028,9 +1028,10 @@ describe("the master view's left column carries no right stroke (iteration-3)", 
     expect(html).not.toContain("border-r");
   });
 
-  it("keeps the slide-local column ruled — its rows have tree guides to bound", () => {
+  it("removes the slide-local rule without removing its tree guides", () => {
     const html = renderToStaticMarkup(<Timeline mode="slide" height={220} duration={4_000} tracks={[numericTrack]} />);
-    expect(html).toContain("border-r border-c-border");
+    expect(html).not.toContain("border-r");
+    expect(html).toContain("data-timeline-child-trunk");
   });
 });
 
