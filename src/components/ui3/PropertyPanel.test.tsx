@@ -47,6 +47,22 @@ describe("Motion inspector rows", () => {
     expect(html).not.toContain('aria-label="Height keyframe"');
   });
 
+  it("renders the host-owned scalar Corner radius keyframe control", () => {
+    const html = renderToStaticMarkup(<PropertyPanel elementType="shape" cornerRadius={12}
+      keyframeControls={{ cornerRadius: { active: true, onToggle: () => undefined } }} />);
+
+    expect(html).toContain('aria-label="Corner radius keyframe"');
+    expect(html).toMatch(/aria-label="Corner radius keyframe"[^>]*aria-pressed="true"/);
+  });
+
+  it("omits the scalar Corner radius keyframe control for independent corners", () => {
+    const html = renderToStaticMarkup(<PropertyPanel elementType="shape"
+      cornerRadius={{ topLeft: 4, topRight: 8, bottomLeft: 12, bottomRight: 16 }}
+      keyframeControls={{ cornerRadius: { active: false, onToggle: () => undefined } }} />);
+
+    expect(html).not.toContain('aria-label="Corner radius keyframe"');
+  });
+
   it("accepts a host-controlled Animate tab so timeline selection can reveal its matching card", () => {
     const html = renderToStaticMarkup(<PropertyPanel elementType="text" activeTab="animate" objectAnimations={[
       { id: "pulse", n: 1, name: "Title", kind: "Action", duration: "0.6s", style: "pulse", focused: true },
