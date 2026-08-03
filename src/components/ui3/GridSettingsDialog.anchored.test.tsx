@@ -7,7 +7,8 @@ import {
   COMPOSA_OVERLAY_BOUNDARY_SELECTOR,
 } from "./AnchoredInspectorOverlay";
 import { GridSettingsDialog } from "./GridSettingsDialog";
-import type { ElementGridSettings } from "./PropertyPanel";
+import { NumericComboInput } from "./Input";
+import type { ElementGridSettings, InspectorKeyframeControl } from "./PropertyPanel";
 
 // RP-16: the grid track editors moved out of the inline panel into this dialog.
 // A dialog that opens ON TOP of the inspector would be a worse answer than the
@@ -36,7 +37,12 @@ const GRID: ElementGridSettings = {
 const triggerRect = { x: 920, y: 80, width: 24, height: 24, top: 80, right: 944, bottom: 104, left: 920, toJSON: () => ({}) } as DOMRect;
 const surfaceRect = { x: 760, y: 0, width: 240, height: 500, top: 0, right: 1_000, bottom: 500, left: 760, toJSON: () => ({}) } as DOMRect;
 
-function renderOpen(onClose = vi.fn(), onAddTrack?: (axis: "row" | "column") => void) {
+function renderOpen(
+  onClose = vi.fn(),
+  onAddTrack?: (axis: "row" | "column") => void,
+  grid = GRID,
+  keyframes?: Record<string, InspectorKeyframeControl>,
+) {
   const collisionBoundary = {
     dataset: { composaOverlayBoundary: "" },
     getBoundingClientRect: () => ({ top: 0, right: 1_000, bottom: 500, left: 0 }),
@@ -53,8 +59,9 @@ function renderOpen(onClose = vi.fn(), onAddTrack?: (axis: "row" | "column") => 
   let renderer: ReturnType<typeof create>;
   act(() => {
     renderer = create(
-      <GridSettingsDialog open grid={GRID} onClose={onClose}
+      <GridSettingsDialog open grid={grid} onClose={onClose}
         onAddTrack={onAddTrack}
+        keyframes={keyframes}
         trigger={<button type="button" aria-label="Grid settings">Settings</button>} />,
       { createNodeMock: element => element.type === "span" ? { querySelector: () => trigger } : null },
     );
@@ -119,5 +126,39 @@ describe("GridSettingsDialog — anchored InspectorDialog contract (RP-16)", () 
     expect(withoutHost.root.findByProps({ "aria-label": "Add column" }).props.disabled).toBe(true);
     expect(withoutHost.root.findByProps({ "aria-label": "Add row" }).props.disabled).toBe(true);
     act(() => withoutHost.unmount());
+  });
+
+  it("enforces the shared six-track cap before emitting creation intent", () => {
+    const onAddTrack = vi.fn();
+    const six = Array.from({ length: 6 }, (_, index) => ({ id: `track-${index}`, mode: "hug" as const, size: 100 }));
+    const { renderer } = renderOpen(vi.fn(), onAddTrack, { ...GRID, columns: six, rows: six });
+    const addColumn = renderer.root.findByProps({ "aria-label": "Add column" });
+    const addRow = renderer.root.findByProps({ "aria-label": "Add row" });
+    expect(addColumn.props.disabled).toBe(true);
+    expect(addRow.props.disabled).toBe(true);
+    act(() => addColumn.props.onClick());
+    act(() => addRow.props.onClick());
+    expect(onAddTrack).not.toHaveBeenCalled();
+    act(() => renderer.unmount());
+  });
+
+  it("projects stable-id keyframes only onto fixed track editors", () => {
+    const column = { active: true, onToggle: vi.fn() };
+    const row = { active: false, onToggle: vi.fn() };
+    const grid: ElementGridSettings = {
+      ...GRID,
+      columns: [{ id: "column-fixed", mode: "fixed", size: 120 }, { id: "column-hug", mode: "hug", size: 100 }],
+      rows: [{ id: "row-fixed", mode: "fixed", size: 80 }],
+    };
+    const { renderer } = renderOpen(vi.fn(), undefined, grid, {
+      "column-fixed": column,
+      "column-hug": { active: true, onToggle: vi.fn() },
+      "row-fixed": row,
+    });
+    const fields = renderer.root.findAllByType(NumericComboInput);
+    expect(fields.find(field => field.props.ariaLabel === "Column 1 size")!.props.keyframe).toBe(column);
+    expect(fields.find(field => field.props.ariaLabel === "Column 2 size")!.props.keyframe).toBeUndefined();
+    expect(fields.find(field => field.props.ariaLabel === "Row 1 size")!.props.keyframe).toBe(row);
+    act(() => renderer.unmount());
   });
 });

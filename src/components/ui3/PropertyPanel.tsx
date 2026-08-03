@@ -3769,6 +3769,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
     onSizingChange: (onSizingChange || onLayoutChange) ? emitSizing : undefined,
     onConstraintChange: (onSizingConstraintChange || onLayoutChange) ? emitConstraint : undefined,
     onApplySizingVariable,
+    constraintKeyframes: keyframeControls,
   };
 
   const elementLabel: Record<ElementType, string> = {
@@ -4088,7 +4089,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
                 disabled={textSizingModeDisabled}
                 onChange={onTextSizingModeChange}
               />}
-              <DimensionSizingFields {...sizingContract} width={width} height={height} dimensionsKeyframe={keyframeControls?.dimensions} constraintKeyframes={keyframeControls} />
+              <DimensionSizingFields {...sizingContract} width={width} height={height} dimensionsKeyframe={keyframeControls?.dimensions} />
               <SpatialSelectionLayoutFields value={props.spatialSelectionLayout} />
               {/* Corner radius moved to Appearance */}
             </PanelSection>

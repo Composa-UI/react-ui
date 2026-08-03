@@ -421,6 +421,32 @@ describe("Auto-layout gap control", () => {
     expect(html).not.toContain('aria-label="Min height"');
   });
 
+  it.each([
+    ["frame-auto", { ...layout, minWidth: 120 }],
+    ["frame-grid", {
+      ...layout,
+      mode: "grid" as const,
+      minWidth: 120,
+      grid: {
+        rows: [{ id: "row-1", mode: "hug" as const, size: 100 }],
+        columns: [{ id: "column-1", mode: "hug" as const, size: 100 }],
+        rowGap: 10,
+        columnGap: 10,
+        justifyItems: "start" as const,
+        alignItems: "start" as const,
+        justifyContent: "start" as const,
+        alignContent: "start" as const,
+      },
+    }],
+  ])("forwards min/max keyframes through the shared %s sizing contract", (elementType, keyedLayout) => {
+    const html = renderToStaticMarkup(<PropertyPanel
+      elementType={elementType as "frame-auto" | "frame-grid"}
+      layout={keyedLayout}
+      keyframeControls={{ minWidth: { active: true, onToggle: () => undefined } }}
+    />);
+    expect(html).toMatch(/aria-label="Min width keyframe"[^>]*aria-pressed="true"/);
+  });
+
   it("projects valid mode intersections, constraints and variable gating into canonical menu labels", () => {
     expect(getSizingMenuLabels({ axis: "width", value: 320, availableModes: ["fixed", "fill"], minValue: 120, variablesEnabled: false })).toEqual([
       "Fixed width (320)", "Fill container", "Add max width",
@@ -460,6 +486,15 @@ describe("Auto-layout gap control", () => {
 });
 
 describe("Plain-frame flow contract", () => {
+  it("forwards min/max keyframes through the shared sizing contract", () => {
+    const html = renderToStaticMarkup(<PropertyPanel
+      elementType="frame"
+      layout={{ mode: "none", gap: 0, padding: { top: 0, right: 0, bottom: 0, left: 0 }, align: "tl", widthMode: "fixed", heightMode: "fixed", clipsContent: false, maxHeight: 360 }}
+      keyframeControls={{ maxHeight: { active: true, onToggle: () => undefined } }}
+    />);
+    expect(html).toMatch(/aria-label="Max height keyframe"[^>]*aria-pressed="true"/);
+  });
+
   it("orders Freeform, Vertical, Horizontal, Grid and omits Wrap as a flow segment", () => {
     const html = renderToStaticMarkup(<PropertyPanel elementType="frame" />);
     const freeform = html.indexOf('aria-label="Freeform"');

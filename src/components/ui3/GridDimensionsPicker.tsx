@@ -1,11 +1,10 @@
 import { Columns2, Minus, Plus, Rows2 } from "lucide-react";
 import { type CSSProperties } from "react";
+import { GRID_TRACK_LIMIT } from "./GridTrackContract";
 import { NumericComboInput } from "./Input";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { PanelActionBtn } from "./Panel";
 import type { ElementGridSettings, ElementGridTrack, InspectorKeyframeControl } from "./PropertyPanel";
-
-const TRACK_LIMIT = 6;
 
 function TrackEditor({ axis, tracks, keyframes, onChange }: {
   axis: "row" | "column";
@@ -59,7 +58,7 @@ export function GridDimensionsPicker({ grid, keyframes, onChange, onAddTrack }: 
   const columns = grid.columns.length;
   const autoRows = grid.rows.every(track => track.mode === "hug");
   const summary = `${columns} × ${autoRows ? "Auto" : grid.rows.length}`;
-  const previewColumns = Math.min(TRACK_LIMIT, Math.max(1, columns));
+  const previewColumns = Math.min(GRID_TRACK_LIMIT, Math.max(1, columns));
   const previewRows = Math.min(3, Math.max(1, grid.rows.length));
   return <PopoverMenu
     directTrigger
@@ -78,12 +77,12 @@ export function GridDimensionsPicker({ grid, keyframes, onChange, onAddTrack }: 
         <div>
           <div className="px-[8px] pb-[3px] font-[family-name:var(--composa-font-family)] text-[9px] font-[450] leading-[14px] text-c-text-secondary">Columns</div>
           <TrackEditor axis="column" tracks={grid.columns} keyframes={keyframes} onChange={columnsValue => onChange?.({ columns: columnsValue })} />
-          <div className="px-[8px] pt-[4px]"><PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add column" disabled={!onAddTrack || grid.columns.length >= TRACK_LIMIT} onClick={() => onAddTrack?.("column")} /></div>
+          <div className="px-[8px] pt-[4px]"><PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add column" disabled={!onAddTrack || grid.columns.length >= GRID_TRACK_LIMIT} onClick={() => grid.columns.length < GRID_TRACK_LIMIT && onAddTrack?.("column")} /></div>
         </div>
         <div>
           <div className="px-[8px] pb-[3px] font-[family-name:var(--composa-font-family)] text-[9px] font-[450] leading-[14px] text-c-text-secondary">Rows</div>
           <TrackEditor axis="row" tracks={grid.rows} keyframes={keyframes} onChange={rows => onChange?.({ rows })} />
-          <div className="px-[8px] pt-[4px]"><PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add row" disabled={!onAddTrack || grid.rows.length >= TRACK_LIMIT} onClick={() => onAddTrack?.("row")} /></div>
+          <div className="px-[8px] pt-[4px]"><PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add row" disabled={!onAddTrack || grid.rows.length >= GRID_TRACK_LIMIT} onClick={() => grid.rows.length < GRID_TRACK_LIMIT && onAddTrack?.("row")} /></div>
         </div>
       </div>
     </Menu>}
