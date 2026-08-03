@@ -77,6 +77,43 @@ describe("EffectDetailsDialog", () => {
     expect(shadowHtml()).not.toContain(" keyframe");
   });
 
+  it.each(["Inner shadow", "Layer blur", "Background blur"] as const)("hard-gates adversarial %s diamonds", type => {
+    const keyframe = { active: true, onToggle: vi.fn() };
+    const html = renderToStaticMarkup(<EffectDetailsDialog open value={{
+      type, visible: true, x: 2, y: 4, blur: 8, spread: 0, color: "#112233", opacity: 25,
+      keyframes: { position: keyframe, blur: keyframe, spread: keyframe, color: keyframe, opacity: keyframe },
+    }} trigger={<button type="button">Open effect</button>} onClose={() => undefined} />);
+    expect(html).not.toContain(" keyframe");
+  });
+
+  it("keeps RGB replacement local until a valid six-digit Enter/blur commit", () => {
+    const onChange = vi.fn();
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<EffectDetailsDialog open value={{ type: "Drop shadow", visible: true, color: "#112233", opacity: 25 }}
+        trigger={<button type="button">Open effect</button>} onChange={onChange} onClose={() => undefined} />);
+    });
+    const input = () => renderer!.root.findByProps({ "aria-label": "Effect color hex" });
+    act(() => input().props.onFocus({ currentTarget: { select: vi.fn() } }));
+    for (const draft of ["F", "FF", "FF3", "FF33", "FF336", "FF3366"]) {
+      act(() => input().props.onChange({ target: { value: draft } }));
+    }
+    expect(onChange).not.toHaveBeenCalled();
+    const blur = vi.fn();
+    act(() => input().props.onKeyDown({ key: "Enter", currentTarget: { blur } }));
+    expect(blur).toHaveBeenCalledOnce();
+    act(() => input().props.onBlur());
+    expect(onChange).toHaveBeenCalledOnce();
+    expect(onChange).toHaveBeenCalledWith({ color: "#FF3366" });
+
+    act(() => input().props.onFocus({ currentTarget: { select: vi.fn() } }));
+    act(() => input().props.onChange({ target: { value: "ABC" } }));
+    act(() => input().props.onBlur());
+    expect(onChange).toHaveBeenCalledOnce();
+    expect(input().props.value).toBe("112233");
+    act(() => renderer!.unmount());
+  });
+
   it("uses the 240px, elevated inspector overlay contract", () => {
     const html = renderToStaticMarkup(
       <EffectDetailsDialog

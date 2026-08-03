@@ -85,6 +85,10 @@ function PositionRow({ x, y, onXChange, onYChange, keyframe }: {
 
 export function EffectDetailsDialog({ open, value, trigger, capabilities, onChange, onClose }: EffectDetailsDialogProps) {
   const shadow = value.type === "Drop shadow" || value.type === "Inner shadow";
+  // Motion is truthful only for Drop shadow in the current host/renderer slice.
+  // Ignore adversarial bindings on every other type so unsupported diamonds can
+  // never leak merely because a caller supplied the optional object.
+  const keyframes = value.type === "Drop shadow" ? value.keyframes : undefined;
   const [colorOpen, setColorOpen] = useState(false);
   return <InspectorDialog open={open} onClose={onClose} trigger={trigger} ariaLabel="Effect details"
     width={COMPACT_INSPECTOR_DIALOG_WIDTH} sideOffset={EFFECTS_INSPECTOR_DIALOG_SIDE_OFFSET}
@@ -105,9 +109,9 @@ export function EffectDetailsDialog({ open, value, trigger, capabilities, onChan
     </div>
     <div className="flex flex-col gap-[4px] p-[12px]">
       {shadow ? <>
-        <PositionRow x={value.x ?? 0} y={value.y ?? 4} onXChange={x => onChange?.({ x })} onYChange={y => onChange?.({ y })} keyframe={value.keyframes?.position} />
-        <NumberRow label="Blur" icon={BLUR_LEAD} value={value.blur ?? 8} onChange={blur => onChange?.({ blur })} keyframe={value.keyframes?.blur} min={0} />
-        <NumberRow label="Spread" icon={SPREAD_LEAD} value={value.spread ?? 0} onChange={spread => onChange?.({ spread })} keyframe={value.keyframes?.spread} />
+        <PositionRow x={value.x ?? 0} y={value.y ?? 4} onXChange={x => onChange?.({ x })} onYChange={y => onChange?.({ y })} keyframe={keyframes?.position} />
+        <NumberRow label="Blur" icon={BLUR_LEAD} value={value.blur ?? 8} onChange={blur => onChange?.({ blur })} keyframe={keyframes?.blur} min={0} />
+        <NumberRow label="Spread" icon={SPREAD_LEAD} value={value.spread ?? 0} onChange={spread => onChange?.({ spread })} keyframe={keyframes?.spread} />
         <div className="flex items-center gap-[8px] min-h-[32px]">
           <span className={LABEL}>Color</span>
           <div className="min-w-0 flex-1">
@@ -116,7 +120,7 @@ export function EffectDetailsDialog({ open, value, trigger, capabilities, onChan
               onClose={() => setColorOpen(false)}
               sideOffset={COLOR_DIALOG_NESTED_EFFECT_SIDE_OFFSET}
               align="end"
-              trigger={<ColorInput ariaLabel="Effect color" fullWidth showOpacity={false} color={value.color ?? "#000000"} opacity={value.opacity ?? 25} keyframe={value.keyframes?.color}
+              trigger={<ColorInput ariaLabel="Effect color" fullWidth showOpacity={false} color={value.color ?? "#000000"} opacity={value.opacity ?? 25} keyframe={keyframes?.color}
                 onSwatchClick={() => setColorOpen(true)} onColorChange={color => onChange?.({ color })} onOpacityChange={opacity => onChange?.({ opacity })} />}
               solidOnly
               pickerSource="hex"
@@ -129,10 +133,10 @@ export function EffectDetailsDialog({ open, value, trigger, capabilities, onChan
           </div>
         </div>
         <NumberRow label="Opacity" icon={<span className="text-[10px]">%</span>} value={value.opacity ?? 25}
-          onChange={opacity => onChange?.({ opacity })} keyframe={value.keyframes?.opacity} min={0} max={100} suffix="%" />
+          onChange={opacity => onChange?.({ opacity })} keyframe={keyframes?.opacity} min={0} max={100} suffix="%" />
         {value.type === "Drop shadow" && <div className="pt-[8px]"><Checkbox checked={value.showBehindTransparent ?? false}
           label="Show behind transparent areas" onChange={showBehindTransparent => onChange?.({ showBehindTransparent })} /></div>}
-      </> : <NumberRow label="Blur" icon={BLUR_LEAD} value={value.blur ?? 4} onChange={blur => onChange?.({ blur })} keyframe={value.keyframes?.blur} min={0} />}
+      </> : <NumberRow label="Blur" icon={BLUR_LEAD} value={value.blur ?? 4} onChange={blur => onChange?.({ blur })} keyframe={keyframes?.blur} min={0} />}
     </div>
   </InspectorDialog>;
 }
