@@ -1,5 +1,6 @@
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
+import { Settings2 } from "lucide-react";
 import { NumericInput } from "./Input";
 import { PanelActionBtn } from "./Panel";
 import { PropertyPanel, type ElementStrokeSetting, type InspectorKeyframeControl } from "./PropertyPanel";
@@ -89,11 +90,28 @@ describe("Iteration 4 stroke controls", () => {
     expect(rows).toHaveLength(6);
     expect(rows.every(row => row.props.selectionRole === "radio")).toBe(true);
     expect(rows.find(row => row.props.label === "Custom")?.props.checked).toBe(true);
+    const custom = rows.find(row => row.props.label === "Custom")!;
+    expect(custom.props.leading.type).toBe(Settings2);
+    expect(custom.props.leading.props["data-icon-semantic"]).toBe("settings");
     act(() => rows.find(row => row.props.label === "Top")!.props.onClick());
     expect(onUpdateStroke).toHaveBeenCalledWith("stroke-1", { weightMode: "top" });
     expect(close).toHaveBeenCalledOnce();
 
     act(() => menuRenderer!.unmount());
+    act(() => renderer.unmount());
+  });
+
+  it("keeps two 24px trailing control slots after the Path trim fields", () => {
+    const renderer = renderStroke();
+    const row = renderer.root.findByProps({ "data-composa-path-trim-row": true });
+    const slots = row.findAllByProps({ "data-composa-trailing-control-slot": true });
+
+    expect(row.findAllByType(NumericInput).map(input => input.props.ariaLabel)).toEqual([
+      "Path trim start",
+      "Path trim end",
+    ]);
+    expect(slots).toHaveLength(2);
+    expect(slots.every(slot => slot.props.className.includes("size-[24px]") && slot.props.className.includes("shrink-0"))).toBe(true);
     act(() => renderer.unmount());
   });
 });

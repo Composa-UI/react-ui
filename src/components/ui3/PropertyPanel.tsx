@@ -11,7 +11,7 @@ import {
   MoveHorizontal, MoveVertical, Play, Pause, MonitorPlay,
   Image as ImageIcon, Clock, SquareSquare,
   ArrowLeftFromLine, ArrowRightFromLine, Grid2x2, Timer,
-  Square, PanelTop, PanelBottom, PanelLeft, PanelRight, SlidersVertical,
+  Square, PanelTop, PanelBottom, PanelLeft, PanelRight,
 } from "lucide-react";
 import { CirclesFour } from "@phosphor-icons/react";
 import { ProposedSquareText, ProposedTextMargins } from "../../icons/proposed-lucide";
@@ -1733,7 +1733,7 @@ function strokeWeightModeIcon(mode: StrokeWeightMode, size = 16) {
   if (mode === "bottom") return <PanelBottom {...props} />;
   if (mode === "left") return <PanelLeft {...props} />;
   if (mode === "right") return <PanelRight {...props} />;
-  if (mode === "custom") return <SlidersVertical {...props} />;
+  if (mode === "custom") return <SettingsIcon data-icon-semantic="settings" {...props} />;
   return <Square {...props} />;
 }
 
@@ -1864,13 +1864,17 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
           </div>}
           <div className="px-[16px] pb-[6px]">
             <div className={subLabel}>Path trim</div>
-            <div className="grid grid-cols-2 gap-[8px]">
+            <div data-composa-path-trim-row className="flex items-center gap-[8px]">
               <Tooltip label="Path trim start" direction="Left" delayDuration={300}>
-                <span className="block min-w-0"><NumericInput ariaLabel="Path trim start" iconLead={<ArrowRightFromLine size={14} strokeWidth={1.5} />} value={stroke.pathTrimStart ?? 0} onChange={pathTrimStart => update(stroke.id, { pathTrimStart })} min={0} max={100} suffix="%" keyframe={stroke.keyframes?.pathTrimStart} /></span>
+                <span className="block flex-1 min-w-0"><NumericInput ariaLabel="Path trim start" iconLead={<ArrowRightFromLine size={14} strokeWidth={1.5} />} value={stroke.pathTrimStart ?? 0} onChange={pathTrimStart => update(stroke.id, { pathTrimStart })} min={0} max={100} suffix="%" keyframe={stroke.keyframes?.pathTrimStart} /></span>
               </Tooltip>
               <Tooltip label="Path trim end" direction="Left" delayDuration={300}>
-                <span className="block min-w-0"><NumericInput ariaLabel="Path trim end" iconLead={<ArrowLeftFromLine size={14} strokeWidth={1.5} />} value={stroke.pathTrimEnd ?? 100} onChange={pathTrimEnd => update(stroke.id, { pathTrimEnd })} min={0} max={100} suffix="%" keyframe={stroke.keyframes?.pathTrimEnd} /></span>
+                <span className="block flex-1 min-w-0"><NumericInput ariaLabel="Path trim end" iconLead={<ArrowLeftFromLine size={14} strokeWidth={1.5} />} value={stroke.pathTrimEnd ?? 100} onChange={pathTrimEnd => update(stroke.id, { pathTrimEnd })} min={0} max={100} suffix="%" keyframe={stroke.keyframes?.pathTrimEnd} /></span>
               </Tooltip>
+              {/* Match the Stroke row above: the two values occupy its field columns,
+                  while these empty 24px cells preserve the settings + side-control columns. */}
+              <span aria-hidden data-composa-trailing-control-slot className="size-[24px] shrink-0" />
+              <span aria-hidden data-composa-trailing-control-slot className="size-[24px] shrink-0" />
             </div>
           </div>
         </PanelReorderableEntry>
