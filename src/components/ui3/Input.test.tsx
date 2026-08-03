@@ -1,7 +1,7 @@
 import { act, create } from "react-test-renderer";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { ComboInput, formatNumericDisplay, NumericComboInput, NumericEditSessionProvider, NumericInput, NumericInputMulti, NumericPairInput } from "./Input";
+import { ColorInput, ComboInput, formatNumericDisplay, NumericComboInput, NumericEditSessionProvider, NumericInput, NumericInputMulti, NumericPairInput } from "./Input";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -64,6 +64,14 @@ describe("NumericInput presentation contract", () => {
       keyframe={{ active: true, onToggle: () => undefined }}
     />);
     expect(pair).toMatch(/aria-label="Position X\/Position Y keyframe"[^>]*class="[^"]*bg-c-bg-selected/);
+  });
+});
+
+describe("ColorInput motion controls", () => {
+  it("does not render a dangling opacity diamond when the opacity segment is hidden", () => {
+    const html = renderToStaticMarkup(<ColorInput color="#336699" showOpacity={false}
+      opacityKeyframe={{ active: false, onToggle: () => undefined }} />);
+    expect(html).not.toContain("Color opacity keyframe");
   });
 });
 

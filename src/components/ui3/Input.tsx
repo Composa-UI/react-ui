@@ -946,7 +946,25 @@ interface ColorInputProps {
   onSwatchClick?: () => void;
   onColorChange?: (hex: string) => void;
   onOpacityChange?: (pct: number) => void;
+  /** Host-owned motion controls. Omit for paints without a real evaluator. */
+  colorKeyframe?: { active: boolean; onToggle: () => void };
+  opacityKeyframe?: { active: boolean; onToggle: () => void };
   className?: string;
+}
+
+function ColorKeyframeButton({ label, control }: { label: string; control: { active: boolean; onToggle: () => void } }) {
+  return <button
+    type="button"
+    aria-label={`${label} keyframe`}
+    aria-pressed={control.active}
+    onClick={event => { event.stopPropagation(); control.onToggle(); }}
+    className={clsx(
+      "flex size-[24px] shrink-0 items-center justify-center self-stretch border-l border-c-bg text-c-icon-secondary",
+      control.active && "bg-c-bg-selected text-c-text-brand",
+    )}
+  >
+    <Diamond size={11} strokeWidth={1.5} className={clsx(control.active && "fill-current")} />
+  </button>;
 }
 
 export function ColorInput({
@@ -965,6 +983,8 @@ export function ColorInput({
   onSwatchClick,
   onColorChange,
   onOpacityChange,
+  colorKeyframe,
+  opacityKeyframe,
   className,
 }: ColorInputProps) {
   const [focusedHex, setFocusedHex] = useState(false);
@@ -1077,6 +1097,8 @@ export function ColorInput({
           )}
         </div>
 
+        {colorKeyframe && !isVariable && <ColorKeyframeButton label={`${ariaLabel ?? label ?? "Color"} color`} control={colorKeyframe} />}
+
         {/* opacity section — hidden for Variable fill */}
         {!isVariable && showOpacity && (
           <div className="flex items-center shrink-0 self-stretch border-l border-c-bg w-[53px]">
@@ -1100,20 +1122,8 @@ export function ColorInput({
             <span className={clsx("pr-[6px] shrink-0 text-c-text-secondary", T[size], FONT)}>%</span>
           </div>
         )}
-        {keyframe && (
-          <button
-            type="button"
-            aria-label={`${ariaLabel ?? label ?? "Color"} keyframe`}
-            aria-pressed={keyframe.active}
-            onClick={event => { event.stopPropagation(); keyframe.onToggle(); }}
-            className={clsx(
-              "shrink-0 flex items-center justify-center size-[24px] rounded-c-sm hover:bg-c-bg-hover",
-              keyframe.active && "bg-c-bg-selected",
-            )}
-          >
-            <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active ? "fill-current text-c-text-brand" : "text-c-icon-secondary")} />
-          </button>
-        )}
+        {keyframe && <ColorKeyframeButton label={ariaLabel ?? label ?? "Color"} control={keyframe} />}
+        {opacityKeyframe && !isVariable && showOpacity && <ColorKeyframeButton label={`${ariaLabel ?? label ?? "Color"} opacity`} control={opacityKeyframe} />}
       </div>
     </div>
   );
