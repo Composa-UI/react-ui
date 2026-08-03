@@ -10,7 +10,7 @@ const settings: InspectorExportSetting[] = [{ id: "export-1", scale: 1, format: 
 
 function render(props: Partial<Parameters<typeof PropertyPanel>[0]> = {}) {
   let renderer: ReactTestRenderer;
-  act(() => { renderer = create(<PropertyPanel elementType="rectangle" exportSettings={settings} {...props} />); });
+  act(() => { renderer = create(<PropertyPanel elementType="shape" exportSettings={settings} {...props} />); });
   return renderer!;
 }
 
@@ -20,7 +20,7 @@ describe("Export mode (owner feedback Row 63)", () => {
     const mode = renderer.root.findAllByType(SegmentedControl).find(node => node.props.ariaLabel === "Export mode")!;
     expect(mode.props.value).toBe("static");
     expect(mode.props.segments).toEqual([{ value: "static", label: "Static" }, { value: "frame", label: "Frame" }]);
-    expect(renderer.root.findAllByType(Button).find(node => node.props.label === "Export rectangle")).toBeTruthy();
+    expect(renderer.root.findAllByType(Button).find(node => node.props.label === "Export Rectangle")).toBeTruthy();
     act(() => renderer.unmount());
   });
 
