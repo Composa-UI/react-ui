@@ -84,6 +84,11 @@ export interface InspectorExportSetting { id: string; scale: number; suffix?: st
 export type ProjectFrameRate = 24 | 25 | 30 | 60;
 export interface ElementFillSetting {
   id: string; color: string; opacity: number; visible: boolean; label?: string;
+  /** Per-entry motion bindings. Hosts omit these for non-solid paints. */
+  keyframes?: {
+    color?: InspectorKeyframeControl;
+    opacity?: InspectorKeyframeControl;
+  };
   /** The controlled ColorDialog mode for this specific fill entry. */
   fillType?: FillType;
   gradientStops?: GradientStop[];
@@ -107,6 +112,8 @@ export interface ElementStrokeSetting extends ElementFillSetting {
   pathTrimEnd?: number;
   /** Per-stroke motion bindings. The host supplies only genuinely supported controls. */
   keyframes?: {
+    color?: InspectorKeyframeControl;
+    opacity?: InspectorKeyframeControl;
     weight?: InspectorKeyframeControl;
     pathTrimStart?: InspectorKeyframeControl;
     pathTrimEnd?: InspectorKeyframeControl;
@@ -1698,6 +1705,8 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
                 fullWidth
                 color={fill.color}
                 opacity={fill.opacity}
+                colorKeyframe={fill.fillType === undefined || fill.fillType === "solid" ? fill.keyframes?.color : undefined}
+                opacityKeyframe={fill.fillType === undefined || fill.fillType === "solid" ? fill.keyframes?.opacity : undefined}
                 onColorChange={color => updateFill(fill.id, { color })}
                 onOpacityChange={opacity => updateFill(fill.id, { opacity })}
                 onSwatchClick={() => onActiveStackDialogChange(`fill-color:${fill.id}`)}
@@ -1800,6 +1809,8 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
                 fullWidth
                 color={stroke.color}
                 opacity={stroke.opacity}
+                colorKeyframe={stroke.fillType === undefined || stroke.fillType === "solid" ? stroke.keyframes?.color : undefined}
+                opacityKeyframe={stroke.fillType === undefined || stroke.fillType === "solid" ? stroke.keyframes?.opacity : undefined}
                 onColorChange={color => update(stroke.id, { color })}
                 onOpacityChange={opacity => update(stroke.id, { opacity })}
                 onSwatchClick={() => onActiveStackDialogChange(`stroke-color:${stroke.id}`)}

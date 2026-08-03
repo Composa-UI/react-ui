@@ -43,6 +43,25 @@ describe("Timeline easing inspector composition", () => {
 });
 
 describe("Motion inspector rows", () => {
+  it("renders independent solid paint color and opacity keyframe controls", () => {
+    const control = { active: true, onToggle: () => undefined };
+    const html = renderToStaticMarkup(<PropertyPanel elementType="shape"
+      fills={[{ id: "fill", fillType: "solid", color: "#ff0000", opacity: 80, visible: true, keyframes: { color: control, opacity: control } }]}
+      strokes={[{ id: "stroke", fillType: "solid", color: "#0000ff", opacity: 60, visible: true, weight: 2, align: "inside", keyframes: { color: control, opacity: control } }]} />);
+
+    for (const label of ["Fill color color keyframe", "Fill color opacity keyframe", "Stroke color color keyframe", "Stroke color opacity keyframe"]) {
+      expect(html).toContain(`aria-label="${label}"`);
+    }
+  });
+
+  it("omits paint keyframe controls for unsupported gradient entries", () => {
+    const control = { active: false, onToggle: () => undefined };
+    const html = renderToStaticMarkup(<PropertyPanel elementType="shape"
+      fills={[{ id: "gradient", fillType: "linear", color: "#ff0000", opacity: 80, visible: true, keyframes: { color: control, opacity: control } }]} />);
+    expect(html).not.toContain("Fill color color keyframe");
+    expect(html).not.toContain("Fill color opacity keyframe");
+  });
+
   it("renders a shared Dimensions keyframe control on both width and height", () => {
     const html = renderToStaticMarkup(<PropertyPanel elementType="text"
       keyframeControls={{ dimensions: { active: true, onToggle: () => undefined } }} />);
