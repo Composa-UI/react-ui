@@ -93,12 +93,17 @@ describe("Motion inspector rows", () => {
     expect(html).toMatch(/aria-label="Corner radius keyframe"[^>]*aria-pressed="true"/);
   });
 
-  it("omits the scalar Corner radius keyframe control for independent corners", () => {
+  it("projects four physical keyframe controls for independent corners without a scalar diamond", () => {
+    const control = () => ({ active: false, onToggle: () => undefined });
+    const topLeft = control(), topRight = control(), bottomRight = control(), bottomLeft = control();
     const html = renderToStaticMarkup(<PropertyPanel elementType="shape"
       cornerRadius={{ topLeft: 4, topRight: 8, bottomLeft: 12, bottomRight: 16 }}
-      keyframeControls={{ cornerRadius: { active: false, onToggle: () => undefined } }} />);
+      keyframeControls={{ cornerRadius: control(), cornerRadiusTopLeft: topLeft, cornerRadiusTopRight: topRight, cornerRadiusBottomRight: bottomRight, cornerRadiusBottomLeft: bottomLeft }} />);
 
     expect(html).not.toContain('aria-label="Corner radius keyframe"');
+    for (const label of ["Top-left", "Top-right", "Bottom-right", "Bottom-left"]) {
+      expect(html).toContain(`aria-label="${label} corner radius keyframe"`);
+    }
   });
 
   it("accepts a host-controlled Animate tab so timeline selection can reveal its matching card", () => {

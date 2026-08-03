@@ -699,8 +699,13 @@ export interface InspectorKeyframeControls {
   rotation?: InspectorKeyframeControl;
   opacity?: InspectorKeyframeControl;
   dimensions?: InspectorKeyframeControl;
-  /** Scalar corner radius only. Hosts omit this for independent per-corner values. */
+  /** Uniform scalar corner radius. */
   cornerRadius?: InspectorKeyframeControl;
+  /** Physical independent-corner lanes, shown only on the four expanded fields. */
+  cornerRadiusTopLeft?: InspectorKeyframeControl;
+  cornerRadiusTopRight?: InspectorKeyframeControl;
+  cornerRadiusBottomRight?: InspectorKeyframeControl;
+  cornerRadiusBottomLeft?: InspectorKeyframeControl;
   /** Fixed Auto-layout item gap. Omitted while the gap is Auto. */
   layoutGap?: InspectorKeyframeControl;
   /** Wrapped Auto-layout row gap. */
@@ -1399,13 +1404,14 @@ interface AppearanceSectionProps {
   supportedBlendModes?: readonly BlendMode[];
   opacityKeyframe?: InspectorKeyframeControl;
   cornerRadiusKeyframe?: InspectorKeyframeControl;
+  cornerRadiusKeyframes?: Partial<Record<"topLeft" | "topRight" | "bottomRight" | "bottomLeft", InspectorKeyframeControl>>;
 }
 
 function AppearanceSection({
   opacity = 100, blendMode = "Pass through", cornerRadius = 0, onOpacityChange, onBlendModeChange, onCornerRadiusChange, blendControlled = false, cornerControlled = false,
   supportedBlendModes,
   opacityMixed = false, cornerRadiusMixed = false,
-  opacityKeyframe, cornerRadiusKeyframe,
+  opacityKeyframe, cornerRadiusKeyframe, cornerRadiusKeyframes,
 }: AppearanceSectionProps) {
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
   const [indivCorners, setIndivCorners] = useState(typeof cornerRadius === "object");
@@ -1418,6 +1424,7 @@ function AppearanceSection({
   const setCornerValue = (value: NonNullable<AppearanceSectionProps["cornerRadius"]>) => { if (!cornerControlled) setInternalCornerRadius(value); onCornerRadiusChange?.(value); };
   const cornerKeys = ["topLeft", "topRight", "bottomLeft", "bottomRight"] as const;
   const cornerGlyphs = ["┌", "┐", "└", "┘"]; // TL TR BL BR
+  const cornerLabels = ["Top-left corner radius", "Top-right corner radius", "Bottom-left corner radius", "Bottom-right corner radius"];
   return (
     <PanelSection
       title="Appearance"
@@ -1456,7 +1463,7 @@ function AppearanceSection({
             <div key={ri} className="flex items-center gap-[8px]">
               {rowPair.map(i => (
                 <div key={i} className="flex-1 min-w-0">
-                  <NumericInput iconLead={<span className={clsx(FONT, "text-[11px]")}>{cornerGlyphs[i]}</span>} value={corners[cornerKeys[i]]} onChange={value => setCornerValue({ ...corners, [cornerKeys[i]]: value })} min={0} />
+                  <NumericInput ariaLabel={cornerLabels[i]} iconLead={<span className={clsx(FONT, "text-[11px]")}>{cornerGlyphs[i]}</span>} value={corners[cornerKeys[i]]} onChange={value => setCornerValue({ ...corners, [cornerKeys[i]]: value })} min={0} keyframe={cornerRadiusKeyframes?.[cornerKeys[i]]} />
                 </div>
               ))}
               <div className="shrink-0 min-w-[24px]" />
@@ -4058,7 +4065,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
           )}
 
           {/* Appearance — always present */}
-          <AppearanceSection opacity={opacity} blendMode={blendMode} supportedBlendModes={supportedBlendModes} cornerRadius={cornerRadius} opacityMixed={opacityMixed} cornerRadiusMixed={cornerRadiusMixed} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} cornerRadiusKeyframe={keyframeControls?.cornerRadius} />
+          <AppearanceSection opacity={opacity} blendMode={blendMode} supportedBlendModes={supportedBlendModes} cornerRadius={cornerRadius} opacityMixed={opacityMixed} cornerRadiusMixed={cornerRadiusMixed} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} cornerRadiusKeyframe={keyframeControls?.cornerRadius}
+            cornerRadiusKeyframes={{ topLeft: keyframeControls?.cornerRadiusTopLeft, topRight: keyframeControls?.cornerRadiusTopRight, bottomRight: keyframeControls?.cornerRadiusBottomRight, bottomLeft: keyframeControls?.cornerRadiusBottomLeft }} />
 
           {/* Typography — text only */}
           {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} fonts={fonts} fontSizes={fontSizes} fontWeights={fontWeights} />}
