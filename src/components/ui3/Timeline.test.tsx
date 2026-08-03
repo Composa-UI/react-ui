@@ -135,6 +135,17 @@ describe("Timeline DOM contracts", () => {
     expect(hidden).toContain("opacity-40");
   });
 
+  it("projects an editable color value through the controlled timeline callback", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} tracks={[{
+      id: "hero", name: "Hero", type: "frame", props: [
+        { id: "shadow-color", name: "Effect color", value: "#336699", keyframes: [] },
+      ],
+    }]} onPropertyValueChange={() => undefined} />);
+    expect(html).toContain('aria-label="Effect color value hex"');
+    expect(html).toContain('value="336699"');
+    expect(html).not.toContain('aria-label="Effect color value opacity"');
+  });
+
   it("lets an editable neutral bar select-and-move while reserving trim handles for the selected bar", () => {
     const html = renderToStaticMarkup(<Timeline height={220} duration={2_000} tracks={[{
       id: "hero", name: "Hero", type: "frame", props: [], bars: [

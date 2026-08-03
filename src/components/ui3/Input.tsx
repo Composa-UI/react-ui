@@ -938,6 +938,10 @@ interface ColorInputProps {
   size?: InputSize;
   disabled?: boolean;
   fullWidth?: boolean;        // fluid — fill the container instead of the fixed 144px
+  /** Hide the combined opacity segment when opacity is authored in its own truthful row. */
+  showOpacity?: boolean;
+  /** Optional motion binding for the color value itself. */
+  keyframe?: { active: boolean; onToggle: () => void };
   /** When set, the swatch opens this (e.g. the Fill/Color dialog) instead of the native color picker. */
   onSwatchClick?: () => void;
   onColorChange?: (hex: string) => void;
@@ -956,6 +960,8 @@ export function ColorInput({
   size = "medium",
   disabled = false,
   fullWidth = false,
+  showOpacity = true,
+  keyframe,
   onSwatchClick,
   onColorChange,
   onOpacityChange,
@@ -1051,7 +1057,7 @@ export function ColorInput({
         </div>
 
         {/* opacity section — hidden for Variable fill */}
-        {!isVariable && (
+        {!isVariable && showOpacity && (
           <div className="flex items-center shrink-0 self-stretch border-l border-c-bg w-[53px]">
             <input
               aria-label={`${ariaLabel ?? label ?? "Color"} opacity`}
@@ -1072,6 +1078,20 @@ export function ColorInput({
             />
             <span className={clsx("pr-[6px] shrink-0 text-c-text-secondary", T[size], FONT)}>%</span>
           </div>
+        )}
+        {keyframe && (
+          <button
+            type="button"
+            aria-label={`${ariaLabel ?? label ?? "Color"} keyframe`}
+            aria-pressed={keyframe.active}
+            onClick={event => { event.stopPropagation(); keyframe.onToggle(); }}
+            className={clsx(
+              "shrink-0 flex items-center justify-center size-[24px] rounded-c-sm hover:bg-c-bg-hover",
+              keyframe.active && "bg-c-bg-selected",
+            )}
+          >
+            <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active ? "fill-current text-c-text-brand" : "text-c-icon-secondary")} />
+          </button>
         )}
       </div>
     </div>
