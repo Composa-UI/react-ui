@@ -30,6 +30,9 @@ export interface ColorDialogCapabilities { styles?: boolean; variables?: boolean
 export type ImageAdjustment =
   | "exposure" | "contrast" | "saturation" | "temperature" | "tint" | "highlights" | "shadows";
 
+/** Controlled, persisted adjustment values for one media-fill instance. */
+export type ImageAdjustments = Record<ImageAdjustment, number>;
+
 export const COLOR_DIALOG_WIDTH = 240;
 export const COLOR_DIALOG_INSPECTOR_SIDE_OFFSET = 24;
 export const COLOR_DIALOG_NESTED_EFFECT_SIDE_OFFSET = 100;
