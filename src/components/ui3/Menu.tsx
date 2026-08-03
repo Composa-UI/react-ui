@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import { type FocusEventHandler, type MouseEventHandler, type ReactElement, type ReactNode, useId, useState, useRef } from "react";
+import { type FocusEventHandler, type KeyboardEvent, type MouseEventHandler, type ReactElement, type ReactNode, useId, useState, useRef } from "react";
 import { Check, ChevronRight, Minus } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { useComposaMode } from "./useComposaMode";
@@ -313,6 +313,27 @@ interface MenuProps {
  *  the Present/Preview menu, now the single DS-wide floor. */
 export const MENU_MIN_WIDTH = 120;
 
+export function menuNavigationIndex(currentIndex: number, itemCount: number, key: string) {
+  if (itemCount <= 0) return -1;
+  if (key === "Home") return 0;
+  if (key === "End") return itemCount - 1;
+  if (key === "ArrowDown") return (Math.max(currentIndex, -1) + 1) % itemCount;
+  if (key === "ArrowUp") return currentIndex <= 0 ? itemCount - 1 : currentIndex - 1;
+  return currentIndex;
+}
+
+function handleMenuNavigation(event: KeyboardEvent<HTMLDivElement>) {
+  if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+  const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(
+    '[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]',
+  ));
+  const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+  const nextIndex = menuNavigationIndex(currentIndex, items.length, event.key);
+  if (nextIndex < 0) return;
+  event.preventDefault();
+  items[nextIndex]?.focus();
+}
+
 export function Menu({ children, minWidth = MENU_MIN_WIDTH, maxHeight, className }: MenuProps) {
   const scrollable = maxHeight != null;
   return (
@@ -322,6 +343,7 @@ export function Menu({ children, minWidth = MENU_MIN_WIDTH, maxHeight, className
     <div
       data-composa-mode="dark"
       role="menu"
+      onKeyDown={handleMenuNavigation}
       className={clsx(
         // Always overflow-hidden for crisp rounded corners. A capped menu scrolls
         // via ScrollArea (our overlay thumb — never a native scrollbar; owner

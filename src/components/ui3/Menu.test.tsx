@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { MENU_MIN_WIDTH, Menu, MenuRow } from "./Menu";
+import { MENU_MIN_WIDTH, Menu, MenuRow, menuNavigationIndex } from "./Menu";
 
 describe("Menu width floor (Composa#627)", () => {
   it("hugs its content from a Figma-tight floor, and never caps the width", () => {
@@ -49,6 +49,13 @@ describe("Menu width floor (Composa#627)", () => {
 });
 
 describe("Menu", () => {
+  it("wraps Arrow navigation and supports Home/End", () => {
+    expect(menuNavigationIndex(0, 6, "ArrowDown")).toBe(1);
+    expect(menuNavigationIndex(5, 6, "ArrowDown")).toBe(0);
+    expect(menuNavigationIndex(0, 6, "ArrowUp")).toBe(5);
+    expect(menuNavigationIndex(3, 6, "Home")).toBe(0);
+    expect(menuNavigationIndex(3, 6, "End")).toBe(5);
+  });
   it("grows unbounded (no scroll) when no maxHeight is given", () => {
     const html = renderToStaticMarkup(
       <Menu>
