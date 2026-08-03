@@ -9,7 +9,7 @@ import { ScrollArea, IconButtonRow, type IconBtn } from "./Panel";
 import { Menu, MenuRow } from "./Menu";
 import { Tooltip } from "./Tooltip";
 import { ProposedDiamondCircle } from "../../icons/proposed-lucide";
-import { NumericInput } from "./Input";
+import { ColorInput, NumericInput } from "./Input";
 import { useComposaMode } from "./useComposaMode";
 import { EASING_PRESETS, easingControlPoints, easingPresetLabel, easingSvgPath, type EasingPreset, type NamedEasingPreset } from "./easing";
 import { iconForSemantic } from "./IconSemantics";
@@ -118,7 +118,7 @@ export type TimelineKeyframeValue = number | TimelineKeyframe;
 export interface PropTrack {
   id?: string;
   name: string;
-  value?: number;              // interpolated value at the playhead (inline value entry — #343b)
+  value?: number | string;     // interpolated scalar/color value at the playhead (inline value entry — #343b/#759)
   valueEditable?: boolean;     // false for read-only compiled/preset tracks
   keyframes: TimelineKeyframeValue[]; // numbers preserve the demo/legacy contract
   bar?: [number, number];      // duration bar [start,end] ms
@@ -1019,7 +1019,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
   onPropertyStepKeyframe?: (trackId: string, propertyId: string, direction: "prev" | "next") => void;
   selectedTimelineRowId?: string | null;
   onPropertyRowSelect?: (propertyId: string) => void;
-  onPropertyValueChange?: (trackId: string, propertyId: string, value: number) => void;
+  onPropertyValueChange?: (trackId: string, propertyId: string, value: number | string) => void;
   onPropertyToggleHidden?: (trackId: string, propertyId: string) => void;
   onPresetToggleHidden?: (trackId: string, presetId: string) => void;
   onPresetSelect?: (trackId: string, presetId: string) => void;
@@ -1181,9 +1181,12 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
             </button>
             {/* Inline value at the playhead stays visible beside keyframe state, matching the canonical row anatomy. */}
             {p.value !== undefined && (
-              <div data-timeline-property-value className="shrink-0 w-[56px] select-text">
-                <NumericInput ariaLabel={`${p.name} value`} value={p.value} size="small" disabled={p.valueEditable === false}
-                  onChange={value => onPropertyValueChange?.(trackId, propertyId, value)} />
+              <div data-timeline-property-value className={clsx("shrink-0 select-text", typeof p.value === "string" ? "w-[80px]" : "w-[56px]")}>
+                {typeof p.value === "string"
+                  ? <ColorInput ariaLabel={`${p.name} value`} color={p.value} size="small" fullWidth showOpacity={false} disabled={p.valueEditable === false}
+                      onColorChange={value => onPropertyValueChange?.(trackId, propertyId, value)} />
+                  : <NumericInput ariaLabel={`${p.name} value`} value={p.value} size="small" disabled={p.valueEditable === false}
+                      onChange={value => onPropertyValueChange?.(trackId, propertyId, value)} />}
               </div>
             )}
             <button type="button" aria-label={p.hidden ? `Show ${p.name}` : `Hide ${p.name}`} aria-pressed={p.hidden}
@@ -2111,7 +2114,7 @@ export function Timeline({
   selectedTimelineRowId?: string | null;
   onPropertyRowSelect?: (propertyId: string) => void;
   /** Edit a property's value at the playhead from its inline timeline field (#343b). */
-  onPropertyValueChange?: (trackId: string, propertyId: string, value: number) => void;
+  onPropertyValueChange?: (trackId: string, propertyId: string, value: number | string) => void;
   /** Toggle a property track's visibility (eye) — muted when hidden (#322). */
   onPropertyToggleHidden?: (trackId: string, propertyId: string) => void;
   /** Toggle an Animate preset bar without changing its scheduled range (#349). */

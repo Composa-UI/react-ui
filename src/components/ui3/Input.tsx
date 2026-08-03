@@ -938,6 +938,10 @@ interface ColorInputProps {
   size?: InputSize;
   disabled?: boolean;
   fullWidth?: boolean;        // fluid — fill the container instead of the fixed 144px
+  /** Hide the combined opacity segment when opacity is authored in its own truthful row. */
+  showOpacity?: boolean;
+  /** Optional motion binding for the color value itself. */
+  keyframe?: { active: boolean; onToggle: () => void };
   /** When set, the swatch opens this (e.g. the Fill/Color dialog) instead of the native color picker. */
   onSwatchClick?: () => void;
   onColorChange?: (hex: string) => void;
@@ -956,6 +960,8 @@ export function ColorInput({
   size = "medium",
   disabled = false,
   fullWidth = false,
+  showOpacity = true,
+  keyframe,
   onSwatchClick,
   onColorChange,
   onOpacityChange,
@@ -963,9 +969,21 @@ export function ColorInput({
 }: ColorInputProps) {
   const [focusedHex, setFocusedHex] = useState(false);
   const [focusedOpacity, setFocusedOpacity] = useState(false);
+  const cancelHexRef = useRef(false);
   const focused = focusedHex || focusedOpacity;
 
-  const hex = color.replace("#", "").toUpperCase();
+  const hex = color.replace(/^#/, "").toUpperCase();
+  const [hexDraft, setHexDraft] = useState(hex);
+  useEffect(() => { if (!focusedHex) setHexDraft(hex); }, [hex, focusedHex]);
+  const commitHex = () => {
+    const next = hexDraft.toUpperCase();
+    if (/^[0-9A-F]{6}$/.test(next)) {
+      setHexDraft(next);
+      if (next !== hex) onColorChange?.(`#${next}`);
+    } else {
+      setHexDraft(hex);
+    }
+  };
   const isVariable = fillType === "Variable";
   const isTextLabel = fillType === "Gradient" || fillType === "Image" || fillType === "Video" || isVariable;
 
@@ -1008,6 +1026,7 @@ export function ColorInput({
               />
             ) : fillType === "Fill" ? (
               <input
+                aria-label={`Edit ${ariaLabel ?? label ?? "color"}`}
                 type="color"
                 value={color}
                 disabled={disabled}
@@ -1035,12 +1054,20 @@ export function ColorInput({
             <input
               aria-label={`${ariaLabel ?? label ?? "Color"} hex`}
               type="text"
-              value={hex}
+              value={focusedHex ? hexDraft : hex}
               disabled={disabled}
               maxLength={6}
-              onChange={e => onColorChange?.(`#${e.target.value.replace(/[^0-9a-fA-F]/g, "").slice(0, 6)}`)}
-              onFocus={() => setFocusedHex(true)}
-              onBlur={() => setFocusedHex(false)}
+              onChange={e => setHexDraft(e.target.value.replace(/[^0-9a-fA-F]/g, "").slice(0, 6).toUpperCase())}
+              onFocus={event => { cancelHexRef.current = false; setHexDraft(hex); setFocusedHex(true); event.currentTarget.select(); }}
+              onKeyDown={event => {
+                if (event.key === "Enter") event.currentTarget.blur();
+                else if (event.key === "Escape") { cancelHexRef.current = true; setHexDraft(hex); event.currentTarget.blur(); }
+              }}
+              onBlur={() => {
+                if (cancelHexRef.current) cancelHexRef.current = false;
+                else commitHex();
+                setFocusedHex(false);
+              }}
               className={clsx(
                 "w-full h-full bg-transparent outline-none uppercase",
                 FONT, T[size], "text-c-text",
@@ -1051,7 +1078,7 @@ export function ColorInput({
         </div>
 
         {/* opacity section — hidden for Variable fill */}
-        {!isVariable && (
+        {!isVariable && showOpacity && (
           <div className="flex items-center shrink-0 self-stretch border-l border-c-bg w-[53px]">
             <input
               aria-label={`${ariaLabel ?? label ?? "Color"} opacity`}
@@ -1072,6 +1099,20 @@ export function ColorInput({
             />
             <span className={clsx("pr-[6px] shrink-0 text-c-text-secondary", T[size], FONT)}>%</span>
           </div>
+        )}
+        {keyframe && (
+          <button
+            type="button"
+            aria-label={`${ariaLabel ?? label ?? "Color"} keyframe`}
+            aria-pressed={keyframe.active}
+            onClick={event => { event.stopPropagation(); keyframe.onToggle(); }}
+            className={clsx(
+              "shrink-0 flex items-center justify-center size-[24px] rounded-c-sm hover:bg-c-bg-hover",
+              keyframe.active && "bg-c-bg-selected",
+            )}
+          >
+            <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active ? "fill-current text-c-text-brand" : "text-c-icon-secondary")} />
+          </button>
         )}
       </div>
     </div>

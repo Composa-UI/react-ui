@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
+import { act, create } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
 import { EffectDetailsDialog } from "./EffectDetailsDialog";
 
@@ -53,6 +54,66 @@ const shadowHtml = () => renderToStaticMarkup(
 );
 
 describe("EffectDetailsDialog", () => {
+  it("exposes only host-backed Drop shadow diamonds and routes every toggle", () => {
+    const toggles = {
+      position: vi.fn(), blur: vi.fn(), spread: vi.fn(), color: vi.fn(), opacity: vi.fn(),
+    };
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<EffectDetailsDialog open value={{
+        type: "Drop shadow", visible: true, x: 2, y: 4, blur: 8, spread: 0, color: "#000000", opacity: 25,
+        keyframes: Object.fromEntries(Object.entries(toggles).map(([key, onToggle]) => [key, { active: key === "blur", onToggle }])),
+      }} trigger={<button type="button">Open effect</button>} onClose={() => undefined} />);
+    });
+    const labels = ["Position X/Position Y keyframe", "Blur keyframe", "Spread keyframe", "Effect color keyframe", "Opacity keyframe"];
+    for (const label of labels) {
+      const button = renderer!.root.findByProps({ "aria-label": label });
+      act(() => button.props.onClick({ stopPropagation: () => undefined }));
+    }
+    expect(Object.values(toggles).every(toggle => toggle.mock.calls.length === 1)).toBe(true);
+    expect(renderer!.root.findByProps({ "aria-label": "Blur keyframe" }).props["aria-pressed"]).toBe(true);
+    act(() => renderer!.unmount());
+
+    expect(shadowHtml()).not.toContain(" keyframe");
+  });
+
+  it.each(["Inner shadow", "Layer blur", "Background blur"] as const)("hard-gates adversarial %s diamonds", type => {
+    const keyframe = { active: true, onToggle: vi.fn() };
+    const html = renderToStaticMarkup(<EffectDetailsDialog open value={{
+      type, visible: true, x: 2, y: 4, blur: 8, spread: 0, color: "#112233", opacity: 25,
+      keyframes: { position: keyframe, blur: keyframe, spread: keyframe, color: keyframe, opacity: keyframe },
+    }} trigger={<button type="button">Open effect</button>} onClose={() => undefined} />);
+    expect(html).not.toContain(" keyframe");
+  });
+
+  it("keeps RGB replacement local until a valid six-digit Enter/blur commit", () => {
+    const onChange = vi.fn();
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<EffectDetailsDialog open value={{ type: "Drop shadow", visible: true, color: "#112233", opacity: 25 }}
+        trigger={<button type="button">Open effect</button>} onChange={onChange} onClose={() => undefined} />);
+    });
+    const input = () => renderer!.root.findByProps({ "aria-label": "Effect color hex" });
+    act(() => input().props.onFocus({ currentTarget: { select: vi.fn() } }));
+    for (const draft of ["F", "FF", "FF3", "FF33", "FF336", "FF3366"]) {
+      act(() => input().props.onChange({ target: { value: draft } }));
+    }
+    expect(onChange).not.toHaveBeenCalled();
+    const blur = vi.fn();
+    act(() => input().props.onKeyDown({ key: "Enter", currentTarget: { blur } }));
+    expect(blur).toHaveBeenCalledOnce();
+    act(() => input().props.onBlur());
+    expect(onChange).toHaveBeenCalledOnce();
+    expect(onChange).toHaveBeenCalledWith({ color: "#FF3366" });
+
+    act(() => input().props.onFocus({ currentTarget: { select: vi.fn() } }));
+    act(() => input().props.onChange({ target: { value: "ABC" } }));
+    act(() => input().props.onBlur());
+    expect(onChange).toHaveBeenCalledOnce();
+    expect(input().props.value).toBe("112233");
+    act(() => renderer!.unmount());
+  });
+
   it("uses the 240px, elevated inspector overlay contract", () => {
     const html = renderToStaticMarkup(
       <EffectDetailsDialog
@@ -144,6 +205,9 @@ describe("EffectDetailsDialog", () => {
     expect(html.match(/>Position</g)).toHaveLength(1);
     expect(html).toContain('aria-label="Position X"');
     expect(html).toContain('aria-label="Position Y"');
+    expect(html).toContain('aria-label="Opacity"');
+    expect(html).toContain('aria-label="Effect color hex"');
+    expect(html).not.toContain('aria-label="Effect color opacity"');
     expect(html.match(/min-w-0 flex-1/g)?.length).toBeGreaterThanOrEqual(4);
   });
 

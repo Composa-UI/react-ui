@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { act, create } from "react-test-renderer";
+import { describe, expect, it, vi } from "vitest";
 import { laneDropAcceptedFiles, laneDropPayloadAccepted, masterLaneDisabled, MASTER_LANES, shouldActivateTimelineTrackKey, shouldBeginTimelineMiddlePan, shouldBeginTimelinePointer, shouldClaimTimelineGestureEscape, shouldHandleTimelineReveal, stepTimelinePlayhead, timelineClipTrimDetail, timelineDurationBarProjection, timelineDurationBarTargetRange, timelineTimeAtClientX, timelineTrackExpansionForKey, timelineTrackNavigationIndex, Timeline, type Track } from "./Timeline";
 
 const VIDEO_ACCEPT = ["image/", "video/"] as const;
@@ -133,6 +134,48 @@ describe("Timeline DOM contracts", () => {
     expect(hidden).toContain('aria-label="Show Hero"');
     expect(hidden).toContain('aria-pressed="true"');
     expect(hidden).toContain("opacity-40");
+  });
+
+  it("projects an editable color value through the controlled timeline callback", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} tracks={[{
+      id: "hero", name: "Hero", type: "frame", props: [
+        { id: "shadow-color", name: "Effect color", value: "#336699", keyframes: [] },
+      ],
+    }]} onPropertyValueChange={() => undefined} />);
+    expect(html).toContain('aria-label="Effect color value hex"');
+    expect(html).toContain('aria-label="Edit Effect color value"');
+    expect(html).toContain('value="336699"');
+    expect(html).not.toContain('aria-label="Effect color value opacity"');
+  });
+
+  it("commits a timeline RGB replacement only after six valid digits blur", () => {
+    const onPropertyValueChange = vi.fn();
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<Timeline height={220} tracks={[{
+        id: "hero", name: "Hero", type: "frame", props: [
+          { id: "shadow-color", name: "Effect color", value: "#336699", keyframes: [] },
+        ],
+      }]} onPropertyValueChange={onPropertyValueChange} />);
+    });
+    const input = () => renderer!.root.findByProps({ "aria-label": "Effect color value hex" });
+    act(() => input().props.onFocus({ currentTarget: { select: vi.fn() } }));
+    for (const draft of ["1", "12", "123", "1234", "12345", "123456"]) {
+      act(() => input().props.onChange({ target: { value: draft } }));
+    }
+    expect(onPropertyValueChange).not.toHaveBeenCalled();
+    act(() => input().props.onBlur());
+    expect(onPropertyValueChange).toHaveBeenCalledOnce();
+    expect(onPropertyValueChange).toHaveBeenCalledWith("hero", "shadow-color", "#123456");
+
+    act(() => input().props.onFocus({ currentTarget: { select: vi.fn() } }));
+    act(() => input().props.onChange({ target: { value: "BAD" } }));
+    act(() => input().props.onBlur());
+    expect(onPropertyValueChange).toHaveBeenCalledOnce();
+    expect(input().props.value).toBe("336699");
+    const nativeSwatch = renderer!.root.findAllByType("input").find(node => node.props.type === "color");
+    expect(nativeSwatch?.props["aria-label"]).toBe("Edit Effect color value");
+    act(() => renderer!.unmount());
   });
 
   it("lets an editable neutral bar select-and-move while reserving trim handles for the selected bar", () => {
