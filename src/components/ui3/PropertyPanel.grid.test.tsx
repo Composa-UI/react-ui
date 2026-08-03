@@ -10,8 +10,8 @@ import { SegmentedControl } from "./SegmentedControl";
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const grid: ElementGridSettings = {
-  rows: [{ mode: "hug", size: 100 }],
-  columns: [{ mode: "hug", size: 100 }, { mode: "hug", size: 100 }, { mode: "hug", size: 100 }],
+  rows: [{ id: "row-1", mode: "hug", size: 100 }],
+  columns: [{ id: "column-1", mode: "hug", size: 100 }, { id: "column-2", mode: "hug", size: 100 }, { id: "column-3", mode: "hug", size: 100 }],
   rowGap: 38, columnGap: 38,
   justifyItems: "start", alignItems: "start", justifyContent: "start", alignContent: "start",
 };

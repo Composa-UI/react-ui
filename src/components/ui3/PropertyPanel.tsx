@@ -151,7 +151,7 @@ export interface ElementTypographySettings {
 // Phase A: fixed/hug tracks, two gaps, per-axis item + content alignment. `fr`,
 // spans, and auto-placement are Phase B.
 export type GridTrackMode = "fixed" | "hug";
-export interface ElementGridTrack { mode: GridTrackMode; size: number; }
+export interface ElementGridTrack { id: string; mode: GridTrackMode; size: number; }
 export type GridItemAlign = "start" | "center" | "end" | "stretch";
 export type GridContentAlign = "start" | "center" | "end";
 export interface ElementGridSettings {
@@ -457,6 +457,8 @@ export interface DimensionSizingFieldsProps {
   onApplySizingVariable?: (axis: ElementSizingAxis) => void;
   /** Motion mode: width/height become value + keyframe diamond (diamond on the H field). */
   dimensionsKeyframe?: { active: boolean; onToggle: () => void };
+  /** Per-bound motion bindings. Omitted bounds render no field and therefore no diamond. */
+  constraintKeyframes?: Partial<Record<"minWidth" | "maxWidth" | "minHeight" | "maxHeight", InspectorKeyframeControl>>;
 }
 
 export interface SpatialSelectionLayoutControl {
@@ -593,8 +595,9 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
     />
     {hasConstraints && <div className="flex flex-col gap-y-[6px] px-[16px] pb-[8px]">
       {packedConstraintRows.map((row, rowIndex) => <div key={rowIndex} className="flex items-end gap-[8px]">
-        {row.map(([constraint, axis, label, value, mixed]) => (
-          <div key={`${constraint}-${axis}`} className="flex-1 min-w-0">
+        {row.map(([constraint, axis, label, value, mixed]) => {
+          const key = `${constraint}${axis === "width" ? "Width" : "Height"}` as "minWidth" | "maxWidth" | "minHeight" | "maxHeight";
+          return <div key={`${constraint}-${axis}`} className="flex-1 min-w-0">
             <div className={clsx(SUBLABEL, "mb-[3px]")}>{label}</div>
             <NumericComboInput
               dataMode="constraint"
@@ -603,6 +606,7 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
               value={value}
               defaultValue={0}
               mixed={mixed}
+              keyframe={props.constraintKeyframes?.[key]}
               onChange={next => changeConstraint(axis, constraint, next)}
               min={constraint === "max" ? (axis === "width" ? values.minWidth : values.minHeight) ?? 0 : 0}
               max={constraint === "min" ? (axis === "width" ? values.maxWidth : values.maxHeight) : undefined}
@@ -616,8 +620,8 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
               </Menu>}
               className="w-full"
             />
-          </div>
-        ))}
+          </div>;
+        })}
         {/* Keep a lone trailing field at half width so packed rows share the
             two-column geometry; this is a layout spacer, not a canonical hole. */}
         {row.length === 1 && <div aria-hidden className="flex-1 min-w-0" />}
@@ -699,8 +703,13 @@ export interface InspectorKeyframeControls {
   rotation?: InspectorKeyframeControl;
   opacity?: InspectorKeyframeControl;
   dimensions?: InspectorKeyframeControl;
-  /** Scalar corner radius only. Hosts omit this for independent per-corner values. */
+  /** Uniform scalar corner radius. */
   cornerRadius?: InspectorKeyframeControl;
+  /** Physical independent-corner lanes, shown only on the four expanded fields. */
+  cornerRadiusTopLeft?: InspectorKeyframeControl;
+  cornerRadiusTopRight?: InspectorKeyframeControl;
+  cornerRadiusBottomRight?: InspectorKeyframeControl;
+  cornerRadiusBottomLeft?: InspectorKeyframeControl;
   /** Fixed Auto-layout item gap. Omitted while the gap is Auto. */
   layoutGap?: InspectorKeyframeControl;
   /** Wrapped Auto-layout row gap. */
@@ -708,6 +717,25 @@ export interface InspectorKeyframeControls {
   /** Grid column and row gaps. */
   gridColumnGap?: InspectorKeyframeControl;
   gridRowGap?: InspectorKeyframeControl;
+  /** Stable track-id keyed controls. Hosts expose entries only for Fixed tracks. */
+  gridTrackSizes?: Record<string, InspectorKeyframeControl>;
+  /** Physical Auto-layout padding edges. Aggregate Vertical/Horizontal controls
+   * intentionally expose no diamond because each edge owns an independent lane. */
+  paddingTop?: InspectorKeyframeControl;
+  paddingRight?: InspectorKeyframeControl;
+  paddingBottom?: InspectorKeyframeControl;
+  paddingLeft?: InspectorKeyframeControl;
+  /** Continuous numeric text metrics. Font weight is intentionally excluded
+   * until its stepped/variable-font interpolation policy is specified. */
+  fontSize?: InspectorKeyframeControl;
+  lineHeight?: InspectorKeyframeControl;
+  letterSpacing?: InspectorKeyframeControl;
+  /** Authored Min/Max bounds. Hosts supply these only while the corresponding
+   * bound exists, so sizing menus never imply an aggregate animation track. */
+  minWidth?: InspectorKeyframeControl;
+  maxWidth?: InspectorKeyframeControl;
+  minHeight?: InspectorKeyframeControl;
+  maxHeight?: InspectorKeyframeControl;
 }
 
 // ─── Section: Position ────────────────────────────────────────────────────────
@@ -1043,6 +1071,12 @@ interface LayoutAutoProps {
   rowGapKeyframe?: InspectorKeyframeControl;
   gridColumnGapKeyframe?: InspectorKeyframeControl;
   gridRowGapKeyframe?: InspectorKeyframeControl;
+  gridTrackSizeKeyframes?: Record<string, InspectorKeyframeControl>;
+  onAddGridTrack?: (axis: "row" | "column") => void;
+  paddingTopKeyframe?: InspectorKeyframeControl;
+  paddingRightKeyframe?: InspectorKeyframeControl;
+  paddingBottomKeyframe?: InspectorKeyframeControl;
+  paddingLeftKeyframe?: InspectorKeyframeControl;
 }
 
 export function reconcileAutoLayoutGap(
@@ -1076,7 +1110,8 @@ function LayoutAutoSection({
   settingsBaselineApplicable,
   settingsDisabled = false,
   onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onAutoLayoutSettingsRequest, onEnableGrid, onDisableAutoLayout, sizing, spatialSelectionLayout,
-  gapKeyframe, rowGapKeyframe, gridColumnGapKeyframe, gridRowGapKeyframe,
+  gapKeyframe, rowGapKeyframe, gridColumnGapKeyframe, gridRowGapKeyframe, gridTrackSizeKeyframes, onAddGridTrack,
+  paddingTopKeyframe, paddingRightKeyframe, paddingBottomKeyframe, paddingLeftKeyframe,
 }: LayoutAutoProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const controlled = flowMode !== undefined;
@@ -1098,7 +1133,11 @@ function LayoutAutoSection({
   const [indivPadding, setIndivPadding] = useState(false);
   const paddingSidesDiffer = paddingTop !== paddingRight || paddingTop !== paddingBottom || paddingTop !== paddingLeft;
   const paddingHasMixedSide = paddingTopMixed || paddingRightMixed || paddingBottomMixed || paddingLeftMixed;
-  const expandedPadding = indivPadding || paddingSidesDiffer || paddingHasMixedSide;
+  // Animated padding is always presented as four physical edges. The combined
+  // Vertical/Horizontal fields edit two values and therefore cannot truthfully
+  // own one scalar track or diamond.
+  const paddingKeyframesPresent = !!(paddingTopKeyframe || paddingRightKeyframe || paddingBottomKeyframe || paddingLeftKeyframe);
+  const expandedPadding = indivPadding || paddingSidesDiffer || paddingHasMixedSide || paddingKeyframesPresent;
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
 
   // Freeform is the explicit "disable auto layout" action and remains distinct
@@ -1241,7 +1280,7 @@ function LayoutAutoSection({
       <div role="group" aria-label="Grid and gap" className="flex items-start gap-[8px] px-[16px] pt-[8px] pb-[4px]">
         <div className="shrink-0">
           <div className={subLabel}>Grid</div>
-          <GridDimensionsPicker grid={grid} onChange={patch => onLayoutChange?.({ grid: { ...grid, ...patch } })} />
+          <GridDimensionsPicker grid={grid} keyframes={gridTrackSizeKeyframes} onChange={patch => onLayoutChange?.({ grid: { ...grid, ...patch } })} onAddTrack={onAddGridTrack} />
         </div>
         <div className="w-[88px] min-w-0 flex flex-col gap-[4px]">
           <div>
@@ -1322,10 +1361,10 @@ function LayoutAutoSection({
           // aligned (not centered) since the field block is two rows tall here.
           <div className="flex items-start gap-[4px]">
             <div className="grid grid-cols-2 gap-[4px] flex-1 min-w-0">
-              <NumericInput ariaLabel="Top padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="top" />} value={controlled ? paddingTop : undefined} defaultValue={paddingTop} mixed={paddingTopMixed} disabled={paddingDisabled} onChange={top => onPaddingChange?.({ top, right: paddingRight, bottom: paddingBottom, left: paddingLeft }, ["top"])} min={0} />
-              <NumericInput ariaLabel="Right padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="right" />} value={controlled ? paddingRight : undefined} defaultValue={paddingRight} mixed={paddingRightMixed} disabled={paddingDisabled} onChange={right => onPaddingChange?.({ top: paddingTop, right, bottom: paddingBottom, left: paddingLeft }, ["right"])} min={0} />
-              <NumericInput ariaLabel="Bottom padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="bottom" />} value={controlled ? paddingBottom : undefined} defaultValue={paddingBottom} mixed={paddingBottomMixed} disabled={paddingDisabled} onChange={bottom => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom, left: paddingLeft }, ["bottom"])} min={0} />
-              <NumericInput ariaLabel="Left padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="left" />} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} mixed={paddingLeftMixed} disabled={paddingDisabled} onChange={left => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom: paddingBottom, left }, ["left"])} min={0} />
+              <NumericInput ariaLabel="Top padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="top" />} value={controlled ? paddingTop : undefined} defaultValue={paddingTop} mixed={paddingTopMixed} disabled={paddingDisabled} onChange={top => onPaddingChange?.({ top, right: paddingRight, bottom: paddingBottom, left: paddingLeft }, ["top"])} keyframe={paddingTopKeyframe} min={0} />
+              <NumericInput ariaLabel="Right padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="right" />} value={controlled ? paddingRight : undefined} defaultValue={paddingRight} mixed={paddingRightMixed} disabled={paddingDisabled} onChange={right => onPaddingChange?.({ top: paddingTop, right, bottom: paddingBottom, left: paddingLeft }, ["right"])} keyframe={paddingRightKeyframe} min={0} />
+              <NumericInput ariaLabel="Bottom padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="bottom" />} value={controlled ? paddingBottom : undefined} defaultValue={paddingBottom} mixed={paddingBottomMixed} disabled={paddingDisabled} onChange={bottom => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom, left: paddingLeft }, ["bottom"])} keyframe={paddingBottomKeyframe} min={0} />
+              <NumericInput ariaLabel="Left padding" iconLead={<AutoLayoutSpacingIcon kind="padding" edge="left" />} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} mixed={paddingLeftMixed} disabled={paddingDisabled} onChange={left => onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom: paddingBottom, left }, ["left"])} keyframe={paddingLeftKeyframe} min={0} />
             </div>
             <PanelActionBtn
               icon={<SquareSquare size={16} strokeWidth={1.5} />}
@@ -1384,16 +1423,22 @@ interface AppearanceSectionProps {
   supportedBlendModes?: readonly BlendMode[];
   opacityKeyframe?: InspectorKeyframeControl;
   cornerRadiusKeyframe?: InspectorKeyframeControl;
+  cornerRadiusKeyframes?: Partial<Record<"topLeft" | "topRight" | "bottomRight" | "bottomLeft", InspectorKeyframeControl>>;
 }
 
 function AppearanceSection({
   opacity = 100, blendMode = "Pass through", cornerRadius = 0, onOpacityChange, onBlendModeChange, onCornerRadiusChange, blendControlled = false, cornerControlled = false,
   supportedBlendModes,
   opacityMixed = false, cornerRadiusMixed = false,
-  opacityKeyframe, cornerRadiusKeyframe,
+  opacityKeyframe, cornerRadiusKeyframe, cornerRadiusKeyframes,
 }: AppearanceSectionProps) {
   const subLabel = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary mb-[3px]");
   const [indivCorners, setIndivCorners] = useState(typeof cornerRadius === "object");
+  const independentCornerTopology = typeof cornerRadius === "object";
+  // Selection/controlled-prop topology changes reset the presentation to the
+  // truthful shape. A same-topology user toggle is preserved because this
+  // effect depends only on the scalar/object boundary, not the numeric values.
+  useEffect(() => setIndivCorners(independentCornerTopology), [independentCornerTopology]);
   const [blend, setBlend] = useState<BlendMode>(blendMode);
   const [internalCornerRadius, setInternalCornerRadius] = useState(cornerRadius);
   const renderedBlend = blendControlled ? blendMode : blend;
@@ -1403,6 +1448,7 @@ function AppearanceSection({
   const setCornerValue = (value: NonNullable<AppearanceSectionProps["cornerRadius"]>) => { if (!cornerControlled) setInternalCornerRadius(value); onCornerRadiusChange?.(value); };
   const cornerKeys = ["topLeft", "topRight", "bottomLeft", "bottomRight"] as const;
   const cornerGlyphs = ["┌", "┐", "└", "┘"]; // TL TR BL BR
+  const cornerLabels = ["Top-left corner radius", "Top-right corner radius", "Bottom-left corner radius", "Bottom-right corner radius"];
   return (
     <PanelSection
       title="Appearance"
@@ -1441,7 +1487,7 @@ function AppearanceSection({
             <div key={ri} className="flex items-center gap-[8px]">
               {rowPair.map(i => (
                 <div key={i} className="flex-1 min-w-0">
-                  <NumericInput iconLead={<span className={clsx(FONT, "text-[11px]")}>{cornerGlyphs[i]}</span>} value={corners[cornerKeys[i]]} onChange={value => setCornerValue({ ...corners, [cornerKeys[i]]: value })} min={0} />
+                  <NumericInput ariaLabel={cornerLabels[i]} iconLead={<span className={clsx(FONT, "text-[11px]")}>{cornerGlyphs[i]}</span>} value={corners[cornerKeys[i]]} onChange={value => setCornerValue({ ...corners, [cornerKeys[i]]: value })} min={0} keyframe={cornerRadiusKeyframes?.[cornerKeys[i]]} />
                 </div>
               ))}
               <div className="shrink-0 min-w-[24px]" />
@@ -1509,7 +1555,7 @@ function weightsForFamily(
   return entry?.weights ?? hostWeights ?? DEFAULT_FONT_WEIGHTS;
 }
 
-function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes = DEFAULT_FONT_SIZES, fontWeights }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean; fonts?: ReadonlyArray<FontEntry>; fontSizes?: ReadonlyArray<number>; fontWeights?: ReadonlyArray<FontWeightOption> }) {
+function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes = DEFAULT_FONT_SIZES, fontWeights, keyframes }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean; fonts?: ReadonlyArray<FontEntry>; fontSizes?: ReadonlyArray<number>; fontWeights?: ReadonlyArray<FontWeightOption>; keyframes?: Pick<InspectorKeyframeControls, "fontSize" | "lineHeight" | "letterSpacing"> }) {
   const [internal, setInternal] = useState<ElementTypographySettings>({ fontFamily: "Inter", fontWeight: "Medium", fontSize: 11, lineHeight: 16, letterSpacing: 0, align: "left", verticalAlign: "top", decoration: "none", textCase: "none", weight: 500, styleName: "Title · 96/120" });
   const settings = value ?? internal;
   const update = (patch: Partial<ElementTypographySettings>) => { if (!value) setInternal(current => ({ ...current, ...patch })); onChange?.(patch); };
@@ -1601,6 +1647,7 @@ function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes 
                     ))}
                   </Menu>
                 )}
+                keyframe={keyframes?.fontSize}
               />
             </div>
             <div className="shrink-0 min-w-[24px]" />
@@ -1610,11 +1657,11 @@ function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes 
           <div className="flex items-end gap-[8px] pl-[16px] pr-[16px] pt-[6px]">
             <div className="flex-1 min-w-0">
               <div className={subLabel}>Line height</div>
-              <NumericInput iconLead={<LineHeightIcon data-icon-semantic="line-height" size={16} strokeWidth={1.5} />} value={settings.lineHeight} onChange={lineHeight => update({ lineHeight })} min={0} />
+              <NumericInput ariaLabel="Line height" iconLead={<LineHeightIcon data-icon-semantic="line-height" size={16} strokeWidth={1.5} />} value={settings.lineHeight} onChange={lineHeight => update({ lineHeight })} min={0} keyframe={keyframes?.lineHeight} />
             </div>
             <div className="flex-1 min-w-0">
               <div className={subLabel}>Letter spacing</div>
-              <NumericInput iconLead={<LetterSpacingIcon data-icon-semantic="letter-spacing" size={16} strokeWidth={1.5} />} value={settings.letterSpacing} onChange={letterSpacing => update({ letterSpacing })} suffix="%" />
+              <NumericInput ariaLabel="Letter spacing" iconLead={<LetterSpacingIcon data-icon-semantic="letter-spacing" size={16} strokeWidth={1.5} />} value={settings.letterSpacing} onChange={letterSpacing => update({ letterSpacing })} suffix="%" keyframe={keyframes?.letterSpacing} />
             </div>
             <div className="shrink-0 min-w-[24px]" />
           </div>
@@ -1632,6 +1679,7 @@ function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes 
             onClose={() => setTypeSettingsOpen(false)}
             trigger={typeSettingsTrigger}
             value={settings}
+            keyframes={{ lineHeight: keyframes?.lineHeight, letterSpacing: keyframes?.letterSpacing }}
             onChange={update}
           />
         }
@@ -2973,6 +3021,8 @@ export interface PropertyPanelProps {
   /** Reports the exact physical side(s) edited so controlled multi-selection hosts
    * can preserve every untouched side on each selected object. */
   onPaddingChange?: (value: ElementLayoutSettings["padding"], changedEdges: readonly ElementPaddingEdge[]) => void;
+  /** Requests creation of a grid track. The host creates its durable ID and applies the document command. */
+  onAddGridTrack?: (axis: "row" | "column") => void;
   /** Preferred atomic sizing seam. Numeric edits from Hug/Fill emit Fixed + value together. */
   onSizingChange?: (axis: ElementSizingAxis, change: ElementSizingChange) => void;
   onSizingConstraintChange?: (axis: ElementSizingAxis, constraint: ElementSizingConstraint, value: number | undefined) => void;
@@ -3526,7 +3576,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   blendMode = "Pass through",
   supportedBlendModes,
   cornerRadius = 0, onBlendModeChange, onCornerRadiusChange,
-  layout, onLayoutChange, onAutoLayoutEnable, onSizingChange, onSizingConstraintChange, onApplySizingVariable,
+  layout, onLayoutChange, onAutoLayoutEnable, onAddGridTrack, onSizingChange, onSizingConstraintChange, onApplySizingVariable,
   textSizingMode, availableTextSizingModes, textSizingModeDisabled = false, onTextSizingModeChange,
   positionPresentation = "separate", onPositionPresentationChange,
   onAutoLayoutSettingsRequest, typography, onTypographyChange, fonts, fontSizes, fontWeights,
@@ -3719,6 +3769,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
     onSizingChange: (onSizingChange || onLayoutChange) ? emitSizing : undefined,
     onConstraintChange: (onSizingConstraintChange || onLayoutChange) ? emitConstraint : undefined,
     onApplySizingVariable,
+    constraintKeyframes: keyframeControls,
   };
 
   const elementLabel: Record<ElementType, string> = {
@@ -4021,6 +4072,12 @@ export function PropertyPanel(props: PropertyPanelProps) {
             rowGapKeyframe={keyframeControls?.layoutCounterGap}
             gridColumnGapKeyframe={keyframeControls?.gridColumnGap}
             gridRowGapKeyframe={keyframeControls?.gridRowGap}
+            gridTrackSizeKeyframes={keyframeControls?.gridTrackSizes}
+            onAddGridTrack={onAddGridTrack}
+            paddingTopKeyframe={keyframeControls?.paddingTop}
+            paddingRightKeyframe={keyframeControls?.paddingRight}
+            paddingBottomKeyframe={keyframeControls?.paddingBottom}
+            paddingLeftKeyframe={keyframeControls?.paddingLeft}
             onLayoutChange={onLayoutChange} onPaddingChange={props.onPaddingChange ?? (onLayoutChange ? padding => onLayoutChange({ padding }) : undefined)}
             onAlignChange={onLayoutChange ? align => onLayoutChange({ align }) : undefined} onClipContentChange={onLayoutChange ? clipsContent => onLayoutChange({ clipsContent }) : undefined}
             onAutoLayoutSettingsRequest={onAutoLayoutSettingsRequest} />}
@@ -4039,10 +4096,11 @@ export function PropertyPanel(props: PropertyPanelProps) {
           )}
 
           {/* Appearance — always present */}
-          <AppearanceSection opacity={opacity} blendMode={blendMode} supportedBlendModes={supportedBlendModes} cornerRadius={cornerRadius} opacityMixed={opacityMixed} cornerRadiusMixed={cornerRadiusMixed} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} cornerRadiusKeyframe={keyframeControls?.cornerRadius} />
+          <AppearanceSection opacity={opacity} blendMode={blendMode} supportedBlendModes={supportedBlendModes} cornerRadius={cornerRadius} opacityMixed={opacityMixed} cornerRadiusMixed={cornerRadiusMixed} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} cornerRadiusKeyframe={keyframeControls?.cornerRadius}
+            cornerRadiusKeyframes={{ topLeft: keyframeControls?.cornerRadiusTopLeft, topRight: keyframeControls?.cornerRadiusTopRight, bottomRight: keyframeControls?.cornerRadiusBottomRight, bottomLeft: keyframeControls?.cornerRadiusBottomLeft }} />
 
           {/* Typography — text only */}
-          {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} fonts={fonts} fontSizes={fontSizes} fontWeights={fontWeights} />}
+          {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} fonts={fonts} fontSizes={fontSizes} fontWeights={fontWeights} keyframes={keyframeControls} />}
 
           {/* Stackable sections */}
           <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill}

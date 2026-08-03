@@ -1,5 +1,5 @@
 import { act, create, type ReactTestInstance } from "react-test-renderer";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AutoLayoutSettingsDialog } from "./AutoLayoutSettingsDialog";
 import { Button } from "./Button";
 import { NumericComboInput, NumericInput, NumericPairInput } from "./Input";
@@ -96,6 +96,28 @@ describe("DimensionSizingFields interactions", () => {
       : menu.props.children;
     act(() => remove.props.onClick());
     expect(actions).toEqual([{ axis: "width", constraint: "min", value: undefined }]);
+    act(() => renderer!.unmount());
+  });
+
+  it("shows per-axis diamonds only for bounds that actually render", () => {
+    const keyframes = {
+      minWidth: { active: true, onToggle: vi.fn() },
+      maxWidth: { active: false, onToggle: vi.fn() },
+      minHeight: { active: false, onToggle: vi.fn() },
+      maxHeight: { active: true, onToggle: vi.fn() },
+    };
+    let renderer: ReturnType<typeof create>;
+    const onConstraintChange = () => undefined;
+    act(() => { renderer = create(<DimensionSizingFields width={320} height={180} minWidth={120} maxHeight={360} constraintKeyframes={keyframes} onConstraintChange={onConstraintChange} />); });
+    const rendered = renderer!.root.findAllByType(NumericComboInput).filter(combo => combo.props.dataMode === "constraint");
+    expect(rendered.map(combo => [combo.props.ariaLabel, combo.props.keyframe])).toEqual([
+      ["Min width", keyframes.minWidth],
+      ["Max height", keyframes.maxHeight],
+    ]);
+    expect(renderer!.root.findAllByType(SizingComboField).every(field => field.props.keyframe === undefined)).toBe(true);
+
+    act(() => { renderer!.update(<DimensionSizingFields width={320} height={180} maxHeight={360} constraintKeyframes={keyframes} onConstraintChange={onConstraintChange} />); });
+    expect(renderer!.root.findAllByType(NumericComboInput).filter(combo => combo.props.dataMode === "constraint").map(combo => combo.props.ariaLabel)).toEqual(["Max height"]);
     act(() => renderer!.unmount());
   });
 });

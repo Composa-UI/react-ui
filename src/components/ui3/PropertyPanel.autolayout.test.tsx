@@ -21,7 +21,7 @@ const autoLayout = (overrides: Partial<ElementLayoutSettings> = {}): ElementLayo
 });
 
 const gridSettings: ElementGridSettings = {
-  rows: [{ mode: "fixed", size: 100 }], columns: [{ mode: "fixed", size: 100 }],
+  rows: [{ id: "row-1", mode: "fixed", size: 100 }], columns: [{ id: "column-1", mode: "fixed", size: 100 }],
   rowGap: 10, columnGap: 10,
   justifyItems: "start", alignItems: "start", justifyContent: "start", alignContent: "start",
 };
@@ -190,6 +190,40 @@ describe("Auto-layout gap keyframe affordances (#625)", () => {
     const scope = group(renderer!.root, "Grid and gap");
     expect(scope.findAllByType(NumericInput).find(node => node.props.ariaLabel === "Column gap")!.props.keyframe).toBe(column);
     expect(scope.findAllByType(NumericInput).find(node => node.props.ariaLabel === "Row gap")!.props.keyframe).toBe(row);
+    act(() => renderer!.unmount());
+  });
+});
+
+describe("Auto-layout physical padding keyframe affordances (#760)", () => {
+  const control = () => ({ active: false, onToggle: vi.fn() });
+
+  it("expands equal padding into four independently targeted diamond fields", () => {
+    const top = control(), right = control(), bottom = control(), left = control();
+    let renderer: ReactTestRenderer;
+    act(() => { renderer = create(<PropertyPanel elementType="frame-auto"
+      layout={autoLayout({ padding: { top: 16, right: 16, bottom: 16, left: 16 } })}
+      keyframeControls={{ paddingTop: top, paddingRight: right, paddingBottom: bottom, paddingLeft: left }} />); });
+
+    const fields = renderer!.root.findAllByType(NumericInput);
+    const expected = [["Top padding", top], ["Right padding", right], ["Bottom padding", bottom], ["Left padding", left]] as const;
+    for (const [label, keyframe] of expected) {
+      const field = fields.find(node => node.props.ariaLabel === label)!;
+      expect(field.props.keyframe).toBe(keyframe);
+      act(() => field.props.keyframe.onToggle());
+      expect(keyframe.onToggle).toHaveBeenCalledOnce();
+    }
+    expect(fields.some(node => node.props.ariaLabel === "Vertical padding")).toBe(false);
+    expect(fields.some(node => node.props.ariaLabel === "Horizontal padding")).toBe(false);
+    act(() => renderer!.unmount());
+  });
+
+  it("keeps aggregate padding fields diamond-free without host edge controls", () => {
+    let renderer: ReactTestRenderer;
+    act(() => { renderer = create(<PropertyPanel elementType="frame-auto"
+      layout={autoLayout({ padding: { top: 16, right: 16, bottom: 16, left: 16 } })} />); });
+    const fields = renderer!.root.findAllByType(NumericInput);
+    expect(fields.find(node => node.props.ariaLabel === "Vertical padding")!.props.keyframe).toBeUndefined();
+    expect(fields.find(node => node.props.ariaLabel === "Horizontal padding")!.props.keyframe).toBeUndefined();
     act(() => renderer!.unmount());
   });
 });

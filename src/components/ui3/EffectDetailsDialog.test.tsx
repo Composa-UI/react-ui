@@ -54,14 +54,14 @@ const shadowHtml = () => renderToStaticMarkup(
 );
 
 describe("EffectDetailsDialog", () => {
-  it("exposes only host-backed Drop shadow diamonds and routes every toggle", () => {
+  it.each(["Drop shadow", "Inner shadow"] as const)("exposes every host-backed %s diamond and routes each stable control", type => {
     const toggles = {
       position: vi.fn(), blur: vi.fn(), spread: vi.fn(), color: vi.fn(), opacity: vi.fn(),
     };
     let renderer: ReturnType<typeof create>;
     act(() => {
       renderer = create(<EffectDetailsDialog open value={{
-        type: "Drop shadow", visible: true, x: 2, y: 4, blur: 8, spread: 0, color: "#000000", opacity: 25,
+        type, visible: true, x: 2, y: 4, blur: 8, spread: 0, color: "#000000", opacity: 25,
         keyframes: Object.fromEntries(Object.entries(toggles).map(([key, onToggle]) => [key, { active: key === "blur", onToggle }])),
       }} trigger={<button type="button">Open effect</button>} onClose={() => undefined} />);
     });
@@ -73,16 +73,33 @@ describe("EffectDetailsDialog", () => {
     expect(Object.values(toggles).every(toggle => toggle.mock.calls.length === 1)).toBe(true);
     expect(renderer!.root.findByProps({ "aria-label": "Blur keyframe" }).props["aria-pressed"]).toBe(true);
     act(() => renderer!.unmount());
-
-    expect(shadowHtml()).not.toContain(" keyframe");
   });
 
-  it.each(["Inner shadow", "Layer blur", "Background blur"] as const)("hard-gates adversarial %s diamonds", type => {
-    const keyframe = { active: true, onToggle: vi.fn() };
-    const html = renderToStaticMarkup(<EffectDetailsDialog open value={{
-      type, visible: true, x: 2, y: 4, blur: 8, spread: 0, color: "#112233", opacity: 25,
-      keyframes: { position: keyframe, blur: keyframe, spread: keyframe, color: keyframe, opacity: keyframe },
-    }} trigger={<button type="button">Open effect</button>} onClose={() => undefined} />);
+  it.each(["Layer blur", "Background blur"] as const)("exposes only the real Blur field and its host-backed diamond for %s", type => {
+    const blur = { active: true, onToggle: vi.fn() };
+    const unsupported = { active: true, onToggle: vi.fn() };
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<EffectDetailsDialog open value={{
+        type, visible: true, x: 2, y: 4, blur: 8, spread: 0, color: "#112233", opacity: 25,
+        keyframes: { position: unsupported, blur, spread: unsupported, color: unsupported, opacity: unsupported },
+      }} trigger={<button type="button">Open effect</button>} onClose={() => undefined} />);
+    });
+
+    const button = renderer!.root.findByProps({ "aria-label": "Blur keyframe" });
+    expect(button.props["aria-pressed"]).toBe(true);
+    act(() => button.props.onClick({ stopPropagation: () => undefined }));
+    expect(blur.onToggle).toHaveBeenCalledOnce();
+    expect(unsupported.onToggle).not.toHaveBeenCalled();
+    for (const label of ["Position X/Position Y keyframe", "Spread keyframe", "Effect color keyframe", "Opacity keyframe"]) {
+      expect(renderer!.root.findAllByProps({ "aria-label": label })).toHaveLength(0);
+    }
+    act(() => renderer!.unmount());
+  });
+
+  it.each(["Drop shadow", "Inner shadow", "Layer blur", "Background blur"] as const)("keeps %s diamond-free when the host omits controls", type => {
+    const html = renderToStaticMarkup(<EffectDetailsDialog open value={{ type, visible: true }}
+      trigger={<button type="button">Open effect</button>} onClose={() => undefined} />);
     expect(html).not.toContain(" keyframe");
   });
 

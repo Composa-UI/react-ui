@@ -9,9 +9,10 @@ import {
   InspectorDialog,
 } from "./InspectorDialog";
 import { NumericComboInput } from "./Input";
+import { GRID_TRACK_LIMIT } from "./GridTrackContract";
 import { Menu, MenuRow } from "./Menu";
 import { PanelActionBtn } from "./Panel";
-import type { ElementGridSettings, ElementGridTrack, GridContentAlign } from "./PropertyPanel";
+import type { ElementGridSettings, ElementGridTrack, GridContentAlign, InspectorKeyframeControl } from "./PropertyPanel";
 
 // Grid settings — the externalised half of the grid inspector (Composa#661 RP-16).
 // The owner's verdict on the first pass was that the inspector "did too much by
@@ -40,20 +41,20 @@ const codeToContent = (code: AlignmentValue) => ({
   alignContent: (code[0] === "m" ? "center" : code[0] === "b" ? "end" : "start") as GridContentAlign,
 });
 
-function GridTrackEditor({ axis, tracks, onChange }: { axis: "row" | "column"; tracks: ElementGridTrack[]; onChange: (tracks: ElementGridTrack[]) => void }) {
+function GridTrackEditor({ axis, tracks, keyframes, onChange }: { axis: "row" | "column"; tracks: ElementGridTrack[]; keyframes?: Record<string, InspectorKeyframeControl>; onChange: (tracks: ElementGridTrack[]) => void }) {
   const label = axis === "column" ? "Column" : "Row";
   const setTrack = (index: number, next: ElementGridTrack) => onChange(tracks.map((track, i) => (i === index ? next : track)));
   const removeTrack = (index: number) => { if (tracks.length <= 1) return; onChange(tracks.filter((_, i) => i !== index)); };
   const trackMenu = (index: number, track: ElementGridTrack) => (close: () => void) => (
     <Menu>
-      <MenuRow type="checkmark" label="Fixed" checked={track.mode === "fixed"} onClick={() => { setTrack(index, { mode: "fixed", size: track.size || 100 }); close(); }} />
-      <MenuRow type="checkmark" label="Hug" checked={track.mode === "hug"} onClick={() => { setTrack(index, { mode: "hug", size: track.size }); close(); }} />
+      <MenuRow type="checkmark" label="Fixed" checked={track.mode === "fixed"} onClick={() => { setTrack(index, { ...track, mode: "fixed", size: track.size || 100 }); close(); }} />
+      <MenuRow type="checkmark" label="Hug" checked={track.mode === "hug"} onClick={() => { setTrack(index, { ...track, mode: "hug", size: track.size }); close(); }} />
     </Menu>
   );
   return (
     <div className="flex flex-col gap-[4px]" role="group" aria-label={`${label} tracks`}>
       {tracks.map((track, index) => (
-        <div key={index} className="flex items-center gap-[4px]">
+        <div key={track.id} className="flex items-center gap-[4px]">
           <div className="flex-1 min-w-0">
             <NumericComboInput
               dataMode={track.mode}
@@ -65,9 +66,10 @@ function GridTrackEditor({ axis, tracks, onChange }: { axis: "row" | "column"; t
               idleLabel={track.mode === "hug" ? "Hug" : undefined}
               value={track.mode === "fixed" ? track.size : undefined}
               defaultValue={track.size || 100}
-              onChange={size => setTrack(index, { mode: "fixed", size })}
+              onChange={size => setTrack(index, { ...track, mode: "fixed", size })}
               min={0}
               suffix="px"
+              keyframe={track.mode === "fixed" ? keyframes?.[track.id] : undefined}
               menu={trackMenu(index, track)}
               className="w-full"
             />
@@ -86,10 +88,14 @@ export interface GridSettingsDialogProps {
   /** Patches merge into the host's ElementGridSettings — the same contract the
    *  inline section emits, so the app's onLayoutChange handler is unchanged. */
   onChange?: (patch: Partial<ElementGridSettings>) => void;
+  /** Stable track-id keyed motion controls. Auto/Hug tracks never expose a diamond. */
+  keyframes?: Record<string, InspectorKeyframeControl>;
+  /** Semantic creation intent. The host owns durable track identity and document mutation. */
+  onAddTrack?: (axis: "row" | "column") => void;
   onClose: () => void;
 }
 
-export function GridSettingsDialog({ open, grid, trigger, onChange, onClose }: GridSettingsDialogProps) {
+export function GridSettingsDialog({ open, grid, trigger, onChange, keyframes, onAddTrack, onClose }: GridSettingsDialogProps) {
   return (
     <InspectorDialog
       open={open}
@@ -119,20 +125,20 @@ export function GridSettingsDialog({ open, grid, trigger, onChange, onClose }: G
         <div className="flex items-start gap-[8px]">
           <div className="flex-1 min-w-0">
             <div className={clsx(SUB_LABEL)}>Columns</div>
-            <GridTrackEditor axis="column" tracks={grid.columns} onChange={columns => onChange?.({ columns })} />
+            <GridTrackEditor axis="column" tracks={grid.columns} keyframes={keyframes} onChange={columns => onChange?.({ columns })} />
           </div>
           <div className="shrink-0 pt-[17px]">
-            <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add column" onClick={() => onChange?.({ columns: [...grid.columns, { mode: "hug", size: 100 }] })} />
+            <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add column" disabled={!onAddTrack || grid.columns.length >= GRID_TRACK_LIMIT} onClick={() => grid.columns.length < GRID_TRACK_LIMIT && onAddTrack?.("column")} />
           </div>
         </div>
 
         <div className="flex items-start gap-[8px]">
           <div className="flex-1 min-w-0">
             <div className={clsx(SUB_LABEL)}>Rows</div>
-            <GridTrackEditor axis="row" tracks={grid.rows} onChange={rows => onChange?.({ rows })} />
+            <GridTrackEditor axis="row" tracks={grid.rows} keyframes={keyframes} onChange={rows => onChange?.({ rows })} />
           </div>
           <div className="shrink-0 pt-[17px]">
-            <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add row" onClick={() => onChange?.({ rows: [...grid.rows, { mode: "hug", size: 100 }] })} />
+            <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add row" disabled={!onAddTrack || grid.rows.length >= GRID_TRACK_LIMIT} onClick={() => grid.rows.length < GRID_TRACK_LIMIT && onAddTrack?.("row")} />
           </div>
         </div>
 

@@ -1,6 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { act, create } from "react-test-renderer";
 import { describe, expect, it } from "vitest";
 import { getSizingMenuLabels, PropertyPanel, reconcileAutoLayoutGap } from "./PropertyPanel";
+import { NumericInput } from "./Input";
 import { PANEL_W } from "./Panel";
 import { TooltipProvider } from "./Tooltip";
 
@@ -93,12 +95,47 @@ describe("Motion inspector rows", () => {
     expect(html).toMatch(/aria-label="Corner radius keyframe"[^>]*aria-pressed="true"/);
   });
 
-  it("omits the scalar Corner radius keyframe control for independent corners", () => {
+  it("projects four physical keyframe controls for independent corners without a scalar diamond", () => {
+    const control = () => ({ active: false, onToggle: () => undefined });
+    const topLeft = control(), topRight = control(), bottomRight = control(), bottomLeft = control();
     const html = renderToStaticMarkup(<PropertyPanel elementType="shape"
       cornerRadius={{ topLeft: 4, topRight: 8, bottomLeft: 12, bottomRight: 16 }}
-      keyframeControls={{ cornerRadius: { active: false, onToggle: () => undefined } }} />);
+      keyframeControls={{ cornerRadius: control(), cornerRadiusTopLeft: topLeft, cornerRadiusTopRight: topRight, cornerRadiusBottomRight: bottomRight, cornerRadiusBottomLeft: bottomLeft }} />);
 
     expect(html).not.toContain('aria-label="Corner radius keyframe"');
+    for (const label of ["Top-left", "Top-right", "Bottom-right", "Bottom-left"]) {
+      expect(html).toContain(`aria-label="${label} corner radius keyframe"`);
+    }
+  });
+
+  it("emits the full object on the first expanded-field edit from uniform topology", () => {
+    const changes: unknown[] = [];
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<TooltipProvider><PropertyPanel elementType="shape" cornerRadius={12} onCornerRadiusChange={value => changes.push(value)} /></TooltipProvider>); });
+    act(() => { renderer!.root.findByProps({ "aria-label": "Independent corners" }).props.onClick(); });
+    const topLeft = renderer!.root.findAllByType(NumericInput).find(node => node.props.ariaLabel === "Top-left corner radius")!;
+    act(() => { topLeft.props.onChange(4); });
+    expect(changes).toEqual([{ topLeft: 4, topRight: 12, bottomLeft: 12, bottomRight: 12 }]);
+  });
+
+  it("syncs corner topology across selections while preserving a same-topology user toggle", () => {
+    const controls = {
+      cornerRadiusTopLeft: { active: false, onToggle: () => undefined },
+      cornerRadiusTopRight: { active: false, onToggle: () => undefined },
+      cornerRadiusBottomRight: { active: false, onToggle: () => undefined },
+      cornerRadiusBottomLeft: { active: false, onToggle: () => undefined },
+    };
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<TooltipProvider><PropertyPanel elementType="shape" cornerRadius={12} keyframeControls={controls} /></TooltipProvider>); });
+    expect(renderer!.root.findAllByType(NumericInput).some(node => node.props.ariaLabel === "Top-left corner radius")).toBe(false);
+
+    act(() => { renderer!.update(<TooltipProvider><PropertyPanel elementType="shape" cornerRadius={{ topLeft: 4, topRight: 8, bottomLeft: 12, bottomRight: 16 }} keyframeControls={controls} /></TooltipProvider>); });
+    expect(renderer!.root.findAllByType(NumericInput).find(node => node.props.ariaLabel === "Top-left corner radius")?.props.keyframe).toBe(controls.cornerRadiusTopLeft);
+
+    act(() => { renderer!.root.findByProps({ "aria-label": "Independent corners" }).props.onClick(); });
+    expect(renderer!.root.findAllByType(NumericInput).some(node => node.props.ariaLabel === "Top-left corner radius")).toBe(false);
+    act(() => { renderer!.update(<TooltipProvider><PropertyPanel elementType="shape" cornerRadius={{ topLeft: 5, topRight: 9, bottomLeft: 13, bottomRight: 17 }} keyframeControls={controls} /></TooltipProvider>); });
+    expect(renderer!.root.findAllByType(NumericInput).some(node => node.props.ariaLabel === "Top-left corner radius")).toBe(false);
   });
 
   it("accepts a host-controlled Animate tab so timeline selection can reveal its matching card", () => {
@@ -384,6 +421,32 @@ describe("Auto-layout gap control", () => {
     expect(html).not.toContain('aria-label="Min height"');
   });
 
+  it.each([
+    ["frame-auto", { ...layout, minWidth: 120 }],
+    ["frame-grid", {
+      ...layout,
+      mode: "grid" as const,
+      minWidth: 120,
+      grid: {
+        rows: [{ id: "row-1", mode: "hug" as const, size: 100 }],
+        columns: [{ id: "column-1", mode: "hug" as const, size: 100 }],
+        rowGap: 10,
+        columnGap: 10,
+        justifyItems: "start" as const,
+        alignItems: "start" as const,
+        justifyContent: "start" as const,
+        alignContent: "start" as const,
+      },
+    }],
+  ])("forwards min/max keyframes through the shared %s sizing contract", (elementType, keyedLayout) => {
+    const html = renderToStaticMarkup(<PropertyPanel
+      elementType={elementType as "frame-auto" | "frame-grid"}
+      layout={keyedLayout}
+      keyframeControls={{ minWidth: { active: true, onToggle: () => undefined } }}
+    />);
+    expect(html).toMatch(/aria-label="Min width keyframe"[^>]*aria-pressed="true"/);
+  });
+
   it("projects valid mode intersections, constraints and variable gating into canonical menu labels", () => {
     expect(getSizingMenuLabels({ axis: "width", value: 320, availableModes: ["fixed", "fill"], minValue: 120, variablesEnabled: false })).toEqual([
       "Fixed width (320)", "Fill container", "Add max width",
@@ -423,6 +486,15 @@ describe("Auto-layout gap control", () => {
 });
 
 describe("Plain-frame flow contract", () => {
+  it("forwards min/max keyframes through the shared sizing contract", () => {
+    const html = renderToStaticMarkup(<PropertyPanel
+      elementType="frame"
+      layout={{ mode: "none", gap: 0, padding: { top: 0, right: 0, bottom: 0, left: 0 }, align: "tl", widthMode: "fixed", heightMode: "fixed", clipsContent: false, maxHeight: 360 }}
+      keyframeControls={{ maxHeight: { active: true, onToggle: () => undefined } }}
+    />);
+    expect(html).toMatch(/aria-label="Max height keyframe"[^>]*aria-pressed="true"/);
+  });
+
   it("orders Freeform, Vertical, Horizontal, Grid and omits Wrap as a flow segment", () => {
     const html = renderToStaticMarkup(<PropertyPanel elementType="frame" />);
     const freeform = html.indexOf('aria-label="Freeform"');

@@ -85,10 +85,11 @@ function PositionRow({ x, y, onXChange, onYChange, keyframe }: {
 
 export function EffectDetailsDialog({ open, value, trigger, capabilities, onChange, onClose }: EffectDetailsDialogProps) {
   const shadow = value.type === "Drop shadow" || value.type === "Inner shadow";
-  // Motion is truthful only for Drop shadow in the current host/renderer slice.
-  // Ignore adversarial bindings on every other type so unsupported diamonds can
-  // never leak merely because a caller supplied the optional object.
-  const keyframes = value.type === "Drop shadow" ? value.keyframes : undefined;
+  // The rendered field anatomy is the capability boundary: both shadow types
+  // expose every shadow binding, while blur-only effects can consume only their
+  // real Blur field. Supplying shadow bindings to a blur-only effect therefore
+  // cannot create decorative controls for fields that do not exist.
+  const keyframes = value.keyframes;
   const [colorOpen, setColorOpen] = useState(false);
   return <InspectorDialog open={open} onClose={onClose} trigger={trigger} ariaLabel="Effect details"
     width={COMPACT_INSPECTOR_DIALOG_WIDTH} sideOffset={EFFECTS_INSPECTOR_DIALOG_SIDE_OFFSET}
