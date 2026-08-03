@@ -91,6 +91,12 @@ export interface TypeSettingsDialogProps {
   readOnly?: boolean;
   /** Whether the document model supports justified alignment. Default true. */
   justifySupported?: boolean;
+  /** Only real numeric text metrics receive motion bindings. Font weight is
+   * deliberately absent until stepped/variable-font interpolation is defined. */
+  keyframes?: {
+    lineHeight?: { active: boolean; onToggle: () => void };
+    letterSpacing?: { active: boolean; onToggle: () => void };
+  };
   onChange?: (patch: TypeSettingsPatch) => void;
 }
 
@@ -197,6 +203,7 @@ export function TypeSettingsDialog({
   value,
   readOnly = false,
   justifySupported = true,
+  keyframes,
   onChange,
 }: TypeSettingsDialogProps) {
   const editDisabled = readOnly || !onChange;
@@ -353,6 +360,7 @@ export function TypeSettingsDialog({
               min={0}
               mixed={value.lineHeightMixed}
               disabled={editDisabled}
+              keyframe={keyframes?.lineHeight}
               onChange={lineHeight => onChange?.({ lineHeight })}
             />
           </div>
@@ -367,6 +375,7 @@ export function TypeSettingsDialog({
               suffix="%"
               mixed={value.letterSpacingMixed}
               disabled={editDisabled}
+              keyframe={keyframes?.letterSpacing}
               onChange={letterSpacing => onChange?.({ letterSpacing })}
             />
           </div>

@@ -35,6 +35,25 @@ function findButton(renderer: ReactTestRenderer, ariaLabel: string) {
 }
 
 describe("TypeSettingsDialog", () => {
+  it("shares the host-owned line-height and letter-spacing keyframes, but never weight", () => {
+    const html = renderToStaticMarkup(
+      <TypeSettingsDialog
+        open
+        onClose={() => undefined}
+        trigger={<button>Type</button>}
+        value={BASE}
+        keyframes={{
+          lineHeight: { active: true, onToggle: () => undefined },
+          letterSpacing: { active: false, onToggle: () => undefined },
+        }}
+        onChange={() => undefined}
+      />,
+    );
+    expect(html).toContain('aria-label="Type settings line height keyframe"');
+    expect(html).toContain('aria-label="Type settings letter spacing keyframe"');
+    expect(html).not.toContain("Weight keyframe");
+  });
+
   it("uses the shared anchored inspector shell with the canonical width + elevation-400", () => {
     const html = renderToStaticMarkup(
       <TypeSettingsDialog

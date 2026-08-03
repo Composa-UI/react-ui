@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, create, type ReactTestInstance } from "react-test-renderer";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_FONT_WEIGHTS, type FontEntry } from "./FontPickerDialog";
-import { ComboInput } from "./Input";
+import { ComboInput, NumericInput } from "./Input";
 import { PopoverMenu } from "./Menu";
 import { DEFAULT_FONT_SIZES, PropertyPanel, type ElementTypographySettings } from "./PropertyPanel";
 
@@ -80,6 +80,24 @@ describe("Typography — font size presets (Composa#661: nothing dropped down)",
     act(() => { renderer = create(<PropertyPanel elementType="text" typography={typography()} fontSizes={[10, 20, 30]} />); });
 
     expect(menuRows(fontSizeField(renderer!.root).props.menu).map(row => row.props.label)).toEqual(["10", "20", "30"]);
+    act(() => renderer!.unmount());
+  });
+});
+
+describe("Typography — truthful numeric keyframes (#760)", () => {
+  it("binds font size, line height, and letter spacing without exposing font weight", () => {
+    const controls = {
+      fontSize: { active: true, onToggle: vi.fn() },
+      lineHeight: { active: false, onToggle: vi.fn() },
+      letterSpacing: { active: false, onToggle: vi.fn() },
+    };
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<PropertyPanel elementType="text" typography={typography()} keyframeControls={controls} />); });
+
+    expect(fontSizeField(renderer!.root).props.keyframe).toBe(controls.fontSize);
+    expect(renderer!.root.findAllByType(NumericInput).find(node => node.props.ariaLabel === "Line height")?.props.keyframe).toBe(controls.lineHeight);
+    expect(renderer!.root.findAllByType(NumericInput).find(node => node.props.ariaLabel === "Letter spacing")?.props.keyframe).toBe(controls.letterSpacing);
+    expect(renderToStaticMarkup(<PropertyPanel elementType="text" typography={typography()} keyframeControls={controls} />)).not.toContain("Font weight keyframe");
     act(() => renderer!.unmount());
   });
 });

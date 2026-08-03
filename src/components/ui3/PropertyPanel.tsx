@@ -714,6 +714,11 @@ export interface InspectorKeyframeControls {
   paddingRight?: InspectorKeyframeControl;
   paddingBottom?: InspectorKeyframeControl;
   paddingLeft?: InspectorKeyframeControl;
+  /** Continuous numeric text metrics. Font weight is intentionally excluded
+   * until its stepped/variable-font interpolation policy is specified. */
+  fontSize?: InspectorKeyframeControl;
+  lineHeight?: InspectorKeyframeControl;
+  letterSpacing?: InspectorKeyframeControl;
 }
 
 // ─── Section: Position ────────────────────────────────────────────────────────
@@ -1524,7 +1529,7 @@ function weightsForFamily(
   return entry?.weights ?? hostWeights ?? DEFAULT_FONT_WEIGHTS;
 }
 
-function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes = DEFAULT_FONT_SIZES, fontWeights }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean; fonts?: ReadonlyArray<FontEntry>; fontSizes?: ReadonlyArray<number>; fontWeights?: ReadonlyArray<FontWeightOption> }) {
+function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes = DEFAULT_FONT_SIZES, fontWeights, keyframes }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean; fonts?: ReadonlyArray<FontEntry>; fontSizes?: ReadonlyArray<number>; fontWeights?: ReadonlyArray<FontWeightOption>; keyframes?: Pick<InspectorKeyframeControls, "fontSize" | "lineHeight" | "letterSpacing"> }) {
   const [internal, setInternal] = useState<ElementTypographySettings>({ fontFamily: "Inter", fontWeight: "Medium", fontSize: 11, lineHeight: 16, letterSpacing: 0, align: "left", verticalAlign: "top", decoration: "none", textCase: "none", weight: 500, styleName: "Title · 96/120" });
   const settings = value ?? internal;
   const update = (patch: Partial<ElementTypographySettings>) => { if (!value) setInternal(current => ({ ...current, ...patch })); onChange?.(patch); };
@@ -1616,6 +1621,7 @@ function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes 
                     ))}
                   </Menu>
                 )}
+                keyframe={keyframes?.fontSize}
               />
             </div>
             <div className="shrink-0 min-w-[24px]" />
@@ -1625,11 +1631,11 @@ function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes 
           <div className="flex items-end gap-[8px] pl-[16px] pr-[16px] pt-[6px]">
             <div className="flex-1 min-w-0">
               <div className={subLabel}>Line height</div>
-              <NumericInput iconLead={<LineHeightIcon data-icon-semantic="line-height" size={16} strokeWidth={1.5} />} value={settings.lineHeight} onChange={lineHeight => update({ lineHeight })} min={0} />
+              <NumericInput ariaLabel="Line height" iconLead={<LineHeightIcon data-icon-semantic="line-height" size={16} strokeWidth={1.5} />} value={settings.lineHeight} onChange={lineHeight => update({ lineHeight })} min={0} keyframe={keyframes?.lineHeight} />
             </div>
             <div className="flex-1 min-w-0">
               <div className={subLabel}>Letter spacing</div>
-              <NumericInput iconLead={<LetterSpacingIcon data-icon-semantic="letter-spacing" size={16} strokeWidth={1.5} />} value={settings.letterSpacing} onChange={letterSpacing => update({ letterSpacing })} suffix="%" />
+              <NumericInput ariaLabel="Letter spacing" iconLead={<LetterSpacingIcon data-icon-semantic="letter-spacing" size={16} strokeWidth={1.5} />} value={settings.letterSpacing} onChange={letterSpacing => update({ letterSpacing })} suffix="%" keyframe={keyframes?.letterSpacing} />
             </div>
             <div className="shrink-0 min-w-[24px]" />
           </div>
@@ -1647,6 +1653,7 @@ function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes 
             onClose={() => setTypeSettingsOpen(false)}
             trigger={typeSettingsTrigger}
             value={settings}
+            keyframes={{ lineHeight: keyframes?.lineHeight, letterSpacing: keyframes?.letterSpacing }}
             onChange={update}
           />
         }
@@ -4061,7 +4068,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <AppearanceSection opacity={opacity} blendMode={blendMode} supportedBlendModes={supportedBlendModes} cornerRadius={cornerRadius} opacityMixed={opacityMixed} cornerRadiusMixed={cornerRadiusMixed} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} cornerRadiusKeyframe={keyframeControls?.cornerRadius} />
 
           {/* Typography — text only */}
-          {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} fonts={fonts} fontSizes={fontSizes} fontWeights={fontWeights} />}
+          {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} fonts={fonts} fontSizes={fontSizes} fontWeights={fontWeights} keyframes={keyframeControls} />}
 
           {/* Stackable sections */}
           <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill}
