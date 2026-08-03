@@ -23,6 +23,16 @@ describe("Timeline easing inspector composition", () => {
     expect(html).not.toContain(">Appearance</span>");
   });
 
+  it("renders a transition curve as the only slide Design inspector section", () => {
+    const html = renderToStaticMarkup(<PropertyPanel mode="slide" easingContext="segment"
+      easing={{ preset: "custom", controlPoints: [0.34, 0, 1, 1], editable: true }}
+      easingApplyToLabel="This transition" onEasingChange={() => undefined} />);
+    expect(html).toContain("This transition");
+    expect(html).toContain(">Easing</span>");
+    expect(html).not.toContain("Composition name");
+    expect(html).not.toContain(">Background</span>");
+  });
+
   it("appends keyframe easing to the normal element inspector", () => {
     const html = renderToStaticMarkup(<PropertyPanel elementType="text" easingContext="keyframe"
       easing={{ preset: "ease-in", editable: true }} onEasingChange={() => undefined} />);
