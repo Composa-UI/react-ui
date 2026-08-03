@@ -47,9 +47,9 @@ describe("Motion inspector rows", () => {
     const control = { active: true, onToggle: () => undefined };
     const html = renderToStaticMarkup(<PropertyPanel elementType="shape"
       fills={[{ id: "fill", fillType: "solid", color: "#ff0000", opacity: 80, visible: true, keyframes: { color: control, opacity: control } }]}
-      strokes={[{ id: "stroke", fillType: "solid", color: "#0000ff", opacity: 60, visible: true, weight: 2, align: "inside", keyframes: { color: control, opacity: control } }]} />);
+      strokes={[{ id: "stroke", fillType: "solid", color: "#0000ff", opacity: 60, visible: true, weight: 2, align: "inside", weightMode: "custom", edgeWeights: { top: 1, right: 2, bottom: 3, left: 4 }, keyframes: { color: control, opacity: control, edgeWeights: { top: control, right: control, bottom: control, left: control } } }]} />);
 
-    for (const label of ["Fill color color keyframe", "Fill color opacity keyframe", "Stroke color color keyframe", "Stroke color opacity keyframe"]) {
+    for (const label of ["Fill color color keyframe", "Fill color opacity keyframe", "Stroke color color keyframe", "Stroke color opacity keyframe", "Top stroke weight keyframe", "Right stroke weight keyframe", "Bottom stroke weight keyframe", "Left stroke weight keyframe"]) {
       expect(html).toContain(`aria-label="${label}"`);
     }
   });

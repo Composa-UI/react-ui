@@ -115,6 +115,7 @@ export interface ElementStrokeSetting extends ElementFillSetting {
     color?: InspectorKeyframeControl;
     opacity?: InspectorKeyframeControl;
     weight?: InspectorKeyframeControl;
+    edgeWeights?: Partial<Record<keyof StrokeEdgeWeights, InspectorKeyframeControl>>;
     pathTrimStart?: InspectorKeyframeControl;
     pathTrimEnd?: InspectorKeyframeControl;
   };
@@ -1880,6 +1881,7 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
                   iconLead={strokeWeightModeIcon(side, 14)}
                   value={stroke.edgeWeights?.[side] ?? stroke.weight}
                   min={0}
+                  keyframe={stroke.keyframes?.edgeWeights?.[side]}
                   onChange={value => update(stroke.id, { edgeWeights: { top: stroke.edgeWeights?.top ?? stroke.weight, right: stroke.edgeWeights?.right ?? stroke.weight, bottom: stroke.edgeWeights?.bottom ?? stroke.weight, left: stroke.edgeWeights?.left ?? stroke.weight, [side]: value } })}
                 />
               </span>
