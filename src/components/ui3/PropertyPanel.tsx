@@ -457,6 +457,8 @@ export interface DimensionSizingFieldsProps {
   onApplySizingVariable?: (axis: ElementSizingAxis) => void;
   /** Motion mode: width/height become value + keyframe diamond (diamond on the H field). */
   dimensionsKeyframe?: { active: boolean; onToggle: () => void };
+  /** Per-bound motion bindings. Omitted bounds render no field and therefore no diamond. */
+  constraintKeyframes?: Partial<Record<"minWidth" | "maxWidth" | "minHeight" | "maxHeight", InspectorKeyframeControl>>;
 }
 
 export interface SpatialSelectionLayoutControl {
@@ -593,8 +595,9 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
     />
     {hasConstraints && <div className="flex flex-col gap-y-[6px] px-[16px] pb-[8px]">
       {packedConstraintRows.map((row, rowIndex) => <div key={rowIndex} className="flex items-end gap-[8px]">
-        {row.map(([constraint, axis, label, value, mixed]) => (
-          <div key={`${constraint}-${axis}`} className="flex-1 min-w-0">
+        {row.map(([constraint, axis, label, value, mixed]) => {
+          const key = `${constraint}${axis === "width" ? "Width" : "Height"}` as "minWidth" | "maxWidth" | "minHeight" | "maxHeight";
+          return <div key={`${constraint}-${axis}`} className="flex-1 min-w-0">
             <div className={clsx(SUBLABEL, "mb-[3px]")}>{label}</div>
             <NumericComboInput
               dataMode="constraint"
@@ -603,6 +606,7 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
               value={value}
               defaultValue={0}
               mixed={mixed}
+              keyframe={props.constraintKeyframes?.[key]}
               onChange={next => changeConstraint(axis, constraint, next)}
               min={constraint === "max" ? (axis === "width" ? values.minWidth : values.minHeight) ?? 0 : 0}
               max={constraint === "min" ? (axis === "width" ? values.maxWidth : values.maxHeight) : undefined}
@@ -616,8 +620,8 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
               </Menu>}
               className="w-full"
             />
-          </div>
-        ))}
+          </div>;
+        })}
         {/* Keep a lone trailing field at half width so packed rows share the
             two-column geometry; this is a layout spacer, not a canonical hole. */}
         {row.length === 1 && <div aria-hidden className="flex-1 min-w-0" />}
@@ -719,6 +723,12 @@ export interface InspectorKeyframeControls {
   fontSize?: InspectorKeyframeControl;
   lineHeight?: InspectorKeyframeControl;
   letterSpacing?: InspectorKeyframeControl;
+  /** Authored Min/Max bounds. Hosts supply these only while the corresponding
+   * bound exists, so sizing menus never imply an aggregate animation track. */
+  minWidth?: InspectorKeyframeControl;
+  maxWidth?: InspectorKeyframeControl;
+  minHeight?: InspectorKeyframeControl;
+  maxHeight?: InspectorKeyframeControl;
 }
 
 // ─── Section: Position ────────────────────────────────────────────────────────
@@ -4058,7 +4068,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
                 disabled={textSizingModeDisabled}
                 onChange={onTextSizingModeChange}
               />}
-              <DimensionSizingFields {...sizingContract} width={width} height={height} dimensionsKeyframe={keyframeControls?.dimensions} />
+              <DimensionSizingFields {...sizingContract} width={width} height={height} dimensionsKeyframe={keyframeControls?.dimensions} constraintKeyframes={keyframeControls} />
               <SpatialSelectionLayoutFields value={props.spatialSelectionLayout} />
               {/* Corner radius moved to Appearance */}
             </PanelSection>
