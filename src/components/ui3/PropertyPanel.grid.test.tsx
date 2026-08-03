@@ -5,6 +5,7 @@ import { GridDimensionsPicker } from "./GridDimensionsPicker";
 import { NumericInput } from "./Input";
 import { PanelSection } from "./Panel";
 import { PropertyPanel, type ElementGridSettings, type ElementLayoutSettings } from "./PropertyPanel";
+import { SegmentedControl } from "./SegmentedControl";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -64,6 +65,42 @@ describe("Grid is one Auto-layout mode", () => {
     expect(dialog.props.grid).toEqual(grid);
     act(() => dialog.props.onGridChange({ justifyContent: "center" }));
     expect(onLayoutChange).toHaveBeenCalledWith({ grid: { ...grid, justifyContent: "center" } });
+    act(() => renderer.unmount());
+  });
+
+  it("keeps Grid selected in the shared Flow control and reserves the empty Wrap gutter", () => {
+    const { renderer } = render();
+    const flow = renderer.root.find(node => node.props.role === "group" && node.props["aria-label"] === "Flow");
+    expect(flow.findByType(SegmentedControl).props.value).toBe("grid");
+    expect(flow.findAll(node => typeof node.props.className === "string" && node.props.className.includes("w-[24px]"))).toHaveLength(1);
+    expect(flow.findAll(node => node.type === "button" && node.props["aria-label"] === "Wrap")).toHaveLength(0);
+    act(() => renderer.unmount());
+  });
+
+  it("uses one visible Gap heading while retaining two accessible gap fields", () => {
+    const { renderer } = render();
+    const row = renderer.root.find(node => node.props.role === "group" && node.props["aria-label"] === "Grid and gap");
+    expect(row.findAll(node => node.type === "div" && node.children.length === 1 && node.children[0] === "Gap")).toHaveLength(1);
+    expect(row.findAll(node => node.type === "div" && node.children.length === 1 && node.children[0] === "Row gap")).toHaveLength(0);
+    expect(row.findAllByType(NumericInput).map(field => field.props.ariaLabel)).toEqual(["Column gap", "Row gap"]);
+    act(() => renderer.unmount());
+  });
+
+  it("clamps each grid gap independently at zero", () => {
+    const { renderer, onLayoutChange } = render();
+    const fields = renderer.root.findAllByType(NumericInput);
+    act(() => fields.find(field => field.props.ariaLabel === "Column gap")!.props.onChange(-20));
+    act(() => fields.find(field => field.props.ariaLabel === "Row gap")!.props.onChange(-28));
+    expect(onLayoutChange).toHaveBeenNthCalledWith(1, { grid: { ...grid, columnGap: 0 } });
+    expect(onLayoutChange).toHaveBeenNthCalledWith(2, { grid: { ...grid, rowGap: 0 } });
+    act(() => renderer.unmount());
+  });
+
+  it("returns Grid to Freeform through the same Flow selector", () => {
+    const { renderer, onLayoutChange } = render();
+    const flow = renderer.root.find(node => node.props.role === "group" && node.props["aria-label"] === "Flow");
+    act(() => flow.findByType(SegmentedControl).props.onChange("none"));
+    expect(onLayoutChange).toHaveBeenCalledWith({ mode: "none" });
     act(() => renderer.unmount());
   });
 });

@@ -2,6 +2,7 @@ import { type ReactElement, type ReactNode } from "react";
 import { act, create, type ReactTestInstance } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
 import { AutoLayoutSettingsDialog } from "./AutoLayoutSettingsDialog";
+import { AlignmentControl } from "./AlignmentControl";
 import { Dropdown } from "./Dropdown";
 import { MenuRow, PopoverMenu } from "./Menu";
 import { Tooltip } from "./Tooltip";
@@ -121,6 +122,40 @@ describe("AutoLayoutSettingsDialog", () => {
     });
     expect(renderer!.root.findAllByType(Dropdown).every(dropdown => dropdown.props.disabled)).toBe(true);
     expect(renderer!.root.findByType(SegmentedControl).props.disabled).toBe(true);
+    act(() => renderer!.unmount());
+  });
+
+  it("projects Grid content alignment through the shared settings dialog", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<AutoLayoutSettingsDialog
+        open
+        value={{ mode: "grid", textBaseline: false, strokeSizing: "excluded", canvasStacking: "last-on-top" }}
+        grid={{ rows: [{ mode: "hug", size: 100 }], columns: [{ mode: "hug", size: 100 }], rowGap: 0, columnGap: 0, justifyItems: "start", alignItems: "start", justifyContent: "end", alignContent: "center" }}
+        trigger={<button type="button">Settings</button>}
+        onClose={() => undefined}
+      />);
+    });
+    const alignment = renderer!.root.findByType(AlignmentControl);
+    expect(alignment.props).toMatchObject({ ariaLabel: "Grid content alignment", value: "mr" });
+    act(() => renderer!.unmount());
+  });
+
+  it("maps Grid content alignment edits without touching item alignment", () => {
+    const onGridChange = vi.fn();
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<AutoLayoutSettingsDialog
+        open
+        value={{ mode: "grid", textBaseline: false, strokeSizing: "excluded", canvasStacking: "last-on-top" }}
+        grid={{ rows: [{ mode: "hug", size: 100 }], columns: [{ mode: "hug", size: 100 }], rowGap: 0, columnGap: 0, justifyItems: "center", alignItems: "end", justifyContent: "start", alignContent: "start" }}
+        trigger={<button type="button">Settings</button>}
+        onGridChange={onGridChange}
+        onClose={() => undefined}
+      />);
+    });
+    act(() => renderer!.root.findByType(AlignmentControl).props.onChange("br"));
+    expect(onGridChange).toHaveBeenCalledWith({ justifyContent: "end", alignContent: "end" });
     act(() => renderer!.unmount());
   });
 });
