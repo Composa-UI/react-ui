@@ -63,6 +63,27 @@ describe("Flow is a four-way layout-mode selector (Composa#661 item 1)", () => {
     act(() => renderer!.unmount());
   });
 
+  it("keeps explicit plain-frame directions distinct from the generic inferred toggle", () => {
+    const onLayoutChange = vi.fn();
+    const onAutoLayoutEnable = vi.fn();
+    let renderer: ReactTestRenderer;
+    act(() => { renderer = create(<PropertyPanel elementType="frame" onLayoutChange={onLayoutChange} onAutoLayoutEnable={onAutoLayoutEnable} />); });
+    act(() => renderer!.root.find(node => node.type === "button" && node.props["aria-label"] === "Horizontal").props.onClick());
+    expect(onLayoutChange).toHaveBeenLastCalledWith({ mode: "horizontal" });
+    act(() => renderer!.unmount());
+
+    act(() => { renderer = create(<PropertyPanel elementType="frame" onLayoutChange={onLayoutChange} onAutoLayoutEnable={onAutoLayoutEnable} />); });
+    act(() => renderer!.root.find(node => node.type === "button" && node.props["aria-label"] === "Vertical").props.onClick());
+    expect(onLayoutChange).toHaveBeenLastCalledWith({ mode: "vertical" });
+    expect(onAutoLayoutEnable).not.toHaveBeenCalled();
+    act(() => renderer!.unmount());
+
+    act(() => { renderer = create(<PropertyPanel elementType="frame" onLayoutChange={onLayoutChange} onAutoLayoutEnable={onAutoLayoutEnable} />); });
+    act(() => action(renderer!, "Add auto-layout")!.props.onClick());
+    expect(onAutoLayoutEnable).toHaveBeenCalledTimes(1);
+    act(() => renderer!.unmount());
+  });
+
   it("keeps the Flow control on screen with Grid selected once the frame IS a grid", () => {
     // Before #661 choosing Grid swapped in a Grid section with no Flow control at
     // all, so the fourth option was a one-way door that hid itself.

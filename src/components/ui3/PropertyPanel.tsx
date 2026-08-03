@@ -894,7 +894,8 @@ interface LayoutFrameProps {
   onClipContentChange?: (value: boolean) => void;
   /** Auto-layout is reached from here two ways: the "+" button, or moving Flow
    * off its first ("Freeform") option. Both call this. */
-  onEnableAutoLayout?: () => void;
+  /** Omitted mode means the generic header toggle; hosts may infer from geometry. */
+  onEnableAutoLayout?: (mode?: "vertical" | "horizontal") => void;
   /** Grid is a distinct layout type (Reading A), entered via its own action. */
   onEnableGrid?: () => void;
   spatialSelectionLayout?: SpatialSelectionLayoutControl;
@@ -918,7 +919,7 @@ function LayoutFrameSection({
     // Grid is a peer flow mode with its own section — it is entered from the Flow
     // control now, not from a separate header action (Composa#661).
     if (v === "grid") { onEnableGrid?.(); return; }
-    if (v !== "none") onEnableAutoLayout?.();
+    if (v === "v" || v === "h") onEnableAutoLayout?.(v === "h" ? "horizontal" : "vertical");
   };
 
   return (
@@ -2970,6 +2971,9 @@ export interface PropertyPanelProps {
   onCornerRadiusChange?: AppearanceSectionProps["onCornerRadiusChange"];
   layout?: ElementLayoutSettings;
   onLayoutChange?: (patch: Partial<ElementLayoutSettings>) => void;
+  /** Generic plain-frame Auto-layout toggle. Unlike an explicit Flow segment,
+   * this intent carries no requested axis so the host can infer from geometry. */
+  onAutoLayoutEnable?: () => void;
   /** Reports the exact physical side(s) edited so controlled multi-selection hosts
    * can preserve every untouched side on each selected object. */
   onPaddingChange?: (value: ElementLayoutSettings["padding"], changedEdges: readonly ElementPaddingEdge[]) => void;
@@ -3515,7 +3519,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   blendMode = "Pass through",
   supportedBlendModes,
   cornerRadius = 0, onBlendModeChange, onCornerRadiusChange,
-  layout, onLayoutChange, onSizingChange, onSizingConstraintChange, onApplySizingVariable,
+  layout, onLayoutChange, onAutoLayoutEnable, onSizingChange, onSizingConstraintChange, onApplySizingVariable,
   textSizingMode, availableTextSizingModes, textSizingModeDisabled = false, onTextSizingModeChange,
   positionPresentation = "separate", onPositionPresentationChange,
   onAutoLayoutSettingsRequest, typography, onTypographyChange, fonts, fontSizes, fontWeights,
@@ -3975,7 +3979,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           />
 
           {/* Layout — polymorphic */}
-          {(isFrame)       && <LayoutFrameSection width={width} height={height} sizing={sizingContract} spatialSelectionLayout={props.spatialSelectionLayout} clipContent={layout?.clipsContent} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onClipContentChange={onLayoutChange ? value => onLayoutChange({ clipsContent: value }) : undefined} onEnableAutoLayout={() => { setAutoLayoutOn(true); onLayoutChange?.({ mode: "vertical" }); }} onEnableGrid={onLayoutChange ? () => onLayoutChange({ mode: "grid" }) : undefined} />}
+          {(isFrame)       && <LayoutFrameSection width={width} height={height} sizing={sizingContract} spatialSelectionLayout={props.spatialSelectionLayout} clipContent={layout?.clipsContent} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onClipContentChange={onLayoutChange ? value => onLayoutChange({ clipsContent: value }) : undefined} onEnableAutoLayout={mode => { setAutoLayoutOn(true); if (mode) onLayoutChange?.({ mode }); else if (onAutoLayoutEnable) onAutoLayoutEnable(); else onLayoutChange?.({ mode: "vertical" }); }} onEnableGrid={onLayoutChange ? () => onLayoutChange({ mode: "grid" }) : undefined} />}
           {(isGrid)        && layout?.grid && <LayoutGridSection width={width} height={height}
             grid={layout.grid}
             widthMode={layout?.widthMode} heightMode={layout?.heightMode}
