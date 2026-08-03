@@ -1,6 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { act, create } from "react-test-renderer";
 import { describe, expect, it } from "vitest";
 import { getSizingMenuLabels, PropertyPanel, reconcileAutoLayoutGap } from "./PropertyPanel";
+import { NumericInput } from "./Input";
 import { PANEL_W } from "./Panel";
 import { TooltipProvider } from "./Tooltip";
 
@@ -104,6 +106,16 @@ describe("Motion inspector rows", () => {
     for (const label of ["Top-left", "Top-right", "Bottom-right", "Bottom-left"]) {
       expect(html).toContain(`aria-label="${label} corner radius keyframe"`);
     }
+  });
+
+  it("emits the full object on the first expanded-field edit from uniform topology", () => {
+    const changes: unknown[] = [];
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<TooltipProvider><PropertyPanel elementType="shape" cornerRadius={12} onCornerRadiusChange={value => changes.push(value)} /></TooltipProvider>); });
+    act(() => { renderer!.root.findByProps({ "aria-label": "Independent corners" }).props.onClick(); });
+    const topLeft = renderer!.root.findAllByType(NumericInput).find(node => node.props.ariaLabel === "Top-left corner radius")!;
+    act(() => { topLeft.props.onChange(4); });
+    expect(changes).toEqual([{ topLeft: 4, topRight: 12, bottomLeft: 12, bottomRight: 12 }]);
   });
 
   it("accepts a host-controlled Animate tab so timeline selection can reveal its matching card", () => {
