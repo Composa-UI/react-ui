@@ -46,14 +46,14 @@ function GridTrackEditor({ axis, tracks, onChange }: { axis: "row" | "column"; t
   const removeTrack = (index: number) => { if (tracks.length <= 1) return; onChange(tracks.filter((_, i) => i !== index)); };
   const trackMenu = (index: number, track: ElementGridTrack) => (close: () => void) => (
     <Menu>
-      <MenuRow type="checkmark" label="Fixed" checked={track.mode === "fixed"} onClick={() => { setTrack(index, { mode: "fixed", size: track.size || 100 }); close(); }} />
-      <MenuRow type="checkmark" label="Hug" checked={track.mode === "hug"} onClick={() => { setTrack(index, { mode: "hug", size: track.size }); close(); }} />
+      <MenuRow type="checkmark" label="Fixed" checked={track.mode === "fixed"} onClick={() => { setTrack(index, { ...track, mode: "fixed", size: track.size || 100 }); close(); }} />
+      <MenuRow type="checkmark" label="Hug" checked={track.mode === "hug"} onClick={() => { setTrack(index, { ...track, mode: "hug", size: track.size }); close(); }} />
     </Menu>
   );
   return (
     <div className="flex flex-col gap-[4px]" role="group" aria-label={`${label} tracks`}>
       {tracks.map((track, index) => (
-        <div key={index} className="flex items-center gap-[4px]">
+        <div key={track.id} className="flex items-center gap-[4px]">
           <div className="flex-1 min-w-0">
             <NumericComboInput
               dataMode={track.mode}
@@ -65,7 +65,7 @@ function GridTrackEditor({ axis, tracks, onChange }: { axis: "row" | "column"; t
               idleLabel={track.mode === "hug" ? "Hug" : undefined}
               value={track.mode === "fixed" ? track.size : undefined}
               defaultValue={track.size || 100}
-              onChange={size => setTrack(index, { mode: "fixed", size })}
+              onChange={size => setTrack(index, { ...track, mode: "fixed", size })}
               min={0}
               suffix="px"
               menu={trackMenu(index, track)}
@@ -90,6 +90,11 @@ export interface GridSettingsDialogProps {
 }
 
 export function GridSettingsDialog({ open, grid, trigger, onChange, onClose }: GridSettingsDialogProps) {
+  const createTrack = (axis: "row" | "column"): ElementGridTrack => ({
+    id: `grid-track-${axis}-${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`}`,
+    mode: "hug",
+    size: 100,
+  });
   return (
     <InspectorDialog
       open={open}
@@ -122,7 +127,7 @@ export function GridSettingsDialog({ open, grid, trigger, onChange, onClose }: G
             <GridTrackEditor axis="column" tracks={grid.columns} onChange={columns => onChange?.({ columns })} />
           </div>
           <div className="shrink-0 pt-[17px]">
-            <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add column" onClick={() => onChange?.({ columns: [...grid.columns, { mode: "hug", size: 100 }] })} />
+            <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add column" onClick={() => onChange?.({ columns: [...grid.columns, createTrack("column")] })} />
           </div>
         </div>
 
@@ -132,7 +137,7 @@ export function GridSettingsDialog({ open, grid, trigger, onChange, onClose }: G
             <GridTrackEditor axis="row" tracks={grid.rows} onChange={rows => onChange?.({ rows })} />
           </div>
           <div className="shrink-0 pt-[17px]">
-            <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add row" onClick={() => onChange?.({ rows: [...grid.rows, { mode: "hug", size: 100 }] })} />
+            <PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add row" onClick={() => onChange?.({ rows: [...grid.rows, createTrack("row")] })} />
           </div>
         </div>
 

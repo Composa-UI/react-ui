@@ -3,19 +3,20 @@ import { type CSSProperties } from "react";
 import { NumericComboInput } from "./Input";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { PanelActionBtn } from "./Panel";
-import type { ElementGridSettings, ElementGridTrack } from "./PropertyPanel";
+import type { ElementGridSettings, ElementGridTrack, InspectorKeyframeControl } from "./PropertyPanel";
 
 const TRACK_LIMIT = 6;
 
-function TrackEditor({ axis, tracks, onChange }: {
+function TrackEditor({ axis, tracks, keyframes, onChange }: {
   axis: "row" | "column";
   tracks: ElementGridTrack[];
+  keyframes?: Record<string, InspectorKeyframeControl>;
   onChange: (tracks: ElementGridTrack[]) => void;
 }) {
   const label = axis === "column" ? "Column" : "Row";
   const setTrack = (index: number, next: ElementGridTrack) => onChange(tracks.map((track, itemIndex) => itemIndex === index ? next : track));
   return <div role="group" aria-label={`${label} tracks`} className="flex flex-col gap-[4px]">
-    {tracks.map((track, index) => <div key={index} className="flex items-center gap-[4px] px-[8px]">
+    {tracks.map((track, index) => <div key={track.id} className="flex items-center gap-[4px] px-[8px]">
       <div className="w-[168px]">
         <NumericComboInput
           dataMode={track.mode}
@@ -25,12 +26,13 @@ function TrackEditor({ axis, tracks, onChange }: {
           idleLabel={track.mode === "hug" ? "Auto" : undefined}
           value={track.mode === "fixed" ? track.size : undefined}
           defaultValue={track.size || 100}
-          onChange={size => setTrack(index, { mode: "fixed", size: Math.max(0, size) })}
+          onChange={size => setTrack(index, { ...track, mode: "fixed", size: Math.max(0, size) })}
           min={0}
           suffix="px"
+          keyframe={track.mode === "fixed" ? keyframes?.[track.id] : undefined}
           menu={close => <Menu>
-            <MenuRow type="checkmark" label="Fixed" checked={track.mode === "fixed"} onClick={() => { setTrack(index, { mode: "fixed", size: track.size || 100 }); close(); }} />
-            <MenuRow type="checkmark" label="Auto" checked={track.mode === "hug"} onClick={() => { setTrack(index, { mode: "hug", size: track.size }); close(); }} />
+            <MenuRow type="checkmark" label="Fixed" checked={track.mode === "fixed"} onClick={() => { setTrack(index, { ...track, mode: "fixed", size: track.size || 100 }); close(); }} />
+            <MenuRow type="checkmark" label="Auto" checked={track.mode === "hug"} onClick={() => { setTrack(index, { ...track, mode: "hug", size: track.size }); close(); }} />
           </Menu>}
         />
       </div>
@@ -46,11 +48,18 @@ function TrackEditor({ axis, tracks, onChange }: {
 
 export interface GridDimensionsPickerProps {
   grid: ElementGridSettings;
+  keyframes?: Record<string, InspectorKeyframeControl>;
   onChange?: (patch: Partial<ElementGridSettings>) => void;
 }
 
+const createTrack = (axis: "row" | "column"): ElementGridTrack => ({
+  id: `grid-track-${axis}-${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`}`,
+  mode: "hug",
+  size: 100,
+});
+
 /** Compact Figma grid face. It edits dimensions in a menu; it is not a second Inspector section/dialog. */
-export function GridDimensionsPicker({ grid, onChange }: GridDimensionsPickerProps) {
+export function GridDimensionsPicker({ grid, keyframes, onChange }: GridDimensionsPickerProps) {
   const columns = grid.columns.length;
   const autoRows = grid.rows.every(track => track.mode === "hug");
   const summary = `${columns} × ${autoRows ? "Auto" : grid.rows.length}`;
@@ -72,13 +81,13 @@ export function GridDimensionsPicker({ grid, onChange }: GridDimensionsPickerPro
       <div role="group" aria-label="Grid dimensions" className="flex flex-col gap-[8px]">
         <div>
           <div className="px-[8px] pb-[3px] font-[family-name:var(--composa-font-family)] text-[9px] font-[450] leading-[14px] text-c-text-secondary">Columns</div>
-          <TrackEditor axis="column" tracks={grid.columns} onChange={columnsValue => onChange?.({ columns: columnsValue })} />
-          <div className="px-[8px] pt-[4px]"><PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add column" disabled={grid.columns.length >= TRACK_LIMIT} onClick={() => onChange?.({ columns: [...grid.columns, { mode: "hug", size: 100 }] })} /></div>
+          <TrackEditor axis="column" tracks={grid.columns} keyframes={keyframes} onChange={columnsValue => onChange?.({ columns: columnsValue })} />
+          <div className="px-[8px] pt-[4px]"><PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add column" disabled={grid.columns.length >= TRACK_LIMIT} onClick={() => onChange?.({ columns: [...grid.columns, createTrack("column")] })} /></div>
         </div>
         <div>
           <div className="px-[8px] pb-[3px] font-[family-name:var(--composa-font-family)] text-[9px] font-[450] leading-[14px] text-c-text-secondary">Rows</div>
-          <TrackEditor axis="row" tracks={grid.rows} onChange={rows => onChange?.({ rows })} />
-          <div className="px-[8px] pt-[4px]"><PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add row" disabled={grid.rows.length >= TRACK_LIMIT} onClick={() => onChange?.({ rows: [...grid.rows, { mode: "hug", size: 100 }] })} /></div>
+          <TrackEditor axis="row" tracks={grid.rows} keyframes={keyframes} onChange={rows => onChange?.({ rows })} />
+          <div className="px-[8px] pt-[4px]"><PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add row" disabled={grid.rows.length >= TRACK_LIMIT} onClick={() => onChange?.({ rows: [...grid.rows, createTrack("row")] })} /></div>
         </div>
       </div>
     </Menu>}

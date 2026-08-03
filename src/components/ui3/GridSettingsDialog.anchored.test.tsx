@@ -25,8 +25,8 @@ vi.mock("@radix-ui/react-popover", async () => {
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const GRID: ElementGridSettings = {
-  rows: [{ mode: "fixed", size: 100 }, { mode: "fixed", size: 100 }],
-  columns: [{ mode: "fixed", size: 100 }, { mode: "fixed", size: 100 }],
+  rows: [{ id: "row-1", mode: "fixed", size: 100 }, { id: "row-2", mode: "fixed", size: 100 }],
+  columns: [{ id: "column-1", mode: "fixed", size: 100 }, { id: "column-2", mode: "fixed", size: 100 }],
   rowGap: 10, columnGap: 10,
   justifyItems: "start", alignItems: "start", justifyContent: "start", alignContent: "start",
 };

@@ -21,7 +21,7 @@ const autoLayout = (overrides: Partial<ElementLayoutSettings> = {}): ElementLayo
 });
 
 const gridSettings: ElementGridSettings = {
-  rows: [{ mode: "fixed", size: 100 }], columns: [{ mode: "fixed", size: 100 }],
+  rows: [{ id: "row-1", mode: "fixed", size: 100 }], columns: [{ id: "column-1", mode: "fixed", size: 100 }],
   rowGap: 10, columnGap: 10,
   justifyItems: "start", alignItems: "start", justifyContent: "start", alignContent: "start",
 };

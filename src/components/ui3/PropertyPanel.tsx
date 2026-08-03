@@ -151,7 +151,7 @@ export interface ElementTypographySettings {
 // Phase A: fixed/hug tracks, two gaps, per-axis item + content alignment. `fr`,
 // spans, and auto-placement are Phase B.
 export type GridTrackMode = "fixed" | "hug";
-export interface ElementGridTrack { mode: GridTrackMode; size: number; }
+export interface ElementGridTrack { id: string; mode: GridTrackMode; size: number; }
 export type GridItemAlign = "start" | "center" | "end" | "stretch";
 export type GridContentAlign = "start" | "center" | "end";
 export interface ElementGridSettings {
@@ -712,6 +712,8 @@ export interface InspectorKeyframeControls {
   /** Grid column and row gaps. */
   gridColumnGap?: InspectorKeyframeControl;
   gridRowGap?: InspectorKeyframeControl;
+  /** Stable track-id keyed controls. Hosts expose entries only for Fixed tracks. */
+  gridTrackSizes?: Record<string, InspectorKeyframeControl>;
   /** Physical Auto-layout padding edges. Aggregate Vertical/Horizontal controls
    * intentionally expose no diamond because each edge owns an independent lane. */
   paddingTop?: InspectorKeyframeControl;
@@ -1064,6 +1066,7 @@ interface LayoutAutoProps {
   rowGapKeyframe?: InspectorKeyframeControl;
   gridColumnGapKeyframe?: InspectorKeyframeControl;
   gridRowGapKeyframe?: InspectorKeyframeControl;
+  gridTrackSizeKeyframes?: Record<string, InspectorKeyframeControl>;
   paddingTopKeyframe?: InspectorKeyframeControl;
   paddingRightKeyframe?: InspectorKeyframeControl;
   paddingBottomKeyframe?: InspectorKeyframeControl;
@@ -1101,7 +1104,7 @@ function LayoutAutoSection({
   settingsBaselineApplicable,
   settingsDisabled = false,
   onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onAutoLayoutSettingsRequest, onEnableGrid, onDisableAutoLayout, sizing, spatialSelectionLayout,
-  gapKeyframe, rowGapKeyframe, gridColumnGapKeyframe, gridRowGapKeyframe,
+  gapKeyframe, rowGapKeyframe, gridColumnGapKeyframe, gridRowGapKeyframe, gridTrackSizeKeyframes,
   paddingTopKeyframe, paddingRightKeyframe, paddingBottomKeyframe, paddingLeftKeyframe,
 }: LayoutAutoProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -1271,7 +1274,7 @@ function LayoutAutoSection({
       <div role="group" aria-label="Grid and gap" className="flex items-start gap-[8px] px-[16px] pt-[8px] pb-[4px]">
         <div className="shrink-0">
           <div className={subLabel}>Grid</div>
-          <GridDimensionsPicker grid={grid} onChange={patch => onLayoutChange?.({ grid: { ...grid, ...patch } })} />
+          <GridDimensionsPicker grid={grid} keyframes={gridTrackSizeKeyframes} onChange={patch => onLayoutChange?.({ grid: { ...grid, ...patch } })} />
         </div>
         <div className="w-[88px] min-w-0 flex flex-col gap-[4px]">
           <div>
@@ -4053,6 +4056,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             rowGapKeyframe={keyframeControls?.layoutCounterGap}
             gridColumnGapKeyframe={keyframeControls?.gridColumnGap}
             gridRowGapKeyframe={keyframeControls?.gridRowGap}
+            gridTrackSizeKeyframes={keyframeControls?.gridTrackSizes}
             paddingTopKeyframe={keyframeControls?.paddingTop}
             paddingRightKeyframe={keyframeControls?.paddingRight}
             paddingBottomKeyframe={keyframeControls?.paddingBottom}
