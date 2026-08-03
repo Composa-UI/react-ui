@@ -5,6 +5,15 @@ import { PANEL_W } from "./Panel";
 import { TooltipProvider } from "./Tooltip";
 
 describe("Timeline easing inspector composition", () => {
+  it("labels a host-owned Animate-card target without inventing an engine scope", () => {
+    const html = renderToStaticMarkup(<PropertyPanel elementType="text" easingContext="segment"
+      easing={{ preset: "custom", controlPoints: [0.2, 0, 0.8, 1], editable: true }}
+      easingApplyToLabel="This animation" onEasingChange={() => undefined} />);
+    expect(html).toContain("This animation");
+    expect(html).toContain('aria-label="Apply easing to"');
+    expect(html).toContain("disabled");
+  });
+
   it("renders segment easing as the only Design inspector section", () => {
     const html = renderToStaticMarkup(<PropertyPanel elementType="text" easingContext="segment"
       easing={{ preset: "custom", controlPoints: [0.2, 0, 0.8, 1], editable: true }}

@@ -2948,6 +2948,7 @@ export interface PropertyPanelProps {
   easing?: EasingInspectorValue;
   easingContext?: "keyframe" | "segment";
   easingApplyScope?: EasingApplyScope;
+  easingApplyToLabel?: string;
   onEasingChange?: EasingInspectorSectionProps["onChange"];
   onEasingApplyScopeChange?: EasingInspectorSectionProps["onApplyScopeChange"];
   onEasingCurveEditStart?: () => void;
@@ -3506,7 +3507,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onXChange, onYChange, onRotationChange, onRotate90Clockwise, onFlipHorizontal, onFlipVertical, onScaleXChange, onScaleYChange, onAlignmentAction,
   scaleApplicable = false, keyframeControls,
   onNumericEditStart, onNumericEditCommit, onNumericEditCancel,
-  easing, easingContext = "keyframe", easingApplyScope, onEasingChange, onEasingApplyScopeChange,
+  easing, easingContext = "keyframe", easingApplyScope, easingApplyToLabel, onEasingChange, onEasingApplyScopeChange,
   onEasingCurveEditStart, onEasingCurveEditCommit, onEasingCurveEditCancel,
   width = 1200, height = 115,
   onWidthChange, onHeightChange,
@@ -3939,7 +3940,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
       {tab === "design" && (
         <div role="tabpanel" id="element-design-panel" aria-labelledby="element-design-panel-tab" className="contents"><ScrollArea>
           {easing && easingContext === "segment" ? (
-            <EasingInspectorSection key={easing.interactionKey} value={easing} applyScope={easingApplyScope}
+            <EasingInspectorSection key={easing.interactionKey} value={easing} applyScope={easingApplyScope} applyToLabel={easingApplyToLabel}
               onChange={onEasingChange} onApplyScopeChange={onEasingApplyScopeChange}
               onCurveEditStart={onEasingCurveEditStart} onCurveEditCommit={onEasingCurveEditCommit} onCurveEditCancel={onEasingCurveEditCancel} />
           ) : <>
@@ -4039,7 +4040,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
 
           <ExportSection settings={exportSettings} targetName={exportTargetName ?? elementLabel[elementType]}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
-          {easing && <EasingInspectorSection key={easing.interactionKey} value={easing} applyScope={easingApplyScope}
+          {easing && <EasingInspectorSection key={easing.interactionKey} value={easing} applyScope={easingApplyScope} applyToLabel={easingApplyToLabel}
             onChange={onEasingChange} onApplyScopeChange={onEasingApplyScopeChange}
             onCurveEditStart={onEasingCurveEditStart} onCurveEditCommit={onEasingCurveEditCommit} onCurveEditCancel={onEasingCurveEditCancel} />}
           </>}
