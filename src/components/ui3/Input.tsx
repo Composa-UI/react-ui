@@ -84,7 +84,6 @@ export function FieldShell({ focused, disabled = false, variant = "default", siz
 // ─── InputField (TextInput) ───────────────────────────────────────────────────
 
 interface InputFieldProps {
-  ariaLabel?: string;
   label?: string;
   placeholder?: string;
   value?: string;
@@ -109,7 +108,6 @@ interface InputFieldProps {
 }
 
 export function InputField({
-  ariaLabel,
   label,
   placeholder = "Placeholder",
   value,
@@ -163,7 +161,6 @@ export function InputField({
           disabled && "opacity-60 cursor-not-allowed",
         )}>
           <textarea
-            aria-label={ariaLabel}
             id={id}
             value={value}
             defaultValue={defaultValue}
@@ -206,7 +203,6 @@ export function InputField({
             </span>
           )}
           <input
-            aria-label={ariaLabel}
             id={id}
             type="text"
             value={value}
@@ -1127,7 +1123,7 @@ export function ColorInput({
           </div>
         )}
         {keyframe && <ColorKeyframeButton label={ariaLabel ?? label ?? "Color"} control={keyframe} />}
-        {opacityKeyframe && !isVariable && <ColorKeyframeButton label={`${ariaLabel ?? label ?? "Color"} opacity`} control={opacityKeyframe} />}
+        {opacityKeyframe && !isVariable && showOpacity && <ColorKeyframeButton label={`${ariaLabel ?? label ?? "Color"} opacity`} control={opacityKeyframe} />}
       </div>
     </div>
   );
