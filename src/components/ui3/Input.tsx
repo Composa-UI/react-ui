@@ -935,6 +935,8 @@ interface ColorInputProps {
   ariaLabel?: string;
   label?: string;
   color?: string;
+  /** Exact authored gradient CSS for Gradient chits. */
+  gradient?: string;
   opacity?: number;
   fillType?: ColorFillType;
   fillLabel?: string;         // for Gradient/Image/Variable — replaces hex
@@ -975,6 +977,7 @@ export function ColorInput({
   ariaLabel,
   label,
   color = "#ff24bd",
+  gradient,
   opacity = 100,
   fillType = "Fill",
   fillLabel,
@@ -1039,7 +1042,7 @@ export function ColorInput({
         {/* chit */}
         {!isVariable && (
           <label className="relative shrink-0 flex items-center justify-center size-[24px] cursor-pointer">
-            <Chit color={color} type={chitType} />
+            <Chit color={color} gradient={gradient} type={chitType} />
             {onSwatchClick ? (
               <button
                 type="button"

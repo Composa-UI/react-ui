@@ -79,6 +79,22 @@ describe("NumericInput presentation contract", () => {
 });
 
 describe("ColorInput motion controls", () => {
+  it("renders the exact authored gradient in its chit and never generic rainbow artwork", () => {
+    const gradient = "linear-gradient(135deg, #112233 0%, #aabbcc 37%, #ff0066 100%)";
+    const html = renderToStaticMarkup(<ColorInput fillType="Gradient" fillLabel="Linear gradient" gradient={gradient} />);
+    expect(html).toContain("data-composa-gradient-preview=\"true\"");
+    expect(html).toContain("#112233 0%");
+    expect(html).toContain("#aabbcc 37%");
+    expect(html).not.toContain("#fc0");
+    expect(html).not.toContain("#0cf");
+  });
+
+  it("uses the supplied paint color as a truthful flat fallback when no gradient projection exists", () => {
+    const html = renderToStaticMarkup(<ColorInput fillType="Gradient" color="#123456" />);
+    expect(html).toContain("background:#123456");
+    expect(html).not.toContain("linear-gradient(135deg, #f06");
+  });
+
   it("does not render a dangling opacity diamond when the opacity segment is hidden", () => {
     const html = renderToStaticMarkup(<ColorInput color="#336699" showOpacity={false}
       opacityKeyframe={{ active: false, onToggle: () => undefined }} />);

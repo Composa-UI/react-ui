@@ -94,6 +94,8 @@ export interface ElementFillSetting {
   /** The controlled ColorDialog mode for this specific fill entry. */
   fillType?: FillType;
   gradientStops?: GradientStop[];
+  /** Host-owned CSS projection of the authored gradient, shared with canvas/thumbnail direction math. */
+  gradientPreview?: string;
   imageSourceLabel?: string;
   imagePreviewUrl?: string;
   videoSourceLabel?: string;
@@ -1758,6 +1760,9 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
                 ariaLabel="Fill color"
                 fullWidth
                 color={fill.color}
+                gradient={fill.gradientPreview}
+                fillType={fill.fillType === "linear" || fill.fillType === "radial" || fill.fillType === "angular" || fill.fillType === "diamond" ? "Gradient" : "Fill"}
+                fillLabel={fill.label}
                 opacity={fill.opacity}
                 colorKeyframe={fill.fillType === undefined || fill.fillType === "solid" ? fill.keyframes?.color : undefined}
                 opacityKeyframe={fill.keyframes?.opacity}
@@ -2474,6 +2479,9 @@ function SlideBackgroundSection({
   type: controlledType,
   color: controlledColor,
   opacity: controlledOpacity,
+  gradientPreview,
+  gradientType = "linear",
+  gradientStops,
   onTypeChange,
   onColorChange,
   onOpacityChange,
@@ -2482,6 +2490,9 @@ function SlideBackgroundSection({
   type?: SlideBackgroundType;
   color?: string;
   opacity?: number;
+  gradientPreview?: string;
+  gradientType?: Extract<FillType, "linear" | "radial" | "angular" | "diamond">;
+  gradientStops?: GradientStop[];
   onTypeChange?: (value: SlideBackgroundType) => void;
   onColorChange?: (value: string) => void;
   onOpacityChange?: (value: number) => void;
@@ -2570,8 +2581,9 @@ function SlideBackgroundSection({
               capabilities={capabilities}
               open={colorOpen}
               onClose={() => setColorOpen(false)}
-              trigger={<ColorInput ariaLabel="Background gradient" fullWidth fillType="Gradient" fillLabel="Linear gradient" onSwatchClick={() => setColorOpen(true)} />}
-              fillType="linear"
+              trigger={<ColorInput ariaLabel="Background gradient" fullWidth fillType="Gradient" fillLabel={`${gradientType[0].toUpperCase()}${gradientType.slice(1)} gradient`} gradient={gradientPreview} onSwatchClick={() => setColorOpen(true)} />}
+              fillType={gradientType}
+              gradientStops={gradientStops}
               hex={color.replace(/^#/, "")}
               opacity={opacity}
               onHexChange={value => {
@@ -3184,6 +3196,9 @@ export interface PropertyPanelProps {
   slideBackgroundType?: SlideBackgroundType;
   slideBackgroundColor?: string;
   slideBackgroundOpacity?: number;
+  slideBackgroundGradientPreview?: string;
+  slideBackgroundGradientType?: Extract<FillType, "linear" | "radial" | "angular" | "diamond">;
+  slideBackgroundGradientStops?: GradientStop[];
   onSlideBackgroundTypeChange?: (value: SlideBackgroundType) => void;
   onSlideBackgroundColorChange?: (value: string) => void;
   onSlideBackgroundOpacityChange?: (value: number) => void;
@@ -3668,6 +3683,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
   slideBackgroundType,
   slideBackgroundColor,
   slideBackgroundOpacity,
+  slideBackgroundGradientPreview,
+  slideBackgroundGradientType,
+  slideBackgroundGradientStops,
   onSlideBackgroundTypeChange,
   onSlideBackgroundColorChange,
   onSlideBackgroundOpacityChange,
@@ -3935,6 +3953,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
             type={slideBackgroundType}
             color={slideBackgroundColor}
             opacity={slideBackgroundOpacity}
+            gradientPreview={slideBackgroundGradientPreview}
+            gradientType={slideBackgroundGradientType}
+            gradientStops={slideBackgroundGradientStops}
             onTypeChange={onSlideBackgroundTypeChange}
             onColorChange={onSlideBackgroundColorChange}
             onOpacityChange={onSlideBackgroundOpacityChange}
