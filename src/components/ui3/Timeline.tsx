@@ -1808,7 +1808,7 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
             {clip.waveform?.length ? (
               <div data-timeline-clip-waveform className={clsx(
                 "absolute inset-x-0 bottom-0 h-[14px] rounded-b-[3px]",
-                clip.selected ? "bg-black/10" : "bg-c-bg-hover",
+                "bg-c-bg-inverse/10",
                 muted && MUTED_BAR,
               )}>
                 <AudioLaneWaveform id={clip.id} peaks={clip.waveform} active={onSelected} />

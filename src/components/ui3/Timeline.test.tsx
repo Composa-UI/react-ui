@@ -915,7 +915,7 @@ describe("video clips carry an audio strip (Composa#661)", () => {
   it("keeps the strip de-emphasized with concentric bottom radii and varied real peaks", () => {
     const html = master({ baseClips: [{ id: "v1", name: "shot", range: [0, 1_000], thumbnail: "blob:green", waveform: [0.2, 0.9, 0.4] }] });
     const strip = waveformStripTag(html, "clip");
-    expect(strip).toContain("bg-c-bg-hover");
+    expect(strip).toContain("bg-c-bg-inverse/10");
     expect(strip).toContain("bottom-0");
     expect(strip).toContain("rounded-b-[3px]");
     expect(html).toContain("height:20%");
