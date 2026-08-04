@@ -32,4 +32,12 @@ describe("SplitButton semantics", () => {
     expect(chevron).toBeTruthy();
     expect(chevron).not.toContain("disabled");
   });
+
+  it("keeps the two interactive segments flush without painting a divider column", () => {
+    const html = renderToStaticMarkup(<SplitButton icon={<span>icon</span>} actionLabel="Present" menuLabel="Present and preview options" />);
+
+    expect(html).not.toContain("gap-px");
+    expect(html).not.toContain("bg-c-bg-secondary flex");
+    expect(html.match(/type="button"/g)).toHaveLength(2);
+  });
 });
