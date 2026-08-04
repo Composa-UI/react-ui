@@ -1,7 +1,7 @@
 import { act, create, type ReactTestInstance, type ReactTestRenderer } from "react-test-renderer";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { AssetsPanel, type AssetItem, videoScrubTimeSeconds } from "./AssetsPanel";
+import { AssetsPanel, type AssetItem, videoScrubFraction, videoScrubTimeSeconds } from "./AssetsPanel";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -40,6 +40,22 @@ describe("AssetsPanel — video hover scrub preview", () => {
     expect(videoScrubTimeSeconds(150, 0, 100, 10)).toBeCloseTo(9.999, 4);
     expect(videoScrubTimeSeconds(50, 0, 0, 10)).toBe(0);
     expect(videoScrubTimeSeconds(50, 0, 100, Number.NaN)).toBe(0);
+    expect(videoScrubFraction(-50, 0, 100, 10)).toBe(0);
+    expect(videoScrubFraction(50, 0, 100, 10)).toBe(.5);
+    expect(videoScrubFraction(150, 0, 100, 10)).toBe(1);
+    expect(videoScrubFraction(50, 0, 0, 10)).toBeNull();
+    expect(videoScrubFraction(50, 0, 100, 0)).toBeNull();
+    expect(videoScrubFraction(50, 0, 100, Number.NaN)).toBeNull();
+  });
+
+  it("derives seek time and playhead position from one exact left/mid/right fraction", () => {
+    const duration = 10;
+    const maxSeek = duration - .001;
+    for (const x of [0, 50, 100]) {
+      const fraction = videoScrubFraction(x, 0, 100, duration);
+      expect(fraction).not.toBeNull();
+      expect(videoScrubTimeSeconds(x, 0, 100, duration) / maxSeek).toBe(fraction);
+    }
   });
 
   it("mounts only the active hovered video decoder and restores the poster on leave", () => {
@@ -51,6 +67,10 @@ describe("AssetsPanel — video hover scrub preview", () => {
     expect(previews(renderer!.root)).toHaveLength(1);
     expect(previews(renderer!.root)[0].props.src).toBe("blob:video-a");
     expect(previews(renderer!.root)[0].props.muted).toBe(true);
+    act(() => thumbnail(renderer!.root, "video-a").props.onPointerMove({ clientX: 50, currentTarget: { getBoundingClientRect: () => ({ left: 0, width: 100 }) } }));
+    const playhead = renderer!.root.find(node => node.props["data-asset-scrub-playhead"] === "video-a");
+    expect(playhead.props.style.left).toBe("50%");
+    expect(playhead.props.className).toContain("pointer-events-none");
 
     act(() => thumbnail(renderer!.root, "video-b").props.onPointerEnter({ pointerType: "pen" }));
     expect(previews(renderer!.root)).toHaveLength(1);
@@ -58,6 +78,7 @@ describe("AssetsPanel — video hover scrub preview", () => {
 
     act(() => thumbnail(renderer!.root, "video-b").props.onPointerLeave());
     expect(previews(renderer!.root)).toHaveLength(0);
+    expect(renderer!.root.findAll(node => node.props["data-asset-scrub-playhead"])).toHaveLength(0);
     expect(renderer!.root.findAll(node => node.type === "img" && node.props.src === "blob:poster-b")).toHaveLength(1);
     act(() => renderer!.unmount());
   });

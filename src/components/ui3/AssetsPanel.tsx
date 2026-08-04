@@ -87,11 +87,16 @@ export function videoScrubTimeSeconds(
   width: number,
   durationSeconds: number,
 ): number {
-  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) return 0;
+  const fraction = videoScrubFraction(clientX, left, width, durationSeconds);
+  if (fraction === null) return 0;
   const maxSeek = Math.max(0, durationSeconds - 0.001);
-  if (!Number.isFinite(width) || width <= 0) return 0;
-  const ratio = Math.min(1, Math.max(0, (clientX - left) / width));
-  return ratio * maxSeek;
+  return fraction * maxSeek;
+}
+
+/** The passive playhead uses the same clamped pointer fraction as media seeking. */
+export function videoScrubFraction(clientX: number, left: number, width: number, durationSeconds: number): number | null {
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0 || !Number.isFinite(width) || width <= 0) return null;
+  return Math.min(1, Math.max(0, (clientX - left) / width));
 }
 
 // ─── Type badge (IMG / VID) ───────────────────────────────────────────────────
@@ -144,6 +149,7 @@ function AssetCard({
   const previewRef = useRef<HTMLVideoElement | null>(null);
   const pendingSeek = useRef<{ clientX: number; left: number; width: number } | null>(null);
   const [previewFailed, setPreviewFailed] = useState(false);
+  const [scrubFraction, setScrubFraction] = useState<number | null>(null);
   const previewInstructionId = useId();
   const canPreview = item.kind === "video" && status === "ready" && !!item.videoPreview && !previewFailed;
 
@@ -168,10 +174,13 @@ function AssetCard({
     if (!previewActive || !canPreview) return;
     const rect = event.currentTarget.getBoundingClientRect();
     pendingSeek.current = { clientX: event.clientX, left: rect.left, width: rect.width };
+    const duration = (item.videoPreview?.durationMs ?? 0) / 1000;
+    setScrubFraction(videoScrubFraction(event.clientX, rect.left, rect.width, duration));
     if (previewRef.current) seekPreview(previewRef.current);
   };
   const handlePointerLeave = () => {
     pendingSeek.current = null;
+    setScrubFraction(null);
     onPreviewEnd();
   };
 
@@ -230,6 +239,11 @@ function AssetCard({
             onError={() => { setPreviewFailed(true); onPreviewEnd(); }}
             className="pointer-events-none absolute inset-0 size-full object-cover"
           />
+        )}
+        {previewActive && scrubFraction !== null && (
+          <span data-asset-scrub-playhead={item.id} aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 z-[2] w-px bg-white/90 shadow-[0_0_2px_rgba(0,0,0,0.6)]"
+            style={{ left: `${scrubFraction * 100}%` }} />
         )}
         {item.kind === "video" && item.videoPreview && (
           <span id={previewInstructionId} className="sr-only">
