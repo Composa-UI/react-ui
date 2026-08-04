@@ -96,6 +96,7 @@ describe("AnchoredInspectorOverlay runtime contract", () => {
     expect(root.props.modal).toBe(true);
     expect(content.props.side).toBe("left");
     expect(content.props.align).toBe("start");
+    expect(content.props.alignOffset).toBe(0);
     expect(content.props.avoidCollisions).toBe(true);
     expect(content.props.sticky).toBe("always");
     expect(content.props.collisionBoundary).toBe(collisionBoundary);

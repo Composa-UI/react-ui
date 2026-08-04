@@ -1,6 +1,6 @@
 import { clsx } from "clsx";
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
-import { ChevronRight, ChevronDown, Plus, Pencil, Copy, Trash2 } from "lucide-react";
+import { ChevronRight, ChevronDown, Plus, Pencil, Copy, Trash2, LayoutTemplate } from "lucide-react";
 import { ScrollArea } from "./Panel";
 import { Menu, MenuRow } from "./Menu";
 
@@ -21,6 +21,9 @@ const INTER = { fontFamily: "Inter, sans-serif" } as const;
 export interface SlideData {
   n: number | string;          // number label
   thumb?: string;              // thumbnail image src
+  /** Evaluated thumbnail supplied by the app while the composition is being
+   * previewed. Presentation stays in the DS; frame evaluation stays app-owned. */
+  previewThumb?: string;
   tint?: string;               // solid thumb colour when no image (demo)
   selected?: boolean;
   /** Slide currently rendered in the canvas, even when another editor surface owns selection. */
@@ -30,6 +33,8 @@ export interface SlideData {
   expanded?: boolean;          // chevron rotation (open group)
   stacked?: boolean;           // stacked-group visual (offset cards behind)
   motion?: boolean;            // animation applied — badge on thumbnail
+  /** Starts/stops app-owned evaluated thumbnail playback on hover or keyboard focus. */
+  onPreviewChange?: (previewing: boolean) => void;
   comment?: number;            // comment-pin count (undefined = none)
   onClick?: (event: MouseEvent<HTMLDivElement>) => void;
 }
@@ -51,6 +56,21 @@ export function slideItemKeyboardAction(key: string): "rename" | "activate" | "n
 // selected-row background). Sub-slides carry a deeper left inset.
 const SLOT_RATIO = 140 / 79; // fixed left-panel slot ratio → reserves the available height
 export const THUMB_RATIO = SLOT_RATIO; // back-compat alias (slot ratio)
+export function CompositionMotionBadge({ className }: { className?: string }) {
+  return (
+    <div data-composa-motion-present className={clsx("size-[18px] rounded-[2px] bg-c-bg border border-c-border", className)}>
+      <svg
+        className="absolute inset-[-3px] size-[24px] text-c-icon-secondary"
+        fill="none"
+        viewBox="0 0 24 24"
+        aria-hidden
+      >
+        <path d={ANIMATE_GLYPH} fill="currentColor" />
+      </svg>
+    </div>
+  );
+}
+
 function SlideThumb({ item, aspectRatio = SLOT_RATIO }: { item: SlideData; aspectRatio?: number }) {
   const gutter = item.sub ? "left-[68px]" : "left-[44px]";
   const ratio = aspectRatio > 0 ? aspectRatio : SLOT_RATIO;
@@ -62,24 +82,15 @@ function SlideThumb({ item, aspectRatio = SLOT_RATIO }: { item: SlideData; aspec
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="relative h-full max-w-full rounded-[5px]" style={{ aspectRatio: ratio }}>
           <div className="absolute inset-0 rounded-[5px] overflow-hidden bg-white">
-            {item.thumb
-              ? <img alt="" className="absolute inset-0 size-full object-cover" src={item.thumb} />
+            {(item.previewThumb ?? item.thumb)
+              ? <img alt="" className="absolute inset-0 size-full object-cover" src={item.previewThumb ?? item.thumb} />
               : <div className="absolute inset-0" style={{ background: item.tint ?? "#111" }} />}
           </div>
           <div aria-hidden className="absolute inset-0 rounded-[5px] border border-c-border" />
           {/* motion badge — Figma icon.24.animate.small: 18px rounded chip, bottom-left,
               with the animate glyph (24-viewBox path inset −3px to sit centred in 18px). */}
           {item.motion && (
-            <div className="absolute bottom-[5px] left-[5px] size-[18px] rounded-[2px] bg-c-bg border border-c-border">
-              <svg
-                className="absolute inset-[-3px] size-[24px] text-c-icon-secondary"
-                fill="none"
-                viewBox="0 0 24 24"
-                aria-hidden
-              >
-                <path d={ANIMATE_GLYPH} fill="currentColor" />
-              </svg>
-            </div>
+            <CompositionMotionBadge className="absolute bottom-[5px] left-[5px]" />
           )}
         </div>
       </div>
@@ -90,6 +101,15 @@ function SlideThumb({ item, aspectRatio = SLOT_RATIO }: { item: SlideData; aspec
 // ── One slide row ─────────────────────────────────────────────────────────────
 export function SlideListItem({ item, aspectRatio, tabIndex = 0, onNavigate, onRenameRequest, onMenuRequest, onFocus, itemRef }: { item: SlideData; aspectRatio?: number; tabIndex?: number; onNavigate?: (event: KeyboardEvent<HTMLDivElement>) => void; onRenameRequest?: () => void; onMenuRequest?: (event: { clientX: number; clientY: number }) => void; onFocus?: () => void; itemRef?: (node: HTMLDivElement | null) => void }) {
   const numLeft = item.sub ? "left-[36px]" : "left-[12px]";
+  const previewIntent = useRef({ hover: false, focus: false, active: false });
+  const setPreviewIntent = (source: "hover" | "focus", value: boolean) => {
+    const intent = previewIntent.current;
+    intent[source] = value;
+    const active = intent.hover || intent.focus;
+    if (active === intent.active) return;
+    intent.active = active;
+    item.onPreviewChange?.(active);
+  };
   // Row height tracks the responsive thumbnail. An in-flow spacer uses the same
   // left-gutter + 12px-right margins, so it fills the remaining width; aspect-ratio
   // then sets its height, and the row grows/shrinks with the panel width. Vertical
@@ -100,6 +120,10 @@ export function SlideListItem({ item, aspectRatio, tabIndex = 0, onNavigate, onR
     <div className="group/slide relative w-full shrink-0 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-c-border-selected"
       ref={itemRef} role="option" tabIndex={tabIndex} aria-selected={item.selected} data-in-view={item.inView || undefined} aria-label={`Composition ${item.n}`}
       onFocus={onFocus}
+      onFocusCapture={() => setPreviewIntent("focus", true)}
+      onBlurCapture={() => setPreviewIntent("focus", false)}
+      onMouseEnter={() => setPreviewIntent("hover", true)}
+      onMouseLeave={() => setPreviewIntent("hover", false)}
       onClick={item.onClick}
       onContextMenu={onMenuRequest ? event => { event.preventDefault(); onMenuRequest({ clientX: event.clientX, clientY: event.clientY }); } : undefined}
       onKeyDown={event => {
@@ -222,7 +246,7 @@ function EditableProjectTitle({ title, onCommit, onMenu }: {
 }
 
 // ── Panel ─────────────────────────────────────────────────────────────────────
-export function SlidesPanel({ slides, aspectRatio, title = "Product review", subtitle: _subtitle = "", onNewSlide, onNewSlideMenu, onRenameRequest, onTitleChange, onTitleMenu, onSlideDuplicate, onSlideDelete }: {
+export function SlidesPanel({ slides, aspectRatio, title = "Product review", subtitle: _subtitle = "", onNewSlide, onNewSlideMenu, onRenameRequest, onTitleChange, onTitleMenu, onSlideDuplicate, onSlidePublishTemplate, onSlideDelete }: {
   slides: SlideData[];
   /** Project canvas aspect ratio (width / height). Slide thumbnails honor it while
    *  the reserved slot height stays constant. Defaults to the ~16:9 slot ratio. */
@@ -239,13 +263,15 @@ export function SlidesPanel({ slides, aspectRatio, title = "Product review", sub
   onTitleMenu?: (trigger: HTMLButtonElement) => void;
   /** Slide-item menu actions. Duplicate/Delete semantics are not yet pinned. */
   onSlideDuplicate?: (index: number) => void;
+  /** Publish the selected composition into the app-owned project template catalogue. */
+  onSlidePublishTemplate?: (index: number) => void;
   onSlideDelete?: (index: number) => void;
 }) {
   const initialFocus = Math.max(0, slides.findIndex(slide => slide.selected));
   const [focusIndex, setFocusIndex] = useState(initialFocus);
   const [menu, setMenu] = useState<{ index: number; x: number; y: number } | null>(null);
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const hasItemMenu = Boolean(onRenameRequest || onSlideDuplicate || onSlideDelete);
+  const hasItemMenu = Boolean(onRenameRequest || onSlideDuplicate || onSlidePublishTemplate || onSlideDelete);
   const navigate = (index: number, event: KeyboardEvent<HTMLDivElement>) => {
     let next = index;
     if (event.key === "ArrowDown" || event.key === "ArrowRight") next = Math.min(slides.length - 1, index + 1);
@@ -297,6 +323,7 @@ export function SlidesPanel({ slides, aspectRatio, title = "Product review", sub
             <Menu>
               <MenuRow label="Rename" leading={<Pencil size={14} />} onClick={() => { onRenameRequest?.(menu.index); setMenu(null); }} />
               <MenuRow label="Duplicate" leading={<Copy size={14} />} onClick={() => { onSlideDuplicate?.(menu.index); setMenu(null); }} />
+              {onSlidePublishTemplate && <MenuRow label="Publish as template" leading={<LayoutTemplate size={14} />} onClick={() => { onSlidePublishTemplate(menu.index); setMenu(null); }} />}
               <MenuRow type="divider" />
               <MenuRow label="Delete" leading={<Trash2 size={14} />} destructive onClick={() => { onSlideDelete?.(menu.index); setMenu(null); }} />
             </Menu>

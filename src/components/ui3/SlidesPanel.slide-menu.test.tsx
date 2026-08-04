@@ -35,6 +35,21 @@ function rightClick(row: ReactTestInstance, at = { clientX: 120, clientY: 240 })
 }
 
 describe("SlidesPanel slide actions", () => {
+  it("projects an app-owned evaluated frame and exposes hover/focus preview intent", () => {
+    const onPreviewChange = vi.fn();
+    const renderer = renderPanel({ slides: [{ n: 1, thumb: "authored.png", previewThumb: "evaluated.png", motion: true, onPreviewChange }] });
+    const row = slideRow(renderer.root, 1);
+    expect(row.find(node => node.type === "img").props.src).toBe("evaluated.png");
+    expect(row.findAll(node => node.props["data-composa-motion-present"] !== undefined)).toHaveLength(1);
+
+    act(() => row.props.onMouseEnter());
+    act(() => row.props.onMouseLeave());
+    act(() => row.props.onFocusCapture());
+    act(() => row.props.onBlurCapture());
+    expect(onPreviewChange.mock.calls).toEqual([[true], [false], [true], [false]]);
+    act(() => renderer.unmount());
+  });
+
   it("puts no button — hover ⋯ or otherwise — inside a slide row", () => {
     const renderer = renderPanel({ slides: SLIDES, onRenameRequest: () => undefined, onSlideDelete: () => undefined });
     const row = slideRow(renderer.root, 1);
@@ -49,8 +64,9 @@ describe("SlidesPanel slide actions", () => {
   it("opens Rename · Duplicate · Delete at the cursor on right-click", () => {
     const onRenameRequest = vi.fn();
     const onSlideDuplicate = vi.fn();
+    const onSlidePublishTemplate = vi.fn();
     const onSlideDelete = vi.fn();
-    const renderer = renderPanel({ slides: SLIDES, onRenameRequest, onSlideDuplicate, onSlideDelete });
+    const renderer = renderPanel({ slides: SLIDES, onRenameRequest, onSlideDuplicate, onSlidePublishTemplate, onSlideDelete });
 
     // Closed to begin with, so finding the rows after the right-click is meaningful.
     expect(renderer.root.findAll(node => node.props.role === "menuitem")).toHaveLength(0);
@@ -58,7 +74,7 @@ describe("SlidesPanel slide actions", () => {
     const preventDefault = rightClick(slideRow(renderer.root, 2), { clientX: 96, clientY: 310 });
     expect(preventDefault).toHaveBeenCalledOnce();
 
-    for (const label of ["Rename", "Duplicate", "Delete"]) {
+    for (const label of ["Rename", "Duplicate", "Publish as template", "Delete"]) {
       expect(menuItem(renderer.root, label), label).toHaveLength(1);
     }
     // Anchored at the pointer, like the assets-panel context menu.
@@ -71,6 +87,17 @@ describe("SlidesPanel slide actions", () => {
     expect(renderer.root.findAll(node => node.props.role === "menuitem")).toHaveLength(0);
     expect(onRenameRequest).not.toHaveBeenCalled();
     expect(onSlideDuplicate).not.toHaveBeenCalled();
+    expect(onSlidePublishTemplate).not.toHaveBeenCalled();
+    act(() => renderer.unmount());
+  });
+
+  it("publishes the exact right-clicked composition as a template", () => {
+    const onSlidePublishTemplate = vi.fn();
+    const renderer = renderPanel({ slides: SLIDES, onSlidePublishTemplate });
+    rightClick(slideRow(renderer.root, 2));
+    act(() => menuItem(renderer.root, "Publish as template")[0].props.onClick());
+    expect(onSlidePublishTemplate).toHaveBeenCalledWith(1);
+    expect(renderer.root.findAll(node => node.props.role === "menuitem")).toHaveLength(0);
     act(() => renderer.unmount());
   });
 

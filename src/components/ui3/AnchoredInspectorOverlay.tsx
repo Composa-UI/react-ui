@@ -133,6 +133,10 @@ export interface AnchoredInspectorOverlayProps {
   side?: AnchoredInspectorOverlaySide;
   align?: AnchoredInspectorOverlayAlign;
   sideOffset?: number;
+  /** Cross-axis offset from the selected alignment edge. For a right/left
+   * overlay this is the vertical inset; for a top/bottom overlay it is the
+   * horizontal inset. */
+  alignOffset?: number;
   collisionPadding?: number;
   /** Modal Popover mode traps focus and returns it to the captured trigger. */
   trapFocus?: boolean;
@@ -186,6 +190,7 @@ export function AnchoredInspectorOverlay({
   side = "left",
   align = "start",
   sideOffset = 8,
+  alignOffset = 0,
   collisionPadding = ANCHORED_INSPECTOR_OVERLAY_COLLISION_PADDING,
   trapFocus = true,
   blockOutsideDismiss = false,
@@ -453,6 +458,7 @@ export function AnchoredInspectorOverlay({
           side={side}
           align={align}
           sideOffset={sideOffset}
+          alignOffset={alignOffset}
           collisionBoundary={capturedBoundary.current ?? undefined}
           collisionPadding={collisionPadding}
           avoidCollisions
