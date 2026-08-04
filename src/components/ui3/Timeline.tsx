@@ -182,9 +182,6 @@ export interface SlideBlock {
   selected?: boolean;
 }
 const slideBlockId = (block: SlideBlock, index: number) => block.id ?? `slide-${index}`;
-/** The neutral wash laid over a video clip's thumbnail so the label stays readable. */
-const CLIP_SCRIM = "rgba(0,0,0,.25)";
-
 export interface BaseClipBlock {
   id: string;
   name: string;
@@ -1743,12 +1740,11 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
         {clips.map(clip => {
           const left = percent(clip.range[0], viewport);
           const width = percentWidth(clip.range[0], clip.range[1], viewport);
-          const tintIsImage = clip.tint?.includes("gradient(");
           const hasContextMenu = !!clip.id && !!onContextMenu;
-          // Selected paints over the artwork, so anything drawn ON the bar (label,
-          // waveform, trim handles) has to switch to white — same rule the artwork
-          // already forced when a thumbnail or tint was present.
-          const onArtwork = clip.selected || !!clip.thumbnail || !!clip.tint;
+          // The poster is a leading thumbnail, never the clip fill. This keeps an
+          // unselected video's state in the same neutral family as the other bars,
+          // independent of the source frame's colour (Iteration 4 rows 12/27).
+          const onSelected = !!clip.selected;
           // aria-label: the bar is a button and had no accessible name, so a
           // screen reader announced it as an unlabelled button. Audio clips
           // already carry their name (Composa#656).
@@ -1780,7 +1776,7 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
               onPointerCancel: () => finish(true),
               onLostPointerCapture: () => finish(true),
             })}
-            className={clsx("absolute inset-y-[4px] rounded-[4px] flex items-center px-[10px] overflow-hidden border outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring",
+            className={clsx("absolute inset-y-[4px] rounded-[4px] overflow-hidden border outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring",
               // Blue hover highlight on rest (Composa#583); focus ring instead of the raw
               // UA outline (Composa#584).
               // Selected takes the SAME solid fill as a selected audio or composition
@@ -1791,18 +1787,31 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
               // does not — TL-3.
               dimmed && MUTED_BAR,
               clip.selected ? "border-c-border-selected-strong bg-c-bg-brand" : "border-c-border bg-c-bg-secondary hover:border-c-border-selected")}
-            style={{ left, width,
-              backgroundColor: !clip.selected && !clip.thumbnail && !tintIsImage ? clip.tint : undefined,
-              backgroundImage: clip.selected ? undefined : clip.thumbnail ? `linear-gradient(${CLIP_SCRIM},${CLIP_SCRIM}),url(${clip.thumbnail})` : tintIsImage ? clip.tint : undefined,
-              backgroundSize: "cover", backgroundPosition: "center" }}>
+            style={{ left, width }}>
+            <div data-timeline-clip-main className="absolute inset-x-[10px] top-0 bottom-[14px] flex min-w-0 items-center gap-[6px]">
+              {!clip.selected && clip.thumbnail ? (
+                <img
+                  data-timeline-clip-thumbnail
+                  src={clip.thumbnail}
+                  alt=""
+                  draggable={false}
+                  className="h-[24px] w-[40px] shrink-0 rounded-[2px] object-cover pointer-events-none"
+                />
+              ) : null}
+              <span className={clsx(FONT, "relative min-w-0 truncate text-[11px] font-[450]", onSelected ? "text-white" : "text-c-text-secondary")}>{clip.name}</span>
+            </div>
             {/* Audio strip — video with sound reads at a glance the way the Audio lane
                 does, reusing that lane's renderer rather than a second one. Pinned to
                 the bottom so it never competes with the clip name (Composa#661).
                 The lane's mute dims THIS strip only — see the `muted`/`visible` note
                 above (TL-3). */}
             {clip.waveform?.length ? (
-              <div data-timeline-clip-waveform className={clsx("absolute inset-x-0 bottom-[2px] h-[14px]", muted && MUTED_BAR)}>
-                <AudioLaneWaveform id={clip.id} peaks={clip.waveform} active={onArtwork} />
+              <div data-timeline-clip-waveform className={clsx(
+                "absolute inset-x-0 bottom-0 h-[14px] rounded-b-[3px]",
+                clip.selected ? "bg-black/10" : "bg-c-bg-hover",
+                muted && MUTED_BAR,
+              )}>
+                <AudioLaneWaveform id={clip.id} peaks={clip.waveform} active={onSelected} />
               </div>
             ) : null}
             {/* No trim handles on a locked lane — see `laneIsLocked`. */}
@@ -1816,7 +1825,6 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
               onPointerDown={event => begin(event, clip, "end")} onPointerMove={event => update(event, clip)} onPointerUp={() => finish(false)} onPointerCancel={() => finish(true)}
               className={clsx("absolute right-[6px] top-1/2 -translate-y-1/2 h-[12px] w-[2px] rounded-full cursor-ew-resize outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring", clip.selected ? "bg-white" : "bg-c-icon-secondary")} />
             </>}
-            <span className={clsx(FONT, "relative text-[11px] font-[450] truncate", onArtwork ? "text-white" : "text-c-text-secondary")}>{clip.name}</span>
           </div>;
         })}
       </div>
