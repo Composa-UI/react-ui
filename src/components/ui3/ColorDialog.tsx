@@ -515,7 +515,8 @@ const GRADIENT_TYPES: { value: FillType; label: string }[] = [
   { value: "angular", label: "Angular" },
   { value: "diamond", label: "Diamond" },
 ];
-const COLOR_FORMATS = ["Hex", "RGB", "CSS", "HSL", "HSB"];
+const COLOR_FORMATS = ["Hex", "RGB", "CSS", "HSL", "HSB"] as const;
+type ColorFormat = (typeof COLOR_FORMATS)[number];
 
 export function ColorDialog({
   open,
@@ -611,8 +612,7 @@ export function ColorDialog({
     onHexChange?.(nextHex);
   };
 
-  const [colorFormat, setColorFormat] = useState("Hex");
-  const cycleFormat = () => setColorFormat(f => COLOR_FORMATS[(COLOR_FORMATS.indexOf(f) + 1) % COLOR_FORMATS.length]);
+  const [colorFormat, setColorFormat] = useState<ColorFormat>("Hex");
   const isSingleFmt = colorFormat === "Hex" || colorFormat === "CSS";
   const handleFillType = (t: FillType) => { setFillType(t); onFillTypeChange?.(t); };
   const handleHue      = (v: number)   => {
@@ -882,9 +882,32 @@ export function ColorDialog({
 
             {/* Format dropdown (its OWN control) + value using the proper input, not combined */}
             <div className="flex items-center gap-[8px] px-[16px] pb-[8px]">
-              <div className="w-[64px] shrink-0">
-                <Dropdown value={colorFormat} onClick={cycleFormat} fullWidth />
-              </div>
+              <PopoverMenu
+                align="left"
+                className="w-[64px] shrink-0"
+                trigger={
+                  <Dropdown
+                    ariaLabel={`Color format: ${colorFormat}`}
+                    value={colorFormat}
+                    fullWidth
+                  />
+                }
+              >
+                {close => (
+                  <Menu>
+                    {COLOR_FORMATS.map(format => (
+                      <MenuRow
+                        key={format}
+                        type="checkmark"
+                        label={format}
+                        checked={format === colorFormat}
+                        selectionRole="radio"
+                        onClick={() => { setColorFormat(format); close(); }}
+                      />
+                    ))}
+                  </Menu>
+                )}
+              </PopoverMenu>
               {colorFormat === "Hex" ? (
                 <div className="flex-1 min-w-0">
                   <ColorInput fullWidth color={`#${hex}`} opacity={opacity} onColorChange={handleHex} onOpacityChange={handleOpacity} />
