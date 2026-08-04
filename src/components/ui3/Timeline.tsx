@@ -67,7 +67,7 @@ const AudioMediaIcon = iconForSemantic("media-audio");
 export type TimelineMode = "master" | "slide";
 export type TimelineFrameRate = 24 | 25 | 30 | 60;
 export type { TimelineViewport } from "./timelineModel";
-export type TimelineViewportChangeSource = "wheel-zoom" | "wheel-pan" | "pointer-pan" | "zoom-control" | "keyframe-reveal" | "edge-drag";
+export type TimelineViewportChangeSource = "wheel-zoom" | "wheel-pan" | "pointer-pan" | "zoom-control" | "keyframe-reveal" | "edge-drag" | "playhead-edge-follow";
 export type TimelinePlayheadChangeSource = "pointer" | "keyboard";
 export interface TimelinePlayheadChangeDetail {
   source: TimelinePlayheadChangeSource;
@@ -345,6 +345,7 @@ function useTimelineEdgeDragAutoScroll(
   viewportRef: MutableRefObject<TimelineViewport>,
   durationMs: number,
   setViewport: (viewport: TimelineViewport, source: TimelineViewportChangeSource) => void,
+  source: TimelineViewportChangeSource = "edge-drag",
 ): TimelineEdgeDragController {
   const durationRef = useRef(durationMs);
   durationRef.current = durationMs;
@@ -356,7 +357,7 @@ function useTimelineEdgeDragAutoScroll(
     getDurationMs: () => durationRef.current,
     setViewport: next => {
       viewportRef.current = next;
-      setViewportRef.current(next, "edge-drag");
+      setViewportRef.current(next, source);
     },
     requestFrame: callback => requestAnimationFrame(callback),
     cancelFrame: handle => cancelAnimationFrame(handle),
@@ -2254,6 +2255,7 @@ export function Timeline({
     onViewportChange?.(normalized, { source });
   };
   const edgeDrag = useTimelineEdgeDragAutoScroll(viewportRef, duration, setViewport);
+  const playheadEdgeFollow = useTimelineEdgeDragAutoScroll(viewportRef, duration, setViewport, "playhead-edge-follow");
   const revealTime = (timeMs: number) => {
     if (timelineWidth <= LEFT_W + 1) return;
     const next = revealTimeInViewport(viewport, timeMs, duration, 0.05, Math.max(0.1, RIGHT_OVERLAY_W / plotWidth));
@@ -2266,6 +2268,7 @@ export function Timeline({
 
   useEffect(() => {
     edgeDrag.cancel();
+    playheadEdgeFollow.cancel();
     const activeMiddlePan = middlePan.current;
     middlePan.current = null;
     if (activeMiddlePan) {
@@ -2337,12 +2340,11 @@ export function Timeline({
 
   // Measure the element the pointer events live on (the ruler container), so the
   // scrub origin can't desync from a separate ref.
-  const scrub = (e: React.PointerEvent) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    setPlayhead(Math.min(duration, Math.max(0, Math.round(xToTime(e.clientX - r.left, viewport, r.width)))), "pointer");
+  const scrubAt = (clientX: number, rect: Pick<DOMRect, "left" | "width">, currentViewport: TimelineViewport = viewportRef.current) => {
+    setPlayhead(Math.min(duration, Math.max(0, Math.round(xToTime(clientX - rect.left, currentViewport, rect.width)))), "pointer");
   };
   const zoomPercent = Math.round(viewportZoomValue(viewport, duration) * 100);
-  const [drag, setDrag] = useState(false);
+  const playheadDragPointer = useRef<number | null>(null);
   const beginMiddlePan = (event: ReactPointerEvent<HTMLDivElement>) => {
     const target = event.target;
     const ownsPanSurface = target instanceof Element && !!target.closest("[data-timeline-pan-surface]");
@@ -2401,11 +2403,28 @@ export function Timeline({
           aria-valuemin={0}
           aria-valuemax={duration}
           aria-valuenow={playhead}
-          onPointerDown={e => { setDrag(true); scrub(e); try { e.currentTarget.setPointerCapture(e.pointerId); } catch {} }}
-          onPointerMove={e => drag && scrub(e)}
-          onPointerUp={() => setDrag(false)}
-          onPointerCancel={() => setDrag(false)}
-          onLostPointerCapture={() => setDrag(false)}
+          onPointerDown={e => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            playheadDragPointer.current = e.pointerId;
+            playheadEdgeFollow.start(() => { playheadDragPointer.current = null; });
+            scrubAt(e.clientX, rect);
+            try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
+          }}
+          onPointerMove={e => {
+            if (playheadDragPointer.current !== e.pointerId) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            // The right transport/zoom cluster is intentionally an overlay (#699),
+            // so it is also the playhead's usable drag boundary. Auto-scroll the
+            // time window while the captured pointer remains near either usable
+            // edge; the full-width ruler geometry itself stays unchanged.
+            playheadEdgeFollow.update(e.clientX, {
+              left: rect.left,
+              width: Math.max(1, rect.width - RIGHT_OVERLAY_W),
+            }, next => scrubAt(e.clientX, rect, next));
+          }}
+          onPointerUp={() => { playheadDragPointer.current = null; playheadEdgeFollow.stop(); }}
+          onPointerCancel={() => { playheadDragPointer.current = null; playheadEdgeFollow.stop(); }}
+          onLostPointerCapture={() => { playheadDragPointer.current = null; playheadEdgeFollow.stop(); }}
           onKeyDown={event => {
             if (event.metaKey || event.ctrlKey || event.altKey) return;
             const claim = () => { event.preventDefault(); event.stopPropagation(); };

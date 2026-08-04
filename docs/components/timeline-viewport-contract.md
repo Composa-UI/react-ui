@@ -17,6 +17,13 @@ per second at and beyond the edge; animation-frame elapsed time is capped at
 duration, and emits `edge-drag`. Master blocks, media clips, ruler scrub, and
 keyboard edits do not opt into this behavior.
 
+The playhead uses the same continuous edge-follow controller in both master and
+slide-local modes, but its usable right boundary stops before the overlaid
+transport/zoom cluster. Edge-follow starts only after a pointer drag begins,
+preserves the zoom span, clamps at the timeline duration, and emits
+`playhead-edge-follow`. A click-to-seek, keyboard seek, and the full-width ruler
+geometry do not move the viewport.
+
 `interactionContextKey` is separate from the viewport. It gives controlled
 hosts an explicit cancellation boundary when the active composition/project
 changes without changing mode or duration.
