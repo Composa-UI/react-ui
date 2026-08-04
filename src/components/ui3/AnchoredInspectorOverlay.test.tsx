@@ -20,6 +20,7 @@ vi.mock("@radix-ui/react-popover", async () => {
     React.createElement("div", { [`data-radix-${name}`]: true, ...props }, children);
   return {
     Root: boundary("root"),
+    Trigger: boundary("trigger"),
     Anchor: boundary("anchor"),
     Portal: boundary("portal"),
     Content: boundary("content"),

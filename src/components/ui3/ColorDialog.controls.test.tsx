@@ -3,6 +3,7 @@ import type { ReactElement, ReactNode } from "react";
 import { act, create, type ReactTestInstance, type ReactTestRenderer } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
 import { ColorDialog, type GradientStop } from "./ColorDialog";
+import { PopoverMenu } from "./Menu";
 
 // InspectorDialog is a Radix popover and renders no children in a bare renderer,
 // so without this mock every assertion below would pass against an empty tree.
@@ -229,6 +230,80 @@ describe("gradient type control", () => {
     expect(diamond).toBeDefined();
     act(() => diamond!.props.onClick());
     expect(onFillTypeChange).toHaveBeenCalledWith("diamond");
+    act(() => renderer.unmount());
+  });
+});
+
+// ── Iteration 5: color format is a direct chooser, not a hidden cycle ───────
+
+describe("color format control", () => {
+  const rowLabel = (row: ReactTestInstance) =>
+    ["Hex", "RGB", "CSS", "HSL", "HSB"].find(label =>
+      renderToStaticMarkup(<>{row.props.children}</>).includes(`>${label}<`),
+    );
+
+  const formatRows = (renderer: ReactTestRenderer) =>
+    host(renderer, instance =>
+      instance.props.role === "menuitemradio"
+      && rowLabel(instance) !== undefined,
+    );
+
+  const formatRow = (renderer: ReactTestRenderer, label: string) =>
+    formatRows(renderer).find(row => rowLabel(row) === label);
+
+  it("opens a labelled direct chooser with every format and the current one selected", () => {
+    const renderer = render();
+
+    expect(byLabel(renderer, "Color format: Hex")).toHaveLength(1);
+    const formatPopover = renderer.root.findAllByType(PopoverMenu).find(popover =>
+      popover.props.trigger?.props?.ariaLabel === "Color format: Hex",
+    );
+    // Escape/outside dismissal and trigger focus return belong to this shared
+    // overlay primitive. Guard against replacing it with local open-state code.
+    expect(formatPopover).toBeDefined();
+    expect(formatRows(renderer).map(rowLabel)).toEqual([
+      "Hex", "RGB", "CSS", "HSL", "HSB",
+    ]);
+    expect(formatRows(renderer).filter(row => row.props["aria-checked"] === true)
+      .map(rowLabel)).toEqual(["Hex"]);
+
+    act(() => renderer.unmount());
+  });
+
+  it("chooses the exact pointer target in one action without mutating the color", () => {
+    const onHexChange = vi.fn();
+    const onHueChange = vi.fn();
+    const onOpacityChange = vi.fn();
+    const renderer = render({
+      hex: "123456",
+      hue: 210,
+      opacity: 72,
+      onHexChange,
+      onHueChange,
+      onOpacityChange,
+    });
+
+    act(() => formatRow(renderer, "HSB")!.props.onClick());
+
+    expect(byLabel(renderer, "Color format: HSB")).toHaveLength(1);
+    expect(formatRow(renderer, "HSB")!.props["aria-checked"]).toBe(true);
+    expect(onHexChange).not.toHaveBeenCalled();
+    expect(onHueChange).not.toHaveBeenCalled();
+    expect(onOpacityChange).not.toHaveBeenCalled();
+
+    act(() => renderer.unmount());
+  });
+
+  it.each(["Enter", " "])("supports %j keyboard selection through the canonical menu row", key => {
+    const onHexChange = vi.fn();
+    const renderer = render({ hex: "123456", onHexChange });
+
+    act(() => formatRow(renderer, "HSL")!.props.onKeyDown({ key }));
+
+    expect(byLabel(renderer, "Color format: HSL")).toHaveLength(1);
+    expect(formatRow(renderer, "HSL")!.props["aria-checked"]).toBe(true);
+    expect(onHexChange).not.toHaveBeenCalled();
+
     act(() => renderer.unmount());
   });
 });
