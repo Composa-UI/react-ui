@@ -44,6 +44,7 @@ export function SidePanel({
   const [internalWidth, setInternalWidth] = useState(defaultWidth);
   const width = controlledWidth ?? internalWidth;
   const [dragging, setDragging] = useState(false);
+  const dragPointerIdRef = useRef<number | null>(null);
 
   const setWidth = useCallback(
     (next: number) => {
@@ -59,23 +60,27 @@ export function SidePanel({
       e.preventDefault();
       const el = containerRef.current;
       if (!el) return;
+      dragPointerIdRef.current = e.pointerId;
       setDragging(true);
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
-
-      const move = (ev: PointerEvent) => {
-        const rect = el.getBoundingClientRect();
-        setWidth(ev.clientX - rect.left);
-      };
-      const up = () => {
-        setDragging(false);
-        window.removeEventListener("pointermove", move);
-        window.removeEventListener("pointerup", up);
-      };
-      window.addEventListener("pointermove", move);
-      window.addEventListener("pointerup", up);
     },
-    [setWidth],
+    [],
   );
+
+  const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (dragPointerIdRef.current !== e.pointerId) return;
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (rect) setWidth(e.clientX - rect.left);
+  }, [setWidth]);
+
+  const finishPointerDrag = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (dragPointerIdRef.current !== e.pointerId) return;
+    dragPointerIdRef.current = null;
+    if ((e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    }
+    setDragging(false);
+  }, []);
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -108,6 +113,9 @@ export function SidePanel({
         aria-valuemax={SIDE_PANEL_MAX_WIDTH}
         tabIndex={0}
         onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={finishPointerDrag}
+        onPointerCancel={finishPointerDrag}
         onKeyDown={onKeyDown}
         className={clsx(
           "absolute top-0 right-0 h-full w-[4px] z-20 cursor-ew-resize select-none outline-none translate-x-1/2",
