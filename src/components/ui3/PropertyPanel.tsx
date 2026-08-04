@@ -26,7 +26,7 @@ import { SegmentedControl } from "./SegmentedControl";
 import { AlignmentControl, type AlignmentValue } from "./AlignmentControl";
 import { Chit } from "./Chit";
 import { Checkbox } from "./Checkbox";
-import { ColorDialog, type FillType, type GradientStop, type GradientStopKeyframeControls, type ImageAdjustment, type ImageAdjustments } from "./ColorDialog";
+import { ColorDialog, type FillType, type GradientStop, type GradientStopKeyframeControls, type ImageAdjustment, type ImageAdjustments, type MediaFillFit } from "./ColorDialog";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { AnimatePanel } from "./AnimatePanel";
 import { Avatar, type AvatarColor } from "./Avatar";
@@ -101,6 +101,7 @@ export interface ElementFillSetting {
   imagePreviewUrl?: string;
   videoSourceLabel?: string;
   videoPreviewUrl?: string;
+  mediaFit?: MediaFillFit;
   imageAdjustments?: Partial<ImageAdjustments>;
   /** A host-owned visual track binding for a standalone drop-zone fill. */
   dropZoneSourceId?: string;
@@ -1721,7 +1722,7 @@ type FillEntry = ElementFillSetting;
 
 function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
   onFillTypeChange, onGradientStopsChange, onChooseImage, onChooseVideo,
-  onImageAdjustmentChange, dropZoneSources, onSelectDropZoneSource,
+  onImageAdjustmentChange, onMediaFitChange, dropZoneSources, onSelectDropZoneSource,
   imageAdjustmentsReadOnly = false, capabilities, activeStackDialog, onActiveStackDialogChange }: {
   entries?: FillEntry[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<FillEntry, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
@@ -1729,6 +1730,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
   onGradientStopsChange?: (id: string, stops: GradientStop[]) => void;
   onChooseImage?: (id: string) => void; onChooseVideo?: (id: string) => void;
   onImageAdjustmentChange?: (id: string, adjustment: ImageAdjustment, value: number) => void;
+  onMediaFitChange?: (id: string, fit: MediaFillFit) => void;
   imageAdjustmentsReadOnly?: boolean;
   dropZoneSources?: { id: string; label: string }[];
   onSelectDropZoneSource?: (id: string, sourceId: string) => void;
@@ -1814,6 +1816,8 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
               videoSourceLabel={fill.videoSourceLabel}
               videoPreviewUrl={fill.videoPreviewUrl}
               onChooseVideo={onChooseVideo ? () => onChooseVideo(fill.id) : undefined}
+              mediaFit={fill.mediaFit}
+              onMediaFitChange={onMediaFitChange ? fit => onMediaFitChange(fill.id, fit) : undefined}
               dropZoneSources={dropZoneSources}
               dropZoneSourceId={fill.dropZoneSourceId}
               onSelectDropZoneSource={onSelectDropZoneSource ? sourceId => onSelectDropZoneSource(fill.id, sourceId) : undefined}
@@ -3132,6 +3136,7 @@ export interface PropertyPanelProps {
   onChooseFillImage?: (id: string) => void;
   onChooseFillVideo?: (id: string) => void;
   onFillImageAdjustmentChange?: (id: string, adjustment: ImageAdjustment, value: number) => void;
+  onFillMediaFitChange?: (id: string, fit: MediaFillFit) => void;
   fillDropZoneSources?: { id: string; label: string }[];
   onSelectFillDropZoneSource?: (id: string, sourceId: string) => void;
   strokes?: ElementStrokeSetting[];
@@ -4196,6 +4201,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onFillTypeChange={props.onFillTypeChange} onGradientStopsChange={props.onFillGradientStopsChange}
             onChooseImage={props.onChooseFillImage} onChooseVideo={props.onChooseFillVideo}
             onImageAdjustmentChange={props.onFillImageAdjustmentChange}
+            onMediaFitChange={props.onFillMediaFitChange}
             dropZoneSources={props.fillDropZoneSources} onSelectDropZoneSource={props.onSelectFillDropZoneSource}
             capabilities={capabilities}
             activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />

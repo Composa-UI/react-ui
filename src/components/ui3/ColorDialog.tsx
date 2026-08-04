@@ -16,6 +16,7 @@ import { Chit } from "./Chit";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type FillType = "solid" | "linear" | "radial" | "angular" | "diamond" | "image" | "video" | "drop-zone";
+export type MediaFillFit = "fill" | "fit" | "crop" | "tile";
 
 export interface GradientStop {
   id: string;
@@ -117,6 +118,10 @@ export interface ColorDialogProps {
   videoPreviewUrl?: string;
   /** Host-backed media picker. When absent, Video is not offered. */
   onChooseVideo?: () => void;
+  /** Persisted renderer-backed fit mode for Image and Video fills. */
+  mediaFit?: MediaFillFit;
+  /** Host mutation for the selected media fill's fit mode. */
+  onMediaFitChange?: (fit: MediaFillFit) => void;
   /**
    * Timeline TRACKS the drop zone can show. Deliberately tracks, not clips: a
    * composition need not line up with any one clip's span, so binding a drop
@@ -362,10 +367,40 @@ function AdjustRow({ label, value, onChange, keyframe, disabled = false }: {
   );
 }
 
-function MediaFillPreview({ kind, sourceLabel, previewUrl, onChoose }: {
+const MEDIA_FIT_LABELS: Record<MediaFillFit, string> = { fill: "Fill", fit: "Fit", crop: "Crop", tile: "Tile" };
+
+function MediaFitControl({ kind, value, onChange }: {
+  kind: "image" | "video";
+  value: MediaFillFit;
+  onChange?: (fit: MediaFillFit) => void;
+}) {
+  if (!onChange) return null;
+  const options: MediaFillFit[] = kind === "image" ? ["fill", "fit", "crop", "tile"] : ["fill", "fit", "crop"];
+  return <div className="flex h-[40px] items-center gap-[8px] border-b border-c-border px-[16px]">
+    <span className={clsx(FONT, "w-[48px] shrink-0 text-[11px] font-[450] text-c-text-secondary")}>Fit</span>
+    <PopoverMenu
+      align="left"
+      className="min-w-0 flex-1"
+      trigger={<Dropdown ariaLabel={`${kind === "image" ? "Image" : "Video"} fit`} value={MEDIA_FIT_LABELS[value]} fullWidth />}
+    >
+      {close => <Menu>
+        {options.map(option => <MenuRow
+          key={option}
+          label={MEDIA_FIT_LABELS[option]}
+          checked={option === value}
+          selectionRole="radio"
+          onClick={() => { onChange(option); close(); }}
+        />)}
+      </Menu>}
+    </PopoverMenu>
+  </div>;
+}
+
+function MediaFillPreview({ kind, sourceLabel, previewUrl, fit, onChoose }: {
   kind: "image" | "video";
   sourceLabel?: string;
   previewUrl?: string;
+  fit: MediaFillFit;
   onChoose?: () => void;
 }) {
   const selected = !!sourceLabel;
@@ -374,14 +409,16 @@ function MediaFillPreview({ kind, sourceLabel, previewUrl, onChoose }: {
     <div
       data-composa-media-fill-preview={kind}
       data-state={previewUrl ? "bound" : "empty"}
+      data-fit={fit}
       className="relative mx-[16px] mt-[16px] mb-[8px] aspect-square overflow-hidden rounded-c-md bg-c-bg-secondary ring-1 ring-inset ring-c-border"
       style={!previewUrl ? {
         backgroundImage: "repeating-conic-gradient(var(--color-bg-secondary) 0% 25%, var(--color-bg) 0% 50%)",
         backgroundSize: "16px 16px",
       } : undefined}
     >
-      {previewUrl && kind === "image" && <img src={previewUrl} alt="" className="absolute inset-0 size-full object-cover" />}
-      {previewUrl && kind === "video" && <video src={previewUrl} aria-hidden muted playsInline preload="metadata" className="absolute inset-0 size-full object-cover" />}
+      {previewUrl && kind === "image" && fit === "tile" && <div aria-hidden className="absolute inset-0" style={{ backgroundImage: `url(${JSON.stringify(previewUrl)})`, backgroundRepeat: "repeat" }} />}
+      {previewUrl && kind === "image" && fit !== "tile" && <img src={previewUrl} alt="" className={clsx("absolute inset-0 size-full", fit === "fit" ? "object-contain" : fit === "fill" ? "object-fill" : "object-cover")} />}
+      {previewUrl && kind === "video" && <video src={previewUrl} aria-hidden muted playsInline preload="metadata" className={clsx("absolute inset-0 size-full", fit === "fit" ? "object-contain" : fit === "fill" ? "object-fill" : "object-cover")} />}
       {!previewUrl && <div className="absolute inset-0 flex items-center justify-center text-c-icon-secondary">
         {kind === "image" ? <Image size={24} strokeWidth={1.5} /> : <SquarePlay size={24} strokeWidth={1.5} />}
       </div>}
@@ -518,6 +555,8 @@ export function ColorDialog({
   videoSourceLabel,
   videoPreviewUrl,
   onChooseVideo,
+  mediaFit = "fill",
+  onMediaFitChange,
   dropZoneSources = [],
   dropZoneSourceId,
   onSelectDropZoneSource,
@@ -945,7 +984,8 @@ export function ColorDialog({
         {/* ── IMAGE ─────────────────────────────────────────────────────── */}
         {fillType === "image" && (
           <>
-            <MediaFillPreview kind="image" sourceLabel={imageSourceLabel} previewUrl={imagePreviewUrl} onChoose={onChooseImage} />
+            <MediaFitControl kind="image" value={mediaFit} onChange={onMediaFitChange} />
+            <MediaFillPreview kind="image" sourceLabel={imageSourceLabel} previewUrl={imagePreviewUrl} fit={mediaFit} onChoose={onChooseImage} />
 
             {/* Image adjustments — same rule: every slider was handed a value
                 and no onChange, so each drag was thrown away. Shown only when
@@ -1009,7 +1049,10 @@ export function ColorDialog({
         )}
 
         {fillType === "video" && videoAvailable && (
-          <MediaFillPreview kind="video" sourceLabel={videoSourceLabel} previewUrl={videoPreviewUrl} onChoose={onChooseVideo} />
+          <>
+            <MediaFitControl kind="video" value={mediaFit === "tile" ? "fill" : mediaFit} onChange={onMediaFitChange} />
+            <MediaFillPreview kind="video" sourceLabel={videoSourceLabel} previewUrl={videoPreviewUrl} fit={mediaFit === "tile" ? "fill" : mediaFit} onChoose={onChooseVideo} />
+          </>
         )}
           </ModalBody>
         </>

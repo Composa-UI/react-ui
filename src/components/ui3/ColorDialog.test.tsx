@@ -126,4 +126,24 @@ describe("ColorDialog anchored inspector contract", () => {
     expect(html).toContain(sourceLabel);
     expect(html).toContain(`>Replace ${kind}<`);
   });
+
+  it("projects persisted renderer-backed fit modes into both media previews", () => {
+    const image = renderToStaticMarkup(
+      <ColorDialog open onClose={() => undefined} trigger={<button>Color</button>}
+        fillType="image" mediaFit="fit" onMediaFitChange={() => undefined}
+        imageSourceLabel="cover.png" imagePreviewUrl="blob:image-preview" onChooseImage={() => undefined} />,
+    );
+    expect(image).toContain('aria-label="Image fit"');
+    expect(image).toContain('data-fit="fit"');
+    expect(image).toContain("object-contain");
+
+    const video = renderToStaticMarkup(
+      <ColorDialog open onClose={() => undefined} trigger={<button>Color</button>}
+        capabilities={{ videoFill: true }} fillType="video" mediaFit="crop" onMediaFitChange={() => undefined}
+        videoSourceLabel="clip.mp4" videoPreviewUrl="blob:video-preview" onChooseVideo={() => undefined} />,
+    );
+    expect(video).toContain('aria-label="Video fit"');
+    expect(video).toContain('data-fit="crop"');
+    expect(video).toContain("object-cover");
+  });
 });

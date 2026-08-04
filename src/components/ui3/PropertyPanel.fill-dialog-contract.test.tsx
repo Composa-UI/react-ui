@@ -20,6 +20,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     const onImage = vi.fn();
     const onVideo = vi.fn();
     const onAdjust = vi.fn();
+    const onFit = vi.fn();
     const onDropZone = vi.fn();
     const stopPosition = { active: true, onToggle: vi.fn() };
     const stopColor = { active: false, onToggle: vi.fn() };
@@ -41,6 +42,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
           keyframes: { opacity: paintOpacity, gradientStops: { a: { position: stopPosition, color: stopColor, opacity: stopOpacity } } },
           imageSourceLabel: "cover.png", videoSourceLabel: "clip.mp4",
           imagePreviewUrl: "blob:image-preview", videoPreviewUrl: "blob:video-preview",
+          mediaFit: "crop",
           imageAdjustments: { exposure: 12, contrast: -4, saturation: 9, temperature: 3, tint: 2, highlights: -8, shadows: 6 },
           dropZoneSourceId: "track:video",
         }]}
@@ -49,6 +51,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
         onChooseFillImage={onImage}
         onChooseFillVideo={onVideo}
         onFillImageAdjustmentChange={onAdjust}
+        onFillMediaFitChange={onFit}
         fillDropZoneSources={[{ id: "track:video", label: "Master video" }]}
         onSelectFillDropZoneSource={onDropZone}
       />);
@@ -62,6 +65,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     expect(props.imagePreviewUrl).toBe("blob:image-preview");
     expect(props.videoSourceLabel).toBe("clip.mp4");
     expect(props.videoPreviewUrl).toBe("blob:video-preview");
+    expect(props.mediaFit).toBe("crop");
     expect(props.imageExposure).toBe(12);
     expect(props.imageShadows).toBe(6);
     expect(props.dropZoneSources).toEqual([{ id: "track:video", label: "Master video" }]);
@@ -72,6 +76,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     act(() => props.onChooseImage?.());
     act(() => props.onChooseVideo?.());
     act(() => props.onImageAdjustmentChange?.("contrast", 22));
+    act(() => props.onMediaFitChange?.("fit"));
     act(() => props.onSelectDropZoneSource?.("track:video"));
 
     expect(onType).toHaveBeenCalledWith("fill-1", "diamond");
@@ -79,6 +84,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     expect(onImage).toHaveBeenCalledWith("fill-1");
     expect(onVideo).toHaveBeenCalledWith("fill-1");
     expect(onAdjust).toHaveBeenCalledWith("fill-1", "contrast", 22);
+    expect(onFit).toHaveBeenCalledWith("fill-1", "fit");
     expect(onDropZone).toHaveBeenCalledWith("fill-1", "track:video");
 
     act(() => renderer.unmount());
