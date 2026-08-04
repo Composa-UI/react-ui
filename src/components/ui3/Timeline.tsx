@@ -2194,6 +2194,10 @@ export function Timeline({
   onTimelineCollapsedChange?: (collapsed: boolean) => void;
 }) {
   const master = mode === "master";
+  // Record chrome belongs only to the slide-local authoring scope. Deriving it
+  // here also makes the master timeline fail closed if a host accidentally
+  // carries a stale `autoKeyframe` value across the scope switch.
+  const recording = !master && autoKeyframe;
   // A playhead promises there is something to scrub through. The slide-local null
   // state (drilled into a slide that has no layers yet) has nothing to seek, so the
   // handle and the body line both drop out rather than pointing at an empty plot
@@ -2364,10 +2368,16 @@ export function Timeline({
     try { event.currentTarget.releasePointerCapture(event.pointerId); } catch {}
   };
   return (
-    <div ref={timelineRef} data-timeline-viewport-start-ms={viewport.startMs} data-timeline-viewport-end-ms={viewport.endMs} data-timeline-autokeyframe={autoKeyframe || undefined}
+    <div ref={timelineRef} data-timeline-viewport-start-ms={viewport.startMs} data-timeline-viewport-end-ms={viewport.endMs} data-timeline-autokeyframe={recording || undefined}
       onPointerDownCapture={beginMiddlePan} onPointerMoveCapture={moveMiddlePan}
       onPointerUpCapture={endMiddlePan} onPointerCancelCapture={endMiddlePan} onLostPointerCapture={endMiddlePan}
-      className={clsx("flex flex-col bg-c-bg border-t overflow-hidden select-none", autoKeyframe ? "border-[#ff3b30]" : "border-c-border")} style={{ height: timelineCollapsed ? undefined : height }}>
+      className="relative flex flex-col bg-c-bg border-t border-c-border overflow-hidden select-none" style={{ height: timelineCollapsed ? undefined : height }}>
+      {recording && <div
+        aria-hidden
+        data-timeline-autokeyframe-accent
+        className="absolute inset-x-0 top-0 h-px z-30 pointer-events-none"
+        style={{ background: "linear-gradient(90deg, transparent 0%, #ff3b30 6%, #ff3b30 94%, transparent 100%)" }}
+      />}
       {/* header: transport | ruler | zoom — the top bar matches a track/header row
           height (master lanes are ROW_BLOCK tall) so the ruler row and the lanes
           below read on one grid. Slide-local rows are shorter, so the transport
@@ -2377,7 +2387,7 @@ export function Timeline({
       <div className="relative flex shrink-0 border-b border-c-border" style={{ height: master ? ROW_BLOCK : 40 }}>
         <div className="shrink-0 flex">
           <Transport current={playhead} duration={duration} mode={mode} playing={playing} loop={loop} onPlayingChange={setPlaying} onLoopChange={setLoop}
-            autoKeyframe={autoKeyframe} onAutoKeyframeChange={onAutoKeyframeChange}
+            autoKeyframe={recording} onAutoKeyframeChange={onAutoKeyframeChange}
             onStop={() => { setPlaying(false); onStop?.(); }} />
         </div>
         <div
@@ -2412,10 +2422,10 @@ export function Timeline({
           {master ? <SecondRuler viewport={viewport} width={plotWidth} /> : <Ruler viewport={viewport} width={plotWidth} />}
           {/* continuous playhead stroke through the header ruler, joining the body line
               below so the playhead reads unbroken (Composa#342, gated by #344) */}
-          {seekable && PLAYHEAD_CONNECTED && <div className="absolute top-[10px] bottom-0 w-px z-[15] -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport), backgroundColor: autoKeyframe ? "#ff3b30" : BLUE }} />}
+          {seekable && PLAYHEAD_CONNECTED && <div className="absolute top-[10px] bottom-0 w-px z-[15] -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport), backgroundColor: recording ? "#ff3b30" : BLUE }} />}
           {/* playhead handle — recolors red when auto-keyframe/record is armed (Composa#330) */}
           {seekable && <div className="absolute top-[4px] z-20 -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport) }}>
-            <svg width={PLAYHEAD_HANDLE_W} height="10" viewBox="0 0 12 10"><path d="M0 0h12v4l-6 6-6-6V0Z" fill={autoKeyframe ? "#ff3b30" : BLUE} /></svg>
+            <svg width={PLAYHEAD_HANDLE_W} height="10" viewBox="0 0 12 10"><path d="M0 0h12v4l-6 6-6-6V0Z" fill={recording ? "#ff3b30" : BLUE} /></svg>
           </div>}
         </div>
         <div className="absolute z-10 right-0 top-0 bottom-0 flex items-center gap-[8px] px-[12px] border-l border-c-border bg-c-bg">
@@ -2505,7 +2515,7 @@ export function Timeline({
             instead of only the visible viewport height. Gated on `seekable` — the
             slide-local null state has nothing to seek, so no line (LT-2). */}
         {seekable && <div className="absolute top-0 bottom-0 right-0 z-20 overflow-hidden pointer-events-none" style={{ left: LEFT_W }}>
-          <div className="absolute top-0 bottom-0 w-px" style={{ left: percent(playhead, viewport), backgroundColor: autoKeyframe ? "#ff3b30" : BLUE }} />
+          <div className="absolute top-0 bottom-0 w-px" style={{ left: percent(playhead, viewport), backgroundColor: recording ? "#ff3b30" : BLUE }} />
         </div>}
       </ScrollArea>
       {/* horizontal time-axis scrollbar — visible, draggable pan of the viewport window */}
