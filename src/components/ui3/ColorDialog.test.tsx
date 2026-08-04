@@ -86,7 +86,7 @@ describe("ColorDialog anchored inspector contract", () => {
     expect(html).not.toContain('aria-label="Image"');
   });
 
-  it("offers the typed SquarePlay video fill only with a host-backed picker", () => {
+  it("offers Video only with a host-backed picker and uses the shared square empty preview", () => {
     const unavailable = renderToStaticMarkup(
       <ColorDialog open onClose={() => undefined} trigger={<button>Color</button>}
         capabilities={{ videoFill: true }} />,
@@ -95,12 +95,35 @@ describe("ColorDialog anchored inspector contract", () => {
 
     const available = renderToStaticMarkup(
       <ColorDialog open onClose={() => undefined} trigger={<button>Color</button>}
-        capabilities={{ videoFill: true }} fillType="video"
-        videoSourceLabel="intro.mp4" onChooseVideo={() => undefined} />,
+        capabilities={{ videoFill: true }} fillType="video" onChooseVideo={() => undefined} />,
     );
     expect(available).toContain('aria-label="Video"');
+    expect(available).toContain('data-composa-media-fill-preview="video"');
+    expect(available).toContain('data-state="empty"');
+    expect(available).toContain("aspect-square");
     expect(available).toContain("lucide-square-play");
-    expect(available).toContain("intro.mp4");
-    expect(available).toContain(">Replace video<");
+    expect(available).toContain(">Select video<");
+  });
+
+  it.each([
+    { kind: "image" as const, previewUrl: "blob:image-preview", sourceLabel: "cover.png" },
+    { kind: "video" as const, previewUrl: "blob:video-preview", sourceLabel: "intro.mp4" },
+  ])("renders a real bound $kind in the same square replace surface", ({ kind, previewUrl, sourceLabel }) => {
+    const html = renderToStaticMarkup(
+      <ColorDialog open onClose={() => undefined} trigger={<button>Color</button>}
+        capabilities={{ videoFill: true }} fillType={kind}
+        imageSourceLabel={kind === "image" ? sourceLabel : undefined}
+        imagePreviewUrl={kind === "image" ? previewUrl : undefined}
+        onChooseImage={kind === "image" ? () => undefined : undefined}
+        videoSourceLabel={kind === "video" ? sourceLabel : undefined}
+        videoPreviewUrl={kind === "video" ? previewUrl : undefined}
+        onChooseVideo={kind === "video" ? () => undefined : undefined} />,
+    );
+    expect(html).toContain(`data-composa-media-fill-preview="${kind}"`);
+    expect(html).toContain('data-state="bound"');
+    expect(html).toContain("aspect-square");
+    expect(html).toContain(`src="${previewUrl}"`);
+    expect(html).toContain(sourceLabel);
+    expect(html).toContain(`>Replace ${kind}<`);
   });
 });

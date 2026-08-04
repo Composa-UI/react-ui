@@ -99,20 +99,20 @@ describe("controls with nothing behind them are not rendered", () => {
   });
 });
 
-// ── Item 1: image upload + adjustments ───────────────────────────────────────
+// ── Item 1: explicit image selection + adjustments ───────────────────────────
 
 describe("image fill", () => {
-  it("hides the upload control when no host picker is wired", () => {
+  it("hides the select control when no host picker is wired", () => {
     const markup = html({ fillType: "image" });
     expect(markup).toContain("repeating-conic-gradient");         // the image panel DID render
-    expect(markup).not.toContain("Upload from computer");
+    expect(markup).not.toContain("Select image");
   });
 
-  it("shows an upload control that actually calls the host picker", () => {
+  it("shows an explicit select control that actually calls the host picker", () => {
     const chooseImage = vi.fn();
     const renderer = render({ fillType: "image", onChooseImage: chooseImage });
     const [upload] = host(renderer, instance =>
-      instance.type === "button" && String(renderToStaticMarkup(<>{instance.props.children}</>)).includes("Upload from computer"));
+      instance.type === "button" && String(renderToStaticMarkup(<>{instance.props.children}</>)).includes("Select image"));
     expect(upload).toBeDefined();
     act(() => upload.props.onClick({}));
     expect(chooseImage).toHaveBeenCalledOnce();
