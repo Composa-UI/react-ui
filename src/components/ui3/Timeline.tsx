@@ -26,10 +26,11 @@ import { iconForSemantic } from "./IconSemantics";
 // scale. The active accent (playhead, keyframes, zoom fill) is Figma blue #0d99ff.
 
 const FONT = "font-[family-name:var(--composa-font-family)]";
-const LEFT_W = 297;       // track-list width
-// The LEFT_W column is deliberately unruled in both master and slide-local views.
-// A divider assembled one cell at a time (transport, headers, scrollbar) leaves
-// visible stubs as rows scroll, so the whole column follows one no-stroke contract.
+export const TIMELINE_TRACK_HEADER_WIDTH = 297;
+const LEFT_W = TIMELINE_TRACK_HEADER_WIDTH;
+// Master is deliberately unruled. Slide-local uses one continuous body-owned
+// divider rather than assembling a rule per row; that keeps the line intact
+// through scrolling and through the empty authored-motion state.
 const ROW_LAYER = 28;
 const ROW_PROP = 28;      // raised from 24 → contains the 20px bar with 4px above/below
 const ROW_BLOCK = 62;     // master-view lane height — two-row header ([icon][label][+] + [vis][solo][mute][lock], Figma 2-4060); the lane's clip bar fills this row height (inset 4px). Raised 56→62 for more top/bottom header inset (the two header rows were vertically cramped) — the extra height reads as ~3pt of breathing room above and below via the header's justify-center, and gives the Audio lane's stacked name+waveform room.
@@ -2508,6 +2509,12 @@ export function Timeline({
             </div>
           </>
         )}
+        {!master && <div
+          aria-hidden
+          data-timeline-local-header-divider
+          className="absolute top-0 bottom-0 z-[25] w-px bg-c-border pointer-events-none"
+          style={{ left: LEFT_W }}
+        />}
         {/* shared playhead line spanning the FULL lanes region — above the keyframe
             diamonds (Composa#320). The wrapper's `top-0 bottom-0` resolves against the
             relatively-positioned scroll content (see `contentClassName` above), so it
