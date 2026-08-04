@@ -87,6 +87,8 @@ export interface InspectorDialogProps {
    * dialog lands clear of the inspector regardless of trigger position (#499).
    */
   anchorSurfaceSelector?: string;
+  /** Optional explicit drag, resize, and collision boundary. */
+  boundarySelector?: string;
 }
 
 function withInspectorDialogDragHandle(children: ReactNode): ReactNode {
@@ -102,7 +104,7 @@ function withInspectorDialogDragHandle(children: ReactNode): ReactNode {
 }
 
 /** Non-modal inspector dialog anchored to the captured trigger and portalled above the canvas. */
-export function InspectorDialog({ open, onClose, trigger, anchorSelector, children, ariaLabel, width = 320, sideOffset, side, collisionPadding, align, blockOutsideDismiss = false, triggerClassName = "block w-full", className, elevation = 400, draggable = true, resizable, anchorSurfaceSelector }: InspectorDialogProps) {
+export function InspectorDialog({ open, onClose, trigger, anchorSelector, children, ariaLabel, width = 320, sideOffset, side, collisionPadding, align, blockOutsideDismiss = false, triggerClassName = "block w-full", className, elevation = 400, draggable = true, resizable, anchorSurfaceSelector, boundarySelector }: InspectorDialogProps) {
   return <AnchoredInspectorOverlay
     open={open}
     onClose={onClose}
@@ -127,6 +129,7 @@ export function InspectorDialog({ open, onClose, trigger, anchorSelector, childr
     dragHandleSelector={draggable ? INSPECTOR_DIALOG_DRAG_HANDLE_SELECTOR : undefined}
     resizable={resizable}
     anchorSurfaceSelector={anchorSurfaceSelector}
+    boundarySelector={boundarySelector}
   >
     {draggable ? withInspectorDialogDragHandle(children) : children}
   </AnchoredInspectorOverlay>;

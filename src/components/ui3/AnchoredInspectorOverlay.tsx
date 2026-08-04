@@ -167,10 +167,29 @@ export interface AnchoredInspectorOverlayProps {
    * to (see #499). With this set, `sideOffset` is simply the gutter to the edge.
    */
   anchorSurfaceSelector?: string;
+  /**
+   * Names an explicit host boundary for Radix collision handling and every drag
+   * and resize path. The selector is resolved when the overlay opens. If it is
+   * absent, invalid, or matches nothing, the overlay preserves its established
+   * nearest `[data-composa-overlay-boundary]` and viewport fallbacks.
+   */
+  boundarySelector?: string;
 }
 
 function triggerControl(host: HTMLElement | null): HTMLElement | null {
   return host?.querySelector<HTMLElement>("button,[href],input,select,textarea,[role=button],[tabindex]:not([tabindex='-1'])") ?? host;
+}
+
+function resolveOverlayBoundary(anchor: HTMLElement | null, boundarySelector?: string): HTMLElement | null {
+  if (boundarySelector && typeof document !== "undefined") {
+    try {
+      const explicitBoundary = document.querySelector<HTMLElement>(boundarySelector);
+      if (explicitBoundary) return explicitBoundary;
+    } catch {
+      // An invalid or stale host selector must preserve the established fallback.
+    }
+  }
+  return anchor?.closest<HTMLElement>(COMPOSA_OVERLAY_BOUNDARY_SELECTOR) ?? null;
 }
 
 /**
@@ -202,6 +221,7 @@ export function AnchoredInspectorOverlay({
   dragHandleSelector,
   resizable,
   anchorSurfaceSelector,
+  boundarySelector,
 }: AnchoredInspectorOverlayProps) {
   const mode = useComposaMode();
   const triggerMode = useRef<string | undefined>(undefined);
@@ -270,7 +290,7 @@ export function AnchoredInspectorOverlay({
       capturedSurfaceRect.current = anchorSurfaceSelector
         ? anchor?.closest<HTMLElement>(anchorSurfaceSelector)?.getBoundingClientRect() ?? null
         : null;
-      capturedBoundary.current = anchor?.closest<HTMLElement>(COMPOSA_OVERLAY_BOUNDARY_SELECTOR) ?? null;
+      capturedBoundary.current = resolveOverlayBoundary(anchor, boundarySelector);
       triggerMode.current = (anchor ? composaModeAt(anchor) : undefined) ?? mode;
       return true;
     }
@@ -281,7 +301,7 @@ export function AnchoredInspectorOverlay({
       capturedSurfaceRect.current = anchorSurfaceSelector
         ? target.closest<HTMLElement>(anchorSurfaceSelector)?.getBoundingClientRect() ?? null
         : null;
-      capturedBoundary.current = target.closest<HTMLElement>(COMPOSA_OVERLAY_BOUNDARY_SELECTOR);
+      capturedBoundary.current = resolveOverlayBoundary(target, boundarySelector);
       triggerMode.current = composaModeAt(target) ?? mode;
       return true;
     }
