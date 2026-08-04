@@ -27,7 +27,7 @@ export function SplitButton({ icon, accentColor, size = "default", actionLabel, 
   const large = size === "large";
   const hasMenuSemantics = menuOpen !== undefined;
   return (
-    <div className={clsx("flex items-center rounded-c-md shrink-0 overflow-hidden", large && "h-[32px]", className)}>
+    <div className={clsx("flex items-center rounded-c-md shrink-0 overflow-hidden bg-c-bg-secondary", large && "h-[32px]", className)}>
       <button
         type="button"
         aria-label={actionLabel}

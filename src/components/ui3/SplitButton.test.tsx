@@ -37,7 +37,14 @@ describe("SplitButton semantics", () => {
     const html = renderToStaticMarkup(<SplitButton icon={<span>icon</span>} actionLabel="Present" menuLabel="Present and preview options" />);
 
     expect(html).not.toContain("gap-px");
-    expect(html).not.toContain("bg-c-bg-secondary flex");
+    expect(html).toMatch(/^<div class="[^"]*bg-c-bg-secondary[^"]*">/);
     expect(html.match(/type="button"/g)).toHaveLength(2);
+  });
+
+  it("preserves the wrapper surface beneath an opacity-disabled primary segment", () => {
+    const html = renderToStaticMarkup(<SplitButton icon={<span>icon</span>} actionLabel="Present" menuLabel="menu" disabled />);
+
+    expect(html).toMatch(/^<div class="[^"]*bg-c-bg-secondary[^"]*">/);
+    expect(html).toMatch(/aria-label="Present"[^>]*opacity-40/);
   });
 });
