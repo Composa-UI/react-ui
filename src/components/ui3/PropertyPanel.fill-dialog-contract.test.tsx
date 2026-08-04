@@ -21,6 +21,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     const onVideo = vi.fn();
     const onAdjust = vi.fn();
     const onFit = vi.fn();
+    const onEditCrop = vi.fn();
     const onDropZone = vi.fn();
     const stopPosition = { active: true, onToggle: vi.fn() };
     const stopColor = { active: false, onToggle: vi.fn() };
@@ -52,6 +53,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
         onChooseFillVideo={onVideo}
         onFillImageAdjustmentChange={onAdjust}
         onFillMediaFitChange={onFit}
+        onEditFillCrop={onEditCrop}
         fillDropZoneSources={[{ id: "track:video", label: "Master video" }]}
         onSelectFillDropZoneSource={onDropZone}
       />);
@@ -77,6 +79,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     act(() => props.onChooseVideo?.());
     act(() => props.onImageAdjustmentChange?.("contrast", 22));
     act(() => props.onMediaFitChange?.("fit"));
+    act(() => props.onEditCrop?.());
     act(() => props.onSelectDropZoneSource?.("track:video"));
 
     expect(onType).toHaveBeenCalledWith("fill-1", "diamond");
@@ -85,6 +88,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     expect(onVideo).toHaveBeenCalledWith("fill-1");
     expect(onAdjust).toHaveBeenCalledWith("fill-1", "contrast", 22);
     expect(onFit).toHaveBeenCalledWith("fill-1", "fit");
+    expect(onEditCrop).toHaveBeenCalledWith("fill-1");
     expect(onDropZone).toHaveBeenCalledWith("fill-1", "track:video");
 
     act(() => renderer.unmount());

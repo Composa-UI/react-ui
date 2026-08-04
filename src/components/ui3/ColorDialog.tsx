@@ -122,6 +122,8 @@ export interface ColorDialogProps {
   mediaFit?: MediaFillFit;
   /** Host mutation for the selected media fill's fit mode. */
   onMediaFitChange?: (fit: MediaFillFit) => void;
+  /** Enters the host-owned canvas crop workflow for a bound media fill. */
+  onEditCrop?: () => void;
   /**
    * Timeline TRACKS the drop zone can show. Deliberately tracks, not clips: a
    * composition need not line up with any one clip's span, so binding a drop
@@ -369,10 +371,11 @@ function AdjustRow({ label, value, onChange, keyframe, disabled = false }: {
 
 const MEDIA_FIT_LABELS: Record<MediaFillFit, string> = { fill: "Fill", fit: "Fit", crop: "Crop", tile: "Tile" };
 
-function MediaFitControl({ kind, value, onChange }: {
+function MediaFitControl({ kind, value, onChange, onEditCrop }: {
   kind: "image" | "video";
   value: MediaFillFit;
   onChange?: (fit: MediaFillFit) => void;
+  onEditCrop?: () => void;
 }) {
   if (!onChange) return null;
   const options: MediaFillFit[] = kind === "image" ? ["fill", "fit", "crop", "tile"] : ["fill", "fit", "crop"];
@@ -393,6 +396,7 @@ function MediaFitControl({ kind, value, onChange }: {
         />)}
       </Menu>}
     </PopoverMenu>
+    {value === "crop" && onEditCrop && <Button variant="Secondary" label="Edit crop" onClick={onEditCrop} />}
   </div>;
 }
 
@@ -557,6 +561,7 @@ export function ColorDialog({
   onChooseVideo,
   mediaFit = "fill",
   onMediaFitChange,
+  onEditCrop,
   dropZoneSources = [],
   dropZoneSourceId,
   onSelectDropZoneSource,
@@ -984,7 +989,7 @@ export function ColorDialog({
         {/* ── IMAGE ─────────────────────────────────────────────────────── */}
         {fillType === "image" && (
           <>
-            <MediaFitControl kind="image" value={mediaFit} onChange={onMediaFitChange} />
+            <MediaFitControl kind="image" value={mediaFit} onChange={onMediaFitChange} onEditCrop={imageSourceLabel && onEditCrop ? () => { onEditCrop(); onClose(); } : undefined} />
             <MediaFillPreview kind="image" sourceLabel={imageSourceLabel} previewUrl={imagePreviewUrl} fit={mediaFit} onChoose={onChooseImage} />
 
             {/* Image adjustments — same rule: every slider was handed a value
@@ -1050,7 +1055,7 @@ export function ColorDialog({
 
         {fillType === "video" && videoAvailable && (
           <>
-            <MediaFitControl kind="video" value={mediaFit === "tile" ? "fill" : mediaFit} onChange={onMediaFitChange} />
+            <MediaFitControl kind="video" value={mediaFit === "tile" ? "fill" : mediaFit} onChange={onMediaFitChange} onEditCrop={videoSourceLabel && onEditCrop ? () => { onEditCrop(); onClose(); } : undefined} />
             <MediaFillPreview kind="video" sourceLabel={videoSourceLabel} previewUrl={videoPreviewUrl} fit={mediaFit === "tile" ? "fill" : mediaFit} onChoose={onChooseVideo} />
           </>
         )}

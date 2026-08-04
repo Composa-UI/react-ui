@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import type { ReactElement, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -145,5 +146,19 @@ describe("ColorDialog anchored inspector contract", () => {
     expect(video).toContain('aria-label="Video fit"');
     expect(video).toContain('data-fit="crop"');
     expect(video).toContain("object-cover");
+  });
+
+  it("offers Edit crop only for bound Crop media and closes after emitting it", () => {
+    const onEditCrop = vi.fn(), onClose = vi.fn();
+    let renderer!: ReactTestRenderer;
+    act(() => { renderer = create(<ColorDialog open onClose={onClose} trigger={<button>Color</button>} fillType="image" mediaFit="crop"
+      onMediaFitChange={() => undefined} imageSourceLabel="cover.png" imagePreviewUrl="blob:image" onEditCrop={onEditCrop} />); });
+    const edit = renderer.root.findByProps({ label: "Edit crop" });
+    act(() => edit.props.onClick());
+    expect(onEditCrop).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
+    act(() => renderer.update(<ColorDialog open onClose={onClose} trigger={<button>Color</button>} fillType="image" mediaFit="crop"
+      onMediaFitChange={() => undefined} onEditCrop={onEditCrop} />));
+    expect(renderer.root.findAll(node => node.props.label === "Edit crop")).toHaveLength(0);
   });
 });
