@@ -40,7 +40,7 @@ describe("SlidesPanel slide actions", () => {
     const renderer = renderPanel({ slides: [{ n: 1, thumb: "authored.png", previewThumb: "evaluated.png", motion: true, onPreviewChange }] });
     const row = slideRow(renderer.root, 1);
     expect(row.find(node => node.type === "img").props.src).toBe("evaluated.png");
-    expect(row.findAll(node => node.type === "svg")).toHaveLength(1);
+    expect(row.findAll(node => node.props["data-composa-motion-present"] !== undefined)).toHaveLength(1);
 
     act(() => row.props.onMouseEnter());
     act(() => row.props.onMouseLeave());

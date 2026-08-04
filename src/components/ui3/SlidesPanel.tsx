@@ -56,6 +56,21 @@ export function slideItemKeyboardAction(key: string): "rename" | "activate" | "n
 // selected-row background). Sub-slides carry a deeper left inset.
 const SLOT_RATIO = 140 / 79; // fixed left-panel slot ratio → reserves the available height
 export const THUMB_RATIO = SLOT_RATIO; // back-compat alias (slot ratio)
+export function CompositionMotionBadge({ className }: { className?: string }) {
+  return (
+    <div data-composa-motion-present className={clsx("size-[18px] rounded-[2px] bg-c-bg border border-c-border", className)}>
+      <svg
+        className="absolute inset-[-3px] size-[24px] text-c-icon-secondary"
+        fill="none"
+        viewBox="0 0 24 24"
+        aria-hidden
+      >
+        <path d={ANIMATE_GLYPH} fill="currentColor" />
+      </svg>
+    </div>
+  );
+}
+
 function SlideThumb({ item, aspectRatio = SLOT_RATIO }: { item: SlideData; aspectRatio?: number }) {
   const gutter = item.sub ? "left-[68px]" : "left-[44px]";
   const ratio = aspectRatio > 0 ? aspectRatio : SLOT_RATIO;
@@ -75,16 +90,7 @@ function SlideThumb({ item, aspectRatio = SLOT_RATIO }: { item: SlideData; aspec
           {/* motion badge — Figma icon.24.animate.small: 18px rounded chip, bottom-left,
               with the animate glyph (24-viewBox path inset −3px to sit centred in 18px). */}
           {item.motion && (
-            <div className="absolute bottom-[5px] left-[5px] size-[18px] rounded-[2px] bg-c-bg border border-c-border">
-              <svg
-                className="absolute inset-[-3px] size-[24px] text-c-icon-secondary"
-                fill="none"
-                viewBox="0 0 24 24"
-                aria-hidden
-              >
-                <path d={ANIMATE_GLYPH} fill="currentColor" />
-              </svg>
-            </div>
+            <CompositionMotionBadge className="absolute bottom-[5px] left-[5px]" />
           )}
         </div>
       </div>
