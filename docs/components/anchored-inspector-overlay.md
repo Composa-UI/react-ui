@@ -21,6 +21,11 @@ to the control that launched them.
   nearest marked workspace becomes the collision boundary; otherwise the
   viewport remains the fallback. Radix may flip or shift the surface to keep it
   visible.
+- `boundarySelector` optionally names an explicit host surface, such as the
+  canvas, for Radix collision projection and pointer drag, pointer resize, and
+  keyboard resize clamping. A missing or invalid match preserves the nearest
+  marked workspace and viewport fallbacks exactly. `InspectorDialog` forwards
+  the same optional contract; existing dialog callers remain unchanged.
 - The surface height is capped by Radix's available-height measurement for that
   captured boundary. Dialog bodies remain responsible for their own scrolling.
 - Portalled content mounts only after a real launch rectangle is captured. This
