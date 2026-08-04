@@ -72,7 +72,7 @@ export type SlideTransitionDirection = "left" | "right" | "up" | "down";
 export type SlideTransitionEasing = EasingPreset;
 export type ClipSpeed = 0.25 | 0.5 | 0.75 | 1 | 1.25 | 1.5 | 2 | 4;
 export type ExportFormat = "PNG" | "JPG";
-/** Static exports authored values; Frame exports one evaluated playhead still. */
+/** Static exports authored values; Animated samples one evaluated playhead still. */
 export type InspectorExportMode = "static" | "frame";
 /**
  * `suffix` is vestigial: Composa#661 removed the Suffix field, and nothing in this
@@ -80,7 +80,7 @@ export type InspectorExportMode = "static" | "frame";
  * still passes it, and an excess-property check would break the host the moment
  * this shipped. It can go once the app stops sending it.
  */
-export interface InspectorExportSetting { id: string; scale: number; suffix?: string; format: ExportFormat; }
+export interface InspectorExportSetting { id: string; scale: number; suffix?: string; format: ExportFormat; quality?: number; }
 export type ProjectFrameRate = 24 | 25 | 30 | 60;
 export interface ElementFillSetting {
   id: string; color: string; opacity: number; visible: boolean; label?: string;
@@ -2020,11 +2020,13 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
 
 // ─── Section: Export ──────────────────────────────────────────────────────────
 
-function ExportSection({ settings, targetName = "selection", mode = "static", onModeChange, onAdd, onRemove, onUpdate, onExport }: {
+function ExportSection({ settings, targetName = "selection", mode = "static", frameRate, onModeChange, onFrameRateChange, onAdd, onRemove, onUpdate, onExport }: {
   settings?: InspectorExportSetting[];
   targetName?: string;
   mode?: InspectorExportMode;
+  frameRate?: ProjectFrameRate;
   onModeChange?: (mode: InspectorExportMode) => void;
+  onFrameRateChange?: (frameRate: ProjectFrameRate) => void;
   onAdd?: () => void;
   onRemove?: (id: string) => void;
   onUpdate?: (id: string, patch: Partial<Omit<InspectorExportSetting, "id">>) => void;
@@ -2051,29 +2053,45 @@ function ExportSection({ settings, targetName = "selection", mode = "static", on
       muted={exports.length === 0}
       rightActions={<PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add export" onClick={add} />}
     >
-      <div className="px-[16px] pt-[4px] pb-[8px]">
+      {exports.length > 0 && <div className="px-[16px] pt-[4px] pb-[8px]">
         <SegmentedControl
           ariaLabel="Export mode"
-          segments={[{ value: "static", label: "Static" }, { value: "frame", label: "Frame" }]}
+          segments={[{ value: "static", label: "Static" }, { value: "frame", label: "Animated" }]}
           value={mode}
           onChange={value => onModeChange?.(value as InspectorExportMode)}
           className="w-full"
         />
-      </div>
+      </div>}
       {exports.map(exp => (
-        <div key={exp.id} className="group/row flex items-center h-[32px] pr-[16px]">
+        <div key={exp.id} className="group/row flex items-start min-h-[52px] pr-[16px] py-[4px]">
           {/* Single-item stacks have nothing to reorder, so suppress the grip while
               keeping the 16px inset column — same grip-only-when->1 rule already
               applied to Fill/Stroke/Effects (#460b, #501). */}
           <DragGutter grip={exports.length > 1} />
-          <div className="flex-1 min-w-0 flex items-center gap-[4px]">
-            <div className="w-[54px] shrink-0"><NumericInput value={exp.scale} min={0.01} step={0.25} suffix="×" onChange={scale => update(exp.id, { scale })} /></div>
+          <div className="flex-1 min-w-0 grid grid-cols-2 gap-x-[4px] gap-y-[4px]">
+            <div className="min-w-0">
+              <div className={SUBLABEL}>Size</div>
+              <NumericInput ariaLabel="Export size" value={exp.scale} min={0.01} step={0.25} suffix="×" onChange={scale => update(exp.id, { scale })} />
+            </div>
             {/* The Suffix field is gone (Composa#661). The app stopped reading it, so
                 it round-tripped a value nothing consumed: still editable, still
                 placeholdered, and no longer able to change an exported filename.
                 Removed rather than disabled -- a disabled field still promises the
                 feature exists. Format takes the freed width. */}
-            <div className="flex-1 min-w-0"><ChoiceDropdown value={exp.format} options={["PNG", "JPG"]} labels={{ PNG: "PNG", JPG: "JPG" }} onChange={format => update(exp.id, { format })} /></div>
+            <div className="min-w-0">
+              <div className={SUBLABEL}>Format</div>
+              <ChoiceDropdown ariaLabel="Export format" value={exp.format} options={["PNG", "JPG"]} labels={{ PNG: "PNG", JPG: "JPG" }} onChange={format => update(exp.id, { format })} />
+            </div>
+            {exp.format === "JPG" && <div className="min-w-0">
+              <div className={SUBLABEL}>Quality</div>
+              <NumericInput ariaLabel="Export quality" value={exp.quality ?? 90} min={1} max={100} step={1} suffix="%" onChange={quality => update(exp.id, { quality })} />
+            </div>}
+            {mode === "frame" && frameRate !== undefined && <div className="min-w-0">
+              <div className={SUBLABEL}>Frame rate</div>
+              <ChoiceDropdown ariaLabel="Export frame rate" value={String(frameRate)} options={["24", "25", "30", "60"]}
+                labels={{ "24": "24 fps", "25": "25 fps", "30": "30 fps", "60": "60 fps" }}
+                onChange={value => onFrameRateChange?.(Number(value) as ProjectFrameRate)} disabled={!onFrameRateChange} />
+            </div>}
           </div>
           <div className="shrink-0 flex items-center gap-[4px] pl-[8px]">
             <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove export" onClick={() => remove(exp.id)} />
@@ -3924,7 +3942,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           {capabilities.layoutFidelityTools && <LayoutGuideSection entries={layoutGuides} onAdd={onAddLayoutGuide} onUpdate={onUpdateLayoutGuide} onRemove={onRemoveLayoutGuide} />}
           {/* Selection colors — reuse the existing element-mode section */}
           <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} capabilities={capabilities} />
-          <ExportSection settings={exportSettings} mode={exportMode} onModeChange={onExportModeChange} targetName={exportTargetName ?? renderedSlideName}
+          <ExportSection settings={exportSettings} mode={exportMode} frameRate={projectFrameRate} onModeChange={onExportModeChange} onFrameRateChange={onProjectFrameRateChange} targetName={exportTargetName ?? renderedSlideName}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
           </>}
           </ScrollArea></div>}
@@ -4138,7 +4156,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           {/* Selection Colors — multi-select only (§5.8), positioned right after Effects */}
           {multiSelect && <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} capabilities={capabilities} />}
 
-          <ExportSection settings={exportSettings} mode={exportMode} onModeChange={onExportModeChange} targetName={exportTargetName ?? elementLabel[elementType]}
+          <ExportSection settings={exportSettings} mode={exportMode} frameRate={projectFrameRate} onModeChange={onExportModeChange} onFrameRateChange={onProjectFrameRateChange} targetName={exportTargetName ?? elementLabel[elementType]}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
           {easing && <EasingInspectorSection key={easing.interactionKey} value={easing} applyScope={easingApplyScope} applyToLabel={easingApplyToLabel}
             onChange={onEasingChange} onApplyScopeChange={onEasingApplyScopeChange}
