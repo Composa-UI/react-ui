@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ProposedLayoutPanelLeftCheck, ProposedLayoutPanelLeftPlus } from "../../icons/proposed-lucide";
 import { composaIconSemantics } from "./IconSemantics";
 import { NumericComboInput, NumericInput } from "./Input";
-import { PanelActionBtn } from "./Panel";
+import { PanelActionBtn, PanelFieldRow } from "./Panel";
 import { PropertyPanel, type ElementGridSettings, type ElementLayoutSettings } from "./PropertyPanel";
 
 // Owner feedback Composa#661 (auto-layout inspector). Each block below pins the
@@ -38,6 +38,41 @@ function segment(scope: ReactTestInstance, label: string) {
 function action(renderer: ReactTestRenderer, label: string) {
   return renderer.root.findAllByType(PanelActionBtn).find(node => node.props.label === label);
 }
+
+function layoutLandmarks(root: ReactTestInstance) {
+  return root.findAll(node =>
+    (node.type === PanelFieldRow && ["Flow", "Dimensions"].includes(node.props.label)) ||
+    (node.props.role === "group" && ["Flow", "Alignment and gap", "Grid and gap"].includes(node.props["aria-label"])),
+  ).map(node => node.type === PanelFieldRow ? node.props.label as string : node.props["aria-label"] as string);
+}
+
+describe("Active layout row order (#193)", () => {
+  it.each([
+    ["vertical", autoLayout({ mode: "vertical" }), ["Flow", "Dimensions", "Alignment and gap"]],
+    ["horizontal", autoLayout({ mode: "horizontal" }), ["Flow", "Dimensions", "Alignment and gap"]],
+    ["wrap", autoLayout({ mode: "horizontal", wrap: true, rowGap: 20 }), ["Flow", "Dimensions", "Alignment and gap"]],
+    ["grid", autoLayout({ mode: "grid", grid: gridSettings }), ["Flow", "Dimensions", "Grid and gap"]],
+  ] as const)("places Dimensions exactly once immediately after Flow for %s", (_name, layout, expected) => {
+    let renderer: ReactTestRenderer;
+    act(() => { renderer = create(<PropertyPanel elementType={layout.mode === "grid" ? "frame-grid" : "frame-auto"} layout={layout} />); });
+    expect(layoutLandmarks(renderer!.root)).toEqual(expected);
+    expect(renderer!.root.findAllByType(PanelFieldRow).filter(node => node.props.label === "Dimensions")).toHaveLength(1);
+    act(() => renderer!.unmount());
+  });
+
+  it("leaves plain-frame and non-frame Dimensions topology unchanged", () => {
+    let frame: ReactTestRenderer, shape: ReactTestRenderer;
+    act(() => {
+      frame = create(<PropertyPanel elementType="frame" />);
+      shape = create(<PropertyPanel elementType="shape" />);
+    });
+    expect(layoutLandmarks(frame!.root)).toEqual(["Flow", "Dimensions"]);
+    expect(layoutLandmarks(shape!.root)).toEqual(["Dimensions"]);
+    expect(frame!.root.findAllByType(PanelFieldRow).filter(node => node.props.label === "Dimensions")).toHaveLength(1);
+    expect(shape!.root.findAllByType(PanelFieldRow).filter(node => node.props.label === "Dimensions")).toHaveLength(1);
+    act(() => { frame!.unmount(); shape!.unmount(); });
+  });
+});
 
 describe("Flow is a four-way layout-mode selector (Composa#661 item 1)", () => {
   it("offers Grid as the fourth segment of the auto-layout Flow control and emits the grid mode", () => {
