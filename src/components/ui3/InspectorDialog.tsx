@@ -2,7 +2,8 @@ import { Children, cloneElement, isValidElement, type HTMLAttributes, type React
 import { clsx } from "clsx";
 import { X } from "lucide-react";
 import { AnchoredInspectorOverlay, COMPOSA_INSPECTOR_SURFACE_SELECTOR } from "./AnchoredInspectorOverlay";
-import type { AnchoredInspectorOverlayAlign, AnchoredInspectorOverlayElevation } from "./AnchoredInspectorOverlay";
+import type { AnchoredInspectorOverlayAlign, AnchoredInspectorOverlayElevation, AnchoredInspectorOverlaySide } from "./AnchoredInspectorOverlay";
+import type { AnchoredInspectorOverlayResize } from "./AnchoredInspectorOverlay";
 
 export { COMPOSA_INSPECTOR_SURFACE_SELECTOR };
 
@@ -69,12 +70,16 @@ export interface InspectorDialogProps {
    */
   width?: number | string;
   sideOffset?: number;
+  side?: AnchoredInspectorOverlaySide;
+  collisionPadding?: number;
   align?: AnchoredInspectorOverlayAlign;
   blockOutsideDismiss?: boolean;
   triggerClassName?: string;
   className?: string;
   elevation?: AnchoredInspectorOverlayElevation;
   draggable?: boolean;
+  /** Optional shared bottom-right resize behavior for floating windows. */
+  resizable?: AnchoredInspectorOverlayResize;
   /**
    * Anchor the dialog's side axis to the inspector surface's left edge instead
    * of the trigger. Pass `COMPOSA_INSPECTOR_SURFACE_SELECTOR` for a trigger that
@@ -97,7 +102,7 @@ function withInspectorDialogDragHandle(children: ReactNode): ReactNode {
 }
 
 /** Non-modal inspector dialog anchored to the captured trigger and portalled above the canvas. */
-export function InspectorDialog({ open, onClose, trigger, anchorSelector, children, ariaLabel, width = 320, sideOffset, align, blockOutsideDismiss = false, triggerClassName = "block w-full", className, elevation = 400, draggable = true, anchorSurfaceSelector }: InspectorDialogProps) {
+export function InspectorDialog({ open, onClose, trigger, anchorSelector, children, ariaLabel, width = 320, sideOffset, side, collisionPadding, align, blockOutsideDismiss = false, triggerClassName = "block w-full", className, elevation = 400, draggable = true, resizable, anchorSurfaceSelector }: InspectorDialogProps) {
   return <AnchoredInspectorOverlay
     open={open}
     onClose={onClose}
@@ -105,8 +110,10 @@ export function InspectorDialog({ open, onClose, trigger, anchorSelector, childr
     anchorSelector={anchorSelector}
     ariaLabel={ariaLabel}
     width={width}
-    minWidth={typeof width === "number" ? width : undefined}
+    minWidth={resizable?.minWidth ?? (typeof width === "number" ? width : undefined)}
     sideOffset={sideOffset}
+    side={side}
+    collisionPadding={collisionPadding}
     align={align}
     trapFocus={false}
     blockOutsideDismiss={blockOutsideDismiss}
@@ -118,6 +125,7 @@ export function InspectorDialog({ open, onClose, trigger, anchorSelector, childr
     className={clsx("select-none [&_input]:select-text [&_textarea]:select-text", className)}
     elevation={elevation}
     dragHandleSelector={draggable ? INSPECTOR_DIALOG_DRAG_HANDLE_SELECTOR : undefined}
+    resizable={resizable}
     anchorSurfaceSelector={anchorSurfaceSelector}
   >
     {draggable ? withInspectorDialogDragHandle(children) : children}
