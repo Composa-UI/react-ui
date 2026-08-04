@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { act, create } from "react-test-renderer";
+import { act, create, type ReactTestInstance } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
 import { ArrowDown, ArrowRight } from "lucide-react";
 import { ACTION_STYLE_OPTIONS, AnimatePanel, type ObjectAnimationItem } from "./AnimatePanel";
@@ -9,10 +9,7 @@ import { EASING_PRESETS } from "./easing";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-// ── RP-12: sequenced presets are their own ordered blocks ───────────────────────────
-// Two pulses on ONE object. They used to collapse into one "combined card" — a connector
-// line plus a "delay between" field, carrying a SINGLE number for the pair. The owner's
-// iteration-2 reading is the opposite: each sequenced preset is its own ordered block.
+// ── Row 60: sequence ranks, contained simultaneous groups, and plus-spaces ─────────
 const TWO_PULSES: ObjectAnimationItem[] = [
   { id: "p1", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "1.2s", style: "pulse", buildDuration: "1200ms" },
   { id: "p2", elementId: "logo", n: 2, name: "Logo", kind: "Action", duration: "0.8s", style: "pulse", buildDuration: "800ms" },
@@ -23,19 +20,32 @@ const blockNumbers = (renderer: ReturnType<typeof create>) =>
     .findAll(node => node.props["data-animation-block-number"] !== undefined)
     .map(node => node.props["data-animation-block-number"] as number);
 
-describe("AnimatePanel — sequenced presets render as ordered blocks (RP-12)", () => {
-  it("gives every sequenced action on one object its OWN numbered block", () => {
+describe("AnimatePanel — sequence ranks are the one grouping truth (row 60)", () => {
+  it("keeps distinct ranks as distinct sequence units even when they share an object", () => {
     let renderer: ReturnType<typeof create>;
     act(() => { renderer = create(<AnimatePanel selectionType="element" anims={TWO_PULSES} />); });
     // Positive control: both cards rendered, so the absences below mean something.
     expect(renderer!.root.findAll(node => node.props["data-animation-card-id"] === "p1")).toHaveLength(1);
     expect(renderer!.root.findAll(node => node.props["data-animation-card-id"] === "p2")).toHaveLength(1);
-    // Two blocks, numbered 1 and 2 — not one shared number for the pair.
+    expect(renderer!.root.findAll(node => node.props["data-animation-sequence-rank"] !== undefined)).toHaveLength(2);
+    expect(renderer!.root.findAll(node => node.props["data-animation-shared-rank"] !== undefined)).toHaveLength(0);
     expect(blockNumbers(renderer!)).toEqual([1, 2]);
     act(() => renderer!.unmount());
   });
 
-  it("renders no connector line and no 'delay between' control between them", () => {
+  it("contains cards that share a rank, regardless of object ownership", () => {
+    const shared = [
+      { ...TWO_PULSES[0], n: 1 },
+      { ...TWO_PULSES[1], id: "accent", elementId: "accent", name: "Accent", n: 1 },
+    ];
+    const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={shared} />);
+    expect(html).toContain('data-animation-shared-rank="1"');
+    expect(html.match(/data-animation-block-number="1"/g)).toHaveLength(1);
+    expect(html).toContain('data-animation-card-id="p1"');
+    expect(html).toContain('data-animation-card-id="accent"');
+  });
+
+  it("does not restore the old same-object connector or delay-between model", () => {
     const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={TWO_PULSES} />);
     expect(html).toContain('data-animation-card-id="p2"'); // the pair rendered at all
     expect(html).not.toContain("data-combined-card-element-id");
@@ -57,7 +67,7 @@ describe("AnimatePanel — sequenced presets render as ordered blocks (RP-12)", 
     act(() => renderer!.unmount());
   });
 
-  it("emits exactly one number per animation in static markup", () => {
+  it("emits exactly one number per distinct rank", () => {
     const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={TWO_PULSES} />);
     expect(html.match(/data-animation-block-number=/g)).toHaveLength(2);
   });
@@ -371,8 +381,8 @@ describe("AnimatePanel — object tint and exact-card focus stay distinct (issue
   });
 });
 
-describe("AnimatePanel — visible Before / With / After sequencing targets (issue #305)", () => {
-  it("reveals all explicit targets during drag, shows the active indicator, and emits the chosen placement", () => {
+describe("AnimatePanel — contained rank and plus-space drag targets (issue #305 / row 60)", () => {
+  it("uses plus-spaces for sequence insertion and the contained rank target for simultaneous grouping", () => {
     const reorders: Array<[string, string, "before" | "with" | "after"]> = [];
     let renderer: ReturnType<typeof create>;
     act(() => {
@@ -385,25 +395,28 @@ describe("AnimatePanel — visible Before / With / After sequencing targets (iss
       );
     });
     const transfer = { effectAllowed: "", dropEffect: "", setData: vi.fn() };
-    const dragBody = () => renderer!.root.findByProps({ "aria-label": "Drag Body animation" });
-
-    for (const placement of ["before", "with", "after"] as const) {
-      act(() => dragBody().props.onDragStart({ dataTransfer: transfer }));
-      const target = renderer!.root.findAll(node =>
-        node.props["data-animation-sequence-target"] === placement &&
-        node.props["data-animation-sequence-target-for"] === "a2",
-      )[0]!;
-      expect(renderer!.root.findByProps({ "aria-label": "Place animation relative to Subtitle" })).toBeDefined();
+    const drag = (name: string) => act(() => renderer!.root.findByProps({ "aria-label": `Drag ${name} animation` }).props.onDragStart({ dataTransfer: transfer }));
+    const drop = (target: ReactTestInstance, placement: "before" | "with" | "after") => {
       act(() => target.props.onDragEnter({ preventDefault: vi.fn(), stopPropagation: vi.fn() }));
-      expect(renderer!.root.findByProps({ "data-animation-sequence-drop-indicator": placement })).toBeDefined();
+      if (placement === "with") expect(renderer!.root.findByProps({ "data-animation-sequence-drop-indicator": "with" })).toBeDefined();
       act(() => target.props.onDrop({ preventDefault: vi.fn(), stopPropagation: vi.fn() }));
-    }
+    };
+
+    drag("Body");
+    expect(renderer!.root.findAll(node => node.props["data-animation-sequence-space"] !== undefined).length).toBeGreaterThan(0);
+    drop(renderer!.root.findByProps({ "data-animation-sequence-space": "after-1" }), "before");
+
+    drag("Body");
+    drop(renderer!.root.findByProps({ "data-animation-sequence-group-target": 2 }), "with");
+
+    drag("Title");
+    drop(renderer!.root.findByProps({ "data-animation-sequence-space": "after-3" }), "after");
 
     expect(transfer.setData).toHaveBeenCalledWith("text/plain", "a3");
     expect(reorders).toEqual([
       ["a3", "a2", "before"],
       ["a3", "a2", "with"],
-      ["a3", "a2", "after"],
+      ["a1", "a3", "after"],
     ]);
     act(() => renderer!.unmount());
   });
@@ -417,7 +430,26 @@ describe("AnimatePanel — visible Before / With / After sequencing targets (iss
       />,
     );
     expect(html).not.toContain("data-animation-sequence-target=");
+    expect(html).not.toContain("data-animation-sequence-space=");
     expect(html).not.toContain("data-animation-sequence-drop-indicator=");
+  });
+
+  it("does not offer With back into the dragged card's current shared rank", () => {
+    const shared = [
+      { ...ANIMS[0], n: 1 },
+      { ...ANIMS[1], n: 1 },
+      { ...ANIMS[2], n: 2 },
+    ];
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<AnimatePanel selectionType="element" anims={shared} objectAnimationCallbacks={{ onReorder: vi.fn() }} />);
+    });
+    act(() => renderer!.root.findByProps({ "aria-label": "Drag Title animation" }).props.onDragStart({
+      dataTransfer: { effectAllowed: "", setData: vi.fn() },
+    }));
+    expect(renderer!.root.findAll(node => node.props["data-animation-sequence-group-target"] === 1)).toHaveLength(0);
+    expect(renderer!.root.findAll(node => node.props["data-animation-sequence-group-target"] === 2)).toHaveLength(1);
+    act(() => renderer!.unmount());
   });
 });
 

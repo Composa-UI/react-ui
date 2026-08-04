@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type DragEvent as ReactDragEvent, type ReactNode } from "react";
 import { clsx } from "clsx";
 import { Plus, Trash2, MonitorPlay, Clock, Type, Play, GripVertical } from "lucide-react";
 import { PanelSection, PanelActionBtn, ScrollArea } from "./Panel";
@@ -291,14 +291,11 @@ function EasingChoice({ id, value, callbacks }: { id: string; value: EasingPrese
   );
 }
 
-// ── Ordered animation blocks ───────────────────────────────────────────────────────
-// iteration-2 RP-12: presets sequenced after one another are their OWN ordered blocks
-// (1, 2, …) — not cards wired together by a connector line with a "delay between" field
-// in the middle. The number is the engine's `ObjectAnimation.order`, forwarded on the
-// item as `n`; the panel presents that ordering rather than deriving a second one from
-// its own render position. Grouping actions by `elementId` (the old combined card) is
-// gone with it, so an object's two actions read as block 1 and block 2 like everything
-// else in the list.
+// ── Sequence ranks ────────────────────────────────────────────────────────────────
+// The engine's `ObjectAnimation.order` is the one grouping truth: distinct ranks are
+// sequential, while cards sharing a rank are simultaneous. Shared ranks therefore use
+// a contained group regardless of object ownership. Dragging onto that group means
+// `with`; the explicit plus-spaces between ranks create standalone sequential ranks.
 
 /** The block's ordinal. Small muted label sitting on top of the card, outside the card's
  *  own `group` box so it never shifts the flush-left card or the hover-revealed drag
@@ -380,11 +377,69 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
       ) : (
         <div className="px-[16px] pb-[8px] flex flex-col gap-[8px]">
           {(() => {
-            // Two-tier selection, kept from the combined card whose grouping RP-12 removes:
+            // Two-tier selection is independent from sequence grouping:
             // an object selection lights every row belonging to that object, but focusing
             // ONE action lights only that row — a lit sibling beside the focused row reads
             // as "also selected" and is wrong.
             const focusedElementIds = new Set(anims.flatMap(a => a.focused && a.elementId ? [a.elementId] : []));
+            const sequenceGroups = anims.reduce<Array<{ rank: number; rows: Array<{ animation: ObjectAnimationItem; index: number; id: string }> }>>((groups, animation, index) => {
+              const row = { animation, index, id: animation.id ?? String(index) };
+              const group = groups.find(candidate => candidate.rank === animation.n);
+              if (group) group.rows.push(row);
+              else groups.push({ rank: animation.n, rows: [row] });
+              return groups;
+            }, []).sort((left, right) => left.rank - right.rank);
+
+            const finishDrop = (targetId: string, placement: "before" | "after" | "with") => {
+              if (!dragged || dragged === targetId) return;
+              callbacks?.onReorder?.(dragged, targetId, placement);
+              setDropTarget(null);
+              setDragged(null);
+            };
+            const targetHandlers = (targetId: string, placement: "before" | "after" | "with") => ({
+              onDragEnter: (event: ReactDragEvent<HTMLDivElement>) => {
+                if (!dragged || dragged === targetId) return;
+                event.preventDefault();
+                event.stopPropagation();
+                setDropTarget({ targetId, placement });
+              },
+              onDragOver: (event: ReactDragEvent<HTMLDivElement>) => {
+                if (!dragged || dragged === targetId) return;
+                event.preventDefault();
+                event.stopPropagation();
+                event.dataTransfer.dropEffect = "move";
+                if (dropTarget?.targetId !== targetId || dropTarget.placement !== placement) setDropTarget({ targetId, placement });
+              },
+              onDrop: (event: ReactDragEvent<HTMLDivElement>) => {
+                event.preventDefault();
+                event.stopPropagation();
+                finishDrop(targetId, placement);
+              },
+            });
+            const insertionSpace = (key: string, targetId: string, placement: "before" | "after", label: string) => {
+              if (!dragged || dragged === targetId) return null;
+              const active = dropTarget?.targetId === targetId && dropTarget.placement === placement;
+              return (
+                <div
+                  key={key}
+                  role="button"
+                  aria-label={label}
+                  data-animation-sequence-space={key}
+                  data-animation-sequence-target={placement}
+                  data-animation-sequence-target-for={targetId}
+                  className="relative flex h-[20px] items-center justify-center"
+                  {...targetHandlers(targetId, placement)}
+                >
+                  <span aria-hidden className={clsx("absolute inset-x-0 top-1/2 h-px", active ? "bg-c-border-selected" : "bg-c-border")} />
+                  <span className={clsx(
+                    "relative flex size-[16px] items-center justify-center rounded-full border bg-c-bg",
+                    active ? "border-c-border-selected text-c-icon-selected" : "border-c-border text-c-icon-secondary",
+                  )}>
+                    <Plus size={10} strokeWidth={1.5} />
+                  </span>
+                </div>
+              );
+            };
             // Per-action row renderer.
             const renderActionRow = (a: ObjectAnimationItem, i: number) => {
             const id = a.id ?? String(i);
@@ -397,59 +452,6 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
             const styleLabels = Object.fromEntries(styleOptions.map(style => [style, style.split("-").map(word => word[0].toUpperCase() + word.slice(1)).join(" ")])) as Record<string, string>;
             const deliveryLabels = { "all-at-once": "All at once", "by-object": "By object", "by-word": "By word", "by-character": "By character" };
             const deliveryValue = Object.entries(deliveryLabels).find(([, label]) => label === a.delivery)?.[0] as keyof typeof deliveryLabels | undefined;
-            const sequenceTarget = (placement: "before" | "with" | "after") => {
-              const active = dropTarget?.targetId === id && dropTarget.placement === placement;
-              const label = placement[0].toUpperCase() + placement.slice(1);
-              return (
-                <div
-                  key={placement}
-                  data-animation-sequence-target={placement}
-                  data-animation-sequence-target-for={id}
-                  className={clsx(
-                    FONT,
-                    "relative flex h-[24px] flex-1 items-center justify-center rounded-c-sm border text-[10px] font-[450] leading-[14px]",
-                    active
-                      ? "border-c-border-selected bg-c-bg-selected text-c-text"
-                      : "border-c-border bg-c-bg-secondary text-c-text-secondary",
-                  )}
-                  onDragEnter={event => {
-                    if (!dragged || dragged === id) return;
-                    event.preventDefault();
-                    event.stopPropagation();
-                    setDropTarget({ targetId: id, placement });
-                  }}
-                  onDragOver={event => {
-                    if (!dragged || dragged === id) return;
-                    event.preventDefault();
-                    event.stopPropagation();
-                    event.dataTransfer.dropEffect = "move";
-                    if (!active) setDropTarget({ targetId: id, placement });
-                  }}
-                  onDrop={event => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    if (!dragged || dragged === id) return;
-                    callbacks?.onReorder?.(dragged, id, placement);
-                    setDropTarget(null);
-                    setDragged(null);
-                  }}
-                >
-                  {label}
-                  {active && (
-                    <span
-                      aria-hidden
-                      data-animation-sequence-drop-indicator={placement}
-                      className={clsx(
-                        "pointer-events-none absolute bg-c-border-selected",
-                        placement === "before" && "-top-[3px] left-[3px] right-[3px] h-[2px]",
-                        placement === "after" && "-bottom-[3px] left-[3px] right-[3px] h-[2px]",
-                        placement === "with" && "inset-[2px] rounded-c-xs border border-c-border-selected bg-transparent",
-                      )}
-                    />
-                  )}
-                </div>
-              );
-            };
             return <div
               key={id}
               data-animation-card-id={id}
@@ -472,18 +474,6 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                 onDragEnd={() => { setDragged(null); setDropTarget(null); }}>
                 <GripVertical size={14} />
               </button>
-              {dragged && dragged !== id && (
-                <div
-                  role="group"
-                  aria-label={`Place animation relative to ${a.name}`}
-                  data-animation-sequence-targets={id}
-                  className="flex gap-[4px] rounded-c-md border border-c-border bg-c-bg p-[4px]"
-                >
-                  {sequenceTarget("before")}
-                  {sequenceTarget("with")}
-                  {sequenceTarget("after")}
-                </div>
-              )}
               {/* RP-11: no phase arrow in the collapsed badge. Not every parametric has a
                   direction, so the arrow promised a reading the card cannot always keep;
                   the DurationPill's In/Out/Action text carries the phase on its own. */}
@@ -523,18 +513,61 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                 </AnimationCard>
             </div>;
             };
-            // RP-12: one ordered block per animation. The ordinal is the engine's
-            // `order` (carried on the item as `n`), so the panel presents the sequence the
-            // document already holds instead of inventing a second one from render position.
-            return anims.map((a, index) => {
-              const id = a.id ?? String(index);
-              return (
-                <div key={id} data-animation-block={id} className="flex flex-col">
-                  <BlockNumberLabel n={a.n} />
-                  {renderActionRow(a, index)}
-                </div>
-              );
-            });
+            const firstStationaryGroup = sequenceGroups.find(group => group.rows.some(row => row.id !== dragged));
+            const firstTarget = firstStationaryGroup?.rows.find(row => row.id !== dragged)?.id;
+            return <>
+              {firstTarget && firstStationaryGroup && insertionSpace(`before-${firstStationaryGroup.rank}`, firstTarget, "before", `Insert animation before sequence ${firstStationaryGroup.rank}`)}
+              {sequenceGroups.map((group, groupIndex) => {
+                const shared = group.rows.length > 1;
+                // Rejoining the rank the source already belongs to is visually a
+                // no-op and must not dispatch a reorder (which may normalize timing).
+                const groupContainsDragged = group.rows.some(row => row.id === dragged);
+                const withTargetId = groupContainsDragged ? undefined : group.rows[0]?.id;
+                const next = sequenceGroups[groupIndex + 1];
+                const groupOnlyDragged = group.rows.every(row => row.id === dragged);
+                const nextTargetId = next?.rows.find(row => row.id !== dragged)?.id;
+                const afterTargetId = groupOnlyDragged || (next && !nextTargetId)
+                  ? undefined
+                  : nextTargetId ?? group.rows.find(row => row.id !== dragged)?.id;
+                const afterPlacement = next ? "before" as const : "after" as const;
+                const withActive = !!withTargetId && dropTarget?.targetId === withTargetId && dropTarget.placement === "with";
+                return (
+                  <div key={group.rank} data-animation-sequence-rank={group.rank} className="flex flex-col">
+                    <BlockNumberLabel n={group.rank} />
+                    <div
+                      data-animation-shared-rank={shared ? group.rank : undefined}
+                      className={clsx("relative flex flex-col gap-[4px]", shared && "rounded-c-md border border-c-border bg-c-bg-secondary p-[4px]")}
+                    >
+                      {dragged && withTargetId && (
+                        <div
+                          role="button"
+                          aria-label={`Play animation with sequence ${group.rank}`}
+                          data-animation-sequence-group-target={group.rank}
+                          data-animation-sequence-target="with"
+                          data-animation-sequence-target-for={withTargetId}
+                          className={clsx(
+                            FONT,
+                            "relative flex h-[24px] items-center justify-center rounded-c-sm border text-[10px] font-[450] leading-[14px]",
+                            withActive ? "border-c-border-selected bg-c-bg-selected text-c-text" : "border-c-border bg-c-bg text-c-text-secondary",
+                          )}
+                          {...targetHandlers(withTargetId, "with")}
+                        >
+                          With
+                          {withActive && <span aria-hidden data-animation-sequence-drop-indicator="with" className="pointer-events-none absolute inset-[2px] rounded-c-xs border border-c-border-selected" />}
+                        </div>
+                      )}
+                      {group.rows.map(row => renderActionRow(row.animation, row.index))}
+                    </div>
+                    {afterTargetId && insertionSpace(
+                      `after-${group.rank}`,
+                      afterTargetId,
+                      afterPlacement,
+                      next ? `Insert animation between sequence ${group.rank} and ${next.rank}` : `Insert animation after sequence ${group.rank}`,
+                    )}
+                  </div>
+                );
+              })}
+            </>;
           })()}
           {/* #222: the "starts automatically" + delay authoring block is gated behind the
               `animationDelay` capability (default OFF). When off it is not rendered, so no
