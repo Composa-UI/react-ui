@@ -101,6 +101,15 @@ function SlideThumb({ item, aspectRatio = SLOT_RATIO }: { item: SlideData; aspec
 // ── One slide row ─────────────────────────────────────────────────────────────
 export function SlideListItem({ item, aspectRatio, tabIndex = 0, onNavigate, onRenameRequest, onMenuRequest, onFocus, itemRef }: { item: SlideData; aspectRatio?: number; tabIndex?: number; onNavigate?: (event: KeyboardEvent<HTMLDivElement>) => void; onRenameRequest?: () => void; onMenuRequest?: (event: { clientX: number; clientY: number }) => void; onFocus?: () => void; itemRef?: (node: HTMLDivElement | null) => void }) {
   const numLeft = item.sub ? "left-[36px]" : "left-[12px]";
+  const previewIntent = useRef({ hover: false, focus: false, active: false });
+  const setPreviewIntent = (source: "hover" | "focus", value: boolean) => {
+    const intent = previewIntent.current;
+    intent[source] = value;
+    const active = intent.hover || intent.focus;
+    if (active === intent.active) return;
+    intent.active = active;
+    item.onPreviewChange?.(active);
+  };
   // Row height tracks the responsive thumbnail. An in-flow spacer uses the same
   // left-gutter + 12px-right margins, so it fills the remaining width; aspect-ratio
   // then sets its height, and the row grows/shrinks with the panel width. Vertical
@@ -111,10 +120,10 @@ export function SlideListItem({ item, aspectRatio, tabIndex = 0, onNavigate, onR
     <div className="group/slide relative w-full shrink-0 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-c-border-selected"
       ref={itemRef} role="option" tabIndex={tabIndex} aria-selected={item.selected} data-in-view={item.inView || undefined} aria-label={`Composition ${item.n}`}
       onFocus={onFocus}
-      onFocusCapture={() => item.onPreviewChange?.(true)}
-      onBlurCapture={() => item.onPreviewChange?.(false)}
-      onMouseEnter={() => item.onPreviewChange?.(true)}
-      onMouseLeave={() => item.onPreviewChange?.(false)}
+      onFocusCapture={() => setPreviewIntent("focus", true)}
+      onBlurCapture={() => setPreviewIntent("focus", false)}
+      onMouseEnter={() => setPreviewIntent("hover", true)}
+      onMouseLeave={() => setPreviewIntent("hover", false)}
       onClick={item.onClick}
       onContextMenu={onMenuRequest ? event => { event.preventDefault(); onMenuRequest({ clientX: event.clientX, clientY: event.clientY }); } : undefined}
       onKeyDown={event => {
