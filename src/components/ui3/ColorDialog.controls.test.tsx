@@ -143,6 +143,37 @@ describe("image fill", () => {
     expect(onAdjust).toHaveBeenCalledWith("shadows", -30);
     act(() => renderer.unmount());
   });
+
+  it("keeps adjustment values visible while every editor and diamond is inert when read-only", () => {
+    const onAdjust = vi.fn();
+    const onToggle = vi.fn();
+    const renderer = render({
+      fillType: "image",
+      imageSourceLabel: "locked.png",
+      imageExposure: 37,
+      imageAdjustmentsReadOnly: true,
+      imageAdjustmentKeyframes: { exposure: { active: true, onToggle } },
+      onImageAdjustmentChange: onAdjust,
+    }, nodeMock());
+
+    const sliders = host(renderer, instance => instance.type === "input" && instance.props.type === "range");
+    expect(sliders).toHaveLength(7);
+    expect(sliders.every(slider => slider.props.disabled === true)).toBe(true);
+    act(() => sliders[0].props.onChange({ target: { value: "80" } }));
+
+    const [exposure] = byLabel(renderer, "Exposure value");
+    expect(exposure.props.value).toBe("37");
+    expect(exposure.props.disabled).toBe(true);
+    act(() => exposure.props.onChange({ target: { value: "80" } }));
+
+    const [diamond] = byLabel(renderer, "Exposure value keyframe");
+    expect(diamond.props.disabled).toBe(true);
+    expect(diamond.props["aria-pressed"]).toBe(true);
+    act(() => diamond.props.onClick({ stopPropagation: vi.fn() }));
+    expect(onToggle).not.toHaveBeenCalled();
+    expect(onAdjust).not.toHaveBeenCalled();
+    act(() => renderer.unmount());
+  });
 });
 
 // ── Item 3: gradient type is a menu, not a cycle ─────────────────────────────
@@ -257,5 +288,30 @@ describe("gradient stops", () => {
       instance => typeof instance.props.style?.background === "string"
         && instance.props.style.background.includes("#888888"));
     expect(bar.props.style.background).toBe("linear-gradient(to right, #000000 0%, #888888 50%, #ffffff 100%)");
+  });
+
+  it("routes position, color, and opacity diamonds by stable stop id", () => {
+    const position = vi.fn(), color = vi.fn(), opacity = vi.fn();
+    const renderer = render({
+      fillType: "linear", gradientStops: stops,
+      gradientStopKeyframes: { b: {
+        position: { active: true, onToggle: position },
+        color: { active: false, onToggle: color },
+        opacity: { active: false, onToggle: opacity },
+      } },
+    }, nodeMock());
+
+    for (const [label, callback] of [
+      ["Stop 2 position keyframe", position],
+      ["Stop 2 color keyframe", color],
+      ["Stop 2 opacity keyframe", opacity],
+    ] as const) {
+      const [button] = byLabel(renderer, label);
+      expect(button).toBeDefined();
+      act(() => button.props.onClick({ stopPropagation: vi.fn() }));
+      expect(callback).toHaveBeenCalledOnce();
+    }
+    expect(byLabel(renderer, "Stop 1 position keyframe")).toHaveLength(0);
+    act(() => renderer.unmount());
   });
 });

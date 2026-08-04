@@ -46,10 +46,10 @@ export type TextVerticalAlign = "top" | "middle" | "bottom";
 export type TextDecoration = "none" | "underline" | "strikethrough";
 export type TextCase = "none" | "upper" | "lower" | "title";
 
-/** 100–900 stepped variable-weight axis. */
-export const WEIGHT_MIN = 100;
-export const WEIGHT_MAX = 900;
-export const WEIGHT_STEP = 100;
+/** CSS/variable-font numeric weight axis. The document preserves exact 1–1000 values. */
+export const WEIGHT_MIN = 1;
+export const WEIGHT_MAX = 1000;
+export const WEIGHT_STEP = 1;
 /** Named weights the document model exposes: regular 400 · medium 500 · bold 700. */
 export const NAMED_WEIGHTS = { regular: 400, medium: 500, bold: 700 } as const;
 
@@ -60,7 +60,7 @@ export interface TypeSettingsValue {
   verticalAlign: TextVerticalAlign;
   decoration?: TextDecoration;
   textCase?: TextCase;
-  /** Variable-font weight (100–900). Falls back to regular (400) when absent. */
+  /** Exact CSS/variable-font weight (1–1000). Falls back to regular (400) when absent. */
   weight?: number;
   /** Font family used only to render the preview sample. */
   fontFamily?: string;
@@ -91,9 +91,8 @@ export interface TypeSettingsDialogProps {
   readOnly?: boolean;
   /** Whether the document model supports justified alignment. Default true. */
   justifySupported?: boolean;
-  /** Only real numeric text metrics receive motion bindings. Font weight is
-   * deliberately absent until stepped/variable-font interpolation is defined. */
   keyframes?: {
+    weight?: { active: boolean; onToggle: () => void };
     lineHeight?: { active: boolean; onToggle: () => void };
     letterSpacing?: { active: boolean; onToggle: () => void };
   };
@@ -327,9 +326,8 @@ export function TypeSettingsDialog({
             step={WEIGHT_STEP}
             mixed={value.weightMixed}
             disabled={editDisabled}
-            onChange={next =>
-              onChange?.({ weight: Math.min(WEIGHT_MAX, Math.max(WEIGHT_MIN, Math.round(next / WEIGHT_STEP) * WEIGHT_STEP)) })
-            }
+            keyframe={keyframes?.weight}
+            onChange={next => onChange?.({ weight: Math.min(WEIGHT_MAX, Math.max(WEIGHT_MIN, next)) })}
           />
         </FieldRow>
         <div className="px-[2px]">
@@ -338,7 +336,6 @@ export function TypeSettingsDialog({
             min={WEIGHT_MIN}
             max={WEIGHT_MAX}
             step={WEIGHT_STEP}
-            showSteps
             disabled={editDisabled}
             handleVariant={value.weightMixed ? "stroke" : "fill"}
             onChange={next => onChange?.({ weight: next })}

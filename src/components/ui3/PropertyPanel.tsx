@@ -11,7 +11,7 @@ import {
   MoveHorizontal, MoveVertical, Play, Pause, MonitorPlay,
   Image as ImageIcon, Clock, SquareSquare,
   ArrowLeftFromLine, ArrowRightFromLine, Grid2x2, Timer,
-  Square, PanelTop, PanelBottom, PanelLeft, PanelRight,
+  Square, PanelTop, PanelBottom, PanelLeft, PanelRight, Diamond,
 } from "lucide-react";
 import { CirclesFour } from "@phosphor-icons/react";
 import { ProposedSquareText, ProposedTextMargins } from "../../icons/proposed-lucide";
@@ -26,7 +26,7 @@ import { SegmentedControl } from "./SegmentedControl";
 import { AlignmentControl, type AlignmentValue } from "./AlignmentControl";
 import { Chit } from "./Chit";
 import { Checkbox } from "./Checkbox";
-import { ColorDialog, type FillType, type GradientStop, type ImageAdjustment, type ImageAdjustments } from "./ColorDialog";
+import { ColorDialog, type FillType, type GradientStop, type GradientStopKeyframeControls, type ImageAdjustment, type ImageAdjustments } from "./ColorDialog";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { AnimatePanel } from "./AnimatePanel";
 import { Avatar, type AvatarColor } from "./Avatar";
@@ -88,6 +88,8 @@ export interface ElementFillSetting {
   keyframes?: {
     color?: InspectorKeyframeControl;
     opacity?: InspectorKeyframeControl;
+    gradientStops?: Record<string, GradientStopKeyframeControls>;
+    imageAdjustments?: Partial<Record<ImageAdjustment, InspectorKeyframeControl>>;
   };
   /** The controlled ColorDialog mode for this specific fill entry. */
   fillType?: FillType;
@@ -725,8 +727,8 @@ export interface InspectorKeyframeControls {
   paddingRight?: InspectorKeyframeControl;
   paddingBottom?: InspectorKeyframeControl;
   paddingLeft?: InspectorKeyframeControl;
-  /** Continuous numeric text metrics. Font weight is intentionally excluded
-   * until its stepped/variable-font interpolation policy is specified. */
+  /** Continuous numeric typography values. */
+  fontWeight?: InspectorKeyframeControl;
   fontSize?: InspectorKeyframeControl;
   lineHeight?: InspectorKeyframeControl;
   letterSpacing?: InspectorKeyframeControl;
@@ -1555,7 +1557,7 @@ function weightsForFamily(
   return entry?.weights ?? hostWeights ?? DEFAULT_FONT_WEIGHTS;
 }
 
-function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes = DEFAULT_FONT_SIZES, fontWeights, keyframes }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean; fonts?: ReadonlyArray<FontEntry>; fontSizes?: ReadonlyArray<number>; fontWeights?: ReadonlyArray<FontWeightOption>; keyframes?: Pick<InspectorKeyframeControls, "fontSize" | "lineHeight" | "letterSpacing"> }) {
+function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes = DEFAULT_FONT_SIZES, fontWeights, keyframes }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean; fonts?: ReadonlyArray<FontEntry>; fontSizes?: ReadonlyArray<number>; fontWeights?: ReadonlyArray<FontWeightOption>; keyframes?: Pick<InspectorKeyframeControls, "fontWeight" | "fontSize" | "lineHeight" | "letterSpacing"> }) {
   const [internal, setInternal] = useState<ElementTypographySettings>({ fontFamily: "Inter", fontWeight: "Medium", fontSize: 11, lineHeight: 16, letterSpacing: 0, align: "left", verticalAlign: "top", decoration: "none", textCase: "none", weight: 500, styleName: "Title · 96/120" });
   const settings = value ?? internal;
   const update = (patch: Partial<ElementTypographySettings>) => { if (!value) setInternal(current => ({ ...current, ...patch })); onChange?.(patch); };
@@ -1631,7 +1633,7 @@ function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes 
                 (Composa#661) — and each pick emits BOTH the named weight and its
                 numeric value so a name outside the host's own name table (Thin,
                 Black, …) still persists as the right CSS weight. */}
-            <div className="flex-1 min-w-0"><ChoiceDropdown ariaLabel="Font weight" value={settings.fontWeight} options={weightOptions.map(option => option.label)} labels={weightLabels} onChange={label => { const picked = weightOptions.find(option => option.label === label); update({ fontWeight: label, ...(picked ? { weight: picked.value } : {}) }); }} /></div>
+            <div className="flex-1 min-w-0"><ChoiceDropdown ariaLabel="Font weight" value={settings.fontWeight} options={weightOptions.map(option => option.label)} labels={weightLabels} keyframe={keyframes?.fontWeight} onChange={label => { const picked = weightOptions.find(option => option.label === label); update({ fontWeight: label, ...(picked ? { weight: picked.value } : {}) }); }} /></div>
             <div className="flex-1 min-w-0">
               <ComboInput
                 ariaLabel="Font size"
@@ -1679,7 +1681,7 @@ function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes 
             onClose={() => setTypeSettingsOpen(false)}
             trigger={typeSettingsTrigger}
             value={settings}
-            keyframes={{ lineHeight: keyframes?.lineHeight, letterSpacing: keyframes?.letterSpacing }}
+            keyframes={{ weight: keyframes?.fontWeight, lineHeight: keyframes?.lineHeight, letterSpacing: keyframes?.letterSpacing }}
             onChange={update}
           />
         }
@@ -1695,13 +1697,14 @@ type FillEntry = ElementFillSetting;
 function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
   onFillTypeChange, onGradientStopsChange, onChooseImage, onChooseVideo,
   onImageAdjustmentChange, dropZoneSources, onSelectDropZoneSource,
-  capabilities, activeStackDialog, onActiveStackDialogChange }: {
+  imageAdjustmentsReadOnly = false, capabilities, activeStackDialog, onActiveStackDialogChange }: {
   entries?: FillEntry[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<FillEntry, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
   onFillTypeChange?: (id: string, type: FillType) => void;
   onGradientStopsChange?: (id: string, stops: GradientStop[]) => void;
   onChooseImage?: (id: string) => void; onChooseVideo?: (id: string) => void;
   onImageAdjustmentChange?: (id: string, adjustment: ImageAdjustment, value: number) => void;
+  imageAdjustmentsReadOnly?: boolean;
   dropZoneSources?: { id: string; label: string }[];
   onSelectDropZoneSource?: (id: string, sourceId: string) => void;
   capabilities: Required<InspectorCapabilities>;
@@ -1755,7 +1758,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
                 color={fill.color}
                 opacity={fill.opacity}
                 colorKeyframe={fill.fillType === undefined || fill.fillType === "solid" ? fill.keyframes?.color : undefined}
-                opacityKeyframe={fill.fillType === undefined || fill.fillType === "solid" ? fill.keyframes?.opacity : undefined}
+                opacityKeyframe={fill.keyframes?.opacity}
                 onColorChange={color => updateFill(fill.id, { color })}
                 onOpacityChange={opacity => updateFill(fill.id, { opacity })}
                 onSwatchClick={() => onActiveStackDialogChange(`fill-color:${fill.id}`)}
@@ -1765,6 +1768,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
               fillType={fill.fillType}
               onFillTypeChange={onFillTypeChange ? type => onFillTypeChange(fill.id, type) : undefined}
               gradientStops={fill.gradientStops}
+              gradientStopKeyframes={fill.keyframes?.gradientStops}
               onStopsChange={onGradientStopsChange ? stops => onGradientStopsChange(fill.id, stops) : undefined}
               imageSourceLabel={fill.imageSourceLabel}
               onChooseImage={onChooseImage ? () => onChooseImage(fill.id) : undefined}
@@ -1775,6 +1779,8 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
               imageTint={fill.imageAdjustments?.tint}
               imageHighlights={fill.imageAdjustments?.highlights}
               imageShadows={fill.imageAdjustments?.shadows}
+              imageAdjustmentKeyframes={fill.keyframes?.imageAdjustments}
+              imageAdjustmentsReadOnly={imageAdjustmentsReadOnly}
               onImageAdjustmentChange={onImageAdjustmentChange ? (adjustment, value) => onImageAdjustmentChange(fill.id, adjustment, value) : undefined}
               videoSourceLabel={fill.videoSourceLabel}
               onChooseVideo={onChooseVideo ? () => onChooseVideo(fill.id) : undefined}
@@ -1859,7 +1865,7 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
                 color={stroke.color}
                 opacity={stroke.opacity}
                 colorKeyframe={stroke.fillType === undefined || stroke.fillType === "solid" ? stroke.keyframes?.color : undefined}
-                opacityKeyframe={stroke.fillType === undefined || stroke.fillType === "solid" ? stroke.keyframes?.opacity : undefined}
+                opacityKeyframe={stroke.keyframes?.opacity}
                 onColorChange={color => update(stroke.id, { color })}
                 onOpacityChange={opacity => update(stroke.id, { opacity })}
                 onSwatchClick={() => onActiveStackDialogChange(`stroke-color:${stroke.id}`)}
@@ -2596,24 +2602,31 @@ function SlideBackgroundSection({
   );
 }
 
-function ChoiceDropdown<T extends string>({ ariaLabel, value, options, labels, onChange }: {
+function ChoiceDropdown<T extends string>({ ariaLabel, value, options, labels, onChange, keyframe, disabled = false }: {
   ariaLabel?: string;
   value: T;
   options: readonly T[];
   labels: Record<T, string>;
   onChange?: (value: T) => void;
+  keyframe?: InspectorKeyframeControl;
+  disabled?: boolean;
 }) {
   // A roster-driven caller (the weight menu) can hold a value the current roster
   // doesn't list — e.g. the selection is Semibold and the newly chosen family
   // only ships Regular/Bold. Show the value verbatim rather than a blank field.
   const displayed = labels[value] ?? value;
-  return (
-    <PopoverMenu directTrigger align="right" className="w-full" trigger={<Dropdown aria-haspopup="menu" ariaLabel={ariaLabel ? `${ariaLabel}: ${displayed}` : undefined} value={displayed} fullWidth />}>
+  return <div className="flex min-w-0 w-full">
+    <PopoverMenu directTrigger align="right" className="min-w-0 flex-1" trigger={<Dropdown aria-haspopup="menu" ariaLabel={ariaLabel ? `${ariaLabel}: ${displayed}` : undefined} value={displayed} fullWidth disabled={disabled} />}>
       {close => <Menu>{options.map(option => (
-        <MenuRow key={option} type="checkmark" checked={option === value} label={labels[option]} onClick={() => { onChange?.(option); close(); }} />
+        <MenuRow key={option} type="checkmark" checked={option === value} label={labels[option]} disabled={disabled} onClick={() => { if (!disabled) onChange?.(option); close(); }} />
       ))}</Menu>}
     </PopoverMenu>
-  );
+    {keyframe && <button type="button" aria-label={`${ariaLabel ?? "Value"} keyframe`} aria-pressed={keyframe.active} disabled={disabled}
+      onClick={event => { event.stopPropagation(); if (!disabled) keyframe.onToggle(); }}
+      className={clsx("shrink-0 flex items-center justify-center size-[24px] rounded-c-sm hover:bg-c-bg-hover", keyframe.active && "bg-c-bg-selected", disabled && "cursor-not-allowed opacity-60 hover:bg-transparent")}>
+      <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active ? "fill-current text-c-text-brand" : "text-c-icon-secondary")} />
+    </button>}
+  </div>;
 }
 
 // ─── Video Clip mode sections ─────────────────────────────────────────────────
@@ -3051,6 +3064,8 @@ export interface PropertyPanelProps {
    * Defaults to DEFAULT_FONT_WEIGHTS (Regular · Medium · Semibold · Bold). */
   fontWeights?: ReadonlyArray<FontWeightOption>;
   fills?: ElementFillSetting[];
+  /** Locked or inherited-locked selections keep image adjustments visible but inert. */
+  fillImageAdjustmentsReadOnly?: boolean;
   onAddFill?: () => void; onUpdateFill?: (id: string, patch: Partial<Omit<ElementFillSetting, "id">>) => void; onToggleFill?: (id: string, visible: boolean) => void; onReorderFill?: (id: string, targetId: string) => void; onRemoveFill?: (id: string) => void;
   /** Detailed Fill/Color dialog seams. Values live on each fill; callbacks remain host-owned. */
   onFillTypeChange?: (id: string, type: FillType) => void;
@@ -3580,7 +3595,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   textSizingMode, availableTextSizingModes, textSizingModeDisabled = false, onTextSizingModeChange,
   positionPresentation = "separate", onPositionPresentationChange,
   onAutoLayoutSettingsRequest, typography, onTypographyChange, fonts, fontSizes, fontWeights,
-  fills, onAddFill, onUpdateFill, onToggleFill, onReorderFill, onRemoveFill,
+  fills, fillImageAdjustmentsReadOnly = false, onAddFill, onUpdateFill, onToggleFill, onReorderFill, onRemoveFill,
   strokes, strokeReadOnly = false, onAddStroke, onUpdateStroke, onToggleStroke, onReorderStroke, onRemoveStroke,
   effects, onAddEffect, onUpdateEffect, onToggleEffect, onReorderEffect, onRemoveEffect,
   layoutGuides, onAddLayoutGuide, onUpdateLayoutGuide, onRemoveLayoutGuide,
@@ -4104,6 +4119,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
 
           {/* Stackable sections */}
           <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill}
+            imageAdjustmentsReadOnly={fillImageAdjustmentsReadOnly}
             onFillTypeChange={props.onFillTypeChange} onGradientStopsChange={props.onFillGradientStopsChange}
             onChooseImage={props.onChooseFillImage} onChooseVideo={props.onChooseFillVideo}
             onImageAdjustmentChange={props.onFillImageAdjustmentChange}
