@@ -3,11 +3,12 @@ import { clsx } from "clsx";
 export type ChitType = "Fill" | "Opacity" | "Gradient" | "Image" | "Instance";
 export type ChitVariant = "Square" | "Circle";
 
-const CSS_GRADIENT = "linear-gradient(135deg, #f06 0%, #fc0 25%, #0cf 50%, #f06 75%, #fc0 100%)";
 const CSS_CHECKERBOARD = "repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 8px 8px";
 
 interface ChitProps {
   color?: string;
+  /** Exact host-projected authored gradient. Omit to fall back to `color`, never demo rainbow artwork. */
+  gradient?: string;
   type?: ChitType;
   variant?: ChitVariant;
   className?: string;
@@ -15,7 +16,7 @@ interface ChitProps {
 
 // Chit always renders fixed light colors — color swatches in the inspector
 // are always shown on the light panel surface in UI3.
-export function Chit({ color = "#ff24bd", type = "Fill", variant = "Square", className }: ChitProps) {
+export function Chit({ color = "#ff24bd", gradient, type = "Fill", variant = "Square", className }: ChitProps) {
   return (
     <div className={clsx("overflow-clip relative shrink-0 size-[24px]", className)}>
 
@@ -27,7 +28,11 @@ export function Chit({ color = "#ff24bd", type = "Fill", variant = "Square", cla
 
             {/* gradient or checkerboard layers */}
             {(type === "Opacity" || type === "Image" || type === "Gradient") && (
-              <div className="absolute inset-0 rounded-[2px]" style={{ background: CSS_GRADIENT }} />
+              <div
+                data-composa-gradient-preview={type === "Gradient" ? true : undefined}
+                className="absolute inset-0 rounded-[2px]"
+                style={{ background: type === "Gradient" ? gradient ?? color : color }}
+              />
             )}
             {(type === "Opacity" || type === "Image") && (
               <div className="absolute inset-0 rounded-[2px]" style={{ background: CSS_CHECKERBOARD }} />

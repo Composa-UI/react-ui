@@ -5,7 +5,7 @@ import { ModalBody, ModalDivider } from "./Dialog";
 import { InspectorDialog } from "./InspectorDialog";
 import type { AnchoredInspectorOverlayAlign } from "./AnchoredInspectorOverlay";
 import { hexToHsb, hsbToHex } from "../../lib/color";
-import { Tabs } from "./Tabs";
+import { SingleTab, Tabs } from "./Tabs";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { Slider, PickerHandle, GradientStopHandle } from "./Slider";
 import { InputField, ColorInput, NumericInput, NumericInputMulti } from "./Input";
@@ -672,16 +672,16 @@ export function ColorDialog({
 
   // ── Header: Custom / Libraries tabs only — fill type is in the toolbar ────
 
-  const headerTabs = (
+  const headerTabs = librariesAvailable ? (
     <Tabs
       value={activeTab}
       onChange={setActiveTab}
       tabs={[
-        { value: "custom",    label: "Custom" },
-        ...(librariesAvailable ? [{ value: "libraries", label: "Libraries" }] : []),
+        { value: "custom", label: "Custom" },
+        { value: "libraries", label: "Libraries" },
       ]}
     />
-  );
+  ) : <SingleTab label="Custom" />;
 
   return (
     <InspectorDialog

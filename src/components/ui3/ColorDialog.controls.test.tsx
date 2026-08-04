@@ -77,6 +77,21 @@ describe("close control", () => {
   });
 });
 
+describe("header tab anatomy", () => {
+  it("uses the uncontained static Custom label when Libraries is unavailable", () => {
+    const markup = html({ capabilities: { libraries: false } });
+    expect(markup).toContain(">Custom</div>");
+    expect(markup).not.toMatch(/<button[^>]*>Custom<\/button>/);
+    expect(markup).not.toContain("Libraries");
+  });
+
+  it("retains interactive Custom and Libraries tabs when the capability is available", () => {
+    const markup = html({ capabilities: { libraries: true } });
+    expect(markup).toMatch(/<button[^>]*>Custom<\/button>/);
+    expect(markup).toMatch(/<button[^>]*>Libraries<\/button>/);
+  });
+});
+
 // ── Item 4: no inert trailing icons on the tab / toolbar rows ────────────────
 
 describe("controls with nothing behind them are not rendered", () => {
