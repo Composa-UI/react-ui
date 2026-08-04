@@ -415,6 +415,7 @@ describe("Auto-layout gap control", () => {
     // Grid is the FOURTH flow segment (Composa#661), not a header side action.
     expect(horizontal).toBeLessThan(grid);
     expect(html).toContain('data-icon-semantic="layout-grid"');
+    expect(html).toContain("lucide-layout-grid");
     // Wrap is not a flow segment — it is a modifier, rendered after the segments.
     const wrap = html.indexOf('aria-label="Wrap"');
     expect(wrap).toBeGreaterThan(grid);

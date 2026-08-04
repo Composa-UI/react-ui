@@ -86,7 +86,7 @@ describe("proposed Lucide icon boundary", () => {
     expect(html).toContain('<circle cx="12" cy="12" r="4">');
   });
 
-  it("does not register the non-V1 layout-grid capability", () => {
+  it("keeps Grid out of the proposed-icon registry because official Lucide owns it", () => {
     expect(JSON.stringify(proposedLucideMetadata)).not.toMatch(/layout.?grid/i);
   });
 });

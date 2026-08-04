@@ -77,8 +77,7 @@ export const ProposedLayoutFreeform = createLucideIcon("ProposedLayoutFreeform",
 // ("#86 borrowed the `layout-grid` glyph for the wrap cell — a label papering over
 // the absence of both a real two-gap wrap *and* a real grid") and folds "the #86
 // glyph choice" into the grid work. Now that Grid is a first-class Flow segment
-// wearing Grid2x2, the borrow puts two near-identical grid glyphs in the same Flow
-// row, which is what "Grid icon unchanged" names. Wrap gets its own glyph, drawn
+// wearing Lucide LayoutGrid, Wrap gets its own glyph, drawn
 // from the same 7×7-rect family as ProposedLayoutHorizontal/Vertical/Freeform so
 // the Flow row still reads as one set: a first line of two cells, then the flow
 // wrapping back to the start of the next line.

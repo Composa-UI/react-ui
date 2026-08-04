@@ -10,7 +10,7 @@ import {
   Minus, EyeOff, AlignJustify, Maximize, ChevronDown, Ruler,
   MoveHorizontal, MoveVertical, Play, Pause, MonitorPlay,
   Image as ImageIcon, Clock, SquareSquare,
-  ArrowLeftFromLine, ArrowRightFromLine, Grid2x2, Timer,
+  ArrowLeftFromLine, ArrowRightFromLine, Timer,
   Square, PanelTop, PanelBottom, PanelLeft, PanelRight, Diamond,
 } from "lucide-react";
 import { CirclesFour } from "@phosphor-icons/react";

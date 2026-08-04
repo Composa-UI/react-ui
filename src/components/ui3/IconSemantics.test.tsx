@@ -97,18 +97,18 @@ describe("settings icon semantics", () => {
     expect(composaIconSemantics["effect-blur"]).not.toBe(composaIconSemantics["effect-spread"]);
   });
 
-  it("stops Wrap and Grid wearing the same grid glyph in the Flow row ('Grid icon unchanged')", () => {
+  it("keeps Wrap distinct while Grid uses its canonical Lucide glyph in the Flow row", () => {
     // #86/#459 dressed the Wrap cell in Lucide's LayoutGrid as a stand-in from
     // before Grid existed; grid-and-wrap-spec §1(c) calls that borrow "a label
     // papering over the absence of both a real two-gap wrap *and* a real grid" and
     // folds "the #86 glyph choice" into the grid work. Grid is now its own Flow
-    // segment wearing Grid2x2, so the borrow put two near-identical grid glyphs in
-    // one row. Wrap has its own wrapped-flow glyph; the two must stay distinct and
-    // neither may fall back to Lucide's LayoutGrid.
+    // segment wearing LayoutGrid, so the borrow put two near-identical grid glyphs in
+    // one row. Wrap has its own wrapped-flow glyph while Grid now owns the exact
+    // Lucide LayoutGrid symbol; the two must stay distinct.
     expect(composaIconSemantics["layout-wrap"]).toBe(ProposedLayoutWrap);
     expect(composaIconSemantics["layout-wrap"]).not.toBe(composaIconSemantics["layout-grid"]);
     expect(composaIconSemantics["layout-wrap"]).not.toBe(LayoutGrid);
-    expect(composaIconSemantics["layout-grid"]).not.toBe(LayoutGrid);
+    expect(composaIconSemantics["layout-grid"]).toBe(LayoutGrid);
     // …and Wrap still reads as one of the Flow set without colliding with it.
     expect(composaIconSemantics["layout-wrap"]).not.toBe(composaIconSemantics["layout-freeform"]);
     expect(composaIconSemantics["layout-wrap"]).not.toBe(composaIconSemantics["layout-horizontal"]);
@@ -173,6 +173,13 @@ describe("settings icon semantics", () => {
       "auto-layout-horizontal-top", "auto-layout-horizontal-center", "auto-layout-horizontal-bottom",
       "auto-layout-vertical-left", "auto-layout-vertical-center", "auto-layout-vertical-right",
     ]);
+  });
+
+  it("projects a Grid frame through the LayoutGrid semantic", () => {
+    const html = renderToStaticMarkup(<LayerTypeIcon type="frame" autoLayoutMode="grid" />);
+    expect(html).toContain('data-icon-semantic="layout-grid"');
+    expect(html).toContain("lucide-layout-grid");
+    expect(html).toContain('data-auto-layout-mode="grid"');
   });
 
   it("uses the canonical semantic for current Animate settings entry points", () => {
