@@ -912,6 +912,17 @@ describe("video clips carry an audio strip (Composa#661)", () => {
     expect(html).toContain("data-timeline-clip-waveform");
   });
 
+  it("keeps the strip de-emphasized with concentric bottom radii and varied real peaks", () => {
+    const html = master({ baseClips: [{ id: "v1", name: "shot", range: [0, 1_000], thumbnail: "blob:green", waveform: [0.2, 0.9, 0.4] }] });
+    const strip = waveformStripTag(html, "clip");
+    expect(strip).toContain("bg-c-bg-inverse/10");
+    expect(strip).toContain("bottom-0");
+    expect(strip).toContain("rounded-b-[3px]");
+    expect(html).toContain("height:20%");
+    expect(html).toContain("height:90%");
+    expect(html).toContain("height:40%");
+  });
+
   it("draws nothing when the clip has no peaks, rather than inventing them", () => {
     // No audioClips here, so a waveform anywhere in this markup could only be the
     // video lane's. The bar itself must still render, or the absence proves nothing.

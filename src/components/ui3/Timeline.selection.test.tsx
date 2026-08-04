@@ -116,11 +116,12 @@ describe("a selected video clip with a thumbnail", () => {
     expect(tag).not.toContain("color-mix");
   });
 
-  it("still paints the thumbnail when the clip is NOT selected", () => {
-    // The absence above must come from selection, not from thumbnails having broken.
-    const tag = /<div[^>]*aria-label="shot"[^>]*>/.exec(
-      render({ baseClips: [{ id: "c1", name: "shot", range: [0, 4000], thumbnail: "blob:x" }] }),
-    )?.[0];
-    expect(tag).toContain("blob:x");
+  it("renders the thumbnail as leading content, never as the unselected bar fill", () => {
+    const html = render({ baseClips: [{ id: "c1", name: "shot", range: [0, 4000], thumbnail: "blob:x" }] });
+    const tag = /<div[^>]*aria-label="shot"[^>]*>/.exec(html)?.[0];
+    expect(tag).toContain("bg-c-bg-secondary");
+    expect(tag).not.toContain("background-image");
+    expect(html).toContain('data-timeline-clip-thumbnail="true"');
+    expect(html).toContain('src="blob:x"');
   });
 });
