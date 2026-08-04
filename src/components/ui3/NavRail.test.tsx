@@ -41,6 +41,11 @@ describe("NavRail / left-panel divider alignment (Composa#622)", () => {
       expect(markup).toContain(PANEL_HEADER_H);
     }
   });
+
+  it("does not let browser selection paint across navigation chrome", () => {
+    const html = renderToStaticMarkup(<NavRail />);
+    expect(html.match(/<nav[^>]*aria-label="Navigation"[^>]*>/)?.[0]).toContain("select-none");
+  });
 });
 
 describe("NavRail back-to-files affordance", () => {

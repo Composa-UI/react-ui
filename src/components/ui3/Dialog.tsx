@@ -97,7 +97,9 @@ export function Modal({
             // cards shows the page through, rather than one tall card.
             !stacked && MODAL_SURFACE,
             // Layout
-            "flex flex-col outline-none",
+            // Modal copy is chrome by default. Real editors and intentionally
+            // copyable regions restore text selection at their own boundary.
+            "flex flex-col select-none [&_input]:select-text [&_textarea]:select-text [&_[contenteditable='true']]:select-text [&_[data-composa-selectable]]:select-text outline-none",
             // Height constraint — footer pins, body scrolls
             "max-h-[90vh]",
             className,
