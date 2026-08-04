@@ -989,7 +989,7 @@ export function ColorDialog({
         {/* ── IMAGE ─────────────────────────────────────────────────────── */}
         {fillType === "image" && (
           <>
-            <MediaFitControl kind="image" value={mediaFit} onChange={onMediaFitChange} onEditCrop={imageSourceLabel ? onEditCrop : undefined} />
+            <MediaFitControl kind="image" value={mediaFit} onChange={onMediaFitChange} onEditCrop={imageSourceLabel && onEditCrop ? () => { onEditCrop(); onClose(); } : undefined} />
             <MediaFillPreview kind="image" sourceLabel={imageSourceLabel} previewUrl={imagePreviewUrl} fit={mediaFit} onChoose={onChooseImage} />
 
             {/* Image adjustments — same rule: every slider was handed a value
@@ -1055,7 +1055,7 @@ export function ColorDialog({
 
         {fillType === "video" && videoAvailable && (
           <>
-            <MediaFitControl kind="video" value={mediaFit === "tile" ? "fill" : mediaFit} onChange={onMediaFitChange} onEditCrop={videoSourceLabel ? onEditCrop : undefined} />
+            <MediaFitControl kind="video" value={mediaFit === "tile" ? "fill" : mediaFit} onChange={onMediaFitChange} onEditCrop={videoSourceLabel && onEditCrop ? () => { onEditCrop(); onClose(); } : undefined} />
             <MediaFillPreview kind="video" sourceLabel={videoSourceLabel} previewUrl={videoPreviewUrl} fit={mediaFit === "tile" ? "fill" : mediaFit} onChoose={onChooseVideo} />
           </>
         )}

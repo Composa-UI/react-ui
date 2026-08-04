@@ -1793,7 +1793,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
               onChooseVideo={onChooseVideo ? () => onChooseVideo(fill.id) : undefined}
               mediaFit={fill.mediaFit}
               onMediaFitChange={onMediaFitChange ? fit => onMediaFitChange(fill.id, fit) : undefined}
-              onEditCrop={onEditCrop ? () => { onActiveStackDialogChange(null); onEditCrop(fill.id); } : undefined}
+              onEditCrop={onEditCrop ? () => onEditCrop(fill.id) : undefined}
               dropZoneSources={dropZoneSources}
               dropZoneSourceId={fill.dropZoneSourceId}
               onSelectDropZoneSource={onSelectDropZoneSource ? sourceId => onSelectDropZoneSource(fill.id, sourceId) : undefined}

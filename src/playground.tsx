@@ -1,4 +1,5 @@
 import { useState } from "react";
+import cropPlaygroundMedia from "./imports/SlidesTemplate/9bf3285fa6c14222923aa8fcd4bf31f6e40807d9.png";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { PropertyPanel, type ClipSpeed, type ElementEffectSetting, type ElementFillSetting, type ElementLayoutGuideSetting, type ElementLayoutSettings, type ElementSelectionColorSetting, type ElementStrokeSetting, type ElementTypographySettings, type InspectorExportSetting, type ProjectFrameRate, type SlideBackgroundType, type SlideTransitionDirection, type SlideTransitionEasing, type SlideTransitionType } from "./components/ui3/PropertyPanel";
 import { AnimatePanel, type ObjectAnimationItem } from "./components/ui3/AnimatePanel";
@@ -12,6 +13,7 @@ import { NavRail } from "./components/ui3/NavRail";
 import { CompositionPanel } from "./components/ui3/CompositionPanel";
 import { AssetsPanel, type AssetFilter, type AssetItem } from "./components/ui3/AssetsPanel";
 import { CreationToolbar } from "./components/ui3/CreationToolbar";
+import { CanvasCropOverlay, CropToolbar, type CropAspect } from "./components/ui3/CropToolbar";
 import { Button } from "./components/ui3/Button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "./components/ui3/Dialog";
 import { TeamDialog, type TeamMember, type TeamTab, type TeamRole } from "./components/ui3/TeamDialog";
@@ -762,6 +764,8 @@ export default function Playground() {
   // (side-by-side fidelity check); default = property-panel fidelity set.
   const view = new URLSearchParams(window.location.search).get("view");
   const [nav, setNav] = useState("composition");
+  const [cropAspect, setCropAspect] = useState<CropAspect>("free");
+  const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 });
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>("2b");
   const [contractPlayhead, setContractPlayhead] = useState(300);
   const [contractPlaying, setContractPlaying] = useState(false);
@@ -1457,6 +1461,18 @@ export default function Playground() {
         effects={elementContract.effects} onUpdateEffect={(id, patch) => setElementContract(value => ({ ...value, effects: value.effects.map(item => item.id === id ? { ...item, ...patch } : item) }))} />
       <PropertyPanel elementType="frame-auto" capabilities={{ variables: false }} layout={elementContract.layout} onLayoutChange={patch => setElementContract(value => ({ ...value, layout: { ...value.layout, ...patch } }))}
       />
+    </div>;
+  }
+
+  if (view === "crop-contract") {
+    const dark = new URLSearchParams(window.location.search).get("theme") === "dark";
+    return <div data-composa-mode={dark ? "dark" : undefined} className="flex min-h-screen items-center justify-center bg-c-bg-secondary p-[48px]">
+      <div className="relative h-[520px] w-[820px] overflow-hidden rounded-c-lg bg-c-bg shadow-lg">
+        <img src={cropPlaygroundMedia} alt="Crop playground media" className="absolute inset-0 size-full object-cover" style={{ transform: `translate(${cropOffset.x}px, ${cropOffset.y}px) scale(1.15)` }} />
+        <CanvasCropOverlay style={{ left: 120, top: 90, width: 580, height: 326 }} onMove={(x, y) => setCropOffset(current => ({ x: current.x + x, y: current.y + y }))} />
+        <div className="absolute inset-x-0 bottom-[72px] flex justify-center"><CropToolbar aspect={cropAspect} onAspectChange={setCropAspect} onResizeToFit={() => setCropOffset({ x: 0, y: 0 })} onDone={() => undefined} /></div>
+        <div className="absolute inset-x-0 bottom-[16px] flex justify-center"><CreationToolbar /></div>
+      </div>
     </div>;
   }
 
