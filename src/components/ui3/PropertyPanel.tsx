@@ -1299,6 +1299,8 @@ function LayoutAutoSection({
         </div>
       </div>
 
+      <DimensionSizingFields {...sizing} width={width} height={height} widthMode={widthMode} heightMode={heightMode} />
+
       {renderedFlow === "grid" && grid ? (
       /* Figma node 342:3501: Grid 88px, Gap 88px, settings 24px. The grid face
          opens dimensions; the trailing glyph opens the SAME Auto-layout settings. */
@@ -1420,7 +1422,6 @@ function LayoutAutoSection({
         )}
       </div>
 
-      <DimensionSizingFields {...sizing} width={width} height={height} widthMode={widthMode} heightMode={heightMode} />
       <SpatialSelectionLayoutFields value={spatialSelectionLayout} />
 
       {/* Clip content */}

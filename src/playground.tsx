@@ -1468,6 +1468,27 @@ export default function Playground() {
     </div>;
   }
 
+  if (view === "issue-193-dimensions-order") {
+    const baseLayout: ElementLayoutSettings = {
+      mode: "vertical", gap: 12, padding: { top: 16, right: 16, bottom: 16, left: 16 },
+      align: "mc", widthMode: "fixed", heightMode: "hug", clipsContent: false,
+    };
+    const gridLayout: ElementLayoutSettings = {
+      ...baseLayout,
+      mode: "grid",
+      grid: {
+        rows: [{ id: "row-1", mode: "fixed", size: 100 }],
+        columns: [{ id: "column-1", mode: "fixed", size: 100 }],
+        rowGap: 10, columnGap: 10,
+        justifyItems: "start", alignItems: "start", justifyContent: "start", alignContent: "start",
+      },
+    };
+    return <div className="h-screen w-screen flex items-start justify-center gap-[24px] bg-c-bg-secondary p-[24px]">
+      <section data-issue-193-mode="linear"><PropertyPanel elementType="frame-auto" layout={baseLayout} /></section>
+      <section data-issue-193-mode="grid"><PropertyPanel elementType="frame-grid" layout={gridLayout} /></section>
+    </div>;
+  }
+
   if (view === "crop-contract") {
     const dark = new URLSearchParams(window.location.search).get("theme") === "dark";
     return <div data-composa-mode={dark ? "dark" : undefined} className="flex min-h-screen items-center justify-center bg-c-bg-secondary p-[48px]">
