@@ -16,7 +16,6 @@ import {
   Circle,
   Droplet,
   LayoutGrid,
-  Grid2x2,
   Component,
   Frame,
   Grip,
@@ -140,13 +139,9 @@ export const composaIconSemantics = {
   "layout-freeform": ProposedLayoutFreeform,
   "layout-horizontal": ProposedLayoutHorizontal,
   "layout-vertical": ProposedLayoutVertical,
-  // Wrap stays a Wrap *mode* (a multi-line auto-layout modifier on Horizontal,
-  // RP-15) and NOT a Grid document mode. It used to borrow the Lucide `LayoutGrid`
-  // glyph (#86/#459) as a stand-in from before Grid existed. Grid is now a real
-  // Flow segment wearing Grid2x2 (below), so the borrow left the Flow row showing
-  // two near-identical grid glyphs — the "Grid icon unchanged" complaint. Wrap now
-  // has its own wrapped-flow glyph in the Proposed* family; `layout-wrap` and
-  // `layout-grid` must stay distinct, and neither may be Lucide's LayoutGrid.
+  // Wrap stays a multi-line auto-layout modifier on Horizontal, while Grid is a
+  // distinct Flow mode. Wrap owns its bespoke flow glyph; Grid owns the official
+  // Lucide LayoutGrid glyph. They must remain visibly and semantically distinct.
   "layout-wrap": ProposedLayoutWrap,
   "gap-horizontal": ProposedGapHorizontal,
   "gap-vertical": ProposedGapVertical,
@@ -207,8 +202,8 @@ export const composaIconSemantics = {
   "auto-layout-vertical-center": ProposedLayoutVerticalCenter,
   "auto-layout-vertical-right": ProposedLayoutVerticalRight,
   // Grid is a distinct 2D layout mode (grid-and-wrap-spec §3), separate from the
-  // wrapped-flow `layout-wrap` glyph above — a true grid reads as Grid2x2.
-  "layout-grid": Grid2x2,
+  // wrapped-flow `layout-wrap` glyph above.
+  "layout-grid": LayoutGrid,
   settings: Settings2,
 } as const satisfies Record<ComposaIconSemantic, LucideIcon>;
 
