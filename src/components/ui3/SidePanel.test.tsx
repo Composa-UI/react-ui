@@ -71,4 +71,10 @@ describe("SidePanel width", () => {
       expect(value).toBeLessThanOrEqual(SIDE_PANEL_MAX_WIDTH);
     }
   });
+
+  it("allows a host to give the shared separator a surface-specific accessible name", () => {
+    let tree!: ReactTestRenderer;
+    act(() => { tree = create(<SidePanel resizeLabel="Resize Agent width" />); });
+    expect(tree.root.findAll(node => node.props?.["aria-label"] === "Resize Agent width" && node.props?.role === "separator")).toHaveLength(1);
+  });
 });

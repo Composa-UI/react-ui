@@ -25,6 +25,8 @@ export interface SidePanelProps extends Omit<React.ComponentPropsWithoutRef<"div
   /** Uncontrolled default when `width` is not provided. Default 240px. */
   defaultWidth?: number;
   onWidthChange?: (width: number) => void;
+  /** Accessible name for the resize separator. */
+  resizeLabel?: string;
   className?: string;
   children?: React.ReactNode;
 }
@@ -33,6 +35,7 @@ export function SidePanel({
   width: controlledWidth,
   defaultWidth = SIDE_PANEL_DEFAULT_WIDTH,
   onWidthChange,
+  resizeLabel = "Resize panel width",
   className,
   children,
   ...rest
@@ -99,7 +102,7 @@ export function SidePanel({
       <div
         role="separator"
         aria-orientation="vertical"
-        aria-label="Resize panel width"
+        aria-label={resizeLabel}
         aria-valuenow={Math.round(width)}
         aria-valuemin={SIDE_PANEL_MIN_WIDTH}
         aria-valuemax={SIDE_PANEL_MAX_WIDTH}
