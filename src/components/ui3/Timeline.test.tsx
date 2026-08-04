@@ -148,6 +148,38 @@ describe("Timeline DOM contracts", () => {
     expect(html).not.toContain('aria-label="Effect color value opacity"');
   });
 
+  it("keeps pointer-focused ruler chrome quiet for Space while retaining keyboard focus treatment", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<Timeline height={220} duration={2_000} />); });
+    const ruler = () => renderer!.root.findAllByProps({ role: "slider" })
+      .find(node => node.props["aria-label"] === "Playhead")!;
+
+    act(() => {
+      ruler().props.onPointerDownCapture();
+      ruler().props.onFocus();
+    });
+    expect(ruler().props["data-timeline-ruler-keyboard-focus"]).toBeUndefined();
+    expect(ruler().props.className).not.toContain("ring-c-border-selected-strong");
+
+    act(() => ruler().props.onKeyDown({
+      key: " ", metaKey: false, ctrlKey: false, altKey: false, shiftKey: false,
+      repeat: false, preventDefault: vi.fn(), stopPropagation: vi.fn(),
+    }));
+    expect(ruler().props["data-timeline-ruler-keyboard-focus"]).toBeUndefined();
+
+    act(() => ruler().props.onKeyDown({
+      key: "ArrowRight", metaKey: false, ctrlKey: false, altKey: false, shiftKey: false,
+      repeat: false, preventDefault: vi.fn(), stopPropagation: vi.fn(),
+    }));
+    expect(ruler().props["data-timeline-ruler-keyboard-focus"]).toBe(true);
+    expect(ruler().props.className).toContain("ring-c-border-selected-strong");
+
+    act(() => ruler().props.onBlur());
+    act(() => ruler().props.onFocus());
+    expect(ruler().props["data-timeline-ruler-keyboard-focus"]).toBe(true);
+    act(() => renderer!.unmount());
+  });
+
   it("commits a timeline RGB replacement only after six valid digits blur", () => {
     const onPropertyValueChange = vi.fn();
     let renderer: ReturnType<typeof create>;
