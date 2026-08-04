@@ -44,7 +44,7 @@ export function SidePanel({
   const [internalWidth, setInternalWidth] = useState(defaultWidth);
   const width = controlledWidth ?? internalWidth;
   const [dragging, setDragging] = useState(false);
-  const dragPointerIdRef = useRef<number | null>(null);
+  const dragRef = useRef<{ pointerId: number; startX: number; startWidth: number } | null>(null);
 
   const setWidth = useCallback(
     (next: number) => {
@@ -58,24 +58,23 @@ export function SidePanel({
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       e.preventDefault();
-      const el = containerRef.current;
-      if (!el) return;
-      dragPointerIdRef.current = e.pointerId;
+      if (!containerRef.current) return;
+      dragRef.current = { pointerId: e.pointerId, startX: e.clientX, startWidth: width };
       setDragging(true);
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
     },
-    [],
+    [width],
   );
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (dragPointerIdRef.current !== e.pointerId) return;
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (rect) setWidth(e.clientX - rect.left);
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    setWidth(drag.startWidth + e.clientX - drag.startX);
   }, [setWidth]);
 
   const finishPointerDrag = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (dragPointerIdRef.current !== e.pointerId) return;
-    dragPointerIdRef.current = null;
+    if (dragRef.current?.pointerId !== e.pointerId) return;
+    dragRef.current = null;
     if ((e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) {
       (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
     }
