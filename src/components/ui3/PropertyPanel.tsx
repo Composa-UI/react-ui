@@ -1697,13 +1697,14 @@ type FillEntry = ElementFillSetting;
 function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
   onFillTypeChange, onGradientStopsChange, onChooseImage, onChooseVideo,
   onImageAdjustmentChange, dropZoneSources, onSelectDropZoneSource,
-  capabilities, activeStackDialog, onActiveStackDialogChange }: {
+  imageAdjustmentsReadOnly = false, capabilities, activeStackDialog, onActiveStackDialogChange }: {
   entries?: FillEntry[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<FillEntry, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
   onFillTypeChange?: (id: string, type: FillType) => void;
   onGradientStopsChange?: (id: string, stops: GradientStop[]) => void;
   onChooseImage?: (id: string) => void; onChooseVideo?: (id: string) => void;
   onImageAdjustmentChange?: (id: string, adjustment: ImageAdjustment, value: number) => void;
+  imageAdjustmentsReadOnly?: boolean;
   dropZoneSources?: { id: string; label: string }[];
   onSelectDropZoneSource?: (id: string, sourceId: string) => void;
   capabilities: Required<InspectorCapabilities>;
@@ -1779,6 +1780,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
               imageHighlights={fill.imageAdjustments?.highlights}
               imageShadows={fill.imageAdjustments?.shadows}
               imageAdjustmentKeyframes={fill.keyframes?.imageAdjustments}
+              imageAdjustmentsReadOnly={imageAdjustmentsReadOnly}
               onImageAdjustmentChange={onImageAdjustmentChange ? (adjustment, value) => onImageAdjustmentChange(fill.id, adjustment, value) : undefined}
               videoSourceLabel={fill.videoSourceLabel}
               onChooseVideo={onChooseVideo ? () => onChooseVideo(fill.id) : undefined}
@@ -3062,6 +3064,8 @@ export interface PropertyPanelProps {
    * Defaults to DEFAULT_FONT_WEIGHTS (Regular · Medium · Semibold · Bold). */
   fontWeights?: ReadonlyArray<FontWeightOption>;
   fills?: ElementFillSetting[];
+  /** Locked or inherited-locked selections keep image adjustments visible but inert. */
+  fillImageAdjustmentsReadOnly?: boolean;
   onAddFill?: () => void; onUpdateFill?: (id: string, patch: Partial<Omit<ElementFillSetting, "id">>) => void; onToggleFill?: (id: string, visible: boolean) => void; onReorderFill?: (id: string, targetId: string) => void; onRemoveFill?: (id: string) => void;
   /** Detailed Fill/Color dialog seams. Values live on each fill; callbacks remain host-owned. */
   onFillTypeChange?: (id: string, type: FillType) => void;
@@ -3591,7 +3595,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   textSizingMode, availableTextSizingModes, textSizingModeDisabled = false, onTextSizingModeChange,
   positionPresentation = "separate", onPositionPresentationChange,
   onAutoLayoutSettingsRequest, typography, onTypographyChange, fonts, fontSizes, fontWeights,
-  fills, onAddFill, onUpdateFill, onToggleFill, onReorderFill, onRemoveFill,
+  fills, fillImageAdjustmentsReadOnly = false, onAddFill, onUpdateFill, onToggleFill, onReorderFill, onRemoveFill,
   strokes, strokeReadOnly = false, onAddStroke, onUpdateStroke, onToggleStroke, onReorderStroke, onRemoveStroke,
   effects, onAddEffect, onUpdateEffect, onToggleEffect, onReorderEffect, onRemoveEffect,
   layoutGuides, onAddLayoutGuide, onUpdateLayoutGuide, onRemoveLayoutGuide,
@@ -4115,6 +4119,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
 
           {/* Stackable sections */}
           <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill}
+            imageAdjustmentsReadOnly={fillImageAdjustmentsReadOnly}
             onFillTypeChange={props.onFillTypeChange} onGradientStopsChange={props.onFillGradientStopsChange}
             onChooseImage={props.onChooseFillImage} onChooseVideo={props.onChooseFillVideo}
             onImageAdjustmentChange={props.onFillImageAdjustmentChange}

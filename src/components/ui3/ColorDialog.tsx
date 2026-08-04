@@ -351,8 +351,8 @@ function AdjustRow({ label, value, onChange, keyframe, disabled = false }: {
       <span className={clsx(FONT, "text-[11px] font-[450] text-c-text-secondary w-[88px] shrink-0 truncate")}>
         {label}
       </span>
-      <div className="min-w-0 flex-1"><Slider value={value} onChange={onChange} min={-100} max={100} defaultValue={0} disabled={disabled} /></div>
-      <div className="w-[68px] shrink-0"><NumericInput ariaLabel={`${label} value`} value={value} onChange={onChange}
+      <div className="min-w-0 flex-1"><Slider value={value} onChange={disabled ? undefined : onChange} min={-100} max={100} defaultValue={0} disabled={disabled} /></div>
+      <div className="w-[68px] shrink-0"><NumericInput ariaLabel={`${label} value`} value={value} onChange={disabled ? undefined : onChange}
         min={-100} max={100} size="small" disabled={disabled} keyframe={keyframe} /></div>
     </div>
   );

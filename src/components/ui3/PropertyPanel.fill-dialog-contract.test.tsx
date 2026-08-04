@@ -88,8 +88,9 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
         id: "image-fill", color: "#ffffff", opacity: 100, visible: true, fillType: "image",
         imageSourceLabel: "photo.jpg", imageAdjustments: { exposure: 12 },
         keyframes: { imageAdjustments: { exposure: { active: true, onToggle } } },
-      }]} onFillImageAdjustmentChange={() => undefined} />); });
+      }]} fillImageAdjustmentsReadOnly onFillImageAdjustmentChange={() => undefined} />); });
     expect(capture.props?.imageAdjustmentKeyframes?.exposure).toEqual({ active: true, onToggle });
+    expect(capture.props?.imageAdjustmentsReadOnly).toBe(true);
     act(() => renderer.unmount());
   });
 });

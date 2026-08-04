@@ -143,6 +143,37 @@ describe("image fill", () => {
     expect(onAdjust).toHaveBeenCalledWith("shadows", -30);
     act(() => renderer.unmount());
   });
+
+  it("keeps adjustment values visible while every editor and diamond is inert when read-only", () => {
+    const onAdjust = vi.fn();
+    const onToggle = vi.fn();
+    const renderer = render({
+      fillType: "image",
+      imageSourceLabel: "locked.png",
+      imageExposure: 37,
+      imageAdjustmentsReadOnly: true,
+      imageAdjustmentKeyframes: { exposure: { active: true, onToggle } },
+      onImageAdjustmentChange: onAdjust,
+    }, nodeMock());
+
+    const sliders = host(renderer, instance => instance.type === "input" && instance.props.type === "range");
+    expect(sliders).toHaveLength(7);
+    expect(sliders.every(slider => slider.props.disabled === true)).toBe(true);
+    act(() => sliders[0].props.onChange({ target: { value: "80" } }));
+
+    const [exposure] = byLabel(renderer, "Exposure value");
+    expect(exposure.props.value).toBe("37");
+    expect(exposure.props.disabled).toBe(true);
+    act(() => exposure.props.onChange({ target: { value: "80" } }));
+
+    const [diamond] = byLabel(renderer, "Exposure value keyframe");
+    expect(diamond.props.disabled).toBe(true);
+    expect(diamond.props["aria-pressed"]).toBe(true);
+    act(() => diamond.props.onClick({ stopPropagation: vi.fn() }));
+    expect(onToggle).not.toHaveBeenCalled();
+    expect(onAdjust).not.toHaveBeenCalled();
+    act(() => renderer.unmount());
+  });
 });
 
 // ── Item 3: gradient type is a menu, not a cycle ─────────────────────────────
