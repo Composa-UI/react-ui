@@ -169,6 +169,8 @@ export interface ElementGridSettings {
   alignItems: GridItemAlign;
   justifyContent: GridContentAlign;
   alignContent: GridContentAlign;
+  /** Host projection over explicit gridArea ownership. */
+  automaticPositioning?: boolean | "mixed";
 }
 
 export interface ElementLayoutSettings {
@@ -239,6 +241,7 @@ const FONT = "font-[family-name:var(--composa-font-family)]";
 const BODY = clsx(FONT, "text-[11px] font-[450] leading-[16px] tracking-[0.055px] text-c-text");
 const SUBLABEL = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary");
 const SettingsIcon = iconForSemantic("settings");
+const ResizeToFitIcon = iconForSemantic("resize-to-fit");
 // Blend mode reads as a droplet (owner ask) — the glyph is defined once in the
 // icon-semantics map (blend-mode → Droplet); the trigger + collapsed row share it.
 const BlendModeIcon = iconForSemantic("blend-mode");
@@ -975,6 +978,7 @@ interface LayoutFrameProps {
   onHeightChange?: (v: number) => void;
   sizing?: Omit<DimensionSizingFieldsProps, "width" | "height" | "onWidthChange" | "onHeightChange">;
   onClipContentChange?: (value: boolean) => void;
+  onResizeToFit?: () => void;
   /** Auto-layout is reached from here two ways: the "+" button, or moving Flow
    * off its first ("Freeform") option. Both call this. */
   /** Omitted mode means the generic header toggle; hosts may infer from geometry. */
@@ -991,6 +995,7 @@ function LayoutFrameSection({
   sizing,
   onEnableAutoLayout,
   onEnableGrid,
+  onResizeToFit,
   spatialSelectionLayout,
 }: LayoutFrameProps) {
   // Plain frame defaults to Freeform (no auto-layout yet) — NOT "v", which would
@@ -1009,7 +1014,7 @@ function LayoutFrameSection({
       title="Layout"
       rightActions={
         <>
-          <PanelActionBtn icon={<Maximize2 size={16} strokeWidth={1.5} />} label="Resize to fit" />
+          <PanelActionBtn icon={<ResizeToFitIcon data-icon-semantic="resize-to-fit" size={16} strokeWidth={1.5} />} label="Resize to fit" disabled={!onResizeToFit} onClick={onResizeToFit} />
           {/* Trailing header toggle, OFF face (Composa#661 item 4): panel-plus.
               A bare Plus read as a generic "add" rather than the off state of the
               auto-layout toggle whose on face lives in the Auto layout section. */}
@@ -1079,6 +1084,7 @@ interface LayoutAutoProps {
   gridRowGapKeyframe?: InspectorKeyframeControl;
   gridTrackSizeKeyframes?: Record<string, InspectorKeyframeControl>;
   onAddGridTrack?: (axis: "row" | "column") => void;
+  onGridAutomaticPositioningChange?: (enabled: boolean) => void;
   paddingTopKeyframe?: InspectorKeyframeControl;
   paddingRightKeyframe?: InspectorKeyframeControl;
   paddingBottomKeyframe?: InspectorKeyframeControl;
@@ -1116,7 +1122,7 @@ function LayoutAutoSection({
   settingsBaselineApplicable,
   settingsDisabled = false,
   onLayoutChange, onPaddingChange, onAlignChange, onClipContentChange, onAutoLayoutSettingsRequest, onEnableGrid, onDisableAutoLayout, sizing, spatialSelectionLayout,
-  gapKeyframe, rowGapKeyframe, gridColumnGapKeyframe, gridRowGapKeyframe, gridTrackSizeKeyframes, onAddGridTrack,
+  gapKeyframe, rowGapKeyframe, gridColumnGapKeyframe, gridRowGapKeyframe, gridTrackSizeKeyframes, onAddGridTrack, onGridAutomaticPositioningChange,
   paddingTopKeyframe, paddingRightKeyframe, paddingBottomKeyframe, paddingLeftKeyframe,
 }: LayoutAutoProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -1137,7 +1143,9 @@ function LayoutAutoSection({
   const [internalRowGap, setInternalRowGap] = useState(rowGapProp ?? (typeof renderedGap === "number" ? renderedGap : 0));
   const renderedRowGap = rowGapControlled ? rowGapProp : internalRowGap;
   const [indivPadding, setIndivPadding] = useState(false);
-  const paddingSidesDiffer = paddingTop !== paddingRight || paddingTop !== paddingBottom || paddingTop !== paddingLeft;
+  // Combined presentation owns two axes, not one all-sides scalar: Top is the
+  // vertical source and Right is the horizontal source.
+  const paddingSidesDiffer = paddingTop !== paddingBottom || paddingRight !== paddingLeft;
   const paddingHasMixedSide = paddingTopMixed || paddingRightMixed || paddingBottomMixed || paddingLeftMixed;
   // Animated padding is always presented as four physical edges. The combined
   // Vertical/Horizontal fields edit two values and therefore cannot truthfully
@@ -1277,6 +1285,15 @@ function LayoutAutoSection({
               onClick={toggleWrap}
             />
           )}
+          {renderedFlow === "grid" && grid && (
+            <PanelActionBtn
+              icon={<AbsolutePositionIcon data-icon-semantic="absolute-position" size={16} strokeWidth={1.5} />}
+              label="Toggle automatic positioning"
+              selected={grid.automaticPositioning === true}
+              disabled={!onGridAutomaticPositioningChange}
+              onClick={() => onGridAutomaticPositioningChange?.(grid.automaticPositioning !== true)}
+            />
+          )}
         </div>
       </div>
 
@@ -1288,7 +1305,7 @@ function LayoutAutoSection({
           <div className={subLabel}>Grid</div>
           <GridDimensionsPicker grid={grid} keyframes={gridTrackSizeKeyframes} onChange={patch => onLayoutChange?.({ grid: { ...grid, ...patch } })} onAddTrack={onAddGridTrack} />
         </div>
-        <div className="w-[88px] min-w-0 flex flex-col gap-[4px]">
+        <div className="flex-1 min-w-0 flex flex-col gap-[4px]">
           <div>
             <div className={subLabel}>Gap</div>
             <NumericInput ariaLabel="Column gap" iconLead={<AutoLayoutSpacingIcon kind="gap" axis="horizontal" />} value={grid.columnGap} onChange={columnGap => onLayoutChange?.({ grid: { ...grid, columnGap: Math.max(0, columnGap) } })} min={0} suffix="px" keyframe={gridColumnGapKeyframe} className="w-full" />
@@ -1376,8 +1393,11 @@ function LayoutAutoSection({
               icon={<SquareSquare size={16} strokeWidth={1.5} />}
               label="Combine padding"
               active
-              disabled={paddingDisabled || paddingSidesDiffer || paddingHasMixedSide}
-              onClick={() => setIndivPadding(false)}
+              disabled={paddingDisabled || paddingHasMixedSide || paddingKeyframesPresent}
+              onClick={() => {
+                onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom: paddingTop, left: paddingRight }, ["bottom", "left"]);
+                setIndivPadding(false);
+              }}
             />
           </div>
         ) : (
@@ -1386,7 +1406,7 @@ function LayoutAutoSection({
               <NumericInput ariaLabel="Vertical padding" iconLead={<AutoLayoutSpacingIcon kind="padding" axis="vertical" />} value={controlled ? paddingTop : undefined} defaultValue={paddingTop} disabled={paddingDisabled} onChange={vertical => onPaddingChange?.({ top: vertical, right: paddingRight, bottom: vertical, left: paddingLeft }, ["top", "bottom"])} min={0} />
             </div>
             <div className="flex-1 min-w-0">
-              <NumericInput ariaLabel="Horizontal padding" iconLead={<AutoLayoutSpacingIcon kind="padding" axis="horizontal" />} value={controlled ? paddingLeft : undefined} defaultValue={paddingLeft} disabled={paddingDisabled} onChange={horizontal => onPaddingChange?.({ top: paddingTop, right: horizontal, bottom: paddingBottom, left: horizontal }, ["right", "left"])} min={0} />
+              <NumericInput ariaLabel="Horizontal padding" iconLead={<AutoLayoutSpacingIcon kind="padding" axis="horizontal" />} value={controlled ? paddingRight : undefined} defaultValue={paddingRight} disabled={paddingDisabled} onChange={horizontal => onPaddingChange?.({ top: paddingTop, right: horizontal, bottom: paddingBottom, left: horizontal }, ["right", "left"])} min={0} />
             </div>
             <PanelActionBtn
               icon={<SquareSquare size={16} strokeWidth={1.5} />}
@@ -3065,11 +3085,15 @@ export interface PropertyPanelProps {
   /** Generic plain-frame Auto-layout toggle. Unlike an explicit Flow segment,
    * this intent carries no requested axis so the host can infer from geometry. */
   onAutoLayoutEnable?: () => void;
+  /** Fit a plain frame to the outer bounds of its children. */
+  onResizeToFit?: () => void;
   /** Reports the exact physical side(s) edited so controlled multi-selection hosts
    * can preserve every untouched side on each selected object. */
   onPaddingChange?: (value: ElementLayoutSettings["padding"], changedEdges: readonly ElementPaddingEdge[]) => void;
   /** Requests creation of a grid track. The host creates its durable ID and applies the document command. */
   onAddGridTrack?: (axis: "row" | "column") => void;
+  /** Toggle row-major automatic placement for children of a Grid frame. */
+  onGridAutomaticPositioningChange?: (enabled: boolean) => void;
   /** Preferred atomic sizing seam. Numeric edits from Hug/Fill emit Fixed + value together. */
   onSizingChange?: (axis: ElementSizingAxis, change: ElementSizingChange) => void;
   onSizingConstraintChange?: (axis: ElementSizingAxis, constraint: ElementSizingConstraint, value: number | undefined) => void;
@@ -4108,7 +4132,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           />
 
           {/* Layout — polymorphic */}
-          {(isFrame)       && <LayoutFrameSection width={width} height={height} sizing={sizingContract} spatialSelectionLayout={props.spatialSelectionLayout} clipContent={layout?.clipsContent} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onClipContentChange={onLayoutChange ? value => onLayoutChange({ clipsContent: value }) : undefined} onEnableAutoLayout={mode => { setAutoLayoutOn(true); if (mode) onLayoutChange?.({ mode }); else if (onAutoLayoutEnable) onAutoLayoutEnable(); else onLayoutChange?.({ mode: "vertical" }); }} onEnableGrid={onLayoutChange ? () => onLayoutChange({ mode: "grid" }) : undefined} />}
+          {(isFrame)       && <LayoutFrameSection width={width} height={height} sizing={sizingContract} spatialSelectionLayout={props.spatialSelectionLayout} clipContent={layout?.clipsContent} onWidthChange={onWidthChange} onHeightChange={onHeightChange} onClipContentChange={onLayoutChange ? value => onLayoutChange({ clipsContent: value }) : undefined} onResizeToFit={props.onResizeToFit} onEnableAutoLayout={mode => { setAutoLayoutOn(true); if (mode) onLayoutChange?.({ mode }); else if (onAutoLayoutEnable) onAutoLayoutEnable(); else onLayoutChange?.({ mode: "vertical" }); }} onEnableGrid={onLayoutChange ? () => onLayoutChange({ mode: "grid" }) : undefined} />}
           {(isAutoLayout)  && <LayoutAutoSection width={width} height={height}
             onEnableGrid={onLayoutChange ? () => onLayoutChange({ mode: "grid" }) : undefined}
             onDisableAutoLayout={() => { setAutoLayoutOn(false); onLayoutChange?.({ mode: "none" }); }}
@@ -4132,6 +4156,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             gridRowGapKeyframe={keyframeControls?.gridRowGap}
             gridTrackSizeKeyframes={keyframeControls?.gridTrackSizes}
             onAddGridTrack={onAddGridTrack}
+            onGridAutomaticPositioningChange={props.onGridAutomaticPositioningChange}
             paddingTopKeyframe={keyframeControls?.paddingTop}
             paddingRightKeyframe={keyframeControls?.paddingRight}
             paddingBottomKeyframe={keyframeControls?.paddingBottom}
