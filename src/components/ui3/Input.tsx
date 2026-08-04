@@ -1024,7 +1024,7 @@ export function ColorInput({
       : hex;
 
   return (
-    <div className={clsx("flex flex-col gap-[4px]", className)}>
+    <div className={clsx("flex flex-col gap-[4px]", fullWidth && "w-full min-w-0", className)}>
       {label && (
         <span className="text-[11px] font-[550] leading-[16px] tracking-[0.005em] text-c-text select-none">
           {label}

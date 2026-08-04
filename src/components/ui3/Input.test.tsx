@@ -79,6 +79,11 @@ describe("NumericInput presentation contract", () => {
 });
 
 describe("ColorInput motion controls", () => {
+  it("makes the component root fluid when fullWidth is requested", () => {
+    const html = renderToStaticMarkup(<ColorInput ariaLabel="Selection color" fullWidth color="#336699" />);
+    expect(html).toMatch(/^<div class="[^"]*w-full[^"]*min-w-0/);
+  });
+
   it("renders the exact authored gradient in its chit and never generic rainbow artwork", () => {
     const gradient = "linear-gradient(135deg, #112233 0%, #aabbcc 37%, #ff0066 100%)";
     const html = renderToStaticMarkup(<ColorInput fillType="Gradient" fillLabel="Linear gradient" gradient={gradient} />);
