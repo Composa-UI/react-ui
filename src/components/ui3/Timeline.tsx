@@ -2219,6 +2219,13 @@ export function Timeline({
   const [internalLoop, setInternalLoop] = useState(defaultLoop);
   const [internalViewport, setInternalViewport] = useState(() => normalizeViewport(defaultViewport ?? { startMs: 0, endMs: duration }, duration));
   const [timelineWidth, setTimelineWidth] = useState(LEFT_W + 1);
+  // Chromium promotes an already pointer-focused slider to `:focus-visible`
+  // when the editor-level Space shortcut runs. Track keyboard intent ourselves
+  // so Space can preserve focus without painting a blue ring around the whole
+  // ruler. Tab/programmatic focus and the ruler's own navigation keys still get
+  // the accessible focus treatment.
+  const [rulerKeyboardFocus, setRulerKeyboardFocus] = useState(false);
+  const rulerPointerFocus = useRef(false);
   const timelineRef = useRef<HTMLDivElement>(null);
   const scrollViewportRef = useRef<HTMLDivElement>(null);
   const middlePan = useRef<{ pointerId: number; startClientX: number; startViewport: TimelineViewport } | null>(null);
@@ -2403,7 +2410,11 @@ export function Timeline({
         </div>
         <div
           data-timeline-pan-surface
-          className="flex-1 relative cursor-ew-resize overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-border-selected-strong"
+          data-timeline-ruler-keyboard-focus={rulerKeyboardFocus || undefined}
+          className={clsx(
+            "flex-1 relative cursor-ew-resize overflow-hidden outline-none",
+            rulerKeyboardFocus && "ring-2 ring-inset ring-c-border-selected-strong",
+          )}
           role="slider"
           tabIndex={0}
           aria-label="Playhead"
@@ -2411,6 +2422,18 @@ export function Timeline({
           aria-valuemin={0}
           aria-valuemax={duration}
           aria-valuenow={playhead}
+          onPointerDownCapture={() => {
+            rulerPointerFocus.current = true;
+            setRulerKeyboardFocus(false);
+          }}
+          onFocus={() => {
+            setRulerKeyboardFocus(!rulerPointerFocus.current);
+            rulerPointerFocus.current = false;
+          }}
+          onBlur={() => {
+            rulerPointerFocus.current = false;
+            setRulerKeyboardFocus(false);
+          }}
           onPointerDown={e => {
             const rect = e.currentTarget.getBoundingClientRect();
             playheadDragPointer.current = e.pointerId;
@@ -2430,19 +2453,23 @@ export function Timeline({
               width: Math.max(1, rect.width - RIGHT_OVERLAY_W),
             }, next => scrubAt(e.clientX, rect, next));
           }}
-          onPointerUp={() => { playheadDragPointer.current = null; playheadEdgeFollow.stop(); }}
-          onPointerCancel={() => { playheadDragPointer.current = null; playheadEdgeFollow.stop(); }}
-          onLostPointerCapture={() => { playheadDragPointer.current = null; playheadEdgeFollow.stop(); }}
+          onPointerUp={() => { rulerPointerFocus.current = false; playheadDragPointer.current = null; playheadEdgeFollow.stop(); }}
+          onPointerCancel={() => { rulerPointerFocus.current = false; playheadDragPointer.current = null; playheadEdgeFollow.stop(); }}
+          onLostPointerCapture={() => { rulerPointerFocus.current = false; playheadDragPointer.current = null; playheadEdgeFollow.stop(); }}
           onKeyDown={event => {
             if (event.metaKey || event.ctrlKey || event.altKey) return;
-            const claim = () => { event.preventDefault(); event.stopPropagation(); };
+            const claim = (showKeyboardFocus = true) => {
+              event.preventDefault();
+              event.stopPropagation();
+              if (showKeyboardFocus) setRulerKeyboardFocus(true);
+            };
             if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
               claim();
               const frames = (event.shiftKey ? 10 : 1) * (event.key === "ArrowLeft" ? -1 : 1);
               setPlayhead(stepTimelinePlayhead(playhead, frames, frameRate, duration), "keyboard");
             } else if (!event.shiftKey && event.key === "Home") { claim(); setPlayhead(0, "keyboard"); }
             else if (!event.shiftKey && event.key === "End") { claim(); setPlayhead(duration, "keyboard"); }
-            else if (!event.shiftKey && event.key === " ") { claim(); if (!event.repeat) setPlaying(!playing); }
+            else if (!event.shiftKey && event.key === " ") { claim(false); if (!event.repeat) setPlaying(!playing); }
             else if (!event.shiftKey && !master && event.key.toLowerCase() === "k" && onAddKeyframe) { claim(); if (!event.repeat) onAddKeyframe(playhead); }
             else if (!event.shiftKey && !master && (event.key === "Delete" || event.key === "Backspace") && onDeleteSelectedKeyframes) { claim(); if (!event.repeat) onDeleteSelectedKeyframes(); }
           }}
