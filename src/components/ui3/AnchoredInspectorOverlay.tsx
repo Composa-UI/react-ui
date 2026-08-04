@@ -12,6 +12,13 @@ export const ANCHORED_INSPECTOR_OVERLAY_Z_CLASS = "z-50";
 export const COMPOSA_OVERLAY_BOUNDARY_SELECTOR = "[data-composa-overlay-boundary]";
 /** Marks the inspector panel surface so overlays can anchor to its edge (see `anchorSurfaceSelector`). */
 export const COMPOSA_INSPECTOR_SURFACE_SELECTOR = "[data-composa-inspector-surface]";
+/**
+ * Application chrome should not paint browser text selections while the user
+ * drags through controls. Editors and deliberately copyable content opt back in
+ * at their own boundary.
+ */
+export const COMPOSA_NON_SELECTABLE_CHROME_CLASS =
+  "select-none [&_input]:select-text [&_textarea]:select-text [&_[contenteditable='true']]:select-text [&_[data-composa-selectable]]:select-text";
 
 export type AnchoredInspectorOverlayOffset = {
   x: number;
@@ -482,7 +489,7 @@ export function AnchoredInspectorOverlay({
             // space must move the window/control rather than paint a browser text
             // selection. Native editors and explicitly copyable content opt back
             // in at their own boundary.
-            "select-none [&_input]:select-text [&_textarea]:select-text [&_[contenteditable='true']]:select-text [&_[data-composa-selectable]]:select-text",
+            COMPOSA_NON_SELECTABLE_CHROME_CLASS,
             "relative max-h-[var(--radix-popover-content-available-height)] max-w-[calc(100vw-16px)] overflow-hidden outline-none",
             surface === "default" && "rounded-c-lg bg-c-bg shadow-c-500",
             className,

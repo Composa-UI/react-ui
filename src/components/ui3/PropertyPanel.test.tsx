@@ -6,6 +6,18 @@ import { NumericInput } from "./Input";
 import { PANEL_W } from "./Panel";
 import { TooltipProvider } from "./Tooltip";
 
+describe("Inspector chrome selection contract", () => {
+  it("disables selection at the panel boundary while editors and copyable content opt back in", () => {
+    const html = renderToStaticMarkup(<PropertyPanel elementType="shape" />);
+    const surface = html.match(/<div data-composa-inspector-surface[^>]*>/)?.[0];
+    expect(surface).toContain("select-none");
+    expect(surface).toContain("[&amp;_input]:select-text");
+    expect(surface).toContain("[&amp;_textarea]:select-text");
+    expect(surface).toContain("[&amp;_[contenteditable=&#x27;true&#x27;]]:select-text");
+    expect(surface).toContain("[&amp;_[data-composa-selectable]]:select-text");
+  });
+});
+
 describe("Timeline easing inspector composition", () => {
   it("labels a host-owned Animate-card target without inventing an engine scope", () => {
     const html = renderToStaticMarkup(<PropertyPanel elementType="text" easingContext="segment"
