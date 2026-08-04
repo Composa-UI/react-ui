@@ -15,29 +15,44 @@ function render(props: Partial<Parameters<typeof PropertyPanel>[0]> = {}) {
 }
 
 describe("Export mode (owner feedback Row 63)", () => {
-  it("defaults to the current Static path and exposes Frame as the only bounded animation option", () => {
+  it("keeps a collapsed empty Export section free of mode controls", () => {
+    const renderer = render({ exportSettings: [] });
+    expect(renderer.root.findAllByType(SegmentedControl).find(node => node.props.ariaLabel === "Export mode")).toBeUndefined();
+    act(() => renderer.unmount());
+  });
+
+  it("uses the approved Static and Animated wording only after Export expands", () => {
     const renderer = render();
     const mode = renderer.root.findAllByType(SegmentedControl).find(node => node.props.ariaLabel === "Export mode")!;
     expect(mode.props.value).toBe("static");
-    expect(mode.props.segments).toEqual([{ value: "static", label: "Static" }, { value: "frame", label: "Frame" }]);
+    expect(mode.props.segments).toEqual([{ value: "static", label: "Static" }, { value: "frame", label: "Animated" }]);
     expect(renderer.root.findAllByType(Button).find(node => node.props.label === "Export Rectangle")).toBeTruthy();
     act(() => renderer.unmount());
   });
 
   it("emits the controlled mode and labels the evaluated-still action honestly", () => {
     const onExportModeChange = vi.fn();
-    const renderer = render({ exportMode: "frame", onExportModeChange });
+    const onProjectFrameRateChange = vi.fn();
+    const renderer = render({ exportMode: "frame", onExportModeChange, projectFrameRate: 30, onProjectFrameRateChange });
     const mode = renderer.root.findAllByType(SegmentedControl).find(node => node.props.ariaLabel === "Export mode")!;
     expect(mode.props.value).toBe("frame");
     expect(renderer.root.findAllByType(Button).find(node => node.props.label === "Export frame")).toBeTruthy();
     act(() => mode.props.onChange("static"));
     expect(onExportModeChange).toHaveBeenCalledWith("static");
 
-    // V1 does not advertise an encoder it does not have.
+    // The bounded evaluated-still path has truthful size/format/frame-grid controls,
+    // but does not advertise a video codec or duration render it cannot perform.
     const labels = renderer.root.findAll(node => typeof node.props?.label === "string").map(node => node.props.label);
     expect(labels).not.toContain("MP4");
-    expect(labels).not.toContain("Quality");
-    expect(labels).not.toContain("Frame rate");
+    expect(renderer.root.findAll(node => node.props?.ariaLabel === "Export size")).toHaveLength(1);
+    expect(renderer.root.findAll(node => node.props?.ariaLabel === "Export format")).toHaveLength(1);
+    expect(renderer.root.findAll(node => node.props?.ariaLabel === "Export frame rate")).toHaveLength(1);
+    act(() => renderer.unmount());
+  });
+
+  it("shows JPEG quality only for the encoder path that consumes it", () => {
+    const renderer = render({ exportSettings: [{ ...settings[0], format: "JPG", quality: 80 }] });
+    expect(renderer.root.findAll(node => node.props?.ariaLabel === "Export quality")).toHaveLength(1);
     act(() => renderer.unmount());
   });
 });
