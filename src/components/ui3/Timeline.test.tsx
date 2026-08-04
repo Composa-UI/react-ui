@@ -1087,8 +1087,9 @@ describe("a locked lane loses retiming, not the lane (iteration-3)", () => {
 });
 
 describe("timeline track-header divider geometry (feedback row 19)", () => {
-  // Master stays unruled. Slide-local uses one body-owned continuous rule rather
-  // than one declaration per LEFT_W-wide cell, avoiding scroll/empty-state stubs.
+  // Both scopes use one body-owned continuous rule rather than one declaration
+  // per LEFT_W-wide cell, avoiding scroll/empty-state stubs while keeping the
+  // track-header edge visible through the full timeline body.
   it("drops it from the lane header while keeping the header's right padding", () => {
     const header = /<div[^>]*data-timeline-lane-header="Compositions"[^>]*>/.exec(master())?.[0];
     expect(header).toBeDefined();
@@ -1096,17 +1097,20 @@ describe("timeline track-header divider geometry (feedback row 19)", () => {
     expect(header).toContain("pr-[8px]");
   });
 
-  it("leaves no stub above or below it — the whole master column is unruled", () => {
+  it("renders one continuous master rule without per-cell border stubs", () => {
     const html = master();
-    // Guard: the transport and the scrollbar, the two other LEFT_W cells, rendered.
     expect(html).toContain('aria-label="Play"');
     expect(html).toContain("data-timeline-time-scrollbar");
     expect(html).not.toContain("border-r");
+    expect(html.match(/data-timeline-track-header-divider/g)).toHaveLength(1);
+    expect(html).not.toContain("data-timeline-local-header-divider");
+    expect(html).toContain("top-0 bottom-0");
   });
 
   it("renders one continuous slide-local body rule without disturbing tree guides", () => {
     const html = renderToStaticMarkup(<Timeline mode="slide" height={220} duration={4_000} tracks={[numericTrack]} />);
     expect(html).not.toContain("border-r");
+    expect(html.match(/data-timeline-track-header-divider/g)).toHaveLength(1);
     expect(html.match(/data-timeline-local-header-divider/g)).toHaveLength(1);
     expect(html).toContain("top-0 bottom-0");
     expect(html).toContain("data-timeline-child-trunk");

@@ -2536,12 +2536,13 @@ export function Timeline({
             </div>
           </>
         )}
-        {!master && <div
+        <div
           aria-hidden
-          data-timeline-local-header-divider
+          data-timeline-track-header-divider
+          data-timeline-local-header-divider={master ? undefined : true}
           className="absolute top-0 bottom-0 z-[25] w-px bg-c-border pointer-events-none"
           style={{ left: LEFT_W }}
-        />}
+        />
         {/* shared playhead line spanning the FULL lanes region — above the keyframe
             diamonds (Composa#320). The wrapper's `top-0 bottom-0` resolves against the
             relatively-positioned scroll content (see `contentClassName` above), so it
