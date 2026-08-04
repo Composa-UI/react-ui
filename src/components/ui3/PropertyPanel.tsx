@@ -51,6 +51,7 @@ import { iconForSemantic } from "./IconSemantics";
 import { AutoLayoutSpacingIcon } from "./AutoLayoutSpacingIcon";
 import { TypeSettingsDialog } from "./TypeSettingsDialog";
 import { DEFAULT_FONT_WEIGHTS, FontPickerDialog, type FontEntry, type FontWeightOption } from "./FontPickerDialog";
+import { COMPOSA_NON_SELECTABLE_CHROME_CLASS } from "./AnchoredInspectorOverlay";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -3848,7 +3849,11 @@ export function PropertyPanel(props: PropertyPanelProps) {
         the right-hand panels drifted apart the last time the rail was widened.
         Hosts that own a resizable rail still override it — a `!w-full` class
         beats this inline width, same as it beat the utility class before. */}
-    <div data-composa-inspector-surface style={{ width: PANEL_W }} className={clsx("relative shrink-0 h-full flex flex-col bg-c-bg border-l border-c-border overflow-hidden", className)}>
+    <div data-composa-inspector-surface style={{ width: PANEL_W }} className={clsx(
+      COMPOSA_NON_SELECTABLE_CHROME_CLASS,
+      "relative shrink-0 h-full flex flex-col bg-c-bg border-l border-c-border overflow-hidden",
+      className,
+    )}>
       {/* Multiplayer tools — above the tabs; shared across all modes */}
       <MultiplayerBar
         previewPlaying={previewPlaying}
