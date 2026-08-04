@@ -1105,6 +1105,7 @@ describe("timeline track-header divider geometry (feedback row 19)", () => {
     expect(html.match(/data-timeline-track-header-divider/g)).toHaveLength(1);
     expect(html).not.toContain("data-timeline-local-header-divider");
     expect(html).toContain("top-0 bottom-0");
+    expect(html).toContain("bg-c-border-strong/20");
   });
 
   it("renders one continuous slide-local body rule without disturbing tree guides", () => {
@@ -1113,6 +1114,7 @@ describe("timeline track-header divider geometry (feedback row 19)", () => {
     expect(html.match(/data-timeline-track-header-divider/g)).toHaveLength(1);
     expect(html.match(/data-timeline-local-header-divider/g)).toHaveLength(1);
     expect(html).toContain("top-0 bottom-0");
+    expect(html).toContain("bg-c-border-strong/20");
     expect(html).toContain("data-timeline-child-trunk");
   });
 });
