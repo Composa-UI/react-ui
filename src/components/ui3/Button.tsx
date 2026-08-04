@@ -1,5 +1,6 @@
 import { type ReactNode } from "react";
 import { clsx } from "clsx";
+import { Tooltip } from "./Tooltip";
 
 export type ButtonVariant =
   | "Primary" | "Secondary" | "Destructive" | "Inverse"
@@ -10,6 +11,12 @@ export type ButtonSize = "small" | "default" | "large" | "wide";
 export type ButtonIconLead = "none" | "left" | "center";
 
 interface ButtonProps {
+  /**
+   * Explicit accessible name. With a centered icon and no visible `label`, this
+   * also supplies the canonical tooltip, so icon-only consumers own one shared
+   * string for assistive technology and pointer/keyboard discovery.
+   */
+  ariaLabel?: string;
   label?: string;
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -92,7 +99,8 @@ const VARIANTS: Record<ButtonVariant, VariantConfig> = {
 };
 
 export function Button({
-  label = "Button",
+  ariaLabel,
+  label,
   variant = "Primary",
   size = "default",
   iconLead = "none",
@@ -103,8 +111,9 @@ export function Button({
   className,
 }: ButtonProps) {
   const cfg = VARIANTS[variant];
+  const visibleLabel = label ?? (ariaLabel && iconLead === "center" && icon ? "" : "Button");
   const hasIcon = iconLead !== "none" && !!icon;
-  const iconOnly = iconLead === "center" && !!icon && !label;
+  const iconOnly = iconLead === "center" && !!icon && !visibleLabel;
 
   const heightClass =
     size === "small"  ? "h-[20px]" :
@@ -118,9 +127,10 @@ export function Button({
       : size === "large" ? "px-[12px]" :
         size === "small" ? "px-[6px]" : "px-[8px]";
 
-  return (
+  const button = (
     <button
       type={type}
+      aria-label={ariaLabel}
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
       className={clsx(
@@ -143,8 +153,9 @@ export function Button({
       )}
       {iconOnly
         ? <span className="shrink-0 flex items-center justify-center size-[16px]">{icon}</span>
-        : <span>{label}</span>
+        : <span>{visibleLabel}</span>
       }
     </button>
   );
+  return iconOnly && ariaLabel ? <Tooltip label={ariaLabel}>{button}</Tooltip> : button;
 }
