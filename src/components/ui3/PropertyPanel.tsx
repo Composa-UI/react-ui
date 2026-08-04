@@ -878,7 +878,7 @@ function PositionSection({
           }
           rightAction={onPositionPresentationChange
             ? <PanelActionBtn
-                icon={<Unlink size={16} strokeWidth={1.5} />}
+                icon={<Link2Off size={16} strokeWidth={1.5} />}
                 label="Separate dimensions"
                 tooltip="Separate dimensions"
                 onClick={() => onPositionPresentationChange("separate")}
@@ -900,7 +900,7 @@ function PositionSection({
           // would not honour.
           rightAction={onPositionPresentationChange
             ? <PanelActionBtn
-                icon={<Link size={16} strokeWidth={1.5} />}
+                icon={<Link2 size={16} strokeWidth={1.5} />}
                 label="Combine dimensions"
                 tooltip="Combine dimensions"
                 onClick={() => onPositionPresentationChange("combined")}

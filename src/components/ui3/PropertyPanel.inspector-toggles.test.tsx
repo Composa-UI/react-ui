@@ -138,13 +138,17 @@ describe("separated X/Y can be re-attached (iteration-3)", () => {
   it("round-trips: combined offers separate, separate offers combine", () => {
     const onPositionPresentationChange = vi.fn();
     const combined = render({ elementType: "shape", positionPresentation: "combined", onPositionPresentationChange });
-    act(() => actionButton(combined, "Separate dimensions").props.onClick());
+    const separateAction = actionButton(combined, "Separate dimensions");
+    expect(iconTypeOf(separateAction)).toBe(Link2Off);
+    act(() => separateAction.props.onClick());
     expect(onPositionPresentationChange).toHaveBeenLastCalledWith("separate");
     expect(combined.root.findAll(n => n.type === "button" && n.props?.["aria-label"] === "Combine dimensions")).toHaveLength(0);
     act(() => combined.unmount());
 
     const separate = render({ elementType: "shape", positionPresentation: "separate", onPositionPresentationChange });
-    act(() => actionButton(separate, "Combine dimensions").props.onClick());
+    const combineAction = actionButton(separate, "Combine dimensions");
+    expect(iconTypeOf(combineAction)).toBe(Link2);
+    act(() => combineAction.props.onClick());
     expect(onPositionPresentationChange).toHaveBeenLastCalledWith("combined");
     act(() => separate.unmount());
   });
