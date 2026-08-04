@@ -1779,17 +1779,16 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
             className={clsx("absolute inset-y-[4px] rounded-[4px] overflow-hidden border outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring",
               // Blue hover highlight on rest (Composa#583); focus ring instead of the raw
               // UA outline (Composa#584).
-              // Selected takes the SAME solid fill as a selected audio or composition
-              // bar. An earlier pass kept the thumbnail visible by tinting the scrim
-              // instead; the owner reversed that — one selected treatment across every
-              // lane beats protecting the frame (Composa#661).
+              // Selected takes the same solid fill as a selected audio or composition
+              // bar. The poster remains separate leading content in both states, so
+              // selection does not erase the video's media cue (#187).
               // Hidden (eye) or solo-suppressed dims the whole bar; muted (speaker)
               // does not — TL-3.
               dimmed && MUTED_BAR,
               clip.selected ? "border-c-border-selected-strong bg-c-bg-brand" : "border-c-border bg-c-bg-secondary hover:border-c-border-selected")}
             style={{ left, width }}>
             <div data-timeline-clip-main className="absolute inset-x-[10px] top-0 bottom-[14px] flex min-w-0 items-center gap-[6px]">
-              {!clip.selected && clip.thumbnail ? (
+              {clip.thumbnail ? (
                 <img
                   data-timeline-clip-thumbnail
                   src={clip.thumbnail}

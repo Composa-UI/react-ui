@@ -5,6 +5,9 @@
 The existing 32px Base video row accepts `baseClips` without changing the dock layout. Each `BaseClipBlock` supplies a stable ID, name, `[startMs, endMs]` range, selected state, and optional thumbnail or tint.
 
 - Click and double-click emit select/open callbacks.
+- A supplied thumbnail remains visible as leading content in both selected and
+  unselected states. Selection changes the canonical bar fill and label styling;
+  it never replaces the clip's media cue or promotes the thumbnail to a bar fill.
 - Dragging the existing block body emits a new start time.
 - Dragging the existing edge grips emits start/end trim times plus optional `{ source, millisecondsPerPixel }` detail so controlled hosts can apply zoom-independent magnetic snapping. Pointer and keyboard sources are distinguished; the legacy three-argument callback remains compatible.
 - An omitted or empty `baseClips` array preserves the previous empty placeholder lane.
