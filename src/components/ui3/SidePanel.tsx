@@ -118,7 +118,7 @@ export function SidePanel({
         onPointerCancel={finishPointerDrag}
         onKeyDown={onKeyDown}
         className={clsx(
-          "absolute top-0 right-0 h-full w-[4px] z-20 cursor-ew-resize select-none outline-none translate-x-1/2",
+          "absolute top-0 right-0 h-full w-[4px] z-20 cursor-ew-resize select-none outline-none",
           dragging && "bg-c-border-selected/40",
         )}
       />
