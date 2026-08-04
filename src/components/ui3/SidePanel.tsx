@@ -25,6 +25,8 @@ export interface SidePanelProps extends Omit<React.ComponentPropsWithoutRef<"div
   /** Uncontrolled default when `width` is not provided. Default 240px. */
   defaultWidth?: number;
   onWidthChange?: (width: number) => void;
+  /** Accessible name for the resize separator. */
+  resizeLabel?: string;
   className?: string;
   children?: React.ReactNode;
 }
@@ -33,6 +35,7 @@ export function SidePanel({
   width: controlledWidth,
   defaultWidth = SIDE_PANEL_DEFAULT_WIDTH,
   onWidthChange,
+  resizeLabel = "Resize panel width",
   className,
   children,
   ...rest
@@ -41,6 +44,7 @@ export function SidePanel({
   const [internalWidth, setInternalWidth] = useState(defaultWidth);
   const width = controlledWidth ?? internalWidth;
   const [dragging, setDragging] = useState(false);
+  const dragRef = useRef<{ pointerId: number; startX: number; startWidth: number } | null>(null);
 
   const setWidth = useCallback(
     (next: number) => {
@@ -54,25 +58,28 @@ export function SidePanel({
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       e.preventDefault();
-      const el = containerRef.current;
-      if (!el) return;
+      if (!containerRef.current) return;
+      dragRef.current = { pointerId: e.pointerId, startX: e.clientX, startWidth: width };
       setDragging(true);
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
-
-      const move = (ev: PointerEvent) => {
-        const rect = el.getBoundingClientRect();
-        setWidth(ev.clientX - rect.left);
-      };
-      const up = () => {
-        setDragging(false);
-        window.removeEventListener("pointermove", move);
-        window.removeEventListener("pointerup", up);
-      };
-      window.addEventListener("pointermove", move);
-      window.addEventListener("pointerup", up);
     },
-    [setWidth],
+    [width],
   );
+
+  const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    setWidth(drag.startWidth + e.clientX - drag.startX);
+  }, [setWidth]);
+
+  const finishPointerDrag = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current?.pointerId !== e.pointerId) return;
+    dragRef.current = null;
+    if ((e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    }
+    setDragging(false);
+  }, []);
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -99,15 +106,18 @@ export function SidePanel({
       <div
         role="separator"
         aria-orientation="vertical"
-        aria-label="Resize panel width"
+        aria-label={resizeLabel}
         aria-valuenow={Math.round(width)}
         aria-valuemin={SIDE_PANEL_MIN_WIDTH}
         aria-valuemax={SIDE_PANEL_MAX_WIDTH}
         tabIndex={0}
         onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={finishPointerDrag}
+        onPointerCancel={finishPointerDrag}
         onKeyDown={onKeyDown}
         className={clsx(
-          "absolute top-0 right-0 h-full w-[4px] z-20 cursor-ew-resize select-none outline-none translate-x-1/2",
+          "absolute top-0 right-0 h-full w-[4px] z-20 cursor-ew-resize select-none outline-none",
           dragging && "bg-c-border-selected/40",
         )}
       />
