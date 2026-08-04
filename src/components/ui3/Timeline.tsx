@@ -2540,7 +2540,7 @@ export function Timeline({
           aria-hidden
           data-timeline-track-header-divider
           data-timeline-local-header-divider={master ? undefined : true}
-          className="absolute top-0 bottom-0 z-[25] w-px bg-c-border pointer-events-none"
+          className="absolute top-0 bottom-0 z-[25] w-px bg-c-border-strong/20 pointer-events-none"
           style={{ left: LEFT_W }}
         />
         {/* shared playhead line spanning the FULL lanes region — above the keyframe
