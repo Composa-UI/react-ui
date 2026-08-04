@@ -102,6 +102,11 @@ describe("AnchoredInspectorOverlay runtime contract", () => {
     expect(content.props.className).toContain(ANCHORED_INSPECTOR_OVERLAY_Z_CLASS);
     expect(content.props.className).toContain("max-h-[var(--radix-popover-content-available-height)]");
     expect(content.props.className).toContain("max-w-[calc(100vw-16px)]");
+    expect(content.props.className).toContain("select-none");
+    expect(content.props.className).toContain("[&_input]:select-text");
+    expect(content.props.className).toContain("[&_textarea]:select-text");
+    expect(content.props.className).toContain("[&_[contenteditable='true']]:select-text");
+    expect(content.props.className).toContain("[&_[data-composa-selectable]]:select-text");
     expect(content.props.style.maxHeight).toBe("var(--radix-popover-content-available-height)");
     act(() => renderer.unmount());
   });

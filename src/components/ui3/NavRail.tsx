@@ -65,7 +65,7 @@ export function NavRail({
   );
 
   return (
-    <nav aria-label="Navigation" className="w-[60px] shrink-0 h-full flex flex-col items-center bg-c-bg border-r border-c-border">
+    <nav aria-label="Navigation" className="w-[60px] shrink-0 h-full select-none flex flex-col items-center bg-c-bg border-r border-c-border">
       {/* Brand slot — pinned to the DS 40px panel-header height (Composa#622) so the
           divider BELOW it lands on exactly the same baseline as the header rule of
           whichever left-column panel the rail is showing: SlidesPanel/CompositionPanel,

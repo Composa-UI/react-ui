@@ -365,6 +365,11 @@ export function AnchoredInspectorOverlay({
           }}
           className={clsx(
             ANCHORED_INSPECTOR_OVERLAY_Z_CLASS,
+            // Floating surfaces are application chrome: dragging labels or blank
+            // space must move the window/control rather than paint a browser text
+            // selection. Native editors and explicitly copyable content opt back
+            // in at their own boundary.
+            "select-none [&_input]:select-text [&_textarea]:select-text [&_[contenteditable='true']]:select-text [&_[data-composa-selectable]]:select-text",
             "max-h-[var(--radix-popover-content-available-height)] max-w-[calc(100vw-16px)] overflow-hidden outline-none",
             surface === "default" && "rounded-c-lg bg-c-bg shadow-c-500",
             className,
