@@ -1699,7 +1699,7 @@ type FillEntry = ElementFillSetting;
 
 function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
   onFillTypeChange, onGradientStopsChange, onChooseImage, onChooseVideo,
-  onImageAdjustmentChange, onMediaFitChange, dropZoneSources, onSelectDropZoneSource,
+  onImageAdjustmentChange, onMediaFitChange, onEditCrop, dropZoneSources, onSelectDropZoneSource,
   imageAdjustmentsReadOnly = false, capabilities, activeStackDialog, onActiveStackDialogChange }: {
   entries?: FillEntry[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<FillEntry, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
@@ -1708,6 +1708,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
   onChooseImage?: (id: string) => void; onChooseVideo?: (id: string) => void;
   onImageAdjustmentChange?: (id: string, adjustment: ImageAdjustment, value: number) => void;
   onMediaFitChange?: (id: string, fit: MediaFillFit) => void;
+  onEditCrop?: (id: string) => void;
   imageAdjustmentsReadOnly?: boolean;
   dropZoneSources?: { id: string; label: string }[];
   onSelectDropZoneSource?: (id: string, sourceId: string) => void;
@@ -1792,6 +1793,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
               onChooseVideo={onChooseVideo ? () => onChooseVideo(fill.id) : undefined}
               mediaFit={fill.mediaFit}
               onMediaFitChange={onMediaFitChange ? fit => onMediaFitChange(fill.id, fit) : undefined}
+              onEditCrop={onEditCrop ? () => { onActiveStackDialogChange(null); onEditCrop(fill.id); } : undefined}
               dropZoneSources={dropZoneSources}
               dropZoneSourceId={fill.dropZoneSourceId}
               onSelectDropZoneSource={onSelectDropZoneSource ? sourceId => onSelectDropZoneSource(fill.id, sourceId) : undefined}
@@ -3100,6 +3102,8 @@ export interface PropertyPanelProps {
   onChooseFillVideo?: (id: string) => void;
   onFillImageAdjustmentChange?: (id: string, adjustment: ImageAdjustment, value: number) => void;
   onFillMediaFitChange?: (id: string, fit: MediaFillFit) => void;
+  /** Enters canvas crop mode for the specified bound media fill. */
+  onEditFillCrop?: (id: string) => void;
   fillDropZoneSources?: { id: string; label: string }[];
   onSelectFillDropZoneSource?: (id: string, sourceId: string) => void;
   strokes?: ElementStrokeSetting[];
@@ -4151,6 +4155,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onChooseImage={props.onChooseFillImage} onChooseVideo={props.onChooseFillVideo}
             onImageAdjustmentChange={props.onFillImageAdjustmentChange}
             onMediaFitChange={props.onFillMediaFitChange}
+            onEditCrop={props.onEditFillCrop}
             dropZoneSources={props.fillDropZoneSources} onSelectDropZoneSource={props.onSelectFillDropZoneSource}
             capabilities={capabilities}
             activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
