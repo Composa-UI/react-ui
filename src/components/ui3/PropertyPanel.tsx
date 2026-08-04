@@ -95,7 +95,9 @@ export interface ElementFillSetting {
   fillType?: FillType;
   gradientStops?: GradientStop[];
   imageSourceLabel?: string;
+  imagePreviewUrl?: string;
   videoSourceLabel?: string;
+  videoPreviewUrl?: string;
   imageAdjustments?: Partial<ImageAdjustments>;
   /** A host-owned visual track binding for a standalone drop-zone fill. */
   dropZoneSourceId?: string;
@@ -1771,6 +1773,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
               gradientStopKeyframes={fill.keyframes?.gradientStops}
               onStopsChange={onGradientStopsChange ? stops => onGradientStopsChange(fill.id, stops) : undefined}
               imageSourceLabel={fill.imageSourceLabel}
+              imagePreviewUrl={fill.imagePreviewUrl}
               onChooseImage={onChooseImage ? () => onChooseImage(fill.id) : undefined}
               imageExposure={fill.imageAdjustments?.exposure}
               imageContrast={fill.imageAdjustments?.contrast}
@@ -1783,6 +1786,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
               imageAdjustmentsReadOnly={imageAdjustmentsReadOnly}
               onImageAdjustmentChange={onImageAdjustmentChange ? (adjustment, value) => onImageAdjustmentChange(fill.id, adjustment, value) : undefined}
               videoSourceLabel={fill.videoSourceLabel}
+              videoPreviewUrl={fill.videoPreviewUrl}
               onChooseVideo={onChooseVideo ? () => onChooseVideo(fill.id) : undefined}
               dropZoneSources={dropZoneSources}
               dropZoneSourceId={fill.dropZoneSourceId}

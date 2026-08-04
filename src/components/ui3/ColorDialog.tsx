@@ -99,6 +99,8 @@ export interface ColorDialogProps {
   onChooseImage?: () => void;
   /** Label for the chosen image fill source, shown in place of the empty state. */
   imageSourceLabel?: string;
+  /** Host-resolved object URL for the chosen image. The kit never loads assets itself. */
+  imagePreviewUrl?: string;
   /**
    * Commits one image adjustment. Without it the seven sliders are not rendered:
    * they were passed a value and no `onChange`, so every drag was discarded.
@@ -111,6 +113,8 @@ export interface ColorDialogProps {
   onCreateStyleOrVariable?: () => void;
   /** Label for the currently selected video fill source. */
   videoSourceLabel?: string;
+  /** Host-resolved object URL for the chosen video. The kit never loads assets itself. */
+  videoPreviewUrl?: string;
   /** Host-backed media picker. When absent, Video is not offered. */
   onChooseVideo?: () => void;
   /**
@@ -358,6 +362,39 @@ function AdjustRow({ label, value, onChange, keyframe, disabled = false }: {
   );
 }
 
+function MediaFillPreview({ kind, sourceLabel, previewUrl, onChoose }: {
+  kind: "image" | "video";
+  sourceLabel?: string;
+  previewUrl?: string;
+  onChoose?: () => void;
+}) {
+  const selected = !!sourceLabel;
+  const label = selected ? `Replace ${kind}` : `Select ${kind}`;
+  return <>
+    <div
+      data-composa-media-fill-preview={kind}
+      data-state={previewUrl ? "bound" : "empty"}
+      className="relative mx-[16px] mt-[16px] mb-[8px] aspect-square overflow-hidden rounded-c-md bg-c-bg-secondary ring-1 ring-inset ring-c-border"
+      style={!previewUrl ? {
+        backgroundImage: "repeating-conic-gradient(var(--color-bg-secondary) 0% 25%, var(--color-bg) 0% 50%)",
+        backgroundSize: "16px 16px",
+      } : undefined}
+    >
+      {previewUrl && kind === "image" && <img src={previewUrl} alt="" className="absolute inset-0 size-full object-cover" />}
+      {previewUrl && kind === "video" && <video src={previewUrl} aria-hidden muted playsInline preload="metadata" className="absolute inset-0 size-full object-cover" />}
+      {!previewUrl && <div className="absolute inset-0 flex items-center justify-center text-c-icon-secondary">
+        {kind === "image" ? <Image size={24} strokeWidth={1.5} /> : <SquarePlay size={24} strokeWidth={1.5} />}
+      </div>}
+      {onChoose && <div className="absolute inset-x-0 bottom-[12px] flex justify-center px-[12px]">
+        <Button variant="Primary" label={label} onClick={onChoose} />
+      </div>}
+    </div>
+    {sourceLabel && <span className={clsx(FONT, "block truncate px-[16px] pb-[8px] text-[11px] font-[450] text-c-text")}>
+      {sourceLabel}
+    </span>}
+  </>;
+}
+
 // ─── Gradient stop row ────────────────────────────────────────────────────────
 
 /**
@@ -475,9 +512,11 @@ export function ColorDialog({
   imageAdjustmentsReadOnly = false,
   onChooseImage,
   imageSourceLabel,
+  imagePreviewUrl,
   onImageAdjustmentChange,
   onCreateStyleOrVariable,
   videoSourceLabel,
+  videoPreviewUrl,
   onChooseVideo,
   dropZoneSources = [],
   dropZoneSourceId,
@@ -906,30 +945,7 @@ export function ColorDialog({
         {/* ── IMAGE ─────────────────────────────────────────────────────── */}
         {fillType === "image" && (
           <>
-            {/* Upload / preview area. The upload control appears only with a
-                host picker behind it — it shipped with no onClick at all, so
-                pressing it did nothing and the empty checkerboard stayed. */}
-            <div
-              className="relative mx-[16px] mt-[16px] mb-[8px] rounded-c-md overflow-hidden flex items-center justify-center"
-              style={{
-                height: 160,
-                backgroundImage: "repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%)",
-                backgroundSize: "16px 16px",
-              }}
-            >
-              {onChooseImage && (
-                <Button
-                  variant="Primary"
-                  label={imageSourceLabel ? "Replace image" : "Upload from computer"}
-                  onClick={onChooseImage}
-                />
-              )}
-            </div>
-            {imageSourceLabel && (
-              <span className={clsx(FONT, "block truncate px-[16px] pb-[8px] text-[11px] font-[450] text-c-text")}>
-                {imageSourceLabel}
-              </span>
-            )}
+            <MediaFillPreview kind="image" sourceLabel={imageSourceLabel} previewUrl={imagePreviewUrl} onChoose={onChooseImage} />
 
             {/* Image adjustments — same rule: every slider was handed a value
                 and no onChange, so each drag was thrown away. Shown only when
@@ -993,15 +1009,7 @@ export function ColorDialog({
         )}
 
         {fillType === "video" && videoAvailable && (
-          <div className="flex flex-col gap-[8px] p-[16px]">
-            <div className="flex h-[72px] items-center justify-center rounded-c-md bg-c-bg-secondary text-c-icon-secondary">
-              <SquarePlay size={24} strokeWidth={1.5} />
-            </div>
-            {videoSourceLabel && (
-              <span className={clsx(FONT, "truncate text-[11px] font-[450] text-c-text")}>{videoSourceLabel}</span>
-            )}
-            <Button variant="Secondary" label={videoSourceLabel ? "Replace video" : "Choose video"} onClick={onChooseVideo} />
-          </div>
+          <MediaFillPreview kind="video" sourceLabel={videoSourceLabel} previewUrl={videoPreviewUrl} onChoose={onChooseVideo} />
         )}
           </ModalBody>
         </>

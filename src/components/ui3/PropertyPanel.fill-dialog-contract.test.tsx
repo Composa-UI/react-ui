@@ -40,6 +40,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
           fillType: "linear", gradientStops: stops,
           keyframes: { opacity: paintOpacity, gradientStops: { a: { position: stopPosition, color: stopColor, opacity: stopOpacity } } },
           imageSourceLabel: "cover.png", videoSourceLabel: "clip.mp4",
+          imagePreviewUrl: "blob:image-preview", videoPreviewUrl: "blob:video-preview",
           imageAdjustments: { exposure: 12, contrast: -4, saturation: 9, temperature: 3, tint: 2, highlights: -8, shadows: 6 },
           dropZoneSourceId: "track:video",
         }]}
@@ -58,7 +59,9 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     expect(props.gradientStops).toEqual(stops);
     expect(props.gradientStopKeyframes).toEqual({ a: { position: stopPosition, color: stopColor, opacity: stopOpacity } });
     expect(props.imageSourceLabel).toBe("cover.png");
+    expect(props.imagePreviewUrl).toBe("blob:image-preview");
     expect(props.videoSourceLabel).toBe("clip.mp4");
+    expect(props.videoPreviewUrl).toBe("blob:video-preview");
     expect(props.imageExposure).toBe(12);
     expect(props.imageShadows).toBe(6);
     expect(props.dropZoneSources).toEqual([{ id: "track:video", label: "Master video" }]);
