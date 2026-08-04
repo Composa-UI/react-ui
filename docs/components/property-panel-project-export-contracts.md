@@ -15,7 +15,13 @@ The existing Export section is shared by Element mode, multi-selection, and Slid
 
 - `exportSettings` contains stable rows with `id`, `scale`, `suffix`, and `format` (`PNG` or `JPG`).
 - Add, remove, and update callbacks map to the section’s existing plus button, remove action, and row fields.
+- In an expanded row, the trailing Remove export action aligns with the bottom
+  edge of the final visible field row: Quality for Static JPG and Frame rate for
+  Animated export. The action remains the final DOM item and keeps its existing
+  accessible label and controlled callback.
 - When at least one row exists, the existing full-width secondary action invokes `onExport` and uses `exportTargetName` for its label.
 - Omitting `exportSettings` keeps the section’s editable local demo fallback.
 
 Use `?view=project-contract` and `?view=export-contract` for controlled examples.
+The export fixture accepts `exportMode=static|frame` and `format=PNG|JPG` query
+parameters for deterministic geometry acceptance.

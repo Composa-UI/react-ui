@@ -792,8 +792,11 @@ export default function Playground() {
   const [projectContract, setProjectContract] = useState<{ width: number; height: number; frameRate: ProjectFrameRate; duration: number; playhead: number }>({
     width: 1920, height: 1080, frameRate: 30, duration: 30, playhead: 0,
   });
+  const exportQuery = new URLSearchParams(window.location.search);
+  const exportContractMode = exportQuery.get("exportMode") === "frame" ? "frame" : "static";
+  const exportContractFormat = exportQuery.get("format") === "JPG" ? "JPG" : "PNG";
   const [exportContract, setExportContract] = useState<InspectorExportSetting[]>([
-    { id: "export-1", scale: 1, suffix: "", format: "PNG" },
+    { id: "export-1", scale: 1, suffix: "", format: exportContractFormat },
   ]);
   // Controlled master-lane header state, so the mute toggle can be driven and its
   // effect on the lane's bars actually seen.
@@ -1276,7 +1279,8 @@ export default function Playground() {
 
   if (view === "export-contract") {
     return <div style={{ height: "100vh", width: "100vw", display: "flex", justifyContent: "flex-end", background: "#e6e6e6" }}>
-      <PropertyPanel mode="slide" slideName="Opening title" exportSettings={exportContract} exportTargetName="Opening title"
+      <PropertyPanel mode="slide" slideName="Opening title" exportSettings={exportContract} exportMode={exportContractMode}
+        projectFrameRate={30} exportTargetName="Opening title"
         onAddExportSetting={() => setExportContract(value => [...value, { id: `export-${value.length + 1}`, scale: 1, suffix: "", format: "PNG" }])}
         onRemoveExportSetting={id => setExportContract(value => value.filter(setting => setting.id !== id))}
         onUpdateExportSetting={(id, patch) => setExportContract(value => value.map(setting => setting.id === id ? { ...setting, ...patch } : setting))}
