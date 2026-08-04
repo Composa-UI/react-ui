@@ -35,6 +35,21 @@ function rightClick(row: ReactTestInstance, at = { clientX: 120, clientY: 240 })
 }
 
 describe("SlidesPanel slide actions", () => {
+  it("projects an app-owned evaluated frame and exposes hover/focus preview intent", () => {
+    const onPreviewChange = vi.fn();
+    const renderer = renderPanel({ slides: [{ n: 1, thumb: "authored.png", previewThumb: "evaluated.png", motion: true, onPreviewChange }] });
+    const row = slideRow(renderer.root, 1);
+    expect(row.find(node => node.type === "img").props.src).toBe("evaluated.png");
+    expect(row.findAll(node => node.type === "svg")).toHaveLength(1);
+
+    act(() => row.props.onMouseEnter());
+    act(() => row.props.onMouseLeave());
+    act(() => row.props.onFocusCapture());
+    act(() => row.props.onBlurCapture());
+    expect(onPreviewChange.mock.calls).toEqual([[true], [false], [true], [false]]);
+    act(() => renderer.unmount());
+  });
+
   it("puts no button — hover ⋯ or otherwise — inside a slide row", () => {
     const renderer = renderPanel({ slides: SLIDES, onRenameRequest: () => undefined, onSlideDelete: () => undefined });
     const row = slideRow(renderer.root, 1);

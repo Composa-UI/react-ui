@@ -21,6 +21,9 @@ const INTER = { fontFamily: "Inter, sans-serif" } as const;
 export interface SlideData {
   n: number | string;          // number label
   thumb?: string;              // thumbnail image src
+  /** Evaluated thumbnail supplied by the app while the composition is being
+   * previewed. Presentation stays in the DS; frame evaluation stays app-owned. */
+  previewThumb?: string;
   tint?: string;               // solid thumb colour when no image (demo)
   selected?: boolean;
   /** Slide currently rendered in the canvas, even when another editor surface owns selection. */
@@ -30,6 +33,8 @@ export interface SlideData {
   expanded?: boolean;          // chevron rotation (open group)
   stacked?: boolean;           // stacked-group visual (offset cards behind)
   motion?: boolean;            // animation applied — badge on thumbnail
+  /** Starts/stops app-owned evaluated thumbnail playback on hover or keyboard focus. */
+  onPreviewChange?: (previewing: boolean) => void;
   comment?: number;            // comment-pin count (undefined = none)
   onClick?: (event: MouseEvent<HTMLDivElement>) => void;
 }
@@ -62,8 +67,8 @@ function SlideThumb({ item, aspectRatio = SLOT_RATIO }: { item: SlideData; aspec
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="relative h-full max-w-full rounded-[5px]" style={{ aspectRatio: ratio }}>
           <div className="absolute inset-0 rounded-[5px] overflow-hidden bg-white">
-            {item.thumb
-              ? <img alt="" className="absolute inset-0 size-full object-cover" src={item.thumb} />
+            {(item.previewThumb ?? item.thumb)
+              ? <img alt="" className="absolute inset-0 size-full object-cover" src={item.previewThumb ?? item.thumb} />
               : <div className="absolute inset-0" style={{ background: item.tint ?? "#111" }} />}
           </div>
           <div aria-hidden className="absolute inset-0 rounded-[5px] border border-c-border" />
@@ -100,6 +105,10 @@ export function SlideListItem({ item, aspectRatio, tabIndex = 0, onNavigate, onR
     <div className="group/slide relative w-full shrink-0 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-c-border-selected"
       ref={itemRef} role="option" tabIndex={tabIndex} aria-selected={item.selected} data-in-view={item.inView || undefined} aria-label={`Composition ${item.n}`}
       onFocus={onFocus}
+      onFocusCapture={() => item.onPreviewChange?.(true)}
+      onBlurCapture={() => item.onPreviewChange?.(false)}
+      onMouseEnter={() => item.onPreviewChange?.(true)}
+      onMouseLeave={() => item.onPreviewChange?.(false)}
       onClick={item.onClick}
       onContextMenu={onMenuRequest ? event => { event.preventDefault(); onMenuRequest({ clientX: event.clientX, clientY: event.clientY }); } : undefined}
       onKeyDown={event => {
