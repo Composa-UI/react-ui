@@ -1,6 +1,6 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { clsx } from "clsx";
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactElement, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactElement, type ReactNode } from "react";
 import { composaModeAt, useComposaMode } from "./useComposaMode";
 
 export type AnchoredInspectorOverlaySide = "left" | "right" | "top" | "bottom";
@@ -17,6 +17,19 @@ export type AnchoredInspectorOverlayOffset = {
   x: number;
   y: number;
 };
+
+export type AnchoredInspectorOverlaySize = {
+  width: number;
+  height: number;
+};
+
+export interface AnchoredInspectorOverlayResize {
+  minWidth: number;
+  minHeight: number;
+  maxWidth: number;
+  maxHeight: number;
+  ariaLabel?: string;
+}
 
 type OverlayBounds = Pick<DOMRect, "top" | "right" | "bottom" | "left">;
 
@@ -35,6 +48,25 @@ export function clampAnchoredInspectorOverlayOffset(
   return {
     x: clampAxis(delta.x, minimumX, maximumX),
     y: clampAxis(delta.y, minimumY, maximumY),
+  };
+}
+
+export function clampAnchoredInspectorOverlaySize(
+  size: AnchoredInspectorOverlaySize,
+  surface: Pick<DOMRect, "left" | "top">,
+  boundary: OverlayBounds,
+  limits: AnchoredInspectorOverlayResize,
+  collisionPadding = ANCHORED_INSPECTOR_OVERLAY_COLLISION_PADDING,
+): AnchoredInspectorOverlaySize {
+  const availableWidth = Math.max(0, boundary.right - collisionPadding - surface.left);
+  const availableHeight = Math.max(0, boundary.bottom - collisionPadding - surface.top);
+  const maximumWidth = Math.min(limits.maxWidth, availableWidth);
+  const maximumHeight = Math.min(limits.maxHeight, availableHeight);
+  const minimumWidth = Math.min(limits.minWidth, maximumWidth);
+  const minimumHeight = Math.min(limits.minHeight, maximumHeight);
+  return {
+    width: Math.min(maximumWidth, Math.max(minimumWidth, size.width)),
+    height: Math.min(maximumHeight, Math.max(minimumHeight, size.height)),
   };
 }
 
@@ -111,6 +143,9 @@ export interface AnchoredInspectorOverlayProps {
    * Interactive controls inside the handle keep their native behavior.
    */
   dragHandleSelector?: string;
+  /** Adds the canonical bottom-right resize affordance and clamps the window to
+   * both explicit product limits and the current overlay boundary. */
+  resizable?: AnchoredInspectorOverlayResize;
   /**
    * Anchors the overlay's `side` axis to the LEFT edge of the nearest ancestor
    * matching this selector (the inspector panel), instead of to the trigger.
@@ -153,6 +188,7 @@ export function AnchoredInspectorOverlay({
   surface = "default",
   elevation,
   dragHandleSelector,
+  resizable,
   anchorSurfaceSelector,
 }: AnchoredInspectorOverlayProps) {
   const mode = useComposaMode();
@@ -164,11 +200,20 @@ export function AnchoredInspectorOverlay({
   const capturedBoundary = useRef<HTMLElement | null>(null);
   const [anchorVersion, setAnchorVersion] = useState(0);
   const [dragOffset, setDragOffset] = useState<AnchoredInspectorOverlayOffset>({ x: 0, y: 0 });
+  const [resizedSize, setResizedSize] = useState<AnchoredInspectorOverlaySize | null>(null);
   const drag = useRef<{
     pointerId: number;
     clientX: number;
     clientY: number;
     startOffset: AnchoredInspectorOverlayOffset;
+    surface: DOMRect;
+    boundary: OverlayBounds;
+  } | null>(null);
+  const resize = useRef<{
+    pointerId: number;
+    clientX: number;
+    clientY: number;
+    startSize: AnchoredInspectorOverlaySize;
     surface: DOMRect;
     boundary: OverlayBounds;
   } | null>(null);
@@ -243,7 +288,9 @@ export function AnchoredInspectorOverlay({
       capturedBoundary.current = null;
       triggerMode.current = undefined;
       drag.current = null;
+      resize.current = null;
       setDragOffset({ x: 0, y: 0 });
+      setResizedSize(null);
       setAnchorVersion(0);
     }
   }, [open]);
@@ -306,6 +353,65 @@ export function AnchoredInspectorOverlay({
     setDragOffset(active.startOffset);
     try { event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* already released */ }
   };
+  const beginResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!resizable || event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const surfaceElement = event.currentTarget.closest<HTMLElement>("[data-composa-component='AnchoredInspectorOverlay']");
+    if (!surfaceElement) return;
+    const surface = surfaceElement.getBoundingClientRect();
+    const boundary = capturedBoundary.current?.getBoundingClientRect() ?? {
+      top: 0,
+      right: window.innerWidth,
+      bottom: window.innerHeight,
+      left: 0,
+    };
+    resize.current = {
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      startSize: { width: surface.width, height: surface.height },
+      surface,
+      boundary,
+    };
+    try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* capture unsupported */ }
+  };
+  const moveResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const active = resize.current;
+    if (!resizable || !active || event.pointerId !== active.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setResizedSize(clampAnchoredInspectorOverlaySize({
+      width: active.startSize.width + event.clientX - active.clientX,
+      height: active.startSize.height + event.clientY - active.clientY,
+    }, active.surface, active.boundary, resizable, collisionPadding));
+  };
+  const finishResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const active = resize.current;
+    if (!active || event.pointerId !== active.pointerId) return;
+    resize.current = null;
+    try { event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* already released */ }
+  };
+  const resizeFromKeyboard = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (!resizable || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+    event.preventDefault();
+    const surfaceElement = event.currentTarget.closest<HTMLElement>("[data-composa-component='AnchoredInspectorOverlay']");
+    if (!surfaceElement) return;
+    const surface = surfaceElement.getBoundingClientRect();
+    const boundary = capturedBoundary.current?.getBoundingClientRect() ?? {
+      top: 0,
+      right: window.innerWidth,
+      bottom: window.innerHeight,
+      left: 0,
+    };
+    const step = event.shiftKey ? 1 : 8;
+    const horizontal = event.key === "ArrowRight" ? step : event.key === "ArrowLeft" ? -step : 0;
+    const vertical = event.key === "ArrowDown" ? step : event.key === "ArrowUp" ? -step : 0;
+    setResizedSize(current => clampAnchoredInspectorOverlaySize({
+      width: (current?.width ?? surface.width) + horizontal,
+      height: (current?.height ?? surface.height) + vertical,
+    }, surface, boundary, resizable, collisionPadding));
+  };
 
   return (
     <PopoverPrimitive.Root modal={trapFocus} open={contentOpen} onOpenChange={next => {
@@ -335,6 +441,7 @@ export function AnchoredInspectorOverlay({
           aria-modal={trapFocus}
           data-composa-component="AnchoredInspectorOverlay"
           data-composa-overlay-dragged={dragOffset.x !== 0 || dragOffset.y !== 0 ? "" : undefined}
+          data-composa-overlay-resized={resizedSize ? "" : undefined}
           data-composa-mode={triggerMode.current ?? mode}
           side={side}
           align={align}
@@ -370,19 +477,39 @@ export function AnchoredInspectorOverlay({
             // selection. Native editors and explicitly copyable content opt back
             // in at their own boundary.
             "select-none [&_input]:select-text [&_textarea]:select-text [&_[contenteditable='true']]:select-text [&_[data-composa-selectable]]:select-text",
-            "max-h-[var(--radix-popover-content-available-height)] max-w-[calc(100vw-16px)] overflow-hidden outline-none",
+            "relative max-h-[var(--radix-popover-content-available-height)] max-w-[calc(100vw-16px)] overflow-hidden outline-none",
             surface === "default" && "rounded-c-lg bg-c-bg shadow-c-500",
             className,
           )}
           style={{
-            width,
+            width: resizedSize?.width ?? width,
+            height: resizedSize?.height,
             minWidth,
+            minHeight: resizable?.minHeight,
             maxHeight: "var(--radix-popover-content-available-height)",
             translate: `${dragOffset.x}px ${dragOffset.y}px`,
             ...(elevation ? { boxShadow: `var(--elevation-${elevation})` } : {}),
           }}
         >
           {children}
+          {resizable && (
+            <button
+              type="button"
+              aria-label={resizable.ariaLabel ?? "Resize floating dialog"}
+              data-composa-overlay-resize-handle="bottom-right"
+              className="absolute bottom-0 right-0 z-10 flex size-[20px] touch-none select-none cursor-nwse-resize items-end justify-end bg-transparent p-[4px] text-c-icon-secondary"
+              onPointerDown={beginResize}
+              onPointerMove={moveResize}
+              onPointerUp={finishResize}
+              onPointerCancel={finishResize}
+              onLostPointerCapture={event => {
+                if (resize.current?.pointerId === event.pointerId) resize.current = null;
+              }}
+              onKeyDown={resizeFromKeyboard}
+            >
+              <span aria-hidden className="block size-[8px] border-b border-r border-current" />
+            </button>
+          )}
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>

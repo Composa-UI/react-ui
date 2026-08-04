@@ -8,6 +8,7 @@ import {
   COMPOSA_OVERLAY_BOUNDARY_SELECTOR,
   AnchoredInspectorOverlay,
   clampAnchoredInspectorOverlayOffset,
+  clampAnchoredInspectorOverlaySize,
   shouldMountAnchoredInspectorOverlay,
 } from "./AnchoredInspectorOverlay";
 import { INSPECTOR_DIALOG_DRAG_HANDLE_SELECTOR, InspectorDialog } from "./InspectorDialog";
@@ -133,6 +134,16 @@ describe("AnchoredInspectorOverlay runtime contract", () => {
     expect(clampAnchoredInspectorOverlayOffset(surface, boundary, { x: -900, y: -900 })).toEqual({ x: -692, y: -72 });
   });
 
+  it("clamps bottom-right resizing to product limits and the live overlay boundary", () => {
+    const surface = { left: 300, top: 100 };
+    const boundary = { top: 0, right: 1_000, bottom: 700, left: 0 };
+    const limits = { minWidth: 320, minHeight: 220, maxWidth: 720, maxHeight: 520 };
+    expect(clampAnchoredInspectorOverlaySize({ width: 100, height: 100 }, surface, boundary, limits))
+      .toEqual({ width: 320, height: 220 });
+    expect(clampAnchoredInspectorOverlaySize({ width: 900, height: 900 }, surface, boundary, limits))
+      .toEqual({ width: 692, height: 520 });
+  });
+
   it("captures header pointer drags, retains a completed offset, and restores the start on cancellation", () => {
     class MockElement {
       handle = {};
@@ -225,6 +236,32 @@ describe("AnchoredInspectorOverlay runtime contract", () => {
     const header = Children.toArray(overlay.props.children)[0] as ReactElement<Record<string, unknown>>;
     expect(header.props["data-composa-inspector-dialog-drag-handle"]).toBe("");
     act(() => renderer!.unmount());
+  });
+
+  it("forwards the shared resize contract and renders one keyboard-addressable corner", () => {
+    const resize = { minWidth: 320, minHeight: 220, maxWidth: 720, maxHeight: 520, ariaLabel: "Resize Preview" };
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(
+        <InspectorDialog open={false} onClose={() => undefined} ariaLabel="Preview" resizable={resize}>
+          <div>Preview</div>
+        </InspectorDialog>,
+      );
+    });
+    expect(renderer!.root.findByType(AnchoredInspectorOverlay).props.resizable).toBe(resize);
+    expect(renderer!.root.findByType(AnchoredInspectorOverlay).props.minWidth).toBe(320);
+    act(() => renderer!.unmount());
+
+    const { renderer: openRenderer } = renderOpen("light");
+    act(() => openRenderer.update(
+      <AnchoredInspectorOverlay open onClose={() => undefined} ariaLabel="Preview" resizable={resize}
+        trigger={<button type="button">Open</button>}>
+        <div>Preview</div>
+      </AnchoredInspectorOverlay>,
+    ));
+    const handle = openRenderer.root.findByProps({ "data-composa-overlay-resize-handle": "bottom-right" });
+    expect(handle.props["aria-label"]).toBe("Resize Preview");
+    act(() => openRenderer.unmount());
   });
 
   it("tags a real dialog's header, so every InspectorDialog consumer drags from it", () => {
