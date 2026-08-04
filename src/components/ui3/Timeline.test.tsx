@@ -1075,10 +1075,9 @@ describe("a locked lane loses retiming, not the lane (iteration-3)", () => {
   });
 });
 
-describe("the timeline's left column carries no right stroke (feedback row 19)", () => {
-  // "if we can, lets hide the track headers right stroke". The stroke is one
-  // declaration per LEFT_W-wide cell, so dropping only the lane-header one would
-  // leave orphan stubs of vertical rule above (transport) and below (scrollbar).
+describe("timeline track-header divider geometry (feedback row 19)", () => {
+  // Master stays unruled. Slide-local uses one body-owned continuous rule rather
+  // than one declaration per LEFT_W-wide cell, avoiding scroll/empty-state stubs.
   it("drops it from the lane header while keeping the header's right padding", () => {
     const header = /<div[^>]*data-timeline-lane-header="Compositions"[^>]*>/.exec(master())?.[0];
     expect(header).toBeDefined();
@@ -1094,9 +1093,11 @@ describe("the timeline's left column carries no right stroke (feedback row 19)",
     expect(html).not.toContain("border-r");
   });
 
-  it("removes the slide-local rule without removing its tree guides", () => {
+  it("renders one continuous slide-local body rule without disturbing tree guides", () => {
     const html = renderToStaticMarkup(<Timeline mode="slide" height={220} duration={4_000} tracks={[numericTrack]} />);
     expect(html).not.toContain("border-r");
+    expect(html.match(/data-timeline-local-header-divider/g)).toHaveLength(1);
+    expect(html).toContain("top-0 bottom-0");
     expect(html).toContain("data-timeline-child-trunk");
   });
 });
