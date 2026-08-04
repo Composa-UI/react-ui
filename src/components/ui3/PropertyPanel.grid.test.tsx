@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AutoLayoutSettingsDialog } from "./AutoLayoutSettingsDialog";
 import { GridDimensionsPicker } from "./GridDimensionsPicker";
 import { NumericInput } from "./Input";
-import { PanelSection } from "./Panel";
+import { PanelActionBtn, PanelSection } from "./Panel";
 import { PropertyPanel, type ElementGridSettings, type ElementLayoutSettings } from "./PropertyPanel";
 import { SegmentedControl } from "./SegmentedControl";
 
@@ -36,7 +36,7 @@ describe("Grid is one Auto-layout mode", () => {
     act(() => renderer.unmount());
   });
 
-  it("uses the 88×56 Grid dimensions face, two 88px gaps, and shared settings trigger", () => {
+  it("uses the 88×56 Grid dimensions face, one flexible gap column, and shared settings trigger", () => {
     const { renderer } = render();
     const picker = renderer.root.findByType(GridDimensionsPicker);
     expect(picker.props.grid.columns).toHaveLength(3);
@@ -45,6 +45,8 @@ describe("Grid is one Auto-layout mode", () => {
     expect(trigger.props.className).toContain("w-[88px]");
     const gaps = renderer.root.findAllByType(NumericInput).filter(field => ["Column gap", "Row gap"].includes(field.props.ariaLabel));
     expect(gaps).toHaveLength(2);
+    const row = renderer.root.find(node => node.props.role === "group" && node.props["aria-label"] === "Grid and gap");
+    expect(row.findAll(node => typeof node.props.className === "string" && node.props.className.includes("flex-1 min-w-0 flex flex-col"))).toHaveLength(1);
     expect(renderer.root.findAllByType(AutoLayoutSettingsDialog)).toHaveLength(1);
     act(() => renderer.unmount());
   });
@@ -68,13 +70,34 @@ describe("Grid is one Auto-layout mode", () => {
     act(() => renderer.unmount());
   });
 
-  it("keeps Grid selected in the shared Flow control and reserves the empty Wrap gutter", () => {
-    const { renderer } = render();
+  it("keeps Grid selected and uses the trailing slot for automatic positioning", () => {
+    const onGridAutomaticPositioningChange = vi.fn();
+    let renderer: ReactTestRenderer;
+    act(() => { renderer = create(<PropertyPanel mode="element" elementType="frame-grid"
+      layout={{ ...layout, grid: { ...grid, automaticPositioning: true } }}
+      onGridAutomaticPositioningChange={onGridAutomaticPositioningChange} />); });
     const flow = renderer.root.find(node => node.props.role === "group" && node.props["aria-label"] === "Flow");
     expect(flow.findByType(SegmentedControl).props.value).toBe("grid");
     expect(flow.findAll(node => typeof node.props.className === "string" && node.props.className.includes("w-[24px]"))).toHaveLength(1);
     expect(flow.findAll(node => node.type === "button" && node.props["aria-label"] === "Wrap")).toHaveLength(0);
+    const action = flow.findAllByType(PanelActionBtn).find(node => node.props.label === "Toggle automatic positioning")!;
+    expect(action.props.selected).toBe(true);
+    act(() => action.props.onClick());
+    expect(onGridAutomaticPositioningChange).toHaveBeenCalledWith(false);
     act(() => renderer.unmount());
+  });
+
+  it("resolves mixed placement into automatic positioning instead of disabling the action", () => {
+    const onGridAutomaticPositioningChange = vi.fn();
+    let renderer: ReactTestRenderer;
+    act(() => { renderer = create(<PropertyPanel mode="element" elementType="frame-grid"
+      layout={{ ...layout, grid: { ...grid, automaticPositioning: "mixed" } }}
+      onGridAutomaticPositioningChange={onGridAutomaticPositioningChange} />); });
+    const action = renderer!.root.findAllByType(PanelActionBtn).find(node => node.props.label === "Toggle automatic positioning")!;
+    expect(action.props.disabled).toBe(false);
+    act(() => action.props.onClick());
+    expect(onGridAutomaticPositioningChange).toHaveBeenCalledWith(true);
+    act(() => renderer!.unmount());
   });
 
   it("uses one visible Gap heading while retaining two accessible gap fields", () => {

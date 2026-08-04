@@ -229,6 +229,35 @@ describe("Auto-layout physical padding keyframe affordances (#760)", () => {
 });
 
 describe("Auto-layout header toggle (Composa#661 item 4)", () => {
+  it("wires Resize to fit through the Shrink semantic", () => {
+    const onResizeToFit = vi.fn();
+    let renderer: ReactTestRenderer;
+    act(() => { renderer = create(<PropertyPanel elementType="frame" onResizeToFit={onResizeToFit} />); });
+    const trigger = action(renderer!, "Resize to fit")!;
+    expect(trigger.props.icon.props["data-icon-semantic"]).toBe("resize-to-fit");
+    act(() => trigger.props.onClick());
+    expect(onResizeToFit).toHaveBeenCalledOnce();
+    act(() => renderer!.unmount());
+  });
+
+  it("recombines differing padding from Top and Right", () => {
+    const onPaddingChange = vi.fn();
+    let renderer: ReactTestRenderer;
+    act(() => { renderer = create(<PropertyPanel elementType="frame-auto"
+      layout={autoLayout({ padding: { top: 3, right: 7, bottom: 11, left: 13 } })}
+      onPaddingChange={onPaddingChange} />); });
+    const combine = action(renderer!, "Combine padding")!;
+    expect(combine.props.disabled).toBe(false);
+    act(() => combine.props.onClick());
+    expect(onPaddingChange).toHaveBeenCalledWith({ top: 3, right: 7, bottom: 3, left: 7 }, ["bottom", "left"]);
+    act(() => renderer!.update(<PropertyPanel elementType="frame-auto"
+      layout={autoLayout({ padding: { top: 3, right: 7, bottom: 3, left: 7 } })}
+      onPaddingChange={onPaddingChange} />));
+    const horizontal = renderer!.root.findAllByType(NumericInput).find(node => node.props.ariaLabel === "Horizontal padding")!;
+    expect(horizontal.props.value).toBe(7);
+    act(() => renderer!.unmount());
+  });
+
   it("pins the toggle faces to the lucide panel-plus / panel-check glyphs", () => {
     expect(composaIconSemantics["auto-layout-add"]).toBe(ProposedLayoutPanelLeftPlus);
     expect(composaIconSemantics["auto-layout-frame"]).toBe(ProposedLayoutPanelLeftCheck);
