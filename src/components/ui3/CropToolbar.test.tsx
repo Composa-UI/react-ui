@@ -28,6 +28,8 @@ describe("CropToolbar", () => {
     act(() => { renderer = create(<CanvasCropOverlay onMove={(x, y) => calls.push([x, y])} onMoveStart={() => calls.push("start")} onMoveEnd={() => calls.push("end")} />); });
     const overlay = renderer.root.findByProps({ "data-composa-crop-overlay": true });
     expect(overlay.props.className).toContain("cursor-move");
+    expect(overlay.props.style.border).toBe("2px solid var(--color-border-selected)");
+    expect(overlay.props.style.backgroundImage).toContain("linear-gradient");
     const target = { setPointerCapture: (id: number) => calls.push(["capture", id]), onpointermove: null as null | ((event: { clientX: number; clientY: number }) => void), onpointerup: null as null | (() => void), onpointercancel: null as null | (() => void) };
     act(() => overlay.props.onPointerDown({ button: 0, clientX: 10, clientY: 20, pointerId: 7, currentTarget: target, preventDefault: () => calls.push("prevent"), stopPropagation: () => calls.push("stop") }));
     target.onpointermove!({ clientX: 16, clientY: 24 });

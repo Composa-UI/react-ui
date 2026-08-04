@@ -45,7 +45,11 @@ export interface CanvasCropOverlayProps {
 
 /** Move-only crop viewport; resize/aspect controls live in CropToolbar. */
 export function CanvasCropOverlay({ style, onMove, onMoveStart, onMoveEnd, className }: CanvasCropOverlayProps) {
-  return <div data-composa-crop-overlay className={clsx("absolute z-[10020] box-border cursor-move border-2 border-c-border-selected", className)} style={style}
+  return <div data-composa-crop-overlay className={clsx("absolute z-[10020] box-border cursor-move", className)} style={{
+    border: "2px solid var(--color-border-selected)",
+    backgroundImage: "linear-gradient(to right, transparent 33.2%, rgba(255,255,255,.65) 33.2%, rgba(255,255,255,.65) 33.45%, transparent 33.45%, transparent 66.55%, rgba(255,255,255,.65) 66.55%, rgba(255,255,255,.65) 66.8%, transparent 66.8%), linear-gradient(to bottom, transparent 33.2%, rgba(255,255,255,.65) 33.2%, rgba(255,255,255,.65) 33.45%, transparent 33.45%, transparent 66.55%, rgba(255,255,255,.65) 66.55%, rgba(255,255,255,.65) 66.8%, transparent 66.8%)",
+    ...style,
+  }}
     onPointerDown={event => {
       if (event.button !== 0) return;
       event.preventDefault(); event.stopPropagation();
@@ -60,9 +64,5 @@ export function CanvasCropOverlay({ style, onMove, onMoveStart, onMoveEnd, class
       target.onpointermove = move as unknown as (event: PointerEvent) => void;
       target.onpointerup = target.onpointercancel = () => { target.onpointermove = null; target.onpointerup = null; target.onpointercancel = null; onMoveEnd?.(); };
     }}>
-    <i className="pointer-events-none absolute inset-x-0 top-1/3 border-t border-white/60" />
-    <i className="pointer-events-none absolute inset-x-0 top-2/3 border-t border-white/60" />
-    <i className="pointer-events-none absolute inset-y-0 left-1/3 border-l border-white/60" />
-    <i className="pointer-events-none absolute inset-y-0 left-2/3 border-l border-white/60" />
   </div>;
 }
