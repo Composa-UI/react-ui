@@ -1,4 +1,4 @@
-import { act, create, type ReactTestRenderer } from "react-test-renderer";
+import { act, create, type ReactTestInstance, type ReactTestRenderer } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
 import { Button } from "./Button";
 import { PropertyPanel, type InspectorExportSetting } from "./PropertyPanel";
@@ -54,5 +54,33 @@ describe("Export mode (owner feedback Row 63)", () => {
     const renderer = render({ exportSettings: [{ ...settings[0], format: "JPG", quality: 80 }] });
     expect(renderer.root.findAll(node => node.props?.ariaLabel === "Export quality")).toHaveLength(1);
     act(() => renderer.unmount());
+  });
+
+  it.each([
+    { name: "expanded Static", props: { exportSettings: [{ ...settings[0], format: "JPG" as const, quality: 80 }] } },
+    { name: "expanded Animated", props: { exportMode: "frame" as const, projectFrameRate: 30 as const } },
+  ])("bottom-aligns Remove export with the final field row in $name", ({ props }) => {
+    const renderer = render(props);
+    const remove = renderer.root.find(node => node.props?.label === "Remove export");
+    const slot = remove.parent as ReactTestInstance;
+
+    expect(slot.props["data-composa-export-remove-slot"]).toBe(true);
+    expect(String(slot.props.className).split(/\s+/)).toContain("self-end");
+    expect(slot.parent?.children[slot.parent.children.length - 1]).toBe(slot);
+
+    act(() => renderer.unmount());
+  });
+
+  it("keeps collapsed Export free of trailing slots and preserves the Remove export callback", () => {
+    const collapsed = render({ exportSettings: [] });
+    expect(collapsed.root.findAll(node => node.props?.["data-composa-export-remove-slot"])).toHaveLength(0);
+    act(() => collapsed.unmount());
+
+    const onRemoveExportSetting = vi.fn();
+    const expanded = render({ onRemoveExportSetting });
+    const remove = expanded.root.find(node => node.props?.label === "Remove export");
+    act(() => remove.props.onClick());
+    expect(onRemoveExportSetting).toHaveBeenCalledWith("export-1");
+    act(() => expanded.unmount());
   });
 });

@@ -2125,7 +2125,10 @@ function ExportSection({ settings, targetName = "selection", mode = "static", fr
                 onChange={value => onFrameRateChange?.(Number(value) as ProjectFrameRate)} disabled={!onFrameRateChange} />
             </div>}
           </div>
-          <div className="shrink-0 flex items-center gap-[4px] pl-[8px]">
+          <div
+            data-composa-export-remove-slot
+            className="self-end shrink-0 flex items-center gap-[4px] pl-[8px]"
+          >
             <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove export" onClick={() => remove(exp.id)} />
           </div>
         </div>
