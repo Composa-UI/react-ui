@@ -72,4 +72,39 @@ describe("Timeline auto-keyframe entry point (LT-1)", () => {
     expect(idle.classes).not.toContain("fill-current");
     expect(idle.classes).not.toContain("[&>circle]:fill-current");
   });
+
+  it("paints an edge-faded record accent only in the armed slide-local scope", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(
+        <Timeline mode="slide" height={220} duration={2_000} autoKeyframe onAutoKeyframeChange={() => undefined} />,
+      );
+    });
+
+    const accent = renderer!.root.findAll(node => node.props["data-timeline-autokeyframe-accent"] !== undefined);
+    expect(accent).toHaveLength(1);
+    expect(accent[0].props.style.background).toBe(
+      "linear-gradient(90deg, transparent 0%, #ff3b30 6%, #ff3b30 94%, transparent 100%)",
+    );
+    const root = renderer!.root.find(node => node.props["data-timeline-viewport-start-ms"] !== undefined);
+    expect(root.props["data-timeline-autokeyframe"]).toBe(true);
+    expect(String(root.props.className)).toContain("border-c-border");
+    expect(String(root.props.className)).not.toContain("border-[#ff3b30]");
+    act(() => renderer!.unmount());
+  });
+
+  it("fails closed in master even if a host passes a stale armed value", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(
+        <Timeline mode="master" height={220} duration={2_000} autoKeyframe onAutoKeyframeChange={() => undefined} />,
+      );
+    });
+
+    expect(renderer!.root.findAll(node => node.props["data-timeline-autokeyframe-accent"] !== undefined)).toHaveLength(0);
+    expect(renderer!.root.findAll(node => node.type === "button" && node.props["aria-label"] === "Auto-keyframe")).toHaveLength(0);
+    const root = renderer!.root.find(node => node.props["data-timeline-viewport-start-ms"] !== undefined);
+    expect(root.props["data-timeline-autokeyframe"]).toBeUndefined();
+    act(() => renderer!.unmount());
+  });
 });
