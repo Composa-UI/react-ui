@@ -112,6 +112,7 @@ describe("separated field/action anatomy", () => {
     const html = renderToStaticMarkup(<NumericInput ariaLabel="Rotation" value={30} keyframe={{ active: false, onToggle: () => undefined }} />);
     expect(html).toContain("data-composa-separated-field-actions");
     expect(html).toContain("gap-[4px]");
+    expect(html).toContain("pr-[8px]");
     expect(html).toMatch(/data-composa-field-action[^>]*aria-label="Rotation keyframe"[^>]*class="[^"]*size-\[24px\][^"]*focus-visible:ring-c-focus-ring/);
     // The action is not an internal border-left segment of the editable shell.
     const action = html.match(/<button[^>]*data-composa-field-action[^>]*>/)?.[0] ?? "";

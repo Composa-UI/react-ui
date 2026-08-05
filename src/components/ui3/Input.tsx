@@ -588,7 +588,7 @@ export function NumericInput({
             !focused && "truncate",
             "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
             iconLead || reserveLeadingSlot ? "pl-[26px]" : "pl-[8px]",
-            (suffix || dropdown || keyframe) ? "pr-[2px]" : "pr-[8px]",
+            (suffix || dropdown) ? "pr-[2px]" : "pr-[8px]",
             scrub && !disabled && !focused && "cursor-ew-resize touch-none select-none",
             disabled && "cursor-not-allowed",
           )}
