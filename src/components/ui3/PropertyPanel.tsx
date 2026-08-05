@@ -602,7 +602,7 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
       label="Dimensions"
       left={<SizingComboField axis="width" value={props.width} mode={widthMode} mixed={props.widthMixed} valueMixed={props.widthValueMixed} availableModes={props.availableWidthModes} minValue={values.minWidth} maxValue={values.maxWidth} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("width", change)} onConstraintChange={(constraint, value) => changeConstraint("width", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("width") : undefined} keyframe={props.dimensionsKeyframe} />}
       right={<SizingComboField axis="height" value={props.height} mode={heightMode} mixed={props.heightMixed} valueMixed={props.heightValueMixed} availableModes={props.availableHeightModes} minValue={values.minHeight} maxValue={values.maxHeight} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("height", change)} onConstraintChange={(constraint, value) => changeConstraint("height", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("height") : undefined} keyframe={props.dimensionsKeyframe} />}
-      rightAction={<PanelActionBtn icon={aspectLockIcon(lockAspect)} label="Lock aspect ratio" active={lockAspect} onClick={() => setLockAspect(value => !value)} />}
+      rightAction={<PanelActionBtn icon={aspectLockIcon(lockAspect)} label="Lock aspect ratio" selected={lockAspect} onClick={() => setLockAspect(value => !value)} />}
     />
     {hasConstraints && <div className="flex flex-col gap-y-[6px] px-[16px] pb-[8px]">
       {packedConstraintRows.map((row, rowIndex) => <div key={rowIndex} className="flex items-end gap-[8px]">
@@ -926,7 +926,7 @@ function PositionSection({
               keyframe={scaleKeyframe}
             />
           }
-          rightAction={<PanelActionBtn icon={aspectLockIcon(scaleLocked)} label="Lock scale aspect ratio" active={scaleLocked} onClick={() => setScaleLocked(value => !value)} />}
+          rightAction={<PanelActionBtn icon={aspectLockIcon(scaleLocked)} label="Lock scale aspect ratio" selected={scaleLocked} onClick={() => setScaleLocked(value => !value)} />}
         />
       )}
 
@@ -1261,7 +1261,7 @@ function LayoutAutoSection({
         <PanelActionBtn
           icon={<AutoLayoutOnIcon data-icon-semantic="auto-layout-frame" size={16} strokeWidth={1.5} />}
           label="Remove auto-layout"
-          active
+          selected
           onClick={onDisableAutoLayout}
         />
       )}
@@ -1283,7 +1283,7 @@ function LayoutAutoSection({
             <PanelActionBtn
               icon={<LayoutWrapIcon data-icon-semantic="layout-wrap" size={16} strokeWidth={1.5} />}
               label="Wrap"
-              active={wrapping}
+              selected={wrapping}
               onClick={toggleWrap}
             />
           )}
@@ -1396,7 +1396,7 @@ function LayoutAutoSection({
             <PanelActionBtn
               icon={<SquareSquare size={16} strokeWidth={1.5} />}
               label="Combine padding"
-              active
+              selected
               disabled={paddingDisabled || paddingHasMixedSide || paddingKeyframesPresent}
               onClick={() => {
                 onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom: paddingTop, left: paddingRight }, ["bottom", "left"]);
@@ -2135,7 +2135,7 @@ function ExportSection({ settings, targetName = "selection", mode = "static", fr
           </div>
           <div
             data-composa-export-remove-slot
-            className="self-end shrink-0 flex items-center gap-[4px] pl-[8px]"
+            className="self-start shrink-0 flex items-center gap-[4px] pl-[8px] pt-[17px]"
           >
             <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove export" onClick={() => remove(exp.id)} />
           </div>

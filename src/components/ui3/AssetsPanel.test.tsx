@@ -15,6 +15,16 @@ const ASSETS: AssetItem[] = [
 ];
 
 describe("AssetsPanel — audio thumbnail is a waveform, not a colour", () => {
+  it("gives every resting thumbnail a visible token-backed boundary", () => {
+    const html = renderToStaticMarkup(<AssetsPanel assets={ASSETS} filter="all" />);
+    const thumbnails = html.match(/<div[^>]*data-asset-thumbnail="[^"]+"[^>]*>/g) ?? [];
+    expect(thumbnails).toHaveLength(3);
+    thumbnails.forEach(tag => {
+      expect(tag).toContain("ring-c-border");
+      expect(tag).not.toContain("ring-c-border-translucent");
+    });
+  });
+
   it("draws an SVG waveform for an audio card instead of a solid tint", () => {
     const html = renderToStaticMarkup(<AssetsPanel assets={ASSETS} filter="audio" />);
     // The Waveform is the only stretched svg (preserveAspectRatio="none").

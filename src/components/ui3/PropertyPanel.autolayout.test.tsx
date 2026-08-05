@@ -311,11 +311,21 @@ describe("Auto-layout header toggle (Composa#661 item 4)", () => {
     let renderer: ReactTestRenderer;
     act(() => { renderer = create(<PropertyPanel elementType="frame-auto" layout={autoLayout()} onLayoutChange={onLayoutChange} />); });
     const toggle = action(renderer!, "Remove auto-layout")!;
-    expect(toggle.props.active).toBe(true);
+    expect(toggle.props.selected).toBe(true);
     expect(toggle.props.icon.props["data-icon-semantic"]).toBe("auto-layout-frame");
     // An icon-only header button with no handler would be an inert promise.
     act(() => toggle.props.onClick());
     expect(onLayoutChange).toHaveBeenCalledWith({ mode: "none" });
+    act(() => renderer!.unmount());
+  });
+
+  it("uses the shared brand-selected treatment for Wrap and expanded padding", () => {
+    let renderer: ReactTestRenderer;
+    act(() => { renderer = create(<PropertyPanel elementType="frame-auto"
+      layout={autoLayout({ wrap: true, padding: { top: 3, right: 7, bottom: 11, left: 13 } })}
+      onLayoutChange={() => undefined} onPaddingChange={() => undefined} />); });
+    expect(action(renderer!, "Wrap")!.props.selected).toBe(true);
+    expect(action(renderer!, "Combine padding")!.props.selected).toBe(true);
     act(() => renderer!.unmount());
   });
 });

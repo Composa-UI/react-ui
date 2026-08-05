@@ -50,7 +50,8 @@ describe("aspect-lock chain link reports the CURRENT lock state", () => {
 
     // At rest the axes are free, so the link must NOT be slashed.
     expect(iconTypeOf(lock())).toBe(Link2);
-    expect(lock().props.className).not.toContain("bg-c-bg-secondary");
+    expect(lock().props["aria-pressed"]).toBe(false);
+    expect(lock().props.className).not.toContain("bg-c-bg-selected");
 
     // …and a width edit must move width only. The positive assertion on the
     // width emit is what stops the missing height emit being vacuous.
@@ -60,6 +61,9 @@ describe("aspect-lock chain link reports the CURRENT lock state", () => {
     // Press it: now locked, so the link must be SLASHED.
     act(() => lock().props.onClick());
     expect(iconTypeOf(lock())).toBe(Link2Off);
+    expect(lock().props["aria-pressed"]).toBe(true);
+    expect(lock().props.className).toContain("bg-c-bg-selected");
+    expect(lock().props.className).toContain("text-c-text-brand");
 
     // The slashed state is the one that pairs the axes. This ties the glyph to
     // the behaviour so the two can never drift apart again.
@@ -86,8 +90,11 @@ describe("aspect-lock chain link reports the CURRENT lock state", () => {
     // opens SLASHED. Under the conventional "icon shows the action" reading this
     // looks inverted; under the owner's it is correct.
     expect(iconTypeOf(lock())).toBe(Link2Off);
+    expect(lock().props["aria-pressed"]).toBe(true);
+    expect(lock().props.className).toContain("bg-c-bg-selected");
     act(() => lock().props.onClick());
     expect(iconTypeOf(lock())).toBe(Link2);
+    expect(lock().props["aria-pressed"]).toBe(false);
 
     act(() => renderer.unmount());
   });

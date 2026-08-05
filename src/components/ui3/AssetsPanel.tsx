@@ -208,7 +208,7 @@ function AssetCard({
           "group/card relative w-full aspect-[4/3] rounded-c-md overflow-hidden outline-none",
           "bg-c-bg-secondary ring-1 ring-inset transition-shadow duration-100",
           "focus-within:ring-c-focus-ring",
-          selected ? "ring-c-border-selected-strong" : "ring-c-border-translucent hover:ring-c-border",
+          selected ? "ring-c-border-selected-strong" : "ring-c-border hover:ring-c-border-strong",
         )}
       >
         <button type="button" aria-label={item.name} aria-pressed={selected}

@@ -1891,7 +1891,7 @@ function AudioLaneWaveform({ id, peaks, active }: { id: string; peaks?: number[]
   }, []);
   const values = peaks && peaks.length ? resamplePeaks(peaks, barCount) : stubWaveformPeaks(id, barCount);
   return (
-    <div ref={ref} aria-hidden className="absolute inset-0 flex items-center justify-between gap-[1px] px-[6px] opacity-70 pointer-events-none">
+    <div ref={ref} aria-hidden data-timeline-waveform-inset-y="2" className="absolute inset-0 flex items-center justify-between gap-[1px] px-[6px] py-[2px] opacity-70 pointer-events-none">
       {values.map((value, index) => (
         <span key={index} className={clsx("min-w-[1px] max-w-[2px] flex-1 rounded-full", active ? "bg-white" : "bg-c-icon-secondary")}
           style={{ height: `${Math.max(8, Math.round(value * 100))}%` }} />
@@ -2207,12 +2207,10 @@ export function Timeline({
   // here also makes the master timeline fail closed if a host accidentally
   // carries a stale `autoKeyframe` value across the scope switch.
   const recording = !master && autoKeyframe;
-  // A playhead promises there is something to scrub through. The slide-local null
-  // state (drilled into a slide that has no layers yet) has nothing to seek, so the
-  // handle and the body line both drop out rather than pointing at an empty plot
-  // (Composa i2 LT-2). Master view always keeps them — its lanes are the composition
-  // itself and exist even when empty.
-  const seekable = master || tracks.length > 0;
+  // A composition still has duration before it has layers. Keep the playhead and
+  // Play contract present in the slide-local null state so an empty composition
+  // can play its own duration/audio and accepts scrubbing exactly like Figma.
+  const seekable = true;
   const [internalPlayhead, setInternalPlayhead] = useState(defaultPlayhead);
   const [internalPlaying, setInternalPlaying] = useState(defaultPlaying);
   const [internalLoop, setInternalLoop] = useState(defaultLoop);
