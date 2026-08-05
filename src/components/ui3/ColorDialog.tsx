@@ -363,7 +363,7 @@ function AdjustRow({ label, value, onChange, keyframe, disabled = false }: {
         {label}
       </span>
       <div className="min-w-0 flex-1"><Slider value={value} onChange={disabled ? undefined : onChange} min={-100} max={100} defaultValue={0} disabled={disabled} /></div>
-      <div className="w-[68px] shrink-0"><NumericInput ariaLabel={`${label} value`} value={value} onChange={disabled ? undefined : onChange}
+      <div className="w-[96px] shrink-0"><NumericInput ariaLabel={`${label} value`} value={value} onChange={disabled ? undefined : onChange}
         min={-100} max={100} size="small" disabled={disabled} keyframe={keyframe} /></div>
     </div>
   );
@@ -460,7 +460,7 @@ function StopRow({
   return (
     <div className="flex items-center gap-[8px] px-[16px] h-[32px]">
       {/* position % */}
-      <div className={keyframes?.position ? "w-[76px]" : "w-[52px]"}>
+      <div className={keyframes?.position ? "w-[80px]" : "w-[52px]"}>
         <NumericInput
           ariaLabel={`Stop ${index + 1} position`}
           value={stop.position}
