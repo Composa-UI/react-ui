@@ -91,6 +91,7 @@ export interface ElementFillSetting {
     opacity?: InspectorKeyframeControl;
     gradientStops?: Record<string, GradientStopKeyframeControls>;
     imageAdjustments?: Partial<Record<ImageAdjustment, InspectorKeyframeControl>>;
+    mediaTileScale?: InspectorKeyframeControl;
   };
   /** The controlled ColorDialog mode for this specific fill entry. */
   fillType?: FillType;
@@ -102,6 +103,7 @@ export interface ElementFillSetting {
   videoSourceLabel?: string;
   videoPreviewUrl?: string;
   mediaFit?: MediaFillFit;
+  mediaTileScale?: number;
   imageAdjustments?: Partial<ImageAdjustments>;
   /** A host-owned visual track binding for a standalone drop-zone fill. */
   dropZoneSourceId?: string;
@@ -602,7 +604,7 @@ export function DimensionSizingFields(props: DimensionSizingFieldsProps) {
       label="Dimensions"
       left={<SizingComboField axis="width" value={props.width} mode={widthMode} mixed={props.widthMixed} valueMixed={props.widthValueMixed} availableModes={props.availableWidthModes} minValue={values.minWidth} maxValue={values.maxWidth} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("width", change)} onConstraintChange={(constraint, value) => changeConstraint("width", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("width") : undefined} keyframe={props.dimensionsKeyframe} />}
       right={<SizingComboField axis="height" value={props.height} mode={heightMode} mixed={props.heightMixed} valueMixed={props.heightValueMixed} availableModes={props.availableHeightModes} minValue={values.minHeight} maxValue={values.maxHeight} variablesEnabled={props.variablesEnabled} onSizingChange={change => changeSizing("height", change)} onConstraintChange={(constraint, value) => changeConstraint("height", constraint, value)} onApplyVariable={props.onApplySizingVariable ? () => props.onApplySizingVariable?.("height") : undefined} keyframe={props.dimensionsKeyframe} />}
-      rightAction={<PanelActionBtn icon={aspectLockIcon(lockAspect)} label="Lock aspect ratio" active={lockAspect} onClick={() => setLockAspect(value => !value)} />}
+      rightAction={<PanelActionBtn icon={aspectLockIcon(lockAspect)} label="Lock aspect ratio" selected={lockAspect} onClick={() => setLockAspect(value => !value)} />}
     />
     {hasConstraints && <div className="flex flex-col gap-y-[6px] px-[16px] pb-[8px]">
       {packedConstraintRows.map((row, rowIndex) => <div key={rowIndex} className="flex items-end gap-[8px]">
@@ -926,7 +928,7 @@ function PositionSection({
               keyframe={scaleKeyframe}
             />
           }
-          rightAction={<PanelActionBtn icon={aspectLockIcon(scaleLocked)} label="Lock scale aspect ratio" active={scaleLocked} onClick={() => setScaleLocked(value => !value)} />}
+          rightAction={<PanelActionBtn icon={aspectLockIcon(scaleLocked)} label="Lock scale aspect ratio" selected={scaleLocked} onClick={() => setScaleLocked(value => !value)} />}
         />
       )}
 
@@ -1261,7 +1263,7 @@ function LayoutAutoSection({
         <PanelActionBtn
           icon={<AutoLayoutOnIcon data-icon-semantic="auto-layout-frame" size={16} strokeWidth={1.5} />}
           label="Remove auto-layout"
-          active
+          selected
           onClick={onDisableAutoLayout}
         />
       )}
@@ -1283,7 +1285,7 @@ function LayoutAutoSection({
             <PanelActionBtn
               icon={<LayoutWrapIcon data-icon-semantic="layout-wrap" size={16} strokeWidth={1.5} />}
               label="Wrap"
-              active={wrapping}
+              selected={wrapping}
               onClick={toggleWrap}
             />
           )}
@@ -1396,7 +1398,7 @@ function LayoutAutoSection({
             <PanelActionBtn
               icon={<SquareSquare size={16} strokeWidth={1.5} />}
               label="Combine padding"
-              active
+              selected
               disabled={paddingDisabled || paddingHasMixedSide || paddingKeyframesPresent}
               onClick={() => {
                 onPaddingChange?.({ top: paddingTop, right: paddingRight, bottom: paddingTop, left: paddingRight }, ["bottom", "left"]);
@@ -1724,7 +1726,7 @@ type FillEntry = ElementFillSetting;
 function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
   onFillTypeChange, onGradientStopsChange, onChooseImage, onChooseVideo,
   onFlipGradient, onRotateGradient, onRotateMedia,
-  onImageAdjustmentChange, onMediaFitChange, onEditCrop, dropZoneSources, onSelectDropZoneSource,
+  onImageAdjustmentChange, onMediaFitChange, onMediaTileScaleChange, onEditCrop, dropZoneSources, onSelectDropZoneSource,
   imageAdjustmentsReadOnly = false, capabilities, activeStackDialog, onActiveStackDialogChange }: {
   entries?: FillEntry[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<FillEntry, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
@@ -1736,6 +1738,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
   onChooseImage?: (id: string) => void; onChooseVideo?: (id: string) => void;
   onImageAdjustmentChange?: (id: string, adjustment: ImageAdjustment, value: number) => void;
   onMediaFitChange?: (id: string, fit: MediaFillFit) => void;
+  onMediaTileScaleChange?: (id: string, scale: number) => void;
   onEditCrop?: (id: string) => void;
   imageAdjustmentsReadOnly?: boolean;
   dropZoneSources?: { id: string; label: string }[];
@@ -1826,6 +1829,9 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
               onChooseVideo={onChooseVideo ? () => onChooseVideo(fill.id) : undefined}
               mediaFit={fill.mediaFit}
               onMediaFitChange={onMediaFitChange ? fit => onMediaFitChange(fill.id, fit) : undefined}
+              mediaTileScale={fill.mediaTileScale}
+              mediaTileScaleKeyframe={fill.keyframes?.mediaTileScale}
+              onMediaTileScaleChange={onMediaTileScaleChange ? scale => onMediaTileScaleChange(fill.id, scale) : undefined}
               onRotateMedia={onRotateMedia ? () => onRotateMedia(fill.id) : undefined}
               onEditCrop={onEditCrop ? () => onEditCrop(fill.id) : undefined}
               dropZoneSources={dropZoneSources}
@@ -2339,9 +2345,26 @@ function MasterTimelineSection({
   );
 }
 
-// Export §Export — project-level video export. Disabled stub in V1: Format dropdown
-// (disabled) + full-width outlined "Export project" action (disabled).
-function ProjectExportSection() {
+// Export §Export — project-level whole-project video export. A host supplies the
+// truthful browser-supported container and encoder action; absent remains an
+// explicitly hover/focus-explained capability gate.
+function ProjectExportSection({ format = "MP4", exporting = false, onExport }: {
+  format?: "MP4" | "WebM";
+  exporting?: boolean;
+  onExport?: () => void;
+}) {
+  if (onExport) return (
+    <PanelSection title="Export">
+      <PanelFieldRow
+        label="Format"
+        reserveRightSlot={false}
+        left={<Dropdown ariaLabel="Project video format" value={format} fullWidth disabled />}
+      />
+      <PanelFullRow height={40}>
+        <Button label={exporting ? "Exporting project…" : "Export project"} variant="Secondary" size="wide" disabled={exporting} onClick={onExport} />
+      </PanelFullRow>
+    </PanelSection>
+  );
   return (
     <PanelSection title="Export">
       <PanelFieldRow
@@ -3162,6 +3185,7 @@ export interface PropertyPanelProps {
   onChooseFillVideo?: (id: string) => void;
   onFillImageAdjustmentChange?: (id: string, adjustment: ImageAdjustment, value: number) => void;
   onFillMediaFitChange?: (id: string, fit: MediaFillFit) => void;
+  onFillMediaTileScaleChange?: (id: string, scale: number) => void;
   onRotateFillMedia?: (id: string) => void;
   /** Enters canvas crop mode for the specified bound media fill. */
   onEditFillCrop?: (id: string) => void;
@@ -3199,6 +3223,10 @@ export interface PropertyPanelProps {
   onProjectFrameRateChange?: (value: ProjectFrameRate) => void;
   onProjectDurationChange?: (value: number) => void;
   onProjectPlayheadChange?: (value: number) => void;
+  /** Browser-supported whole-project video container and host-owned encoder. */
+  projectVideoFormat?: "MP4" | "WebM";
+  projectVideoExporting?: boolean;
+  onExportProject?: () => void;
   /** Controlled transport seam for the existing reskin-clean preview control. */
   previewPlaying?: boolean;
   /** Primary Present action — enter the full presentation/playback surface. */
@@ -3711,6 +3739,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onProjectFrameRateChange,
   onProjectDurationChange,
   onProjectPlayheadChange,
+  projectVideoFormat = "MP4",
+  projectVideoExporting = false,
+  onExportProject,
   previewPlaying = false,
   onPreviewToggle,
   onPreviewOpen,
@@ -3952,7 +3983,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <MasterTimelineSection totalDuration={projectDuration} playhead={projectPlayhead}
             durationControlled={props.projectDuration !== undefined} playheadControlled={props.projectPlayhead !== undefined}
             onTotalDurationChange={onProjectDurationChange} onPlayheadChange={onProjectPlayheadChange} />
-          <ProjectExportSection />
+          <ProjectExportSection format={projectVideoFormat} exporting={projectVideoExporting} onExport={onExportProject} />
         </ScrollArea>
       )}
 
@@ -4238,6 +4269,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onChooseImage={props.onChooseFillImage} onChooseVideo={props.onChooseFillVideo}
             onImageAdjustmentChange={props.onFillImageAdjustmentChange}
             onMediaFitChange={props.onFillMediaFitChange}
+            onMediaTileScaleChange={props.onFillMediaTileScaleChange}
             onEditCrop={props.onEditFillCrop}
             dropZoneSources={props.fillDropZoneSources} onSelectDropZoneSource={props.onSelectFillDropZoneSource}
             capabilities={capabilities}

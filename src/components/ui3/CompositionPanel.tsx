@@ -42,7 +42,7 @@ export interface CompositionPanelProps {
   onNewSlideMenu?: () => void;
   onSlideRenameRequest?: (index: number) => void;
   onSlideDuplicate?: (index: number) => void;
-  onSlidePublishTemplate?: (index: number) => void;
+  onSlidePublishToLibrary?: (index: number) => void;
   onSlideDelete?: (index: number) => void;
   /** Commit an inline rename of the project (Slides header title). */
   onCompRename?: (name: string) => void;
@@ -91,7 +91,7 @@ export function CompositionPanel({
   onNewSlideMenu,
   onSlideRenameRequest,
   onSlideDuplicate,
-  onSlidePublishTemplate,
+  onSlidePublishToLibrary,
   onSlideDelete,
   onCompRename,
   onCompMenu,
@@ -167,7 +167,7 @@ export function CompositionPanel({
       {/* Top — Slides (min 80px). `[&>*]:!w-full` stretches the child to the column
           width; `[&>*]:!border-r-0` drops its own right border (the container owns it). */}
       <div className="min-h-[80px] overflow-hidden [&>*]:!w-full [&>*]:!border-r-0" style={{ flexBasis: `calc(${split} * 100%)`, flexGrow: 0, flexShrink: 1 }}>
-        <SlidesPanel slides={slides} aspectRatio={slideAspectRatio} title={slidesTitle} subtitle={slidesSubtitle} onNewSlide={onNewSlide} onNewSlideMenu={onNewSlideMenu} onRenameRequest={onSlideRenameRequest} onSlideDuplicate={onSlideDuplicate} onSlidePublishTemplate={onSlidePublishTemplate} onSlideDelete={onSlideDelete} onTitleChange={onCompRename} onTitleMenu={onCompMenu} />
+        <SlidesPanel slides={slides} aspectRatio={slideAspectRatio} title={slidesTitle} subtitle={slidesSubtitle} onNewSlide={onNewSlide} onNewSlideMenu={onNewSlideMenu} onRenameRequest={onSlideRenameRequest} onSlideDuplicate={onSlideDuplicate} onSlidePublishToLibrary={onSlidePublishToLibrary} onSlideDelete={onSlideDelete} onTitleChange={onCompRename} onTitleMenu={onCompMenu} />
       </div>
 
       {/* Bottom — Layers (min 80px, fills the rest). Same stretch/border overrides. */}

@@ -1,4 +1,4 @@
-import { useEffect, useState, type DragEvent as ReactDragEvent, type ReactNode } from "react";
+import { useEffect, useState, type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { clsx } from "clsx";
 import { Plus, Trash2, MonitorPlay, Clock, Type, Play, GripVertical } from "lucide-react";
 import { PanelSection, PanelActionBtn, ScrollArea } from "./Panel";
@@ -293,9 +293,10 @@ function EasingChoice({ id, value, callbacks }: { id: string; value: EasingPrese
 
 // ── Sequence ranks ────────────────────────────────────────────────────────────────
 // The engine's `ObjectAnimation.order` is the one grouping truth: distinct ranks are
-// sequential, while cards sharing a rank are simultaneous. Shared ranks therefore use
-// a contained group regardless of object ownership. Dragging onto that group means
-// `with`; the explicit plus-spaces between ranks create standalone sequential ranks.
+// sequential, while cards sharing a rank are simultaneous. A shared rank uses one
+// sequence number and a visible connector rail between its cards; it is not a bordered
+// container. Dragging onto its `With` target means simultaneous, while the explicit
+// plus-spaces between ranks create standalone sequential ranks.
 
 /** The block's ordinal. Small muted label sitting on top of the card, outside the card's
  *  own `group` box so it never shifts the flush-left card or the hover-revealed drag
@@ -325,6 +326,16 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
   useEffect(() => { setExpanded(defaultExpandedId); setActiveStyleDialog(null); }, [contextKey, selectionType, defaultExpandedId]);
   const [dragged, setDragged] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<{ targetId: string; placement: "before" | "after" | "with" } | null>(null);
+  useEffect(() => {
+    if (!dragged || typeof window === "undefined") return;
+    const cancelPointerDrag = () => { setDragged(null); setDropTarget(null); };
+    window.addEventListener("pointerup", cancelPointerDrag);
+    window.addEventListener("pointercancel", cancelPointerDrag);
+    return () => {
+      window.removeEventListener("pointerup", cancelPointerDrag);
+      window.removeEventListener("pointercancel", cancelPointerDrag);
+    };
+  }, [dragged]);
   const phaseOptions: Array<{ value: ObjectAnimationPhase; label: string }> = [
     { value: "build-in", label: "Build in" }, { value: "action", label: "Action" }, { value: "build-out", label: "Build out" },
   ];
@@ -397,6 +408,20 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
               setDragged(null);
             };
             const targetHandlers = (targetId: string, placement: "before" | "after" | "with") => ({
+              onPointerEnter: (event: ReactPointerEvent<HTMLDivElement>) => {
+                if (!dragged || dragged === targetId || event.buttons !== 1) return;
+                setDropTarget({ targetId, placement });
+              },
+              onPointerMove: (event: ReactPointerEvent<HTMLDivElement>) => {
+                if (!dragged || dragged === targetId || event.buttons !== 1) return;
+                if (dropTarget?.targetId !== targetId || dropTarget.placement !== placement) setDropTarget({ targetId, placement });
+              },
+              onPointerUpCapture: (event: ReactPointerEvent<HTMLDivElement>) => {
+                if (!dragged || dragged === targetId) return;
+                event.preventDefault();
+                event.stopPropagation();
+                finishDrop(targetId, placement);
+              },
               onDragEnter: (event: ReactDragEvent<HTMLDivElement>) => {
                 if (!dragged || dragged === targetId) return;
                 event.preventDefault();
@@ -464,7 +489,14 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                   horizontal space: the card sits FLUSH at the container's left edge at
                   rest, and the grip appears on hover (vertically centered on the 32px card)
                   without shifting the card. Owner refinement: no build-order number label. */}
-              <button type="button" draggable={!!callbacks?.onReorder} aria-label={`Drag ${a.name} animation`} className="hidden group-hover:flex absolute -left-[16px] top-[8px] size-[16px] items-center justify-center cursor-grab text-c-icon-secondary"
+              <button type="button" draggable={!!callbacks?.onReorder} aria-label={`Drag ${a.name} animation`} className={clsx(dragged === id ? "flex cursor-grabbing" : "hidden group-hover:flex cursor-grab", "absolute -left-[16px] top-[8px] size-[16px] items-center justify-center text-c-icon-secondary")}
+                onPointerDown={event => {
+                  if (!callbacks?.onReorder || event.button !== 0) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setDragged(id);
+                  setDropTarget(null);
+                }}
                 onDragStart={event => {
                   setDragged(id);
                   setDropTarget(null);
@@ -532,12 +564,23 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                 const afterPlacement = next ? "before" as const : "after" as const;
                 const withActive = !!withTargetId && dropTarget?.targetId === withTargetId && dropTarget.placement === "with";
                 return (
-                  <div key={group.rank} data-animation-sequence-rank={group.rank} className="flex flex-col">
+                  <div
+                    key={group.rank}
+                    data-animation-sequence-rank={group.rank}
+                    data-animation-sequence-group-drop={withTargetId ? "with" : undefined}
+                    className="flex flex-col"
+                    {...(withTargetId ? targetHandlers(withTargetId, "with") : {})}
+                  >
                     <BlockNumberLabel n={group.rank} />
                     <div
                       data-animation-shared-rank={shared ? group.rank : undefined}
-                      className={clsx("relative flex flex-col gap-[4px]", shared && "rounded-c-md border border-c-border bg-c-bg-secondary p-[4px]")}
+                      className={clsx("relative flex flex-col gap-[4px]", shared && "pl-[12px]")}
                     >
+                      {shared && <span
+                        aria-hidden
+                        data-animation-sequence-connector={group.rank}
+                        className="pointer-events-none absolute bottom-[12px] left-[3px] top-[12px] w-px bg-c-border-selected"
+                      />}
                       {dragged && withTargetId && (
                         <div
                           role="button"
@@ -556,7 +599,12 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                           {withActive && <span aria-hidden data-animation-sequence-drop-indicator="with" className="pointer-events-none absolute inset-[2px] rounded-c-xs border border-c-border-selected" />}
                         </div>
                       )}
-                      {group.rows.map(row => renderActionRow(row.animation, row.index))}
+                      {group.rows.map(row => shared ? (
+                        <div key={row.id} data-animation-sequence-branch={row.id} className="relative">
+                          <span aria-hidden className="pointer-events-none absolute -left-[9px] top-[20px] h-px w-[9px] bg-c-border-selected" />
+                          {renderActionRow(row.animation, row.index)}
+                        </div>
+                      ) : renderActionRow(row.animation, row.index))}
                     </div>
                     {afterTargetId && insertionSpace(
                       `after-${group.rank}`,

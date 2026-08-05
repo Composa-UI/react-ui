@@ -64,9 +64,9 @@ describe("SlidesPanel slide actions", () => {
   it("opens Rename · Duplicate · Delete at the cursor on right-click", () => {
     const onRenameRequest = vi.fn();
     const onSlideDuplicate = vi.fn();
-    const onSlidePublishTemplate = vi.fn();
+    const onSlidePublishToLibrary = vi.fn();
     const onSlideDelete = vi.fn();
-    const renderer = renderPanel({ slides: SLIDES, onRenameRequest, onSlideDuplicate, onSlidePublishTemplate, onSlideDelete });
+    const renderer = renderPanel({ slides: SLIDES, onRenameRequest, onSlideDuplicate, onSlidePublishToLibrary, onSlideDelete });
 
     // Closed to begin with, so finding the rows after the right-click is meaningful.
     expect(renderer.root.findAll(node => node.props.role === "menuitem")).toHaveLength(0);
@@ -74,7 +74,7 @@ describe("SlidesPanel slide actions", () => {
     const preventDefault = rightClick(slideRow(renderer.root, 2), { clientX: 96, clientY: 310 });
     expect(preventDefault).toHaveBeenCalledOnce();
 
-    for (const label of ["Rename", "Duplicate", "Publish as template", "Delete"]) {
+    for (const label of ["Rename", "Duplicate", "Publish to project library…", "Delete"]) {
       expect(menuItem(renderer.root, label), label).toHaveLength(1);
     }
     // Anchored at the pointer, like the assets-panel context menu.
@@ -87,16 +87,16 @@ describe("SlidesPanel slide actions", () => {
     expect(renderer.root.findAll(node => node.props.role === "menuitem")).toHaveLength(0);
     expect(onRenameRequest).not.toHaveBeenCalled();
     expect(onSlideDuplicate).not.toHaveBeenCalled();
-    expect(onSlidePublishTemplate).not.toHaveBeenCalled();
+    expect(onSlidePublishToLibrary).not.toHaveBeenCalled();
     act(() => renderer.unmount());
   });
 
-  it("publishes the exact right-clicked composition as a template", () => {
-    const onSlidePublishTemplate = vi.fn();
-    const renderer = renderPanel({ slides: SLIDES, onSlidePublishTemplate });
+  it("opens the project-library publisher for the exact right-clicked composition", () => {
+    const onSlidePublishToLibrary = vi.fn();
+    const renderer = renderPanel({ slides: SLIDES, onSlidePublishToLibrary });
     rightClick(slideRow(renderer.root, 2));
-    act(() => menuItem(renderer.root, "Publish as template")[0].props.onClick());
-    expect(onSlidePublishTemplate).toHaveBeenCalledWith(1);
+    act(() => menuItem(renderer.root, "Publish to project library…")[0].props.onClick());
+    expect(onSlidePublishToLibrary).toHaveBeenCalledWith(1);
     expect(renderer.root.findAll(node => node.props.role === "menuitem")).toHaveLength(0);
     act(() => renderer.unmount());
   });

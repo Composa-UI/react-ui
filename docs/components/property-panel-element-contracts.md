@@ -10,5 +10,13 @@ Element-mode sections remain presentational and retain their standalone demo sta
 - Fill, Stroke, and Effects accept ordered, stable-ID rows. Existing plus, field/dialog, eye, drag row, and minus affordances emit add, update, toggle, reorder, and remove callbacks. Stroke additionally exposes inside/center/outside alignment; an All/Top/Bottom/Left/Right/Custom edge menu; a two-by-two Custom weight editor; and the Path trim start/end pair under one visible `Path trim` label. Start/end meaning is carried by each input's accessible name and hover tooltip. Per-stroke keyframe bindings are host-supplied so weight and trim diamonds never render without real engine support for that exact stroke identity.
 - Layout guides are composition-owned editor chrome and therefore do not render in Element mode.
 - Multi-selection continues to use the existing mixed-state-capable inputs and now reaches the Position section’s multi-select affordance.
+- Armed inspector toggles use the shared brand-selected treatment (blue
+  foreground plus selected background). Neutral `active` remains reserved for
+  transient open/pressed surfaces such as dialog triggers.
+- Animate sequence ranks use one number per distinct rank. Cards that share a
+  rank are joined by the selected-blue connector rail and branches instead of
+  being boxed into a second contained surface. The transient `With` drop target
+  remains the explicit simultaneous-grouping interaction; mere overlap never
+  changes sequence ownership.
 
 The UI package never mutates controlled arrays. Hosts apply emitted patches and pass the next state back. Use `?view=element-contract` for side-by-side text and auto-layout contract examples.

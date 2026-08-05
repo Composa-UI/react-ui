@@ -202,7 +202,7 @@ describe("Audio Clip inspector semantics", () => {
 });
 
 describe("Project shell seams", () => {
-  it("keeps project video export disabled and shows Present as a split button while presenting", () => {
+  it("keeps unavailable project video export honestly gated and shows Present as a split button while presenting", () => {
     const html = renderToStaticMarkup(<TooltipProvider><PropertyPanel mode="project" previewPlaying /></TooltipProvider>);
 
     // #575 (redo): Present is the primary segment of a split button. While
@@ -223,6 +223,18 @@ describe("Project shell seams", () => {
     expect(html).toContain('aria-label="Project video format"');
     expect(html).toMatch(/aria-label="Project video format"[^>]*disabled=""/);
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*><span>Export project<\/span>/);
+  });
+
+  it("enables the whole-project encoder only when the host supplies one", () => {
+    const html = renderToStaticMarkup(<TooltipProvider><PropertyPanel
+      mode="project"
+      projectVideoFormat="WebM"
+      onExportProject={() => undefined}
+    /></TooltipProvider>);
+    expect(html).toContain('aria-label="Project video format"');
+    expect(html).toContain('>WebM</span>');
+    expect(html).not.toContain("Video export coming soon");
+    expect(html).toMatch(/<button(?![^>]*disabled)[^>]*><span>Export project<\/span>/);
   });
 
   it("renders Present as a split button (primary Present + chevron menu) with Share beside it", () => {

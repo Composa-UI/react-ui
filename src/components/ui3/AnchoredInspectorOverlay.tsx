@@ -140,6 +140,13 @@ export interface AnchoredInspectorOverlayProps {
   collisionPadding?: number;
   /** Modal Popover mode traps focus and returns it to the captured trigger. */
   trapFocus?: boolean;
+  /**
+   * Keep focus on the control that opened a non-modal surface instead of
+   * moving it to the first focusable child. This is useful for passive
+   * application chrome such as Preview: auto-focusing its first icon action
+   * would also display that action's focus tooltip before the user interacts.
+   */
+  preserveFocusOnOpen?: boolean;
   blockOutsideDismiss?: boolean;
   onInteractOutside?: () => void;
   triggerClassName?: string;
@@ -212,6 +219,7 @@ export function AnchoredInspectorOverlay({
   alignOffset = 0,
   collisionPadding = ANCHORED_INSPECTOR_OVERLAY_COLLISION_PADDING,
   trapFocus = true,
+  preserveFocusOnOpen = false,
   blockOutsideDismiss = false,
   onInteractOutside,
   triggerClassName,
@@ -491,6 +499,9 @@ export function AnchoredInspectorOverlay({
             event.preventDefault();
             openingGesture.current = false;
             onClose();
+          }}
+          onOpenAutoFocus={event => {
+            if (preserveFocusOnOpen) event.preventDefault();
           }}
           onCloseAutoFocus={event => {
             event.preventDefault();

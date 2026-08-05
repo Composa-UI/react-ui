@@ -950,6 +950,8 @@ describe("video clips carry an audio strip (Composa#661)", () => {
     expect(strip).toContain("bg-c-bg-inverse/10");
     expect(strip).toContain("bottom-0");
     expect(strip).toContain("rounded-b-[3px]");
+    expect(html).toContain('data-timeline-waveform-inset-y="2"');
+    expect(html).toContain("py-[2px]");
     expect(html).toContain("height:20%");
     expect(html).toContain("height:90%");
     expect(html).toContain("height:40%");
@@ -1164,7 +1166,7 @@ describe("video clips raise a context menu (Composa#661)", () => {
   });
 });
 
-describe("the slide-local null state has no playhead (LT-2)", () => {
+describe("the slide-local null state keeps the composition playhead (Iteration 6 row 10)", () => {
   // Asserted against the playhead's OWN markup rather than a marker attribute, so
   // the absences below would have been false on the unfixed component instead of
   // passing because the marker never existed.
@@ -1173,12 +1175,12 @@ describe("the slide-local null state has no playhead (LT-2)", () => {
   const slide = (extra: Record<string, unknown> = {}) =>
     renderToStaticMarkup(<Timeline mode="slide" height={220} duration={4_000} tracks={[]} {...extra} />);
 
-  it("renders neither the handle nor the body line when there is nothing to seek", () => {
+  it("keeps the handle and body line when the composition has no layers yet", () => {
     const html = slide();
-    // Guard: the ruler chrome IS there, so the two absences below mean something.
     expect(html).toContain('aria-label="Playhead"');
-    expect(html).not.toContain(HANDLE);
-    expect(html).not.toContain(BODY_LINE);
+    expect(html).toContain(HANDLE);
+    expect(html).toContain(BODY_LINE);
+    expect(html).toContain('aria-label="Play"');
   });
 
   it("brings both back as soon as the slide has a layer", () => {

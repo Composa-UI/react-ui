@@ -246,7 +246,7 @@ function EditableProjectTitle({ title, onCommit, onMenu }: {
 }
 
 // ── Panel ─────────────────────────────────────────────────────────────────────
-export function SlidesPanel({ slides, aspectRatio, title = "Product review", subtitle: _subtitle = "", onNewSlide, onNewSlideMenu, onRenameRequest, onTitleChange, onTitleMenu, onSlideDuplicate, onSlidePublishTemplate, onSlideDelete }: {
+export function SlidesPanel({ slides, aspectRatio, title = "Product review", subtitle: _subtitle = "", onNewSlide, onNewSlideMenu, onRenameRequest, onTitleChange, onTitleMenu, onSlideDuplicate, onSlidePublishToLibrary, onSlideDelete }: {
   slides: SlideData[];
   /** Project canvas aspect ratio (width / height). Slide thumbnails honor it while
    *  the reserved slot height stays constant. Defaults to the ~16:9 slot ratio. */
@@ -264,14 +264,14 @@ export function SlidesPanel({ slides, aspectRatio, title = "Product review", sub
   /** Slide-item menu actions. Duplicate/Delete semantics are not yet pinned. */
   onSlideDuplicate?: (index: number) => void;
   /** Publish the selected composition into the app-owned project template catalogue. */
-  onSlidePublishTemplate?: (index: number) => void;
+  onSlidePublishToLibrary?: (index: number) => void;
   onSlideDelete?: (index: number) => void;
 }) {
   const initialFocus = Math.max(0, slides.findIndex(slide => slide.selected));
   const [focusIndex, setFocusIndex] = useState(initialFocus);
   const [menu, setMenu] = useState<{ index: number; x: number; y: number } | null>(null);
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const hasItemMenu = Boolean(onRenameRequest || onSlideDuplicate || onSlidePublishTemplate || onSlideDelete);
+  const hasItemMenu = Boolean(onRenameRequest || onSlideDuplicate || onSlidePublishToLibrary || onSlideDelete);
   const navigate = (index: number, event: KeyboardEvent<HTMLDivElement>) => {
     let next = index;
     if (event.key === "ArrowDown" || event.key === "ArrowRight") next = Math.min(slides.length - 1, index + 1);
@@ -323,7 +323,7 @@ export function SlidesPanel({ slides, aspectRatio, title = "Product review", sub
             <Menu>
               <MenuRow label="Rename" leading={<Pencil size={14} />} onClick={() => { onRenameRequest?.(menu.index); setMenu(null); }} />
               <MenuRow label="Duplicate" leading={<Copy size={14} />} onClick={() => { onSlideDuplicate?.(menu.index); setMenu(null); }} />
-              {onSlidePublishTemplate && <MenuRow label="Publish as template" leading={<LayoutTemplate size={14} />} onClick={() => { onSlidePublishTemplate(menu.index); setMenu(null); }} />}
+              {onSlidePublishToLibrary && <MenuRow label="Publish to project library…" leading={<LayoutTemplate size={14} />} onClick={() => { onSlidePublishToLibrary(menu.index); setMenu(null); }} />}
               <MenuRow type="divider" />
               <MenuRow label="Delete" leading={<Trash2 size={14} />} destructive onClick={() => { onSlideDelete?.(menu.index); setMenu(null); }} />
             </Menu>

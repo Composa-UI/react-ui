@@ -1,6 +1,6 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Children, type ReactElement } from "react";
-import { act, create, type ReactTestInstance } from "react-test-renderer";
+import { act, create, type ReactTestInstance, type ReactTestRenderer } from "react-test-renderer";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ANCHORED_INSPECTOR_OVERLAY_COLLISION_PADDING,
@@ -238,6 +238,19 @@ describe("AnchoredInspectorOverlay runtime contract", () => {
     const header = Children.toArray(overlay.props.children)[0] as ReactElement<Record<string, unknown>>;
     expect(header.props["data-composa-inspector-dialog-drag-handle"]).toBe("");
     act(() => renderer!.unmount());
+  });
+
+  it("forwards the opt-in focus-preservation contract for passive floating chrome", () => {
+    let renderer!: ReactTestRenderer;
+    act(() => {
+      renderer = create(
+        <InspectorDialog open={false} onClose={() => undefined} ariaLabel="Preview" preserveFocusOnOpen>
+          <div>Preview</div>
+        </InspectorDialog>,
+      );
+    });
+    const overlay = renderer.root.findByType(AnchoredInspectorOverlay);
+    expect(overlay.props.preserveFocusOnOpen).toBe(true);
   });
 
   it("forwards the shared resize contract and renders one keyboard-addressable corner", () => {

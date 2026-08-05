@@ -9,7 +9,7 @@ import { EASING_PRESETS } from "./easing";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-// ── Row 60: sequence ranks, contained simultaneous groups, and plus-spaces ─────────
+// ── Row 60: sequence ranks, connected simultaneous groups, and plus-spaces ─────────
 const TWO_PULSES: ObjectAnimationItem[] = [
   { id: "p1", elementId: "logo", n: 1, name: "Logo", kind: "Action", duration: "1.2s", style: "pulse", buildDuration: "1200ms" },
   { id: "p2", elementId: "logo", n: 2, name: "Logo", kind: "Action", duration: "0.8s", style: "pulse", buildDuration: "800ms" },
@@ -33,16 +33,19 @@ describe("AnimatePanel — sequence ranks are the one grouping truth (row 60)", 
     act(() => renderer!.unmount());
   });
 
-  it("contains cards that share a rank, regardless of object ownership", () => {
+  it("connects cards that share one rank and renders that sequence number once", () => {
     const shared = [
       { ...TWO_PULSES[0], n: 1 },
       { ...TWO_PULSES[1], id: "accent", elementId: "accent", name: "Accent", n: 1 },
     ];
     const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={shared} />);
     expect(html).toContain('data-animation-shared-rank="1"');
+    expect(html).toContain('data-animation-sequence-connector="1"');
+    expect(html.match(/data-animation-sequence-branch=/g)).toHaveLength(2);
     expect(html.match(/data-animation-block-number="1"/g)).toHaveLength(1);
     expect(html).toContain('data-animation-card-id="p1"');
     expect(html).toContain('data-animation-card-id="accent"');
+    expect(html).not.toContain("rounded-c-md border border-c-border bg-c-bg-secondary p-[4px]");
   });
 
   it("does not restore the old same-object connector or delay-between model", () => {
@@ -381,8 +384,8 @@ describe("AnimatePanel — object tint and exact-card focus stay distinct (issue
   });
 });
 
-describe("AnimatePanel — contained rank and plus-space drag targets (issue #305 / row 60)", () => {
-  it("uses plus-spaces for sequence insertion and the contained rank target for simultaneous grouping", () => {
+describe("AnimatePanel — connected rank and plus-space drag targets (issue #305 / row 60)", () => {
+  it("uses plus-spaces for sequence insertion and the rank's With target for simultaneous grouping", () => {
     const reorders: Array<[string, string, "before" | "with" | "after"]> = [];
     let renderer: ReturnType<typeof create>;
     act(() => {

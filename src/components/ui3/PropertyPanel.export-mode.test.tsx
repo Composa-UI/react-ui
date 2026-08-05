@@ -59,13 +59,14 @@ describe("Export mode (owner feedback Row 63)", () => {
   it.each([
     { name: "expanded Static", props: { exportSettings: [{ ...settings[0], format: "JPG" as const, quality: 80 }] } },
     { name: "expanded Animated", props: { exportMode: "frame" as const, projectFrameRate: 30 as const } },
-  ])("bottom-aligns Remove export with the final field row in $name", ({ props }) => {
+  ])("bottom-aligns Remove export with the trailing input row in $name", ({ props }) => {
     const renderer = render(props);
     const remove = renderer.root.find(node => node.props?.label === "Remove export");
     const slot = remove.parent as ReactTestInstance;
 
     expect(slot.props["data-composa-export-remove-slot"]).toBe(true);
     expect(String(slot.props.className).split(/\s+/)).toContain("self-end");
+    expect(String(slot.props.className).split(/\s+/)).not.toEqual(expect.arrayContaining(["self-start", "pt-[17px]"]));
     expect(slot.parent?.children[slot.parent.children.length - 1]).toBe(slot);
 
     act(() => renderer.unmount());
