@@ -127,8 +127,7 @@ describe("image fill", () => {
   it("shows an explicit select control that actually calls the host picker", () => {
     const chooseImage = vi.fn();
     const renderer = render({ fillType: "image", onChooseImage: chooseImage });
-    const [upload] = host(renderer, instance =>
-      instance.type === "button" && String(renderToStaticMarkup(<>{instance.props.children}</>)).includes("Select image"));
+    const [upload] = byLabel(renderer, "Select image");
     expect(upload).toBeDefined();
     act(() => upload.props.onClick({}));
     expect(chooseImage).toHaveBeenCalledOnce();
@@ -178,14 +177,14 @@ describe("image fill", () => {
     act(() => sliders[0].props.onChange({ target: { value: "80" } }));
 
     const [exposure] = byLabel(renderer, "Exposure value");
-    expect(exposure.props.value).toBe("37");
+    expect(exposure.props.value).toBe(37);
     expect(exposure.props.disabled).toBe(true);
     act(() => exposure.props.onChange({ target: { value: "80" } }));
 
     const [diamond] = byLabel(renderer, "Exposure value keyframe");
     expect(diamond.props.disabled).toBe(true);
     expect(diamond.props["aria-pressed"]).toBe(true);
-    act(() => diamond.props.onClick({ stopPropagation: vi.fn() }));
+    act(() => diamond.props.onClick());
     expect(onToggle).not.toHaveBeenCalled();
     expect(onAdjust).not.toHaveBeenCalled();
     act(() => renderer.unmount());

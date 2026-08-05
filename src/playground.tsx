@@ -19,6 +19,7 @@ import { Modal, ModalBody, ModalFooter, ModalHeader } from "./components/ui3/Dia
 import { TeamDialog, type TeamMember, type TeamTab, type TeamRole } from "./components/ui3/TeamDialog";
 import { DeleteConfirmDialog } from "./components/ui3/DeleteConfirmDialog";
 import { ImageAdjustDialog } from "./components/ui3/ImageAdjustDialog";
+import { ColorDialog, type FillType, type GradientStop, type ImageAdjustments } from "./components/ui3/ColorDialog";
 import { Tooltip, TooltipProvider } from "./components/ui3/Tooltip";
 import { ComposaModeProvider } from "./components/ui3/useComposaMode";
 import { SegmentedControl } from "./components/ui3/SegmentedControl";
@@ -122,6 +123,71 @@ const ISSUE_67_ICON_ROWS: { label: string; type: LayerIconType; autoLayoutMode?:
   { label: "Ellipse", type: "ellipse" },
   { label: "Compatibility group", type: "group" },
 ];
+
+const ISSUE_206_STOPS: GradientStop[] = [
+  { id: "ink", position: 0, color: "112233", opacity: 100 },
+  { id: "brand", position: 100, color: "0D99FF", opacity: 72 },
+];
+
+/**
+ * #206 measured ColorDialog story. Query with mode=solid|gradient|image and
+ * media=empty|bound; every variant opens from a real 240px Inspector surface
+ * so the overlay/portal contract is exercised rather than bypassed.
+ */
+function Issue206ColorDialogFixture() {
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get("mode") === "gradient" ? "gradient" : params.get("mode") === "image" ? "image" : "solid";
+  const emptyMedia = params.get("media") === "empty";
+  const dark = params.get("theme") === "dark";
+  const [open, setOpen] = useState(true);
+  const [fillType, setFillType] = useState<FillType>(mode === "gradient" ? "linear" : mode);
+  const [stops, setStops] = useState(ISSUE_206_STOPS);
+  const [mediaFit, setMediaFit] = useState<"fill" | "fit" | "crop" | "tile">("crop");
+  const [adjustments, setAdjustments] = useState<ImageAdjustments>({
+    exposure: -44, contrast: 0, saturation: 0, temperature: 0, tint: 0, highlights: 0, shadows: 0,
+  });
+  return (
+    <main data-composa-mode={dark ? "dark" : undefined} data-composa-overlay-boundary
+      data-issue-206-color-dialog={mode}
+      className="flex h-screen w-screen bg-c-bg-secondary text-c-text">
+      <div className="flex-1" />
+      <aside data-composa-inspector-surface className="h-full w-[240px] shrink-0 border-l border-c-border bg-c-bg p-[8px]">
+        <ColorDialog
+          open={open}
+          onClose={() => setOpen(false)}
+          trigger={<button type="button" aria-label="Open measured Color dialog" onClick={() => setOpen(true)}
+            className="h-[24px] w-full rounded-c-md bg-c-bg-secondary px-[8px] text-left text-[11px]">Open Fill</button>}
+          fillType={fillType}
+          onFillTypeChange={setFillType}
+          hex="336699"
+          opacity={84}
+          gradientStops={stops}
+          onStopsChange={setStops}
+          onFlipGradient={() => setStops(current => current.map(stop => ({ ...stop, position: 100 - stop.position })))}
+          onRotateGradient={() => undefined}
+          onCreateStyleOrVariable={() => undefined}
+          mediaFit={mediaFit}
+          onMediaFitChange={setMediaFit}
+          onRotateMedia={() => undefined}
+          onChooseImage={() => undefined}
+          imageSourceLabel={!emptyMedia && mode === "image" ? "product-review.png" : undefined}
+          imagePreviewUrl={!emptyMedia && mode === "image" ? cropPlaygroundMedia : undefined}
+          onEditCrop={!emptyMedia && mode === "image" ? () => undefined : undefined}
+          imageExposure={adjustments.exposure}
+          imageContrast={adjustments.contrast}
+          imageSaturation={adjustments.saturation}
+          imageTemperature={adjustments.temperature}
+          imageTint={adjustments.tint}
+          imageHighlights={adjustments.highlights}
+          imageShadows={adjustments.shadows}
+          onImageAdjustmentChange={!emptyMedia && mode === "image"
+            ? (adjustment, value) => setAdjustments(current => ({ ...current, [adjustment]: value }))
+            : undefined}
+        />
+      </aside>
+    </main>
+  );
+}
 
 function Issue67IconMatrix({ mode }: { mode: "light" | "dark" }) {
   return (
@@ -918,6 +984,10 @@ export default function Playground() {
 
   if (view === "share-289") {
     return <Share289Fixture />;
+  }
+
+  if (view === "issue-206-color-dialog") {
+    return <Issue206ColorDialogFixture />;
   }
 
   if (view === "issue-66-fixtures") {

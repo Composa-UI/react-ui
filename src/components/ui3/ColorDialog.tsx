@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, type ReactElement } from "react";
 import { clsx } from "clsx";
-import { Image, Pipette, Plus, Minus, RotateCcw, Disc, Diamond, Search, LayoutGrid, ChevronDown, X, SquarePlay, SquareDashedMousePointer } from "lucide-react";
+import { Image, ImagePlus, Pipette, Plus, Minus, RotateCcw, RotateCw, ArrowLeftRight, Disc, Diamond, Search, LayoutGrid, ChevronDown, X, SquarePlay, SquareDashedMousePointer, Crop } from "lucide-react";
 import { ModalBody, ModalDivider } from "./Dialog";
 import { InspectorDialog } from "./InspectorDialog";
 import type { AnchoredInspectorOverlayAlign } from "./AnchoredInspectorOverlay";
@@ -44,6 +44,15 @@ export type ImageAdjustments = Record<ImageAdjustment, number>;
 export const COLOR_DIALOG_WIDTH = 240;
 export const COLOR_DIALOG_INSPECTOR_SIDE_OFFSET = 24;
 export const COLOR_DIALOG_NESTED_EFFECT_SIDE_OFFSET = 100;
+/** Measured Editor-Study geometry for issue #206. Kept public so consumers and proof can share one contract. */
+export const COLOR_DIALOG_REFERENCE_GEOMETRY = Object.freeze({
+  width: 240,
+  headerHeight: 40,
+  toolbarHeight: 41,
+  solid: { height: 489, bodyHeight: 408, pickerSize: 208, formatRowHeight: 40 },
+  gradient: { height: 297, bodyHeight: 216, typeRowHeight: 48, barWidth: 208, barHeight: 32, stopRowHeight: 32 },
+  image: { height: 577, bodyHeight: 496, fitRowHeight: 48, previewSize: 208, adjustmentRowHeight: 32, adjustmentSliderWidth: 120 },
+});
 
 export interface ColorDialogProps {
   open: boolean;
@@ -65,6 +74,9 @@ export interface ColorDialogProps {
   onHexChange?: (h: string) => void;
   gradientStops?: GradientStop[];
   onStopsChange?: (stops: GradientStop[]) => void;
+  /** Host-backed reference toolbar actions. Omitted callbacks render no inert action. */
+  onFlipGradient?: () => void;
+  onRotateGradient?: () => void;
   /** Stable stop-id keyed motion bindings. Omitted controls render no diamond. */
   gradientStopKeyframes?: Record<string, GradientStopKeyframeControls>;
   /** Library groups for the Libraries tab. Defaults to demo data so the
@@ -122,6 +134,8 @@ export interface ColorDialogProps {
   mediaFit?: MediaFillFit;
   /** Host mutation for the selected media fill's fit mode. */
   onMediaFitChange?: (fit: MediaFillFit) => void;
+  /** Rotates the bound media fill by 90 degrees in the host document. */
+  onRotateMedia?: () => void;
   /** Enters the host-owned canvas crop workflow for a bound media fill. */
   onEditCrop?: () => void;
   /**
@@ -358,32 +372,49 @@ function AdjustRow({ label, value, onChange, keyframe, disabled = false }: {
   disabled?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-[8px] px-[16px] h-[28px]">
-      <span className={clsx(FONT, "text-[11px] font-[450] text-c-text-secondary w-[88px] shrink-0 truncate")}>
+    <div data-composa-image-adjustment-row={label.toLowerCase()} className="flex h-[32px] items-center px-[16px]">
+      <span className={clsx(FONT, "w-[64px] shrink-0 truncate text-[11px] font-[450] text-c-text-secondary")}>
         {label}
       </span>
-      <div className="min-w-0 flex-1"><Slider value={value} onChange={disabled ? undefined : onChange} min={-100} max={100} defaultValue={0} disabled={disabled} /></div>
-      <div className="w-[68px] shrink-0"><NumericInput ariaLabel={`${label} value`} value={value} onChange={disabled ? undefined : onChange}
-        min={-100} max={100} size="small" disabled={disabled} keyframe={keyframe} /></div>
+      <div className={clsx("ml-[24px] shrink-0", keyframe ? "w-[88px]" : "w-[120px]")}>
+        <Slider ariaLabel={`${label} value`} value={value} onChange={disabled ? undefined : onChange}
+          min={-100} max={100} defaultValue={0} disabled={disabled} />
+      </div>
+      {keyframe && <button
+        type="button"
+        aria-label={`${label} value keyframe`}
+        aria-pressed={keyframe.active}
+        disabled={disabled}
+        onClick={() => { if (!disabled) keyframe.onToggle(); }}
+        className={clsx(
+          "ml-[8px] flex size-[24px] shrink-0 items-center justify-center rounded-c-sm text-c-icon-secondary hover:bg-c-bg-hover",
+          keyframe.active && "bg-c-bg-selected text-c-text-brand",
+          disabled && "cursor-not-allowed opacity-60 hover:bg-transparent",
+        )}
+      >
+        <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active && "fill-current")} />
+      </button>}
     </div>
   );
 }
 
 const MEDIA_FIT_LABELS: Record<MediaFillFit, string> = { fill: "Fill", fit: "Fit", crop: "Crop", tile: "Tile" };
 
-function MediaFitControl({ kind, value, onChange, onEditCrop }: {
+function MediaFitControl({ kind, value, onChange, onEditCrop, onRotate, selected, onChoose }: {
   kind: "image" | "video";
   value: MediaFillFit;
   onChange?: (fit: MediaFillFit) => void;
   onEditCrop?: () => void;
+  onRotate?: () => void;
+  selected: boolean;
+  onChoose?: () => void;
 }) {
-  if (!onChange) return null;
+  if (!onChange && !onChoose && !onEditCrop && !onRotate) return null;
   const options: MediaFillFit[] = kind === "image" ? ["fill", "fit", "crop", "tile"] : ["fill", "fit", "crop"];
-  return <div className="flex h-[40px] items-center gap-[8px] border-b border-c-border px-[16px]">
-    <span className={clsx(FONT, "w-[48px] shrink-0 text-[11px] font-[450] text-c-text-secondary")}>Fit</span>
-    <PopoverMenu
+  return <div data-composa-media-fit-row={kind} className="flex h-[48px] items-center pl-[16px] pr-[8px]">
+    {onChange && <PopoverMenu
       align="left"
-      className="min-w-0 flex-1"
+      className="w-[96px] shrink-0"
       trigger={<Dropdown ariaLabel={`${kind === "image" ? "Image" : "Video"} fit`} value={MEDIA_FIT_LABELS[value]} fullWidth />}
     >
       {close => <Menu>
@@ -395,26 +426,35 @@ function MediaFitControl({ kind, value, onChange, onEditCrop }: {
           onClick={() => { onChange(option); close(); }}
         />)}
       </Menu>}
-    </PopoverMenu>
-    {value === "crop" && onEditCrop && <Button variant="Secondary" label="Edit crop" onClick={onEditCrop} />}
+    </PopoverMenu>}
+    <div className="ml-auto flex items-center gap-[4px]">
+      {onChoose && <Btn label={`${selected ? "Replace" : "Select"} ${kind}`} onClick={onChoose}>
+        <ImagePlus size={14} strokeWidth={1.5} />
+      </Btn>}
+      {value === "crop" && onEditCrop && <Btn label="Edit crop" onClick={onEditCrop}>
+        <Crop size={14} strokeWidth={1.5} />
+      </Btn>}
+      {onRotate && <Btn label={`Rotate ${kind} 90 degrees`} onClick={onRotate}>
+        <RotateCw size={14} strokeWidth={1.5} />
+      </Btn>}
+    </div>
   </div>;
 }
 
-function MediaFillPreview({ kind, sourceLabel, previewUrl, fit, onChoose }: {
+function MediaFillPreview({ kind, sourceLabel, previewUrl, fit }: {
   kind: "image" | "video";
   sourceLabel?: string;
   previewUrl?: string;
   fit: MediaFillFit;
-  onChoose?: () => void;
 }) {
   const selected = !!sourceLabel;
-  const label = selected ? `Replace ${kind}` : `Select ${kind}`;
   return <>
     <div
       data-composa-media-fill-preview={kind}
       data-state={previewUrl ? "bound" : "empty"}
       data-fit={fit}
-      className="relative mx-[16px] mt-[16px] mb-[8px] aspect-square overflow-hidden rounded-c-md bg-c-bg-secondary ring-1 ring-inset ring-c-border"
+      aria-label={selected ? `${kind} preview: ${sourceLabel}` : `${kind} preview: empty`}
+      className="relative mx-[16px] size-[208px] shrink-0 overflow-hidden rounded-c-md bg-c-bg-secondary ring-1 ring-inset ring-c-border"
       style={!previewUrl ? {
         backgroundImage: "repeating-conic-gradient(var(--color-bg-secondary) 0% 25%, var(--color-bg) 0% 50%)",
         backgroundSize: "16px 16px",
@@ -426,13 +466,7 @@ function MediaFillPreview({ kind, sourceLabel, previewUrl, fit, onChoose }: {
       {!previewUrl && <div className="absolute inset-0 flex items-center justify-center text-c-icon-secondary">
         {kind === "image" ? <Image size={24} strokeWidth={1.5} /> : <SquarePlay size={24} strokeWidth={1.5} />}
       </div>}
-      {onChoose && <div className="absolute inset-x-0 bottom-[12px] flex justify-center px-[12px]">
-        <Button variant="Primary" label={label} onClick={onChoose} />
-      </div>}
     </div>
-    {sourceLabel && <span className={clsx(FONT, "block truncate px-[16px] pb-[8px] text-[11px] font-[450] text-c-text")}>
-      {sourceLabel}
-    </span>}
   </>;
 }
 
@@ -458,9 +492,9 @@ function StopRow({
   onFocusHex: (id: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-[8px] px-[16px] h-[32px]">
+    <div data-composa-gradient-stop-row={index + 1} className="flex h-[32px] items-center gap-[8px] pl-[16px] pr-[8px]">
       {/* position % */}
-      <div className={keyframes?.position ? "w-[76px]" : "w-[52px]"}>
+      <div className={keyframes?.position ? "w-[72px]" : "w-[48px]"}>
         <NumericInput
           ariaLabel={`Stop ${index + 1} position`}
           value={stop.position}
@@ -536,6 +570,8 @@ export function ColorDialog({
   onHexChange,
   gradientStops: stopsProp,
   onStopsChange,
+  onFlipGradient,
+  onRotateGradient,
   gradientStopKeyframes,
   libraries = MOCK_LIBRARY,
   onSelectLibraryColor,
@@ -562,6 +598,7 @@ export function ColorDialog({
   onChooseVideo,
   mediaFit = "fill",
   onMediaFitChange,
+  onRotateMedia,
   onEditCrop,
   dropZoneSources = [],
   dropZoneSourceId,
@@ -741,7 +778,9 @@ export function ColorDialog({
     >
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="flex h-[40px] shrink-0 items-center gap-[4px] border-b border-c-border px-[8px]">
+      <div data-composa-color-dialog-header
+        data-composa-color-dialog-mode={fillType === "solid" ? "solid" : isGradient ? "gradient" : fillType}
+        className="flex h-[40px] shrink-0 items-center gap-[4px] border-b border-c-border px-[8px]">
         <h2 className="sr-only">Color</h2>
         <div className="flex min-w-0 flex-1 items-center overflow-hidden">{headerTabs}</div>
         {(stylesAvailable || variablesAvailable) && onCreateStyleOrVariable && (
@@ -772,7 +811,7 @@ export function ColorDialog({
           {/* Toolbar: fill-type tabs. The trailing utility icons are gone — all
               three (Blend mode, contrast check, Swap gradient) rendered with no
               onClick, so the row promised three features it did not have. */}
-          {!solidOnly && <div className="flex items-center px-[8px] h-[40px] border-b border-c-border shrink-0">
+          {!solidOnly && <div data-composa-color-dialog-toolbar className="flex h-[41px] shrink-0 items-center border-b border-c-border px-[8px]">
             {/* Three fill-type tabs — gradient TYPE (linear/radial/…) lives in the dropdown, not here */}
             <div className="flex items-center gap-[2px]">
               <Btn label="Solid" active={fillType === "solid"} onClick={() => handleFillType("solid")}>
@@ -797,41 +836,11 @@ export function ColorDialog({
             </div>
           </div>}
 
-          {/* Gradient type selector — a menu, not a cycle. Pressing the control
-              used to advance linear→radial→angular→diamond, so choosing a type
-              meant guessing how many presses away it was and every press
-              committed a fill change the user had not asked for. */}
-          {isGradient && (
-            <div className="flex items-center gap-[8px] px-[8px] h-[40px] border-b border-c-border shrink-0">
-              <PopoverMenu
-                align="left"
-                trigger={
-                  <Dropdown
-                    ariaLabel="Gradient type"
-                    value={GRADIENT_TYPES.find(type => type.value === fillType)?.label}
-                    size="default"
-                    className="w-[96px]"
-                  />
-                }
-              >
-                {close => (
-                  <Menu>
-                    {GRADIENT_TYPES.map(type => (
-                      <MenuRow
-                        key={type.value}
-                        label={type.label}
-                        checked={type.value === fillType}
-                        selectionRole="radio"
-                        onClick={() => { handleFillType(type.value); close(); }}
-                      />
-                    ))}
-                  </Menu>
-                )}
-              </PopoverMenu>
-            </div>
-          )}
-
-          <ModalBody scrollable>
+          <ModalBody scrollable className={clsx(
+            fillType === "solid" && "h-[408px]",
+            isGradient && "h-[216px]",
+            fillType === "image" && onImageAdjustmentChange && "h-[496px]",
+          )}>
 
         {/* ── SOLID ──────────────────────────────────────────────────────── */}
         {fillType === "solid" && (
@@ -839,6 +848,7 @@ export function ColorDialog({
             {/* Color canvas — draggable saturation/brightness picker */}
             <div
               ref={canvasRef}
+              data-composa-color-picker
               className="relative mx-[16px] mt-[16px] cursor-crosshair touch-none select-none"
               style={{ height: 208, width: 208 }}
               onPointerDown={e => { setDragging(true); updatePicker(e); try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* synthetic */ } }}
@@ -862,7 +872,7 @@ export function ColorDialog({
             </div>
 
             {/* Eyedropper + hue + opacity sliders */}
-            <div className="flex items-center gap-[12px] px-[16px] pt-[12px] pb-[8px]">
+            <div data-composa-solid-slider-row className="flex h-[60px] items-center gap-[12px] px-[16px]">
               <Btn label="Sample color">
                 <Pipette size={14} strokeWidth={1.5} />
               </Btn>
@@ -881,7 +891,7 @@ export function ColorDialog({
             </div>
 
             {/* Format dropdown (its OWN control) + value using the proper input, not combined */}
-            <div className="flex items-center gap-[8px] px-[16px] pb-[8px]">
+            <div data-composa-solid-format-row className="flex h-[40px] items-center gap-[8px] px-[16px]">
               <PopoverMenu
                 align="left"
                 className="w-[64px] shrink-0"
@@ -923,24 +933,24 @@ export function ColorDialog({
               )}
             </div>
 
-            <ModalDivider />
+            <div className="h-[8px]" />
 
-            {/* Swatch set selector */}
-            <div className="px-[16px] pt-[12px] pb-[4px]">
-              <Dropdown value="On this page" size="default" className="w-full" />
-            </div>
+            <div data-composa-solid-swatches className="h-[76px] border-t border-c-border">
+              <div className="h-[36px] px-[16px] pt-[12px]">
+                <Dropdown value="On this page" size="default" className="w-full" />
+              </div>
 
-            {/* Color swatches — injected document colors; click applies */}
-            <div className="flex flex-wrap gap-[8px] px-[16px] py-[8px] pb-[16px]">
-              {swatches.map(c => (
-                <button
-                  key={c}
-                  className="rounded-[3px] size-[16px] ring-1 ring-inset ring-[rgba(0,0,0,0.1)]"
-                  style={{ backgroundColor: c }}
-                  aria-label={c}
-                  onClick={() => handleHex(c.replace("#", ""))}
-                />
-              ))}
+              <div className="flex h-[40px] flex-wrap items-center gap-[8px] px-[16px]">
+                {swatches.map(c => (
+                  <button
+                    key={c}
+                    className="rounded-[3px] size-[16px] ring-1 ring-inset ring-[rgba(0,0,0,0.1)]"
+                    style={{ backgroundColor: c }}
+                    aria-label={c}
+                    onClick={() => handleHex(c.replace("#", ""))}
+                  />
+                ))}
+              </div>
             </div>
           </>
         )}
@@ -948,9 +958,37 @@ export function ColorDialog({
         {/* ── GRADIENT ──────────────────────────────────────────────────── */}
         {isGradient && (
           <>
-            {/* Gradient preview bar — stop handles on TOP (caret points down), squarish bar */}
-            <div className="px-[16px] pt-[8px] pb-[8px]">
-              <div ref={stopTrackRef} className="relative h-[34px]">
+            <div data-composa-gradient-type-row className="flex h-[48px] shrink-0 items-center pl-[16px] pr-[8px]">
+              <PopoverMenu
+                align="left"
+                className="w-[96px] shrink-0"
+                trigger={<Dropdown ariaLabel="Gradient type"
+                  value={GRADIENT_TYPES.find(type => type.value === fillType)?.label}
+                  size="default" fullWidth />}
+              >
+                {close => <Menu>{GRADIENT_TYPES.map(type => <MenuRow
+                  key={type.value}
+                  label={type.label}
+                  checked={type.value === fillType}
+                  selectionRole="radio"
+                  onClick={() => { handleFillType(type.value); close(); }}
+                />)}</Menu>}
+              </PopoverMenu>
+              <div className="ml-auto flex items-center gap-[4px]">
+                {onFlipGradient && <Btn label="Flip gradient" onClick={onFlipGradient}>
+                  <ArrowLeftRight size={14} strokeWidth={1.5} />
+                </Btn>}
+                {onRotateGradient && <Btn label="Rotate gradient" onClick={onRotateGradient}>
+                  <RotateCw size={14} strokeWidth={1.5} />
+                </Btn>}
+              </div>
+            </div>
+
+            {/* The reference puts the 24px handles 16px above a 208x32 bar. */}
+            <div className="relative h-[48px] px-[16px] pt-[16px]">
+              <div ref={stopTrackRef} data-composa-gradient-preview className="relative h-[32px]">
+                <div className="absolute inset-0 rounded-c-sm ring-1 ring-inset ring-[rgba(0,0,0,0.1)]"
+                  style={{ background: gradientPreview }} />
                 {stops.map((stop, index) => (
                   <GradientStopHandle
                     key={stop.id}
@@ -958,7 +996,7 @@ export function ColorDialog({
                     ariaLabel={`Stop ${index + 1}`}
                     position={stop.position}
                     selected={stop.id === selectedStopId}
-                    style={{ position: "absolute", left: `calc(${stop.position}% - 12px)`, top: 0 }}
+                    style={{ position: "absolute", left: `calc(${stop.position}% - 12px)`, top: -16 }}
                     onPointerDown={beginStopDrag(stop.id)}
                     onPointerMove={moveStopDrag}
                     onPointerUp={endStopDrag}
@@ -967,19 +1005,10 @@ export function ColorDialog({
                   />
                 ))}
               </div>
-              {/* Every stop, at its own position — the bar used to interpolate
-                  the first colour straight to the last, so moving a stop or
-                  adding one in between changed nothing anybody could see. */}
-              <div
-                className="h-[16px] rounded-c-sm ring-1 ring-inset ring-[rgba(0,0,0,0.1)]"
-                style={{ background: gradientPreview }}
-              />
             </div>
 
-            <ModalDivider />
-
             {/* Stops header */}
-            <div className="flex items-center justify-between px-[16px] h-[32px]">
+            <div data-composa-gradient-stops-header className="flex h-[40px] items-center justify-between pl-[16px] pr-[8px]">
               <span className={clsx(FONT, "text-[11px] font-[550] text-c-text")}>Stops</span>
               <button
                 onClick={handleStopAdd}
@@ -989,7 +1018,7 @@ export function ColorDialog({
               </button>
             </div>
 
-            <div ref={stopListRef}>
+            <div ref={stopListRef} className="pt-[4px]">
               {stops.map((stop, index) => (
                 <StopRow
                   key={stop.id}
@@ -1005,29 +1034,35 @@ export function ColorDialog({
               ))}
             </div>
 
-            <div className="pb-[16px]" />
+            <div className="pb-[12px]" />
           </>
         )}
 
         {/* ── IMAGE ─────────────────────────────────────────────────────── */}
         {fillType === "image" && (
           <>
-            <MediaFitControl kind="image" value={mediaFit} onChange={onMediaFitChange} onEditCrop={imageSourceLabel && onEditCrop ? () => { onEditCrop(); onClose(); } : undefined} />
-            <MediaFillPreview kind="image" sourceLabel={imageSourceLabel} previewUrl={imagePreviewUrl} fit={mediaFit} onChoose={onChooseImage} />
+            <MediaFitControl kind="image" value={mediaFit} onChange={onMediaFitChange}
+              selected={!!imageSourceLabel} onChoose={onChooseImage}
+              onRotate={onRotateMedia}
+              onEditCrop={imageSourceLabel && onEditCrop ? () => { onEditCrop(); onClose(); } : undefined} />
+            <MediaFillPreview kind="image" sourceLabel={imageSourceLabel} previewUrl={imagePreviewUrl} fit={mediaFit} />
 
             {/* Image adjustments — same rule: every slider was handed a value
                 and no onChange, so each drag was thrown away. Shown only when
                 the host can receive the change. */}
             {onImageAdjustmentChange && (
-              <div className="flex flex-col gap-[2px] pb-[16px]">
-                <AdjustRow label="Exposure"    value={imageExposure}    disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.exposure} onChange={v => onImageAdjustmentChange("exposure", v)} />
-                <AdjustRow label="Contrast"    value={imageContrast}    disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.contrast} onChange={v => onImageAdjustmentChange("contrast", v)} />
-                <AdjustRow label="Saturation"  value={imageSaturation}  disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.saturation} onChange={v => onImageAdjustmentChange("saturation", v)} />
-                <AdjustRow label="Temperature" value={imageTemperature} disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.temperature} onChange={v => onImageAdjustmentChange("temperature", v)} />
-                <AdjustRow label="Tint"        value={imageTint}        disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.tint} onChange={v => onImageAdjustmentChange("tint", v)} />
-                <AdjustRow label="Highlights"  value={imageHighlights}  disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.highlights} onChange={v => onImageAdjustmentChange("highlights", v)} />
-                <AdjustRow label="Shadows"     value={imageShadows}     disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.shadows} onChange={v => onImageAdjustmentChange("shadows", v)} />
-              </div>
+              <>
+                <div data-composa-image-adjustments className="flex h-[232px] flex-col pt-[8px]">
+                  <AdjustRow label="Exposure"    value={imageExposure}    disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.exposure} onChange={v => onImageAdjustmentChange("exposure", v)} />
+                  <AdjustRow label="Contrast"    value={imageContrast}    disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.contrast} onChange={v => onImageAdjustmentChange("contrast", v)} />
+                  <AdjustRow label="Saturation"  value={imageSaturation}  disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.saturation} onChange={v => onImageAdjustmentChange("saturation", v)} />
+                  <AdjustRow label="Temperature" value={imageTemperature} disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.temperature} onChange={v => onImageAdjustmentChange("temperature", v)} />
+                  <AdjustRow label="Tint"        value={imageTint}        disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.tint} onChange={v => onImageAdjustmentChange("tint", v)} />
+                  <AdjustRow label="Highlights"  value={imageHighlights}  disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.highlights} onChange={v => onImageAdjustmentChange("highlights", v)} />
+                  <AdjustRow label="Shadows"     value={imageShadows}     disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.shadows} onChange={v => onImageAdjustmentChange("shadows", v)} />
+                </div>
+                <div aria-hidden className="h-[8px] shrink-0" />
+              </>
             )}
           </>
         )}
@@ -1078,8 +1113,11 @@ export function ColorDialog({
 
         {fillType === "video" && videoAvailable && (
           <>
-            <MediaFitControl kind="video" value={mediaFit === "tile" ? "fill" : mediaFit} onChange={onMediaFitChange} onEditCrop={videoSourceLabel && onEditCrop ? () => { onEditCrop(); onClose(); } : undefined} />
-            <MediaFillPreview kind="video" sourceLabel={videoSourceLabel} previewUrl={videoPreviewUrl} fit={mediaFit === "tile" ? "fill" : mediaFit} onChoose={onChooseVideo} />
+            <MediaFitControl kind="video" value={mediaFit === "tile" ? "fill" : mediaFit} onChange={onMediaFitChange}
+              selected={!!videoSourceLabel} onChoose={onChooseVideo}
+              onRotate={onRotateMedia}
+              onEditCrop={videoSourceLabel && onEditCrop ? () => { onEditCrop(); onClose(); } : undefined} />
+            <MediaFillPreview kind="video" sourceLabel={videoSourceLabel} previewUrl={videoPreviewUrl} fit={mediaFit === "tile" ? "fill" : mediaFit} />
           </>
         )}
           </ModalBody>
