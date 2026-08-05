@@ -533,7 +533,13 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                 const afterPlacement = next ? "before" as const : "after" as const;
                 const withActive = !!withTargetId && dropTarget?.targetId === withTargetId && dropTarget.placement === "with";
                 return (
-                  <div key={group.rank} data-animation-sequence-rank={group.rank} className="flex flex-col">
+                  <div
+                    key={group.rank}
+                    data-animation-sequence-rank={group.rank}
+                    data-animation-sequence-group-drop={withTargetId ? "with" : undefined}
+                    className="flex flex-col"
+                    {...(withTargetId ? targetHandlers(withTargetId, "with") : {})}
+                  >
                     <BlockNumberLabel n={group.rank} />
                     <div
                       data-animation-shared-rank={shared ? group.rank : undefined}
