@@ -465,7 +465,7 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                   horizontal space: the card sits FLUSH at the container's left edge at
                   rest, and the grip appears on hover (vertically centered on the 32px card)
                   without shifting the card. Owner refinement: no build-order number label. */}
-              <button type="button" draggable={!!callbacks?.onReorder} aria-label={`Drag ${a.name} animation`} className="hidden group-hover:flex absolute -left-[16px] top-[8px] size-[16px] items-center justify-center cursor-grab text-c-icon-secondary"
+              <button type="button" draggable={!!callbacks?.onReorder} aria-label={`Drag ${a.name} animation`} className={clsx(dragged === id ? "flex" : "hidden group-hover:flex", "absolute -left-[16px] top-[8px] size-[16px] items-center justify-center cursor-grab text-c-icon-secondary")}
                 onDragStart={event => {
                   setDragged(id);
                   setDropTarget(null);
