@@ -36,6 +36,8 @@ export type SliderHandleVariant = "fill" | "stroke" | "chit";
 export type SliderTrackVariant  = "default" | "gradient" | "alpha";
 
 interface SliderProps {
+  /** Accessible name for the native range input when its visible label lives outside this primitive. */
+  ariaLabel?: string;
   value?: number;
   defaultValue?: number;
   min?: number;
@@ -117,6 +119,7 @@ function Handle({
 // ─── Slider ───────────────────────────────────────────────────────────────────
 
 export function Slider({
+  ariaLabel,
   value,
   defaultValue = 50,
   min = 0,
@@ -263,6 +266,7 @@ export function Slider({
       {/* ── Native input (interaction + a11y) ────────────────────────────── */}
       <input
         id={id}
+        aria-label={ariaLabel}
         type="range"
         min={min}
         max={max}

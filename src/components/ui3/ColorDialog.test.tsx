@@ -101,9 +101,9 @@ describe("ColorDialog anchored inspector contract", () => {
     expect(available).toContain('aria-label="Video"');
     expect(available).toContain('data-composa-media-fill-preview="video"');
     expect(available).toContain('data-state="empty"');
-    expect(available).toContain("aspect-square");
+    expect(available).toContain("size-[208px]");
     expect(available).toContain("lucide-square-play");
-    expect(available).toContain(">Select video<");
+    expect(available).toContain('aria-label="Select video"');
   });
 
   it.each([
@@ -122,10 +122,10 @@ describe("ColorDialog anchored inspector contract", () => {
     );
     expect(html).toContain(`data-composa-media-fill-preview="${kind}"`);
     expect(html).toContain('data-state="bound"');
-    expect(html).toContain("aspect-square");
+    expect(html).toContain("size-[208px]");
     expect(html).toContain(`src="${previewUrl}"`);
     expect(html).toContain(sourceLabel);
-    expect(html).toContain(`>Replace ${kind}<`);
+    expect(html).toContain(`aria-label="Replace ${kind}"`);
   });
 
   it("projects persisted renderer-backed fit modes into both media previews", () => {
@@ -153,12 +153,12 @@ describe("ColorDialog anchored inspector contract", () => {
     let renderer!: ReactTestRenderer;
     act(() => { renderer = create(<ColorDialog open onClose={onClose} trigger={<button>Color</button>} fillType="image" mediaFit="crop"
       onMediaFitChange={() => undefined} imageSourceLabel="cover.png" imagePreviewUrl="blob:image" onEditCrop={onEditCrop} />); });
-    const edit = renderer.root.findByProps({ label: "Edit crop" });
+    const edit = renderer.root.findByProps({ "aria-label": "Edit crop" });
     act(() => edit.props.onClick());
     expect(onEditCrop).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalledOnce();
     act(() => renderer.update(<ColorDialog open onClose={onClose} trigger={<button>Color</button>} fillType="image" mediaFit="crop"
       onMediaFitChange={() => undefined} onEditCrop={onEditCrop} />));
-    expect(renderer.root.findAll(node => node.props.label === "Edit crop")).toHaveLength(0);
+    expect(renderer.root.findAll(node => node.props["aria-label"] === "Edit crop")).toHaveLength(0);
   });
 });

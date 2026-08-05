@@ -113,6 +113,22 @@ describe("controls with nothing behind them are not rendered", () => {
     expect(create).toHaveBeenCalledOnce();
     act(() => renderer.unmount());
   });
+
+  it("renders gradient transform actions only for host commands and invokes each command", () => {
+    expect(html({ fillType: "linear" })).not.toContain('aria-label="Flip gradient"');
+    expect(html({ fillType: "linear" })).not.toContain('aria-label="Rotate gradient"');
+
+    const onFlipGradient = vi.fn();
+    const onRotateGradient = vi.fn();
+    const renderer = render({ fillType: "linear", onFlipGradient, onRotateGradient });
+    const [flip] = byLabel(renderer, "Flip gradient");
+    const [rotate] = byLabel(renderer, "Rotate gradient");
+    act(() => flip.props.onClick());
+    act(() => rotate.props.onClick());
+    expect(onFlipGradient).toHaveBeenCalledOnce();
+    expect(onRotateGradient).toHaveBeenCalledOnce();
+    act(() => renderer.unmount());
+  });
 });
 
 // ── Item 1: explicit image selection + adjustments ───────────────────────────
@@ -127,11 +143,21 @@ describe("image fill", () => {
   it("shows an explicit select control that actually calls the host picker", () => {
     const chooseImage = vi.fn();
     const renderer = render({ fillType: "image", onChooseImage: chooseImage });
-    const [upload] = host(renderer, instance =>
-      instance.type === "button" && String(renderToStaticMarkup(<>{instance.props.children}</>)).includes("Select image"));
+    const [upload] = byLabel(renderer, "Select image");
     expect(upload).toBeDefined();
     act(() => upload.props.onClick({}));
     expect(chooseImage).toHaveBeenCalledOnce();
+    act(() => renderer.unmount());
+  });
+
+  it("renders media rotation only for a host command and invokes it", () => {
+    expect(html({ fillType: "image", onChooseImage: () => undefined })).not.toContain('aria-label="Rotate image 90 degrees"');
+
+    const onRotateMedia = vi.fn();
+    const renderer = render({ fillType: "image", onChooseImage: () => undefined, onRotateMedia });
+    const [rotate] = byLabel(renderer, "Rotate image 90 degrees");
+    act(() => rotate.props.onClick());
+    expect(onRotateMedia).toHaveBeenCalledOnce();
     act(() => renderer.unmount());
   });
 
@@ -178,14 +204,14 @@ describe("image fill", () => {
     act(() => sliders[0].props.onChange({ target: { value: "80" } }));
 
     const [exposure] = byLabel(renderer, "Exposure value");
-    expect(exposure.props.value).toBe("37");
+    expect(exposure.props.value).toBe(37);
     expect(exposure.props.disabled).toBe(true);
     act(() => exposure.props.onChange({ target: { value: "80" } }));
 
     const [diamond] = byLabel(renderer, "Exposure value keyframe");
     expect(diamond.props.disabled).toBe(true);
     expect(diamond.props["aria-pressed"]).toBe(true);
-    act(() => diamond.props.onClick({ stopPropagation: vi.fn() }));
+    act(() => diamond.props.onClick());
     expect(onToggle).not.toHaveBeenCalled();
     expect(onAdjust).not.toHaveBeenCalled();
     act(() => renderer.unmount());

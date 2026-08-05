@@ -4,11 +4,16 @@ import { describe, expect, it, vi } from "vitest";
 import type { ColorDialogProps } from "./ColorDialog";
 import { PropertyPanel } from "./PropertyPanel";
 
-const capture = vi.hoisted(() => ({ props: undefined as ColorDialogProps | undefined }));
+const capture = vi.hoisted(() => ({
+  props: undefined as ColorDialogProps | undefined,
+  backgroundProps: undefined as ColorDialogProps | undefined,
+}));
 
 vi.mock("./ColorDialog", () => ({
   ColorDialog: (props: ColorDialogProps) => {
     capture.props = props;
+    const trigger = props.trigger as ReactElement<{ ariaLabel?: string }>;
+    if (trigger.props.ariaLabel?.startsWith("Background")) capture.backgroundProps = props;
     return <div data-test-dialog="fill-color">{props.trigger as ReactElement}</div>;
   },
 }));
@@ -17,6 +22,9 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
   it("forwards every detailed fill value and emits entry-scoped callbacks", () => {
     const onType = vi.fn();
     const onStops = vi.fn();
+    const onFlipGradient = vi.fn();
+    const onRotateGradient = vi.fn();
+    const onRotateMedia = vi.fn();
     const onImage = vi.fn();
     const onVideo = vi.fn();
     const onAdjust = vi.fn();
@@ -49,6 +57,9 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
         }]}
         onFillTypeChange={onType}
         onFillGradientStopsChange={onStops}
+        onFlipFillGradient={onFlipGradient}
+        onRotateFillGradient={onRotateGradient}
+        onRotateFillMedia={onRotateMedia}
         onChooseFillImage={onImage}
         onChooseFillVideo={onVideo}
         onFillImageAdjustmentChange={onAdjust}
@@ -75,6 +86,9 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
 
     act(() => props.onFillTypeChange?.("diamond"));
     act(() => props.onStopsChange?.(stops.slice().reverse()));
+    act(() => props.onFlipGradient?.());
+    act(() => props.onRotateGradient?.());
+    act(() => props.onRotateMedia?.());
     act(() => props.onChooseImage?.());
     act(() => props.onChooseVideo?.());
     act(() => props.onImageAdjustmentChange?.("contrast", 22));
@@ -84,6 +98,9 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
 
     expect(onType).toHaveBeenCalledWith("fill-1", "diamond");
     expect(onStops).toHaveBeenCalledWith("fill-1", stops.slice().reverse());
+    expect(onFlipGradient).toHaveBeenCalledWith("fill-1");
+    expect(onRotateGradient).toHaveBeenCalledWith("fill-1");
+    expect(onRotateMedia).toHaveBeenCalledWith("fill-1");
     expect(onImage).toHaveBeenCalledWith("fill-1");
     expect(onVideo).toHaveBeenCalledWith("fill-1");
     expect(onAdjust).toHaveBeenCalledWith("fill-1", "contrast", 22);
@@ -104,6 +121,36 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
       }]} fillImageAdjustmentsReadOnly onFillImageAdjustmentChange={() => undefined} />); });
     expect(capture.props?.imageAdjustmentKeyframes?.exposure).toEqual({ active: true, onToggle });
     expect(capture.props?.imageAdjustmentsReadOnly).toBe(true);
+    act(() => renderer.unmount());
+  });
+
+  it("forwards slide background gradient and media commands without inventing mutations", () => {
+    const onFlipGradient = vi.fn();
+    const onRotateGradient = vi.fn();
+    const onRotateMedia = vi.fn();
+    let renderer!: ReactTestRenderer;
+
+    act(() => { renderer = create(<PropertyPanel
+      mode="slide"
+      slideBackgroundType="gradient"
+      onFlipSlideBackgroundGradient={onFlipGradient}
+      onRotateSlideBackgroundGradient={onRotateGradient}
+      onRotateSlideBackgroundMedia={onRotateMedia}
+    />); });
+    act(() => capture.backgroundProps?.onFlipGradient?.());
+    act(() => capture.backgroundProps?.onRotateGradient?.());
+    expect(onFlipGradient).toHaveBeenCalledOnce();
+    expect(onRotateGradient).toHaveBeenCalledOnce();
+
+    act(() => renderer.update(<PropertyPanel
+      mode="slide"
+      slideBackgroundType="image"
+      onFlipSlideBackgroundGradient={onFlipGradient}
+      onRotateSlideBackgroundGradient={onRotateGradient}
+      onRotateSlideBackgroundMedia={onRotateMedia}
+    />));
+    act(() => capture.backgroundProps?.onRotateMedia?.());
+    expect(onRotateMedia).toHaveBeenCalledOnce();
     act(() => renderer.unmount());
   });
 });
