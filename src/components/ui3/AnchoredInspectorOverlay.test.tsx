@@ -1,6 +1,6 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Children, type ReactElement } from "react";
-import { act, create, type ReactTestInstance } from "react-test-renderer";
+import { act, create, type ReactTestInstance, type ReactTestRenderer } from "react-test-renderer";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ANCHORED_INSPECTOR_OVERLAY_COLLISION_PADDING,
