@@ -266,6 +266,7 @@ export function ShareModal({
       <ModalHeader
         title={title ?? HEADER_TITLE[variant]}
         onClose={onClose}
+        className="px-[16px]"
         actions={
           <Button
             variant="Link"
@@ -287,6 +288,7 @@ export function ShareModal({
               <InputField
                 autoFocus
                 size="large"
+                textSize="medium"
                 placeholder="Add emails, names, or user groups"
                 value={invite}
                 onChange={setInvite}

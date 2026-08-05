@@ -9,8 +9,8 @@ vi.mock("./Dialog", () => ({
   MODAL_WIDTHS: { compact: 240, dialog: 320, standard: 480 },
   Modal: ({ children }: { children: ReactNode }) => <div data-modal>{children}</div>,
   ModalCard: ({ children }: { children: ReactNode }) => <div data-modal-card>{children}</div>,
-  ModalHeader: ({ title, actions }: { title?: string; actions?: ReactNode }) => (
-    <div data-modal-header><span data-title>{title}</span>{actions}</div>
+  ModalHeader: ({ title, actions, className }: { title?: string; actions?: ReactNode; className?: string }) => (
+    <div data-modal-header className={className}><span data-title>{title}</span>{actions}</div>
   ),
   ModalBody: ({ children }: { children: ReactNode }) => <div data-modal-body>{children}</div>,
 }));
@@ -51,6 +51,22 @@ describe("ShareModal (Composa#289)", () => {
       expect(html).toContain("Anyone in Just me");
       expect(html).toContain("can access");
     }
+  });
+
+  it("matches the I5 Share inset and uses body typography inside the large invite field", () => {
+    let renderer!: ReturnType<typeof create>;
+    act(() => { renderer = create(<ShareModal open onClose={() => undefined} people={OWNER} />); });
+    const root = renderer.root;
+    const header = root.find(node => node.props["data-modal-header"] !== undefined);
+    expect(header.props.className).toContain("px-[16px]");
+
+    const input = root.findByType("input");
+    expect(input.props.className).toContain("text-[11px]");
+    const shell = root.find(node => node.type === "div"
+      && typeof node.props.className === "string"
+      && node.props.className.includes("bg-c-bg-secondary")
+      && node.props.className.includes("h-[32px]"));
+    expect(shell.props.className).toContain("h-[32px]");
   });
 
   it("renders the owner as static text and a non-owner with an editable role", () => {
