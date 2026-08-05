@@ -293,9 +293,10 @@ function EasingChoice({ id, value, callbacks }: { id: string; value: EasingPrese
 
 // ── Sequence ranks ────────────────────────────────────────────────────────────────
 // The engine's `ObjectAnimation.order` is the one grouping truth: distinct ranks are
-// sequential, while cards sharing a rank are simultaneous. Shared ranks therefore use
-// a contained group regardless of object ownership. Dragging onto that group means
-// `with`; the explicit plus-spaces between ranks create standalone sequential ranks.
+// sequential, while cards sharing a rank are simultaneous. A shared rank uses one
+// sequence number and a visible connector rail between its cards; it is not a bordered
+// container. Dragging onto its `With` target means simultaneous, while the explicit
+// plus-spaces between ranks create standalone sequential ranks.
 
 /** The block's ordinal. Small muted label sitting on top of the card, outside the card's
  *  own `group` box so it never shifts the flush-left card or the hover-revealed drag
@@ -536,8 +537,13 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                     <BlockNumberLabel n={group.rank} />
                     <div
                       data-animation-shared-rank={shared ? group.rank : undefined}
-                      className={clsx("relative flex flex-col gap-[4px]", shared && "rounded-c-md border border-c-border bg-c-bg-secondary p-[4px]")}
+                      className={clsx("relative flex flex-col gap-[4px]", shared && "pl-[12px]")}
                     >
+                      {shared && <span
+                        aria-hidden
+                        data-animation-sequence-connector={group.rank}
+                        className="pointer-events-none absolute bottom-[12px] left-[3px] top-[12px] w-px bg-c-border-selected"
+                      />}
                       {dragged && withTargetId && (
                         <div
                           role="button"
@@ -556,7 +562,12 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                           {withActive && <span aria-hidden data-animation-sequence-drop-indicator="with" className="pointer-events-none absolute inset-[2px] rounded-c-xs border border-c-border-selected" />}
                         </div>
                       )}
-                      {group.rows.map(row => renderActionRow(row.animation, row.index))}
+                      {group.rows.map(row => shared ? (
+                        <div key={row.id} data-animation-sequence-branch={row.id} className="relative">
+                          <span aria-hidden className="pointer-events-none absolute -left-[9px] top-[20px] h-px w-[9px] bg-c-border-selected" />
+                          {renderActionRow(row.animation, row.index)}
+                        </div>
+                      ) : renderActionRow(row.animation, row.index))}
                     </div>
                     {afterTargetId && insertionSpace(
                       `after-${group.rank}`,
