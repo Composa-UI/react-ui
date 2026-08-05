@@ -148,6 +148,32 @@ describe("ColorDialog anchored inspector contract", () => {
     expect(video).toContain("object-cover");
   });
 
+  it("renders Figma's controlled Tile scale and applies it to the repeated preview", () => {
+    const onScale = vi.fn();
+    let renderer!: ReactTestRenderer;
+    act(() => { renderer = create(
+      <ColorDialog open onClose={() => undefined} trigger={<button>Color</button>}
+        fillType="image" mediaFit="tile" mediaTileScale={50}
+        mediaTileScaleKeyframe={{ active: true, onToggle: () => undefined }}
+        onMediaFitChange={() => undefined} onMediaTileScaleChange={onScale}
+        imageSourceLabel="pattern.png" imagePreviewUrl="blob:pattern" />,
+    ); });
+    const input = renderer.root.findByProps({ "aria-label": "Tile scale" });
+    expect(input.props.value).toBe("50");
+    act(() => input.props.onChange({ target: { value: "75" } }));
+    expect(onScale).toHaveBeenCalledWith(75);
+    const html = renderToStaticMarkup(
+      <ColorDialog open onClose={() => undefined} trigger={<button>Color</button>}
+        fillType="image" mediaFit="tile" mediaTileScale={50}
+        mediaTileScaleKeyframe={{ active: true, onToggle: () => undefined }}
+        onMediaFitChange={() => undefined} onMediaTileScaleChange={() => undefined}
+        imageSourceLabel="pattern.png" imagePreviewUrl="blob:pattern" />,
+    );
+    expect(html).toContain("background-size:50% auto");
+    expect(html).toContain('aria-label="Tile scale keyframe"');
+    expect(html).toContain('aria-pressed="true"');
+  });
+
   it("offers Edit crop only for bound Crop media and closes after emitting it", () => {
     const onEditCrop = vi.fn(), onClose = vi.fn();
     let renderer!: ReactTestRenderer;

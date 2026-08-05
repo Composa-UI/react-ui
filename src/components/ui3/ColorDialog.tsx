@@ -134,6 +134,12 @@ export interface ColorDialogProps {
   mediaFit?: MediaFillFit;
   /** Host mutation for the selected media fill's fit mode. */
   onMediaFitChange?: (fit: MediaFillFit) => void;
+  /** Persisted image-tile scale in percent. Figma seeds Tile at 50%. */
+  mediaTileScale?: number;
+  /** Motion binding for the numeric Tile scale field. */
+  mediaTileScaleKeyframe?: ColorDialogKeyframeControl;
+  /** Host mutation for the selected image fill's Tile scale. */
+  onMediaTileScaleChange?: (scale: number) => void;
   /** Rotates the bound media fill by 90 degrees in the host document. */
   onRotateMedia?: () => void;
   /** Enters the host-owned canvas crop workflow for a bound media fill. */
@@ -403,10 +409,13 @@ function AdjustRow({ label, value, onChange, keyframe, disabled = false }: {
 
 const MEDIA_FIT_LABELS: Record<MediaFillFit, string> = { fill: "Fill", fit: "Fit", crop: "Crop", tile: "Tile" };
 
-function MediaFitControl({ kind, value, onChange, onEditCrop, onRotate, selected, onChoose }: {
+function MediaFitControl({ kind, value, onChange, tileScale, tileScaleKeyframe, onTileScaleChange, onEditCrop, onRotate, selected, onChoose }: {
   kind: "image" | "video";
   value: MediaFillFit;
   onChange?: (fit: MediaFillFit) => void;
+  tileScale: number;
+  tileScaleKeyframe?: ColorDialogKeyframeControl;
+  onTileScaleChange?: (scale: number) => void;
   onEditCrop?: () => void;
   onRotate?: () => void;
   selected: boolean;
@@ -414,10 +423,10 @@ function MediaFitControl({ kind, value, onChange, onEditCrop, onRotate, selected
 }) {
   if (!onChange && !onChoose && !onEditCrop && !onRotate) return null;
   const options: MediaFillFit[] = kind === "image" ? ["fill", "fit", "crop", "tile"] : ["fill", "fit", "crop"];
-  return <div data-composa-media-fit-row={kind} className="flex h-[48px] items-center pl-[16px] pr-[8px]">
+  return <div data-composa-media-fit-row={kind} className="flex h-[48px] items-center gap-[4px] pl-[16px] pr-[8px]">
     {onChange && <PopoverMenu
       align="left"
-      className="w-[96px] shrink-0"
+      className={clsx("shrink-0", kind === "image" && value === "tile" ? "w-[72px]" : "w-[96px]")}
       trigger={<Dropdown ariaLabel={`${kind === "image" ? "Image" : "Video"} fit`} value={MEDIA_FIT_LABELS[value]} fullWidth />}
     >
       {close => <Menu>
@@ -430,6 +439,18 @@ function MediaFitControl({ kind, value, onChange, onEditCrop, onRotate, selected
         />)}
       </Menu>}
     </PopoverMenu>}
+    {kind === "image" && value === "tile" && <NumericInput
+      ariaLabel="Tile scale"
+      value={tileScale}
+      min={1}
+      max={1000}
+      suffix="%"
+      scrub
+      keyframe={tileScaleKeyframe}
+      disabled={!onTileScaleChange}
+      onChange={onTileScaleChange}
+      className="w-[76px] shrink-0"
+    />}
     <div className="ml-auto flex items-center gap-[4px]">
       {onChoose && <Btn label={`${selected ? "Replace" : "Select"} ${kind}`} onClick={onChoose}>
         <ImagePlus size={14} strokeWidth={1.5} />
@@ -444,11 +465,12 @@ function MediaFitControl({ kind, value, onChange, onEditCrop, onRotate, selected
   </div>;
 }
 
-function MediaFillPreview({ kind, sourceLabel, previewUrl, fit }: {
+function MediaFillPreview({ kind, sourceLabel, previewUrl, fit, tileScale }: {
   kind: "image" | "video";
   sourceLabel?: string;
   previewUrl?: string;
   fit: MediaFillFit;
+  tileScale: number;
 }) {
   const selected = !!sourceLabel;
   return <>
@@ -463,7 +485,7 @@ function MediaFillPreview({ kind, sourceLabel, previewUrl, fit }: {
         backgroundSize: "16px 16px",
       } : undefined}
     >
-      {previewUrl && kind === "image" && fit === "tile" && <div aria-hidden className="absolute inset-0" style={{ backgroundImage: `url(${JSON.stringify(previewUrl)})`, backgroundRepeat: "repeat" }} />}
+      {previewUrl && kind === "image" && fit === "tile" && <div aria-hidden className="absolute inset-0" style={{ backgroundImage: `url(${JSON.stringify(previewUrl)})`, backgroundRepeat: "repeat", backgroundSize: `${tileScale}% auto` }} />}
       {previewUrl && kind === "image" && fit !== "tile" && <img src={previewUrl} alt="" className={clsx("absolute inset-0 size-full", fit === "fit" ? "object-contain" : fit === "fill" ? "object-fill" : "object-cover")} />}
       {previewUrl && kind === "video" && <video src={previewUrl} aria-hidden muted playsInline preload="metadata" className={clsx("absolute inset-0 size-full", fit === "fit" ? "object-contain" : fit === "fill" ? "object-fill" : "object-cover")} />}
       {!previewUrl && <div className="absolute inset-0 flex items-center justify-center text-c-icon-secondary">
@@ -601,6 +623,9 @@ export function ColorDialog({
   onChooseVideo,
   mediaFit = "fill",
   onMediaFitChange,
+  mediaTileScale = 50,
+  mediaTileScaleKeyframe,
+  onMediaTileScaleChange,
   onRotateMedia,
   onEditCrop,
   dropZoneSources = [],
@@ -1045,10 +1070,11 @@ export function ColorDialog({
         {fillType === "image" && (
           <>
             <MediaFitControl kind="image" value={mediaFit} onChange={onMediaFitChange}
+              tileScale={mediaTileScale} tileScaleKeyframe={mediaTileScaleKeyframe} onTileScaleChange={onMediaTileScaleChange}
               selected={!!imageSourceLabel} onChoose={onChooseImage}
               onRotate={onRotateMedia}
               onEditCrop={imageSourceLabel && onEditCrop ? () => { onEditCrop(); onClose(); } : undefined} />
-            <MediaFillPreview kind="image" sourceLabel={imageSourceLabel} previewUrl={imagePreviewUrl} fit={mediaFit} />
+            <MediaFillPreview kind="image" sourceLabel={imageSourceLabel} previewUrl={imagePreviewUrl} fit={mediaFit} tileScale={mediaTileScale} />
 
             {/* Image adjustments — same rule: every slider was handed a value
                 and no onChange, so each drag was thrown away. Shown only when
@@ -1117,10 +1143,11 @@ export function ColorDialog({
         {fillType === "video" && videoAvailable && (
           <>
             <MediaFitControl kind="video" value={mediaFit === "tile" ? "fill" : mediaFit} onChange={onMediaFitChange}
+              tileScale={mediaTileScale}
               selected={!!videoSourceLabel} onChoose={onChooseVideo}
               onRotate={onRotateMedia}
               onEditCrop={videoSourceLabel && onEditCrop ? () => { onEditCrop(); onClose(); } : undefined} />
-            <MediaFillPreview kind="video" sourceLabel={videoSourceLabel} previewUrl={videoPreviewUrl} fit={mediaFit === "tile" ? "fill" : mediaFit} />
+            <MediaFillPreview kind="video" sourceLabel={videoSourceLabel} previewUrl={videoPreviewUrl} fit={mediaFit === "tile" ? "fill" : mediaFit} tileScale={mediaTileScale} />
           </>
         )}
           </ModalBody>
