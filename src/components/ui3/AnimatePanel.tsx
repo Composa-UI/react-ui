@@ -416,7 +416,7 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                 if (!dragged || dragged === targetId || event.buttons !== 1) return;
                 if (dropTarget?.targetId !== targetId || dropTarget.placement !== placement) setDropTarget({ targetId, placement });
               },
-              onPointerUp: (event: ReactPointerEvent<HTMLDivElement>) => {
+              onPointerUpCapture: (event: ReactPointerEvent<HTMLDivElement>) => {
                 if (!dragged || dragged === targetId) return;
                 event.preventDefault();
                 event.stopPropagation();
