@@ -2339,9 +2339,26 @@ function MasterTimelineSection({
   );
 }
 
-// Export §Export — project-level video export. Disabled stub in V1: Format dropdown
-// (disabled) + full-width outlined "Export project" action (disabled).
-function ProjectExportSection() {
+// Export §Export — project-level whole-project video export. A host supplies the
+// truthful browser-supported container and encoder action; absent remains an
+// explicitly hover/focus-explained capability gate.
+function ProjectExportSection({ format = "MP4", exporting = false, onExport }: {
+  format?: "MP4" | "WebM";
+  exporting?: boolean;
+  onExport?: () => void;
+}) {
+  if (onExport) return (
+    <PanelSection title="Export">
+      <PanelFieldRow
+        label="Format"
+        reserveRightSlot={false}
+        left={<Dropdown ariaLabel="Project video format" value={format} fullWidth disabled />}
+      />
+      <PanelFullRow height={40}>
+        <Button label={exporting ? "Exporting project…" : "Export project"} variant="Secondary" size="wide" disabled={exporting} onClick={onExport} />
+      </PanelFullRow>
+    </PanelSection>
+  );
   return (
     <PanelSection title="Export">
       <PanelFieldRow
@@ -3199,6 +3216,10 @@ export interface PropertyPanelProps {
   onProjectFrameRateChange?: (value: ProjectFrameRate) => void;
   onProjectDurationChange?: (value: number) => void;
   onProjectPlayheadChange?: (value: number) => void;
+  /** Browser-supported whole-project video container and host-owned encoder. */
+  projectVideoFormat?: "MP4" | "WebM";
+  projectVideoExporting?: boolean;
+  onExportProject?: () => void;
   /** Controlled transport seam for the existing reskin-clean preview control. */
   previewPlaying?: boolean;
   /** Primary Present action — enter the full presentation/playback surface. */
@@ -3711,6 +3732,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onProjectFrameRateChange,
   onProjectDurationChange,
   onProjectPlayheadChange,
+  projectVideoFormat = "MP4",
+  projectVideoExporting = false,
+  onExportProject,
   previewPlaying = false,
   onPreviewToggle,
   onPreviewOpen,
@@ -3952,7 +3976,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <MasterTimelineSection totalDuration={projectDuration} playhead={projectPlayhead}
             durationControlled={props.projectDuration !== undefined} playheadControlled={props.projectPlayhead !== undefined}
             onTotalDurationChange={onProjectDurationChange} onPlayheadChange={onProjectPlayheadChange} />
-          <ProjectExportSection />
+          <ProjectExportSection format={projectVideoFormat} exporting={projectVideoExporting} onExport={onExportProject} />
         </ScrollArea>
       )}
 
