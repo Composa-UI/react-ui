@@ -74,6 +74,8 @@ export interface InspectorDialogProps {
   collisionPadding?: number;
   align?: AnchoredInspectorOverlayAlign;
   blockOutsideDismiss?: boolean;
+  /** Preserve the opener's focus instead of focusing the first dialog action. */
+  preserveFocusOnOpen?: boolean;
   triggerClassName?: string;
   className?: string;
   elevation?: AnchoredInspectorOverlayElevation;
@@ -104,7 +106,7 @@ function withInspectorDialogDragHandle(children: ReactNode): ReactNode {
 }
 
 /** Non-modal inspector dialog anchored to the captured trigger and portalled above the canvas. */
-export function InspectorDialog({ open, onClose, trigger, anchorSelector, children, ariaLabel, width = 320, sideOffset, side, collisionPadding, align, blockOutsideDismiss = false, triggerClassName = "block w-full", className, elevation = 400, draggable = true, resizable, anchorSurfaceSelector, boundarySelector }: InspectorDialogProps) {
+export function InspectorDialog({ open, onClose, trigger, anchorSelector, children, ariaLabel, width = 320, sideOffset, side, collisionPadding, align, blockOutsideDismiss = false, preserveFocusOnOpen = false, triggerClassName = "block w-full", className, elevation = 400, draggable = true, resizable, anchorSurfaceSelector, boundarySelector }: InspectorDialogProps) {
   return <AnchoredInspectorOverlay
     open={open}
     onClose={onClose}
@@ -118,6 +120,7 @@ export function InspectorDialog({ open, onClose, trigger, anchorSelector, childr
     collisionPadding={collisionPadding}
     align={align}
     trapFocus={false}
+    preserveFocusOnOpen={preserveFocusOnOpen}
     blockOutsideDismiss={blockOutsideDismiss}
     triggerClassName={triggerClassName}
     // Inspector dialogs behave like application chrome: labels and empty space

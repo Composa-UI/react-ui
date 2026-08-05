@@ -240,6 +240,19 @@ describe("AnchoredInspectorOverlay runtime contract", () => {
     act(() => renderer!.unmount());
   });
 
+  it("forwards the opt-in focus-preservation contract for passive floating chrome", () => {
+    let renderer!: ReactTestRenderer;
+    act(() => {
+      renderer = create(
+        <InspectorDialog open={false} onClose={() => undefined} ariaLabel="Preview" preserveFocusOnOpen>
+          <div>Preview</div>
+        </InspectorDialog>,
+      );
+    });
+    const overlay = renderer.root.findByType(AnchoredInspectorOverlay);
+    expect(overlay.props.preserveFocusOnOpen).toBe(true);
+  });
+
   it("forwards the shared resize contract and renders one keyboard-addressable corner", () => {
     const resize = { minWidth: 320, minHeight: 220, maxWidth: 720, maxHeight: 520, ariaLabel: "Resize Preview" };
     let renderer: ReturnType<typeof create>;
