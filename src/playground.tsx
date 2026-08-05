@@ -139,12 +139,15 @@ function Issue206ColorDialogFixture() {
   const params = new URLSearchParams(window.location.search);
   const mode = params.get("mode") === "gradient" ? "gradient" : params.get("mode") === "image" ? "image" : "solid";
   const emptyMedia = params.get("media") === "empty";
+  const keyframes = params.get("keyframes") === "1";
   const dark = params.get("theme") === "dark";
   const [open, setOpen] = useState(true);
   const [fillType, setFillType] = useState<FillType>(mode === "gradient" ? "linear" : mode);
   const [stops, setStops] = useState(ISSUE_206_STOPS);
   const [mediaFit, setMediaFit] = useState<"fill" | "fit" | "crop" | "tile">("crop");
   const [lastAction, setLastAction] = useState("ready");
+  const [gradientKeyframeActive, setGradientKeyframeActive] = useState(false);
+  const [exposureKeyframeActive, setExposureKeyframeActive] = useState(false);
   const [adjustments, setAdjustments] = useState<ImageAdjustments>({
     exposure: -44, contrast: 0, saturation: 0, temperature: 0, tint: 0, highlights: 0, shadows: 0,
   });
@@ -164,6 +167,15 @@ function Issue206ColorDialogFixture() {
           hex="336699"
           opacity={84}
           gradientStops={stops}
+          gradientStopKeyframes={keyframes ? {
+            ink: { position: {
+              active: gradientKeyframeActive,
+              onToggle: () => {
+                setGradientKeyframeActive(active => !active);
+                setLastAction("stop position keyframe");
+              },
+            } },
+          } : undefined}
           onStopsChange={setStops}
           onFlipGradient={() => {
             setStops(current => current.map(stop => ({ ...stop, position: 100 - stop.position })));
@@ -185,6 +197,15 @@ function Issue206ColorDialogFixture() {
           imageTint={adjustments.tint}
           imageHighlights={adjustments.highlights}
           imageShadows={adjustments.shadows}
+          imageAdjustmentKeyframes={keyframes ? {
+            exposure: {
+              active: exposureKeyframeActive,
+              onToggle: () => {
+                setExposureKeyframeActive(active => !active);
+                setLastAction("exposure keyframe");
+              },
+            },
+          } : undefined}
           onImageAdjustmentChange={!emptyMedia && mode === "image"
             ? (adjustment, value) => setAdjustments(current => ({ ...current, [adjustment]: value }))
             : undefined}

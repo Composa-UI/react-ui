@@ -115,3 +115,38 @@ test("Empty Image keeps the exact chooser and preview geometry without fake adju
 
   await page.screenshot({ path: testInfo.outputPath("image-empty-240px.png") });
 });
+
+test("keyframed gradient stops preserve the 48px field, #207 action, and 4px separation", async ({ page }) => {
+  const { dialog } = await openFixture(page, "mode=gradient&keyframes=1");
+  const row = dialog.locator('[data-composa-gradient-stop-row="1"]');
+  const field = row.locator("[data-composa-numeric-input]");
+  const action = row.getByRole("button", { name: "Stop 1 position keyframe" });
+  const fieldBox = await box(field);
+  const actionBox = await box(action);
+  expect(fieldBox.width).toBeCloseTo(48, 0);
+  expect(actionBox.width).toBeCloseTo(24, 0);
+  expect(actionBox.height).toBeCloseTo(24, 0);
+  expect(actionBox.x - (fieldBox.x + fieldBox.width)).toBeCloseTo(4, 0);
+  await expect(row.getByRole("spinbutton", { name: "Stop 1 position" })).toBeVisible();
+  await expect(action).toHaveAttribute("aria-pressed", "false");
+  await action.click();
+  await expect(action).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("status")).toHaveText("stop position keyframe");
+});
+
+test("keyframed image adjustments preserve the 88px slider and deliberate Figma 8px action gap", async ({ page }) => {
+  const { dialog } = await openFixture(page, "mode=image&media=bound&keyframes=1");
+  const row = dialog.locator('[data-composa-image-adjustment-row="exposure"]');
+  const slider = row.getByRole("slider", { name: "Exposure value" });
+  const action = row.getByRole("button", { name: "Exposure value keyframe" });
+  const sliderBox = await box(slider);
+  const actionBox = await box(action);
+  expect(sliderBox.width).toBeCloseTo(88, 0);
+  expect(actionBox.width).toBeCloseTo(24, 0);
+  expect(actionBox.height).toBeCloseTo(24, 0);
+  expect(actionBox.x - (sliderBox.x + sliderBox.width)).toBeCloseTo(8, 0);
+  await expect(action).toHaveAttribute("aria-pressed", "false");
+  await action.click();
+  await expect(action).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("status")).toHaveText("exposure keyframe");
+});
