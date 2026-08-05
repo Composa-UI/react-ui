@@ -665,6 +665,7 @@ function Share289Fixture() {
   const variant = (params.get("variant") ?? "project") as "project" | "team";
   const dark = params.get("theme") === "dark";
   const roster = params.get("roster") ?? (variant === "team" ? "invited" : "owner");
+  const exportAvailable = params.get("export") === "1";
 
   // Owner-only roster matches the Figma node exactly.
   const ownerOnly: SharePerson[] = [
@@ -679,7 +680,13 @@ function Share289Fixture() {
 
   return (
     <div {...(dark ? { "data-composa-mode": "dark" } : {})} className="min-h-screen bg-c-bg-secondary">
-      <ShareModal open onClose={() => undefined} variant={variant} people={roster === "invited" ? withInvited : ownerOnly} />
+      <ShareModal
+        open
+        onClose={() => undefined}
+        variant={variant}
+        people={roster === "invited" ? withInvited : ownerOnly}
+        onExport={exportAvailable ? () => undefined : undefined}
+      />
     </div>
   );
 }

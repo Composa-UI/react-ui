@@ -90,6 +90,8 @@ interface InputFieldProps {
   defaultValue?: string;
   variant?: InputVariant;
   size?: InputSize;
+  /** Typography scale when it intentionally differs from the field geometry. */
+  textSize?: InputSize;
   disabled?: boolean;
   readOnly?: boolean;
   /** Focus the field on mount (native autofocus). */
@@ -114,6 +116,7 @@ export function InputField({
   defaultValue,
   variant = "default",
   size = "medium",
+  textSize = size,
   disabled = false,
   readOnly = false,
   autoFocus = false,
@@ -138,7 +141,7 @@ export function InputField({
   const inputClass = clsx(
     inlineDropdown ? "flex-1 min-w-0" : "w-full",
     "h-full bg-transparent outline-none",
-    FONT, T[size],
+    FONT, T[textSize],
     "text-c-text placeholder:text-c-text-tertiary",
     leadingIcon || inlineLabel ? "pl-[24px]" : "pl-[8px]",
     inlineDropdown ? "pr-[4px]" : trailingIcon ? "pr-[24px]" : "pr-[8px]",
@@ -173,7 +176,7 @@ export function InputField({
             onBlur={() => setFocused(false)}
             className={clsx(
               "w-full bg-transparent outline-none resize-none px-[8px] py-[6px]",
-              FONT, T[size],
+              FONT, T[textSize],
               "text-c-text placeholder:text-c-text-tertiary",
               disabled && "cursor-not-allowed",
             )}
