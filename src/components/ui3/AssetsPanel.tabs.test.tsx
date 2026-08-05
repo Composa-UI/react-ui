@@ -111,6 +111,16 @@ describe("AssetsPanel — Library / Community tabs", () => {
 });
 
 describe("AssetsPanel — library section headers", () => {
+  it("keeps shared-library cards consumable without exposing project-owned rename or delete controls", () => {
+    const renderer = renderPanel({ assets: [{ id: "shared", name: "shared.png", kind: "image", libraryId: "brand", readOnly: true }], libraries: BRAND });
+    expect(renderer.root.findAll(node => node.type === "button" && node.props["aria-label"] === "Insert on slide")).toHaveLength(1);
+    expect(renderer.root.findAll(node => node.type === "button" && node.props["aria-label"] === "Delete")).toHaveLength(0);
+    const thumbnailButton = card(renderer.root, "shared.png")[0];
+    act(() => thumbnailButton.props.onContextMenu({ preventDefault: vi.fn(), clientX: 10, clientY: 10 }));
+    expect(renderer.root.findAll(node => node.props.label === "Rename" || node.props.label === "Delete")).toHaveLength(0);
+    act(() => renderer.unmount());
+  });
+
   it("stays one flat grid when the host passes no libraries", () => {
     const renderer = renderPanel();
     // Guard: the cards rendered, so "no sections" is a real absence.

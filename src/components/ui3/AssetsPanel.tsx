@@ -77,6 +77,8 @@ export interface AssetItem {
   errorMessage?: string;  // optional upload error detail
   inUseCount?: number;    // project references; deletion requires confirmation when > 0
   libraryId?: string;     // groups the card under an AssetLibrary section (opt-in)
+  /** Shared-library cards can be consumed but are not owned by this project. */
+  readOnly?: boolean;
 }
 
 /** Map a horizontal pointer coordinate to a safe media seek position. The tiny
@@ -309,15 +311,15 @@ function AssetCard({
             >
               <Plus size={14} strokeWidth={2} />
             </button>
-            <button
-              type="button"
-              aria-label="Delete"
-              title="Delete"
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="pointer-events-auto flex items-center justify-center size-[22px] rounded-c-sm bg-c-bg/90 text-c-icon hover:text-c-text-danger hover:bg-c-bg cursor-pointer shadow-sm"
-            >
-              <Trash2 size={13} strokeWidth={2} />
-            </button>
+            {!item.readOnly && <button
+                type="button"
+                aria-label="Delete"
+                title="Delete"
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                className="pointer-events-auto flex items-center justify-center size-[22px] rounded-c-sm bg-c-bg/90 text-c-icon hover:text-c-text-danger hover:bg-c-bg cursor-pointer shadow-sm"
+              >
+                <Trash2 size={13} strokeWidth={2} />
+              </button>}
           </div>
         )}
       </div>
@@ -748,9 +750,11 @@ export function AssetsPanel({
               <MenuRow label={contextAsset.item.kind === "video" || contextAsset.item.kind === "audio" ? "Add to timeline" : "Insert on slide"}
                 leading={contextAsset.item.kind === "video" ? <VideoMediaIcon data-icon-semantic="media-video" size={14} /> : contextAsset.item.kind === "audio" ? <AudioMediaIcon data-icon-semantic="media-audio" size={14} /> : <Plus size={14} />}
                 onClick={() => { insertAsset(contextAsset.item); setContextAsset(null); }} />
-              <MenuRow label="Rename" leading={<Pencil size={14} />} onClick={() => requestRename(contextAsset.item)} />
-              <MenuRow type="divider" />
-              <MenuRow label="Delete" leading={<Trash2 size={14} />} destructive onClick={() => requestDelete(contextAsset.item)} />
+              {!contextAsset.item.readOnly && <>
+                <MenuRow label="Rename" leading={<Pencil size={14} />} onClick={() => requestRename(contextAsset.item)} />
+                <MenuRow type="divider" />
+                <MenuRow label="Delete" leading={<Trash2 size={14} />} destructive onClick={() => requestDelete(contextAsset.item)} />
+              </>}
             </Menu>
           </div>
         </>
