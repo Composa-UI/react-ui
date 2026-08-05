@@ -144,6 +144,7 @@ function Issue206ColorDialogFixture() {
   const [fillType, setFillType] = useState<FillType>(mode === "gradient" ? "linear" : mode);
   const [stops, setStops] = useState(ISSUE_206_STOPS);
   const [mediaFit, setMediaFit] = useState<"fill" | "fit" | "crop" | "tile">("crop");
+  const [lastAction, setLastAction] = useState("ready");
   const [adjustments, setAdjustments] = useState<ImageAdjustments>({
     exposure: -44, contrast: 0, saturation: 0, temperature: 0, tint: 0, highlights: 0, shadows: 0,
   });
@@ -164,16 +165,19 @@ function Issue206ColorDialogFixture() {
           opacity={84}
           gradientStops={stops}
           onStopsChange={setStops}
-          onFlipGradient={() => setStops(current => current.map(stop => ({ ...stop, position: 100 - stop.position })))}
-          onRotateGradient={() => undefined}
+          onFlipGradient={() => {
+            setStops(current => current.map(stop => ({ ...stop, position: 100 - stop.position })));
+            setLastAction("flip gradient");
+          }}
+          onRotateGradient={() => setLastAction("rotate gradient")}
           onCreateStyleOrVariable={() => undefined}
           mediaFit={mediaFit}
           onMediaFitChange={setMediaFit}
-          onRotateMedia={() => undefined}
-          onChooseImage={() => undefined}
+          onRotateMedia={() => setLastAction("rotate image")}
+          onChooseImage={() => setLastAction(emptyMedia ? "select image" : "replace image")}
           imageSourceLabel={!emptyMedia && mode === "image" ? "product-review.png" : undefined}
           imagePreviewUrl={!emptyMedia && mode === "image" ? cropPlaygroundMedia : undefined}
-          onEditCrop={!emptyMedia && mode === "image" ? () => undefined : undefined}
+          onEditCrop={!emptyMedia && mode === "image" ? () => setLastAction("edit crop") : undefined}
           imageExposure={adjustments.exposure}
           imageContrast={adjustments.contrast}
           imageSaturation={adjustments.saturation}
@@ -185,6 +189,7 @@ function Issue206ColorDialogFixture() {
             ? (adjustment, value) => setAdjustments(current => ({ ...current, [adjustment]: value }))
             : undefined}
         />
+        <output role="status" className="sr-only">{lastAction}</output>
       </aside>
     </main>
   );

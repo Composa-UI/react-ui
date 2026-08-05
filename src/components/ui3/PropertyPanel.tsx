@@ -1723,12 +1723,16 @@ type FillEntry = ElementFillSetting;
 
 function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
   onFillTypeChange, onGradientStopsChange, onChooseImage, onChooseVideo,
+  onFlipGradient, onRotateGradient, onRotateMedia,
   onImageAdjustmentChange, onMediaFitChange, onEditCrop, dropZoneSources, onSelectDropZoneSource,
   imageAdjustmentsReadOnly = false, capabilities, activeStackDialog, onActiveStackDialogChange }: {
   entries?: FillEntry[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<FillEntry, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
   onFillTypeChange?: (id: string, type: FillType) => void;
   onGradientStopsChange?: (id: string, stops: GradientStop[]) => void;
+  onFlipGradient?: (id: string) => void;
+  onRotateGradient?: (id: string) => void;
+  onRotateMedia?: (id: string) => void;
   onChooseImage?: (id: string) => void; onChooseVideo?: (id: string) => void;
   onImageAdjustmentChange?: (id: string, adjustment: ImageAdjustment, value: number) => void;
   onMediaFitChange?: (id: string, fit: MediaFillFit) => void;
@@ -1802,6 +1806,8 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
               gradientStops={fill.gradientStops}
               gradientStopKeyframes={fill.keyframes?.gradientStops}
               onStopsChange={onGradientStopsChange ? stops => onGradientStopsChange(fill.id, stops) : undefined}
+              onFlipGradient={onFlipGradient ? () => onFlipGradient(fill.id) : undefined}
+              onRotateGradient={onRotateGradient ? () => onRotateGradient(fill.id) : undefined}
               imageSourceLabel={fill.imageSourceLabel}
               imagePreviewUrl={fill.imagePreviewUrl}
               onChooseImage={onChooseImage ? () => onChooseImage(fill.id) : undefined}
@@ -1820,6 +1826,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
               onChooseVideo={onChooseVideo ? () => onChooseVideo(fill.id) : undefined}
               mediaFit={fill.mediaFit}
               onMediaFitChange={onMediaFitChange ? fit => onMediaFitChange(fill.id, fit) : undefined}
+              onRotateMedia={onRotateMedia ? () => onRotateMedia(fill.id) : undefined}
               onEditCrop={onEditCrop ? () => onEditCrop(fill.id) : undefined}
               dropZoneSources={dropZoneSources}
               dropZoneSourceId={fill.dropZoneSourceId}
@@ -2516,6 +2523,9 @@ function SlideBackgroundSection({
   onTypeChange,
   onColorChange,
   onOpacityChange,
+  onFlipGradient,
+  onRotateGradient,
+  onRotateMedia,
   capabilities,
 }: {
   type?: SlideBackgroundType;
@@ -2527,6 +2537,9 @@ function SlideBackgroundSection({
   onTypeChange?: (value: SlideBackgroundType) => void;
   onColorChange?: (value: string) => void;
   onOpacityChange?: (value: number) => void;
+  onFlipGradient?: () => void;
+  onRotateGradient?: () => void;
+  onRotateMedia?: () => void;
   capabilities: Required<InspectorCapabilities>;
 }) {
   const [internalType, setInternalType] = useState<SlideBackgroundType>("solid");
@@ -2615,6 +2628,8 @@ function SlideBackgroundSection({
               trigger={<ColorInput ariaLabel="Background gradient" fullWidth fillType="Gradient" fillLabel={`${gradientType[0].toUpperCase()}${gradientType.slice(1)} gradient`} gradient={gradientPreview} onSwatchClick={() => setColorOpen(true)} />}
               fillType={gradientType}
               gradientStops={gradientStops}
+              onFlipGradient={onFlipGradient}
+              onRotateGradient={onRotateGradient}
               hex={color.replace(/^#/, "")}
               opacity={opacity}
               onHexChange={value => {
@@ -2644,6 +2659,7 @@ function SlideBackgroundSection({
               onClose={() => setColorOpen(false)}
               trigger={<ColorInput ariaLabel="Background media" fullWidth fillType="Image" fillLabel={fillType === "video" ? "clip.mp4" : "cover.png"} onSwatchClick={() => setColorOpen(true)} />}
               fillType="image"
+              onRotateMedia={onRotateMedia}
               hex={color.replace(/^#/, "")}
               opacity={opacity}
               onHexChange={value => {
@@ -3139,10 +3155,14 @@ export interface PropertyPanelProps {
   /** Detailed Fill/Color dialog seams. Values live on each fill; callbacks remain host-owned. */
   onFillTypeChange?: (id: string, type: FillType) => void;
   onFillGradientStopsChange?: (id: string, stops: GradientStop[]) => void;
+  /** Host-owned gradient transform commands for a specific fill entry. */
+  onFlipFillGradient?: (id: string) => void;
+  onRotateFillGradient?: (id: string) => void;
   onChooseFillImage?: (id: string) => void;
   onChooseFillVideo?: (id: string) => void;
   onFillImageAdjustmentChange?: (id: string, adjustment: ImageAdjustment, value: number) => void;
   onFillMediaFitChange?: (id: string, fit: MediaFillFit) => void;
+  onRotateFillMedia?: (id: string) => void;
   /** Enters canvas crop mode for the specified bound media fill. */
   onEditFillCrop?: (id: string) => void;
   fillDropZoneSources?: { id: string; label: string }[];
@@ -3240,6 +3260,9 @@ export interface PropertyPanelProps {
   onSlideBackgroundTypeChange?: (value: SlideBackgroundType) => void;
   onSlideBackgroundColorChange?: (value: string) => void;
   onSlideBackgroundOpacityChange?: (value: number) => void;
+  onFlipSlideBackgroundGradient?: () => void;
+  onRotateSlideBackgroundGradient?: () => void;
+  onRotateSlideBackgroundMedia?: () => void;
   slideTransitionType?: SlideTransitionType;
   slideTransitionDirection?: SlideTransitionDirection;
   slideTransitionDuration?: number;
@@ -4001,6 +4024,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onTypeChange={onSlideBackgroundTypeChange}
             onColorChange={onSlideBackgroundColorChange}
             onOpacityChange={onSlideBackgroundOpacityChange}
+            onFlipGradient={props.onFlipSlideBackgroundGradient}
+            onRotateGradient={props.onRotateSlideBackgroundGradient}
+            onRotateMedia={props.onRotateSlideBackgroundMedia}
           />
           {capabilities.layoutFidelityTools && <LayoutGuideSection entries={layoutGuides} onAdd={onAddLayoutGuide} onUpdate={onUpdateLayoutGuide} onRemove={onRemoveLayoutGuide} />}
           {/* Selection colors — reuse the existing element-mode section */}
@@ -4207,6 +4233,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill}
             imageAdjustmentsReadOnly={fillImageAdjustmentsReadOnly}
             onFillTypeChange={props.onFillTypeChange} onGradientStopsChange={props.onFillGradientStopsChange}
+            onFlipGradient={props.onFlipFillGradient} onRotateGradient={props.onRotateFillGradient}
+            onRotateMedia={props.onRotateFillMedia}
             onChooseImage={props.onChooseFillImage} onChooseVideo={props.onChooseFillVideo}
             onImageAdjustmentChange={props.onFillImageAdjustmentChange}
             onMediaFitChange={props.onFillMediaFitChange}

@@ -56,6 +56,11 @@ test("Gradient keeps the reference type, ramp, stop rows, and trailing actions",
   expect(rotateBox.x - dialogBox.x).toBeCloseTo(208, 0);
   await expect(dialog.getByText("Linear gradient", { exact: true })).toHaveCount(0);
 
+  await dialog.getByRole("button", { name: "Flip gradient" }).click();
+  await expect(page.getByRole("status")).toHaveText("flip gradient");
+  await dialog.getByRole("button", { name: "Rotate gradient" }).click();
+  await expect(page.getByRole("status")).toHaveText("rotate gradient");
+
   await page.screenshot({ path: testInfo.outputPath("gradient-240px.png") });
 });
 
@@ -85,6 +90,13 @@ test("Bound Image matches the 240 x 577 reference and exposes every host action"
   expect(firstSliderBox.width).toBeCloseTo(120, 0);
 
   await page.screenshot({ path: testInfo.outputPath("image-bound-240px.png") });
+  await dialog.getByRole("button", { name: "Replace image" }).click();
+  await expect(page.getByRole("status")).toHaveText("replace image");
+  await rotate.click();
+  await expect(page.getByRole("status")).toHaveText("rotate image");
+  await dialog.getByRole("button", { name: "Edit crop" }).click();
+  await expect(page.getByRole("status")).toHaveText("edit crop");
+  await expect(dialog).toHaveCount(0);
 });
 
 test("Empty Image keeps the exact chooser and preview geometry without fake adjustments", async ({ page }, testInfo: TestInfo) => {
@@ -97,6 +109,9 @@ test("Empty Image keeps the exact chooser and preview geometry without fake adju
   await expect(preview).toHaveAttribute("data-state", "empty");
   await expect(preview).toHaveCSS("width", "208px");
   await expect(preview).toHaveCSS("height", "208px");
+
+  await dialog.getByRole("button", { name: "Select image" }).click();
+  await expect(page.getByRole("status")).toHaveText("select image");
 
   await page.screenshot({ path: testInfo.outputPath("image-empty-240px.png") });
 });

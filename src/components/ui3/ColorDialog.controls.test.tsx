@@ -113,6 +113,22 @@ describe("controls with nothing behind them are not rendered", () => {
     expect(create).toHaveBeenCalledOnce();
     act(() => renderer.unmount());
   });
+
+  it("renders gradient transform actions only for host commands and invokes each command", () => {
+    expect(html({ fillType: "linear" })).not.toContain('aria-label="Flip gradient"');
+    expect(html({ fillType: "linear" })).not.toContain('aria-label="Rotate gradient"');
+
+    const onFlipGradient = vi.fn();
+    const onRotateGradient = vi.fn();
+    const renderer = render({ fillType: "linear", onFlipGradient, onRotateGradient });
+    const [flip] = byLabel(renderer, "Flip gradient");
+    const [rotate] = byLabel(renderer, "Rotate gradient");
+    act(() => flip.props.onClick());
+    act(() => rotate.props.onClick());
+    expect(onFlipGradient).toHaveBeenCalledOnce();
+    expect(onRotateGradient).toHaveBeenCalledOnce();
+    act(() => renderer.unmount());
+  });
 });
 
 // ── Item 1: explicit image selection + adjustments ───────────────────────────
@@ -131,6 +147,17 @@ describe("image fill", () => {
     expect(upload).toBeDefined();
     act(() => upload.props.onClick({}));
     expect(chooseImage).toHaveBeenCalledOnce();
+    act(() => renderer.unmount());
+  });
+
+  it("renders media rotation only for a host command and invokes it", () => {
+    expect(html({ fillType: "image", onChooseImage: () => undefined })).not.toContain('aria-label="Rotate image 90 degrees"');
+
+    const onRotateMedia = vi.fn();
+    const renderer = render({ fillType: "image", onChooseImage: () => undefined, onRotateMedia });
+    const [rotate] = byLabel(renderer, "Rotate image 90 degrees");
+    act(() => rotate.props.onClick());
+    expect(onRotateMedia).toHaveBeenCalledOnce();
     act(() => renderer.unmount());
   });
 
