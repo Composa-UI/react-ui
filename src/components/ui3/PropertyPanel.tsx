@@ -2141,7 +2141,7 @@ function ExportSection({ settings, targetName = "selection", mode = "static", fr
           </div>
           <div
             data-composa-export-remove-slot
-            className="self-start shrink-0 flex items-center gap-[4px] pl-[8px] pt-[17px]"
+            className="self-end shrink-0 flex items-center gap-[4px] pl-[8px]"
           >
             <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove export" onClick={() => remove(exp.id)} />
           </div>
