@@ -81,6 +81,51 @@ export function FieldShell({ focused, disabled = false, variant = "default", siz
   );
 }
 
+/**
+ * Keeps editable fields and their adjacent keyframe/toggle controls as distinct
+ * surfaces. The four-pixel gutter is deliberate: action controls are not an
+ * internal border segment of a field, so focus, hover, and pressed states each
+ * have an unambiguous owner.
+ */
+function SeparatedFieldActions({ children, className }: { children: ReactNode; className?: string }) {
+  return <div data-composa-separated-field-actions className={clsx("flex min-w-0 w-full items-center gap-[4px]", className)}>{children}</div>;
+}
+
+function FieldAction({
+  ariaLabel,
+  active = false,
+  disabled = false,
+  onClick,
+  children,
+}: {
+  ariaLabel: string;
+  active?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return <button
+    type="button"
+    data-composa-field-action=""
+    aria-label={ariaLabel}
+    aria-pressed={active}
+    disabled={disabled}
+    onClick={event => { event.stopPropagation(); if (!disabled) onClick(); }}
+    className={clsx(
+      "size-[24px] shrink-0 rounded-c-sm bg-c-bg-secondary flex items-center justify-center",
+      "hover:bg-c-bg-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-c-focus-ring",
+      active && "bg-c-bg-selected text-c-text-brand",
+      !active && "text-c-icon-secondary",
+      disabled && "cursor-not-allowed opacity-60 hover:bg-c-bg-secondary",
+    )}
+  >{children}</button>;
+}
+
+/** A fixed-size host for an externally supplied trailing action. */
+function FieldActionSlot({ children }: { children: ReactNode }) {
+  return <span data-composa-field-action="" className="size-[24px] shrink-0 rounded-c-sm bg-c-bg-secondary flex items-center justify-center [&>button]:size-full [&>button]:rounded-c-sm [&>button]:bg-c-bg-secondary [&>button:hover]:bg-c-bg-hover [&>button:focus-visible]:outline-none [&>button:focus-visible]:ring-1 [&>button:focus-visible]:ring-c-focus-ring">{children}</span>;
+}
+
 // ─── InputField (TextInput) ───────────────────────────────────────────────────
 
 interface InputFieldProps {
@@ -464,7 +509,8 @@ export function NumericInput({
   };
 
   return (
-    <FieldShell focused={focused || scrubbing} disabled={disabled} size={size} className={className} numeric>
+    <SeparatedFieldActions className={className}>
+      <FieldShell focused={focused || scrubbing} disabled={disabled} size={size} className="flex-1 min-w-0" numeric>
       {/* scrubber label */}
       {iconLead && (
         <span
@@ -561,24 +607,17 @@ export function NumericInput({
         </span>
       )}
 
-      {/* Motion-mode keyframe diamond — trailing combo segment (replaces the chevron). */}
-      {keyframe && (
-        <button
-          type="button"
-          aria-label={ariaLabel ? `${ariaLabel} keyframe` : "Toggle keyframe"}
-          aria-pressed={keyframe.active}
-          disabled={disabled}
-          onClick={event => { event.stopPropagation(); if (!disabled) keyframe.onToggle(); }}
-          className={clsx(
-            "shrink-0 flex items-center justify-center size-[24px] rounded-c-sm hover:bg-c-bg-hover",
-            keyframe.active && "bg-c-bg-selected",
-            disabled && "cursor-not-allowed opacity-60 hover:bg-transparent",
-          )}
-        >
-          <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active ? "fill-current text-c-text-brand" : "text-c-icon-secondary")} />
-        </button>
-      )}
-    </FieldShell>
+      </FieldShell>
+      {/* Motion-mode keyframe diamond — a separate 24px action surface. */}
+      {keyframe && <FieldAction
+        ariaLabel={ariaLabel ? `${ariaLabel} keyframe` : "Toggle keyframe"}
+        active={keyframe.active}
+        disabled={disabled}
+        onClick={keyframe.onToggle}
+      >
+        <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active && "fill-current")} />
+      </FieldAction>}
+    </SeparatedFieldActions>
   );
 }
 
@@ -614,8 +653,8 @@ interface NumericPairInputProps {
   className?: string;
 }
 
-function PairSegment({ seg, size, isLast, onFocusChange }: {
-  seg: NumericPairSegment; size: InputSize; isLast: boolean; onFocusChange: (focused: boolean) => void;
+function PairSegment({ seg, size, isLast, disabled = false, onFocusChange }: {
+  seg: NumericPairSegment; size: InputSize; isLast: boolean; disabled?: boolean; onFocusChange: (focused: boolean) => void;
 }) {
   const { min, max, step = 1, defaultValue = 0 } = seg;
   const session = useContext(NumericEditSessionContext);
@@ -648,11 +687,11 @@ function PairSegment({ seg, size, isLast, onFocusChange }: {
   return (
     <div className={clsx("relative flex-1 min-w-0 h-full flex items-center", !isLast && "border-r border-c-bg")}>
       <span
-        onPointerDown={e => { begin(); e.currentTarget.setPointerCapture(e.pointerId); scrubStart.current = { x: e.clientX, value: current }; setScrubbing(true); }}
+        onPointerDown={e => { if (disabled) return; begin(); e.currentTarget.setPointerCapture(e.pointerId); scrubStart.current = { x: e.clientX, value: current }; setScrubbing(true); }}
         onPointerMove={e => { if (!scrubStart.current) return; const mult = e.shiftKey ? 10 : 1; set(scrubStart.current.value + Math.round((e.clientX - scrubStart.current.x) / 2) * step * mult); }}
         onPointerUp={e => { if (!scrubStart.current) return; const moved = Math.abs(e.clientX - scrubStart.current.x) > 2; scrubStart.current = null; setScrubbing(false); moved ? finish(false) : inputRef.current?.focus(); }}
         onPointerCancel={() => { if (!scrubStart.current) return; scrubStart.current = null; setScrubbing(false); finish(true); }}
-        className={clsx("absolute left-0 flex items-center justify-center size-[24px] shrink-0 select-none cursor-ew-resize text-c-text-secondary hover:text-c-text", FONT, T[size])}
+        className={clsx("absolute left-0 flex items-center justify-center size-[24px] shrink-0 select-none text-c-text-secondary", !disabled && "cursor-ew-resize hover:text-c-text", disabled && "cursor-not-allowed", FONT, T[size])}
       >
         {seg.iconLead}
       </span>
@@ -663,6 +702,7 @@ function PairSegment({ seg, size, isLast, onFocusChange }: {
         role="spinbutton"
         inputMode="decimal"
         value={focused || scrubbing ? draft : formatNumericDisplay(current)}
+        disabled={disabled}
         onChange={e => { const nd = e.target.value; setDraft(nd); const p = Number(nd); if (nd.trim() !== "" && Number.isFinite(p)) { begin(); const c = clampVal(p); if (c !== p) setDraft(formatNumericDisplay(c)); set(c); } }}
         onKeyDown={e => {
           const mult = e.shiftKey ? 10 : 1;
@@ -671,7 +711,7 @@ function PairSegment({ seg, size, isLast, onFocusChange }: {
         }}
         onFocus={e => { setDraft(formatNumericDisplay(current)); begin(); setFocus(true); e.target.select(); }}
         onBlur={() => { finish(false); setFocus(false); }}
-        className={clsx("w-full h-full bg-transparent outline-none text-left pl-[26px]", seg.suffix ? "pr-[2px]" : "pr-[6px]", FONT, T[size], "text-c-text [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none")}
+        className={clsx("w-full h-full bg-transparent outline-none text-left pl-[26px]", seg.suffix ? "pr-[2px]" : "pr-[6px]", FONT, T[size], "text-c-text [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", disabled && "cursor-not-allowed")}
       />
       {seg.suffix && <span className={clsx("shrink-0 pr-[6px] text-c-text-secondary", T[size], FONT)}>{seg.suffix}</span>}
     </div>
@@ -681,30 +721,22 @@ function PairSegment({ seg, size, isLast, onFocusChange }: {
 export function NumericPairInput({ a, b, keyframe, trailing, size = "medium", disabled = false, className }: NumericPairInputProps) {
   const [focusCount, setFocusCount] = useState(0);
   const onFocusChange = (value: boolean) => setFocusCount(count => Math.max(0, count + (value ? 1 : -1)));
-  const bHasTrailing = !!keyframe || !!trailing;
   return (
-    <FieldShell focused={focusCount > 0} disabled={disabled} size={size} className={className} numeric>
-      <PairSegment seg={a} size={size} isLast={false} onFocusChange={onFocusChange} />
-      <PairSegment seg={b} size={size} isLast={!bHasTrailing} onFocusChange={onFocusChange} />
-      {keyframe && (
-        <button
-          type="button"
-          aria-label={`${a.ariaLabel}/${b.ariaLabel} keyframe`}
-          aria-pressed={keyframe.active}
-          disabled={disabled}
-          onClick={event => { event.stopPropagation(); if (!disabled) keyframe.onToggle(); }}
-          className={clsx(
-            "shrink-0 flex items-center justify-center size-[24px] hover:bg-c-bg-hover",
-            keyframe.active && "bg-c-bg-selected",
-            disabled && "cursor-not-allowed opacity-60 hover:bg-transparent",
-            trailing && "border-r border-c-bg",
-          )}
-        >
-          <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active ? "fill-current text-c-text-brand" : "text-c-icon-secondary")} />
-        </button>
-      )}
-      {trailing && <span className="shrink-0 flex items-center justify-center size-[24px]">{trailing}</span>}
-    </FieldShell>
+    <SeparatedFieldActions className={className}>
+      <FieldShell focused={focusCount > 0} disabled={disabled} size={size} className="flex-1 min-w-0" numeric>
+        <PairSegment seg={a} size={size} isLast={false} disabled={disabled} onFocusChange={onFocusChange} />
+        <PairSegment seg={b} size={size} isLast={true} disabled={disabled} onFocusChange={onFocusChange} />
+      </FieldShell>
+      {keyframe && <FieldAction
+        ariaLabel={`${a.ariaLabel}/${b.ariaLabel} keyframe`}
+        active={keyframe.active}
+        disabled={disabled}
+        onClick={keyframe.onToggle}
+      >
+        <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active && "fill-current")} />
+      </FieldAction>}
+      {trailing && <FieldActionSlot>{trailing}</FieldActionSlot>}
+    </SeparatedFieldActions>
   );
 }
 
@@ -961,19 +993,10 @@ interface ColorInputProps {
   className?: string;
 }
 
-function ColorKeyframeButton({ label, control }: { label: string; control: { active: boolean; onToggle: () => void } }) {
-  return <button
-    type="button"
-    aria-label={`${label} keyframe`}
-    aria-pressed={control.active}
-    onClick={event => { event.stopPropagation(); control.onToggle(); }}
-    className={clsx(
-      "flex size-[24px] shrink-0 items-center justify-center self-stretch border-l border-c-bg text-c-icon-secondary",
-      control.active && "bg-c-bg-selected text-c-text-brand",
-    )}
-  >
+function ColorKeyframeButton({ label, control, disabled = false }: { label: string; control: { active: boolean; onToggle: () => void }; disabled?: boolean }) {
+  return <FieldAction ariaLabel={`${label} keyframe`} active={control.active} disabled={disabled} onClick={control.onToggle}>
     <Diamond size={11} strokeWidth={1.5} className={clsx(control.active && "fill-current")} />
-  </button>;
+  </FieldAction>;
 }
 
 export function ColorInput({
@@ -1034,14 +1057,8 @@ export function ColorInput({
         </span>
       )}
 
-      <div className={clsx(
-        "relative flex items-center rounded-c-md overflow-hidden",
-        "bg-c-bg-secondary transition-shadow duration-100",
-        H[size],
-        focused && "ring-1 ring-inset ring-c-focus-ring",
-        disabled && "opacity-60",
-        isVariable || fullWidth ? "w-full" : "w-[144px]",
-      )}>
+      <SeparatedFieldActions className={clsx(isVariable || fullWidth ? "w-full" : "w-[144px]")}>
+        <FieldShell focused={focused} disabled={disabled} size={size} className="flex-1 min-w-0">
         {/* chit */}
         {!isVariable && (
           <label className="relative shrink-0 flex items-center justify-center size-[24px] cursor-pointer">
@@ -1107,8 +1124,6 @@ export function ColorInput({
           )}
         </div>
 
-        {colorKeyframe && !isVariable && <ColorKeyframeButton label={`${ariaLabel ?? label ?? "Color"} color`} control={colorKeyframe} />}
-
         {/* opacity section — hidden for Variable fill */}
         {!isVariable && showOpacity && (
           <div className="flex items-center shrink-0 self-stretch border-l border-c-bg w-[53px]">
@@ -1132,9 +1147,11 @@ export function ColorInput({
             <span className={clsx("pr-[6px] shrink-0 text-c-text-secondary", T[size], FONT)}>%</span>
           </div>
         )}
-        {keyframe && <ColorKeyframeButton label={ariaLabel ?? label ?? "Color"} control={keyframe} />}
-        {opacityKeyframe && !isVariable && showOpacity && <ColorKeyframeButton label={`${ariaLabel ?? label ?? "Color"} opacity`} control={opacityKeyframe} />}
-      </div>
+        </FieldShell>
+        {colorKeyframe && !isVariable && <ColorKeyframeButton label={`${ariaLabel ?? label ?? "Color"} color`} control={colorKeyframe} disabled={disabled} />}
+        {keyframe && <ColorKeyframeButton label={ariaLabel ?? label ?? "Color"} control={keyframe} disabled={disabled} />}
+        {opacityKeyframe && !isVariable && showOpacity && <ColorKeyframeButton label={`${ariaLabel ?? label ?? "Color"} opacity`} control={opacityKeyframe} disabled={disabled} />}
+      </SeparatedFieldActions>
     </div>
   );
 }
