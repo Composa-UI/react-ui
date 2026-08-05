@@ -107,6 +107,52 @@ describe("ColorInput motion controls", () => {
   });
 });
 
+describe("separated field/action anatomy", () => {
+  it("keeps the single numeric editor and its keyframe in independent 24px surfaces", () => {
+    const html = renderToStaticMarkup(<NumericInput ariaLabel="Rotation" value={30} keyframe={{ active: false, onToggle: () => undefined }} />);
+    expect(html).toContain("data-composa-separated-field-actions");
+    expect(html).toContain("gap-[4px]");
+    expect(html).toContain("pr-[8px]");
+    expect(html).toMatch(/data-composa-field-action[^>]*aria-label="Rotation keyframe"[^>]*class="[^"]*size-\[24px\][^"]*focus-visible:ring-c-focus-ring/);
+    // The action is not an internal border-left segment of the editable shell.
+    const action = html.match(/<button[^>]*data-composa-field-action[^>]*>/)?.[0] ?? "";
+    expect(action).not.toContain("border-l");
+  });
+
+  it("reserves independent cells after a pair without shrinking either input into an action segment", () => {
+    const html = renderToStaticMarkup(<NumericPairInput
+      a={{ ariaLabel: "Position X", iconLead: "X", value: 10 }}
+      b={{ ariaLabel: "Position Y", iconLead: "Y", value: 20 }}
+      keyframe={{ active: false, onToggle: () => undefined }}
+      trailing={<button type="button" aria-label="Aspect ratio lock">Lock</button>}
+    />);
+    expect(html.match(/data-composa-field-action/g)).toHaveLength(2);
+    expect(html).toContain('aria-label="Position X/Position Y keyframe"');
+    expect(html).toContain('aria-label="Aspect ratio lock"');
+    expect(html).toContain("flex-1 min-w-0");
+  });
+
+  it("gives color and opacity actions the same separate active, disabled, and pressed semantics", () => {
+    const onColorToggle = vi.fn();
+    const onOpacityToggle = vi.fn();
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<ColorInput ariaLabel="Fill color" fullWidth disabled color="#336699"
+      colorKeyframe={{ active: true, onToggle: onColorToggle }}
+      opacityKeyframe={{ active: false, onToggle: onOpacityToggle }}
+    />); });
+    const actions = renderer!.root.findAllByProps({ "data-composa-field-action": "" });
+    expect(actions).toHaveLength(2);
+    const colorAction = renderer!.root.findByProps({ "aria-label": "Fill color color keyframe" });
+    expect(colorAction.props["aria-pressed"]).toBe(true);
+    expect(colorAction.props.disabled).toBe(true);
+    expect(colorAction.props.className).toContain("bg-c-bg-selected");
+    act(() => colorAction.props.onClick({ stopPropagation: () => undefined }));
+    expect(onColorToggle).not.toHaveBeenCalled();
+    expect(renderer!.root.findByProps({ "aria-label": "Fill color opacity keyframe" }).props["aria-pressed"]).toBe(false);
+    act(() => renderer!.unmount());
+  });
+});
+
 // Composa#661 item 1: the idle field read "758.46" but focusing it dumped the
 // raw stored float ("758.4596697032626") into the editor. The draft is the
 // editing surface, so it is seeded at display precision at every entry point.

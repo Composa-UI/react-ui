@@ -376,24 +376,27 @@ function AdjustRow({ label, value, onChange, keyframe, disabled = false }: {
       <span className={clsx(FONT, "w-[64px] shrink-0 truncate text-[11px] font-[450] text-c-text-secondary")}>
         {label}
       </span>
-      <div className={clsx("ml-[24px] shrink-0", keyframe ? "w-[88px]" : "w-[120px]")}>
+      <div data-composa-separated-field-actions className="ml-[24px] flex w-[120px] shrink-0 items-center">
+        <div className={keyframe ? "w-[88px]" : "w-[120px]"}>
         <Slider ariaLabel={`${label} value`} value={value} onChange={disabled ? undefined : onChange}
           min={-100} max={100} defaultValue={0} disabled={disabled} />
+        </div>
+        {keyframe && <button
+          type="button"
+          data-composa-field-action
+          aria-label={`${label} value keyframe`}
+          aria-pressed={keyframe.active}
+          disabled={disabled}
+          onClick={() => { if (!disabled) keyframe.onToggle(); }}
+          className={clsx(
+            "ml-[8px] flex size-[24px] shrink-0 items-center justify-center rounded-c-sm text-c-icon-secondary hover:bg-c-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring",
+            keyframe.active && "bg-c-bg-selected text-c-text-brand",
+            disabled && "cursor-not-allowed opacity-60 hover:bg-transparent",
+          )}
+        >
+          <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active && "fill-current")} />
+        </button>}
       </div>
-      {keyframe && <button
-        type="button"
-        aria-label={`${label} value keyframe`}
-        aria-pressed={keyframe.active}
-        disabled={disabled}
-        onClick={() => { if (!disabled) keyframe.onToggle(); }}
-        className={clsx(
-          "ml-[8px] flex size-[24px] shrink-0 items-center justify-center rounded-c-sm text-c-icon-secondary hover:bg-c-bg-hover",
-          keyframe.active && "bg-c-bg-selected text-c-text-brand",
-          disabled && "cursor-not-allowed opacity-60 hover:bg-transparent",
-        )}
-      >
-        <Diamond size={11} strokeWidth={1.5} className={clsx(keyframe.active && "fill-current")} />
-      </button>}
     </div>
   );
 }
@@ -494,7 +497,7 @@ function StopRow({
   return (
     <div data-composa-gradient-stop-row={index + 1} className="flex h-[32px] items-center gap-[8px] pl-[16px] pr-[8px]">
       {/* position % */}
-      <div className={keyframes?.position ? "w-[72px]" : "w-[48px]"}>
+      <div className={keyframes?.position ? "w-[76px]" : "w-[48px]"}>
         <NumericInput
           ariaLabel={`Stop ${index + 1} position`}
           value={stop.position}

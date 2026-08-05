@@ -24,6 +24,7 @@ import { Tooltip, TooltipProvider } from "./components/ui3/Tooltip";
 import { ComposaModeProvider } from "./components/ui3/useComposaMode";
 import { SegmentedControl } from "./components/ui3/SegmentedControl";
 import { Dial } from "./components/ui3/Dial";
+import { ColorInput, NumericInput, NumericPairInput } from "./components/ui3/Input";
 import { ColorWheel } from "./components/ui3/ColorWheel";
 import { AlignmentControl, type AlignmentValue } from "./components/ui3/AlignmentControl";
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./components/ui3/LayerTypeIcon";
@@ -831,6 +832,47 @@ function DialFixture({ mode }: { mode: "light" | "dark" }) {
 }
 
 const FONT_PLAY = "font-[family-name:var(--composa-font-family)] font-[450]";
+
+// ?view=issue-207 — exact base-control contract at the normal and minimum
+// inspector widths. The actions are deliberately separate boxes, so this fixture
+// can measure their geometry and focus/pressed ownership in a real browser.
+function Issue207ControlsFixture({ mode, width }: { mode: "light" | "dark"; width: number }) {
+  const [singleArmed, setSingleArmed] = useState(true);
+  const [pairArmed, setPairArmed] = useState(false);
+  const [locked, setLocked] = useState(false);
+  const [colorArmed, setColorArmed] = useState(true);
+  const [opacityArmed, setOpacityArmed] = useState(false);
+  const [position, setPosition] = useState({ x: 240, y: 160 });
+  return <section data-composa-mode={mode === "dark" ? "dark" : undefined}
+    data-composa-issue-207-fixture={`${mode}-${width}`}
+    className="flex flex-col gap-[12px] rounded-c-lg bg-c-bg text-c-text shadow-c-200 p-[16px]"
+    style={{ width }}>
+    <header className="text-[11px] font-[550] leading-[16px]">{mode} · {width}px inspector</header>
+    <div className="grid gap-[6px]">
+      <span className="text-[9px] text-c-text-secondary">Numeric · armed</span>
+      <NumericInput ariaLabel={`${mode} numeric`} value={42} suffix="px" keyframe={{ active: singleArmed, onToggle: () => setSingleArmed(value => !value) }} />
+    </div>
+    <div className="grid gap-[6px]">
+      <span className="text-[9px] text-c-text-secondary">Pair · two trailing actions</span>
+      <NumericPairInput
+        a={{ ariaLabel: `${mode} X`, iconLead: "X", value: position.x, onChange: x => setPosition(value => ({ ...value, x })) }}
+        b={{ ariaLabel: `${mode} Y`, iconLead: "Y", value: position.y, onChange: y => setPosition(value => ({ ...value, y })) }}
+        keyframe={{ active: pairArmed, onToggle: () => setPairArmed(value => !value) }}
+        trailing={<button type="button" aria-label={`${mode} aspect ratio lock`} aria-pressed={locked} onClick={() => setLocked(value => !value)}>⌘</button>}
+      />
+    </div>
+    <div className="grid gap-[6px]">
+      <span className="text-[9px] text-c-text-secondary">Color · two keyframe actions</span>
+      <ColorInput fullWidth ariaLabel={`${mode} color`} color="#0D99FF" opacity={80}
+        colorKeyframe={{ active: colorArmed, onToggle: () => setColorArmed(value => !value) }}
+        opacityKeyframe={width > 200 ? { active: opacityArmed, onToggle: () => setOpacityArmed(value => !value) } : undefined} />
+    </div>
+    <div className="grid gap-[6px]">
+      <span className="text-[9px] text-c-text-secondary">Disabled mixed numeric</span>
+      <NumericInput ariaLabel={`${mode} disabled mixed`} value={0} mixed disabled keyframe={{ active: true, onToggle: () => undefined }} />
+    </div>
+  </section>;
+}
 
 export default function Playground() {
   // ?view=slides = componentized SlidesPanel; ?view=slides-raw = the raw Figma export
@@ -1671,6 +1713,14 @@ export default function Playground() {
         <DialFixture mode="dark" />
       </div>
     );
+  }
+
+  if (view === "issue-207") {
+    return <div style={{ minHeight: "100vh", width: "100vw", display: "flex", gap: 24, flexWrap: "wrap", alignItems: "flex-start", padding: 24, boxSizing: "border-box", background: "#e6e6e6" }}>
+      <Issue207ControlsFixture mode="light" width={240} />
+      <Issue207ControlsFixture mode="light" width={200} />
+      <Issue207ControlsFixture mode="dark" width={240} />
+    </div>;
   }
 
   return (
