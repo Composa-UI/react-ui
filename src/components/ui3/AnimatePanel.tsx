@@ -1,4 +1,4 @@
-import { useEffect, useState, type DragEvent as ReactDragEvent, type ReactNode } from "react";
+import { useEffect, useState, type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { clsx } from "clsx";
 import { Plus, Trash2, MonitorPlay, Clock, Type, Play, GripVertical } from "lucide-react";
 import { PanelSection, PanelActionBtn, ScrollArea } from "./Panel";
@@ -326,6 +326,16 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
   useEffect(() => { setExpanded(defaultExpandedId); setActiveStyleDialog(null); }, [contextKey, selectionType, defaultExpandedId]);
   const [dragged, setDragged] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<{ targetId: string; placement: "before" | "after" | "with" } | null>(null);
+  useEffect(() => {
+    if (!dragged || typeof window === "undefined") return;
+    const cancelPointerDrag = () => { setDragged(null); setDropTarget(null); };
+    window.addEventListener("pointerup", cancelPointerDrag);
+    window.addEventListener("pointercancel", cancelPointerDrag);
+    return () => {
+      window.removeEventListener("pointerup", cancelPointerDrag);
+      window.removeEventListener("pointercancel", cancelPointerDrag);
+    };
+  }, [dragged]);
   const phaseOptions: Array<{ value: ObjectAnimationPhase; label: string }> = [
     { value: "build-in", label: "Build in" }, { value: "action", label: "Action" }, { value: "build-out", label: "Build out" },
   ];
@@ -398,6 +408,20 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
               setDragged(null);
             };
             const targetHandlers = (targetId: string, placement: "before" | "after" | "with") => ({
+              onPointerEnter: (event: ReactPointerEvent<HTMLDivElement>) => {
+                if (!dragged || dragged === targetId || event.buttons !== 1) return;
+                setDropTarget({ targetId, placement });
+              },
+              onPointerMove: (event: ReactPointerEvent<HTMLDivElement>) => {
+                if (!dragged || dragged === targetId || event.buttons !== 1) return;
+                if (dropTarget?.targetId !== targetId || dropTarget.placement !== placement) setDropTarget({ targetId, placement });
+              },
+              onPointerUp: (event: ReactPointerEvent<HTMLDivElement>) => {
+                if (!dragged || dragged === targetId) return;
+                event.preventDefault();
+                event.stopPropagation();
+                finishDrop(targetId, placement);
+              },
               onDragEnter: (event: ReactDragEvent<HTMLDivElement>) => {
                 if (!dragged || dragged === targetId) return;
                 event.preventDefault();
@@ -465,7 +489,14 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                   horizontal space: the card sits FLUSH at the container's left edge at
                   rest, and the grip appears on hover (vertically centered on the 32px card)
                   without shifting the card. Owner refinement: no build-order number label. */}
-              <button type="button" draggable={!!callbacks?.onReorder} aria-label={`Drag ${a.name} animation`} className={clsx(dragged === id ? "flex" : "hidden group-hover:flex", "absolute -left-[16px] top-[8px] size-[16px] items-center justify-center cursor-grab text-c-icon-secondary")}
+              <button type="button" draggable={!!callbacks?.onReorder} aria-label={`Drag ${a.name} animation`} className={clsx(dragged === id ? "flex cursor-grabbing" : "hidden group-hover:flex cursor-grab", "absolute -left-[16px] top-[8px] size-[16px] items-center justify-center text-c-icon-secondary")}
+                onPointerDown={event => {
+                  if (!callbacks?.onReorder || event.button !== 0) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setDragged(id);
+                  setDropTarget(null);
+                }}
                 onDragStart={event => {
                   setDragged(id);
                   setDropTarget(null);
