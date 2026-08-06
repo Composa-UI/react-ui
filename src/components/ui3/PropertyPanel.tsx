@@ -11,7 +11,7 @@ import {
   MoveHorizontal, MoveVertical, Play, Pause, MonitorPlay,
   Image as ImageIcon, Clock, SquareSquare,
   ArrowLeftFromLine, ArrowRightFromLine, Timer,
-  Square, PanelTop, PanelBottom, PanelLeft, PanelRight, Diamond,
+  Square, SquareDashedMousePointer, PanelTop, PanelBottom, PanelLeft, PanelRight, Diamond,
 } from "lucide-react";
 import { CirclesFour } from "@phosphor-icons/react";
 import { ProposedSquareText, ProposedTextMargins } from "../../icons/proposed-lucide";
@@ -67,7 +67,7 @@ export type PanelMode = "project" | "slide" | "element" | "video-clip" | "audio-
 export type ClipBlendMode = "Normal" | "Add" | "Subtract" | "Reverse subtract";
 export const CLIP_BLEND_MODES: ClipBlendMode[] = ["Normal", "Add", "Subtract", "Reverse subtract"];
 
-export type SlideBackgroundType = "solid" | "gradient" | "image" | "video";
+export type SlideBackgroundType = "solid" | "gradient" | "image" | "video" | "drop-zone";
 export type SlideTransitionType = "none" | "fade" | "push" | "slide" | "wipe";
 export type SlideTransitionDirection = "left" | "right" | "up" | "down";
 export type SlideTransitionEasing = EasingPreset;
@@ -2485,7 +2485,7 @@ function SlideTimingSection({
 // iconography: solid = filled square, gradient = a diagonal css-gradient swatch,
 // image/video = the matching lucide icon), so Slide-mode's Background reads
 // consistent with the Fill/Color dialog rather than text-labeled segments.
-function SlideFillTypeIcon({ type }: { type: "solid" | "gradient" | "image" | "video" }) {
+function SlideFillTypeIcon({ type }: { type: "solid" | "gradient" | "image" | "video" | "drop-zone" }) {
   if (type === "solid") {
     return (
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -2501,6 +2501,7 @@ function SlideFillTypeIcon({ type }: { type: "solid" | "gradient" | "image" | "v
     );
   }
   if (type === "image") return <ImageIcon size={12} strokeWidth={1.5} />;
+  if (type === "drop-zone") return <SquareDashedMousePointer size={12} strokeWidth={1.5} />;
   return <VideoFillIcon data-icon-semantic="fill-video" size={12} strokeWidth={1.5} />;
 }
 
@@ -2543,11 +2544,30 @@ function SlideBackgroundSection({
   gradientPreview,
   gradientType = "linear",
   gradientStops,
+  imageSourceLabel,
+  imagePreviewUrl,
+  videoSourceLabel,
+  videoPreviewUrl,
+  mediaFit = "fill",
+  mediaTileScale = 50,
+  dropZoneSources,
+  dropZoneSourceId,
+  swatches,
   onTypeChange,
   onColorChange,
   onOpacityChange,
+  onGradientTypeChange,
+  onGradientStopsChange,
   onFlipGradient,
   onRotateGradient,
+  onChooseImage,
+  onChooseVideo,
+  onMediaFitChange,
+  onMediaTileScaleChange,
+  onEditCrop,
+  onSelectDropZoneSource,
+  onEyedropperActivate,
+  eyedropperActive,
   onRotateMedia,
   capabilities,
 }: {
@@ -2557,18 +2577,39 @@ function SlideBackgroundSection({
   gradientPreview?: string;
   gradientType?: Extract<FillType, "linear" | "radial" | "angular" | "diamond">;
   gradientStops?: GradientStop[];
+  imageSourceLabel?: string;
+  imagePreviewUrl?: string;
+  videoSourceLabel?: string;
+  videoPreviewUrl?: string;
+  mediaFit?: MediaFillFit;
+  mediaTileScale?: number;
+  dropZoneSources?: { id: string; label: string }[];
+  dropZoneSourceId?: string;
+  swatches?: string[];
   onTypeChange?: (value: SlideBackgroundType) => void;
   onColorChange?: (value: string) => void;
   onOpacityChange?: (value: number) => void;
+  onGradientTypeChange?: (value: Extract<FillType, "linear" | "radial" | "angular" | "diamond">) => void;
+  onGradientStopsChange?: (stops: GradientStop[]) => void;
   onFlipGradient?: () => void;
   onRotateGradient?: () => void;
+  onChooseImage?: () => void;
+  onChooseVideo?: () => void;
+  onMediaFitChange?: (fit: MediaFillFit) => void;
+  onMediaTileScaleChange?: (scale: number) => void;
+  onEditCrop?: () => void;
+  onSelectDropZoneSource?: (sourceId: string) => void;
+  onEyedropperActivate?: () => void;
+  eyedropperActive?: boolean;
   onRotateMedia?: () => void;
   capabilities: Required<InspectorCapabilities>;
 }) {
   const [internalType, setInternalType] = useState<SlideBackgroundType>("solid");
   const [internalColor, setInternalColor] = useState("#1e1e1e");
   const [internalOpacity, setInternalOpacity] = useState(100);
-  const fillType = controlledType ?? internalType;
+  const [pendingType, setPendingType] = useState<SlideBackgroundType | null>(null);
+  useEffect(() => setPendingType(null), [controlledType]);
+  const fillType = pendingType ?? controlledType ?? internalType;
   const color = controlledColor ?? internalColor;
   const opacity = controlledOpacity ?? internalOpacity;
   const [colorOpen, setColorOpen] = useState(false);
@@ -2576,8 +2617,22 @@ function SlideBackgroundSection({
     { value: "solid", icon: <SlideFillTypeIcon type="solid" /> },
     { value: "gradient", icon: <SlideFillTypeIcon type="gradient" /> },
     { value: "image", icon: <SlideFillTypeIcon type="image" /> },
-    { value: "video", icon: <SlideFillTypeIcon type="video" /> },
+    ...(capabilities.videoFill && onChooseVideo ? [{ value: "video", icon: <SlideFillTypeIcon type="video" /> }] : []),
+    ...(capabilities.dropZone && onSelectDropZoneSource ? [{ value: "drop-zone", icon: <SlideFillTypeIcon type="drop-zone" /> }] : []),
   ];
+  const allowedFillModes = fillSegments.map(segment => segment.value === "gradient" ? "gradient" : segment.value) as ("solid" | "gradient" | "image" | "video" | "drop-zone")[];
+  const commitType = (next: SlideBackgroundType) => {
+    setPendingType(next);
+    if (controlledType === undefined) setInternalType(next);
+    onTypeChange?.(next);
+  };
+  const dialogType: FillType = fillType === "gradient" ? gradientType : fillType;
+  const triggerFillType = fillType === "gradient" ? "Gradient" : fillType === "image" ? "Image" : fillType === "video" ? "Video" : "Fill";
+  const triggerLabel = fillType === "gradient" ? `${gradientType[0].toUpperCase()}${gradientType.slice(1)} gradient`
+    : fillType === "image" ? imageSourceLabel ?? "No image selected"
+    : fillType === "video" ? videoSourceLabel ?? "No video selected"
+    : fillType === "drop-zone" ? dropZoneSources?.find(source => source.id === dropZoneSourceId)?.label ?? "No source selected"
+    : undefined;
   return (
     <PanelSection title="Background">
       {/* Fill type — icon-only segmented, matching the Figma reference / ColorDialog's
@@ -2590,118 +2645,77 @@ function SlideBackgroundSection({
             value={fillType}
             onChange={value => {
               const next = value as SlideBackgroundType;
-              if (controlledType === undefined) setInternalType(next);
-              onTypeChange?.(next);
+              commitType(next);
             }}
             className="w-full"
           />
         }
       />
 
-      {/* Control below switches on the selected fill type */}
-      {fillType === "solid" && (
-        <div className="flex items-center px-[16px] h-[32px] gap-[8px]">
-          <div className="flex-1 min-w-0">
-            <ColorDialog
-              capabilities={capabilities}
-              open={colorOpen}
-              onClose={() => setColorOpen(false)}
-              trigger={<ColorInput
-                ariaLabel="Background color"
-                fullWidth
-                color={color}
-                opacity={opacity}
-                onSwatchClick={() => setColorOpen(true)}
-                onColorChange={value => {
-                  if (controlledColor === undefined) setInternalColor(value);
-                  onColorChange?.(value);
-                }}
-                onOpacityChange={value => {
-                  if (controlledOpacity === undefined) setInternalOpacity(value);
-                  onOpacityChange?.(value);
-                }}
-              />}
-              fillType="solid"
-              hex={color.replace(/^#/, "")}
+      <div className="flex items-center px-[16px] h-[32px] gap-[8px]">
+        <div className="flex-1 min-w-0">
+          <ColorDialog
+            capabilities={capabilities}
+            allowedFillModes={allowedFillModes}
+            open={colorOpen}
+            onClose={() => setColorOpen(false)}
+            trigger={<ColorInput
+              ariaLabel="Background fill"
+              fullWidth
+              fillType={triggerFillType}
+              fillLabel={triggerLabel}
+              color={color}
               opacity={opacity}
-              onHexChange={value => {
-                const next = `#${value.replace(/^#/, "")}`;
-                if (controlledColor === undefined) setInternalColor(next);
-                onColorChange?.(next);
+              gradient={gradientPreview}
+              onSwatchClick={() => setColorOpen(true)}
+              onColorChange={value => {
+                if (controlledColor === undefined) setInternalColor(value);
+                onColorChange?.(value);
               }}
               onOpacityChange={value => {
                 if (controlledOpacity === undefined) setInternalOpacity(value);
                 onOpacityChange?.(value);
               }}
-            />
-          </div>
-          {/* Reserve the Design-tab trailing-icon column so the Background
-              hex/opacity field aligns with Range/Duration and the Position/
-              Scale/Opacity fields above. */}
-          <div aria-hidden className="shrink-0 flex items-center justify-end min-w-[24px]" />
+            />}
+            fillType={dialogType}
+            onFillTypeChange={next => {
+              if (next === "linear" || next === "radial" || next === "angular" || next === "diamond") {
+                commitType("gradient"); onGradientTypeChange?.(next);
+              } else commitType(next);
+            }}
+            hex={color.replace(/^#/, "")}
+            opacity={opacity}
+            onHexChange={value => {
+              const next = `#${value.replace(/^#/, "")}`;
+              if (controlledColor === undefined) setInternalColor(next);
+              onColorChange?.(next);
+            }}
+            gradientStops={gradientStops}
+            onStopsChange={onGradientStopsChange}
+            onFlipGradient={onFlipGradient}
+            onRotateGradient={onRotateGradient}
+            imageSourceLabel={imageSourceLabel}
+            imagePreviewUrl={imagePreviewUrl}
+            videoSourceLabel={videoSourceLabel}
+            videoPreviewUrl={videoPreviewUrl}
+            onChooseImage={onChooseImage}
+            onChooseVideo={onChooseVideo}
+            mediaFit={mediaFit}
+            onMediaFitChange={onMediaFitChange}
+            mediaTileScale={mediaTileScale}
+            onMediaTileScaleChange={onMediaTileScaleChange}
+            onEditCrop={onEditCrop}
+            onRotateMedia={onRotateMedia}
+            dropZoneSources={dropZoneSources}
+            dropZoneSourceId={dropZoneSourceId}
+            onSelectDropZoneSource={onSelectDropZoneSource}
+            swatches={swatches}
+            onEyedropperActivate={onEyedropperActivate}
+            eyedropperActive={eyedropperActive}
+          />
         </div>
-      )}
-      {fillType === "gradient" && (
-        <div className="flex items-center px-[16px] h-[32px] gap-[8px]">
-          <div className="flex-1 min-w-0">
-            <ColorDialog
-              capabilities={capabilities}
-              open={colorOpen}
-              onClose={() => setColorOpen(false)}
-              trigger={<ColorInput ariaLabel="Background gradient" fullWidth fillType="Gradient" fillLabel={`${gradientType[0].toUpperCase()}${gradientType.slice(1)} gradient`} gradient={gradientPreview} onSwatchClick={() => setColorOpen(true)} />}
-              fillType={gradientType}
-              gradientStops={gradientStops}
-              onFlipGradient={onFlipGradient}
-              onRotateGradient={onRotateGradient}
-              hex={color.replace(/^#/, "")}
-              opacity={opacity}
-              onHexChange={value => {
-                const next = `#${value.replace(/^#/, "")}`;
-                if (controlledColor === undefined) setInternalColor(next);
-                onColorChange?.(next);
-              }}
-              onOpacityChange={value => {
-                if (controlledOpacity === undefined) setInternalOpacity(value);
-                onOpacityChange?.(value);
-              }}
-            />
-          </div>
-          {/* Reserve the Design-tab trailing-icon column so the Background
-              hex/opacity field aligns with Range/Duration and the Position/
-              Scale/Opacity fields above. */}
-          <div aria-hidden className="shrink-0 flex items-center justify-end min-w-[24px]" />
-        </div>
-      )}
-      {(fillType === "image" || fillType === "video") && (
-        <div className="flex items-center px-[16px] h-[32px] gap-[8px]">
-          <div className="flex-1 min-w-0">
-            {/* Same ColorInput row as Solid/Gradient — only the chit + label change */}
-            <ColorDialog
-              capabilities={capabilities}
-              open={colorOpen}
-              onClose={() => setColorOpen(false)}
-              trigger={<ColorInput ariaLabel="Background media" fullWidth fillType="Image" fillLabel={fillType === "video" ? "clip.mp4" : "cover.png"} onSwatchClick={() => setColorOpen(true)} />}
-              fillType="image"
-              onRotateMedia={onRotateMedia}
-              hex={color.replace(/^#/, "")}
-              opacity={opacity}
-              onHexChange={value => {
-                const next = `#${value.replace(/^#/, "")}`;
-                if (controlledColor === undefined) setInternalColor(next);
-                onColorChange?.(next);
-              }}
-              onOpacityChange={value => {
-                if (controlledOpacity === undefined) setInternalOpacity(value);
-                onOpacityChange?.(value);
-              }}
-            />
-          </div>
-          {/* Reserve the Design-tab trailing-icon column so the Background
-              hex/opacity field aligns with Range/Duration and the Position/
-              Scale/Opacity fields above. */}
-          <div aria-hidden className="shrink-0 flex items-center justify-end min-w-[24px]" />
-        </div>
-      )}
+        <div aria-hidden className="shrink-0 flex items-center justify-end min-w-[24px]" />
+      </div>
     </PanelSection>
   );
 }
@@ -2949,6 +2963,9 @@ function ChromaKeyBody() {
             open={colorDialogOpen}
             onClose={() => setColorDialogOpen(false)}
             trigger={<ColorInput ariaLabel="Key color" fullWidth color={color} opacity={100} onColorChange={setColor} onSwatchClick={() => setColorDialogOpen(true)} />}
+            solidOnly
+            capabilities={{ styles: false, variables: false, libraries: false, videoFill: false, dropZone: false }}
+            swatches={[]}
             hex={color.replace("#", "")}
             onHexChange={value => setColor(`#${value.replace(/^#/, "")}`)}
           />
@@ -3285,9 +3302,28 @@ export interface PropertyPanelProps {
   slideBackgroundGradientPreview?: string;
   slideBackgroundGradientType?: Extract<FillType, "linear" | "radial" | "angular" | "diamond">;
   slideBackgroundGradientStops?: GradientStop[];
+  slideBackgroundImageSourceLabel?: string;
+  slideBackgroundImagePreviewUrl?: string;
+  slideBackgroundVideoSourceLabel?: string;
+  slideBackgroundVideoPreviewUrl?: string;
+  slideBackgroundMediaFit?: MediaFillFit;
+  slideBackgroundMediaTileScale?: number;
+  slideBackgroundDropZoneSources?: { id: string; label: string }[];
+  slideBackgroundDropZoneSourceId?: string;
+  slideBackgroundSwatches?: string[];
   onSlideBackgroundTypeChange?: (value: SlideBackgroundType) => void;
   onSlideBackgroundColorChange?: (value: string) => void;
   onSlideBackgroundOpacityChange?: (value: number) => void;
+  onSlideBackgroundGradientTypeChange?: (value: Extract<FillType, "linear" | "radial" | "angular" | "diamond">) => void;
+  onSlideBackgroundGradientStopsChange?: (stops: GradientStop[]) => void;
+  onChooseSlideBackgroundImage?: () => void;
+  onChooseSlideBackgroundVideo?: () => void;
+  onSlideBackgroundMediaFitChange?: (fit: MediaFillFit) => void;
+  onSlideBackgroundMediaTileScaleChange?: (scale: number) => void;
+  onEditSlideBackgroundCrop?: () => void;
+  onSelectSlideBackgroundDropZoneSource?: (sourceId: string) => void;
+  onSlideBackgroundEyedropperActivate?: () => void;
+  slideBackgroundEyedropperActive?: boolean;
   onFlipSlideBackgroundGradient?: () => void;
   onRotateSlideBackgroundGradient?: () => void;
   onRotateSlideBackgroundMedia?: () => void;
@@ -3778,9 +3814,28 @@ export function PropertyPanel(props: PropertyPanelProps) {
   slideBackgroundGradientPreview,
   slideBackgroundGradientType,
   slideBackgroundGradientStops,
+  slideBackgroundImageSourceLabel,
+  slideBackgroundImagePreviewUrl,
+  slideBackgroundVideoSourceLabel,
+  slideBackgroundVideoPreviewUrl,
+  slideBackgroundMediaFit,
+  slideBackgroundMediaTileScale,
+  slideBackgroundDropZoneSources,
+  slideBackgroundDropZoneSourceId,
+  slideBackgroundSwatches,
   onSlideBackgroundTypeChange,
   onSlideBackgroundColorChange,
   onSlideBackgroundOpacityChange,
+  onSlideBackgroundGradientTypeChange,
+  onSlideBackgroundGradientStopsChange,
+  onChooseSlideBackgroundImage,
+  onChooseSlideBackgroundVideo,
+  onSlideBackgroundMediaFitChange,
+  onSlideBackgroundMediaTileScaleChange,
+  onEditSlideBackgroundCrop,
+  onSelectSlideBackgroundDropZoneSource,
+  onSlideBackgroundEyedropperActivate,
+  slideBackgroundEyedropperActive,
   slideTransitionType,
   slideTransitionDirection,
   slideTransitionDuration,
@@ -4052,11 +4107,30 @@ export function PropertyPanel(props: PropertyPanelProps) {
             gradientPreview={slideBackgroundGradientPreview}
             gradientType={slideBackgroundGradientType}
             gradientStops={slideBackgroundGradientStops}
+            imageSourceLabel={slideBackgroundImageSourceLabel}
+            imagePreviewUrl={slideBackgroundImagePreviewUrl}
+            videoSourceLabel={slideBackgroundVideoSourceLabel}
+            videoPreviewUrl={slideBackgroundVideoPreviewUrl}
+            mediaFit={slideBackgroundMediaFit}
+            mediaTileScale={slideBackgroundMediaTileScale}
+            dropZoneSources={slideBackgroundDropZoneSources}
+            dropZoneSourceId={slideBackgroundDropZoneSourceId}
+            swatches={slideBackgroundSwatches}
             onTypeChange={onSlideBackgroundTypeChange}
             onColorChange={onSlideBackgroundColorChange}
             onOpacityChange={onSlideBackgroundOpacityChange}
+            onGradientTypeChange={onSlideBackgroundGradientTypeChange}
+            onGradientStopsChange={onSlideBackgroundGradientStopsChange}
             onFlipGradient={props.onFlipSlideBackgroundGradient}
             onRotateGradient={props.onRotateSlideBackgroundGradient}
+            onChooseImage={onChooseSlideBackgroundImage}
+            onChooseVideo={onChooseSlideBackgroundVideo}
+            onMediaFitChange={onSlideBackgroundMediaFitChange}
+            onMediaTileScaleChange={onSlideBackgroundMediaTileScaleChange}
+            onEditCrop={onEditSlideBackgroundCrop}
+            onSelectDropZoneSource={onSelectSlideBackgroundDropZoneSource}
+            onEyedropperActivate={onSlideBackgroundEyedropperActivate}
+            eyedropperActive={slideBackgroundEyedropperActive}
             onRotateMedia={props.onRotateSlideBackgroundMedia}
           />
           {capabilities.layoutFidelityTools && <LayoutGuideSection entries={layoutGuides} onAdd={onAddLayoutGuide} onUpdate={onUpdateLayoutGuide} onRemove={onRemoveLayoutGuide} />}

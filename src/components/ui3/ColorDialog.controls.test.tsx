@@ -264,7 +264,7 @@ describe("gradient type control", () => {
 
 describe("color format control", () => {
   const rowLabel = (row: ReactTestInstance) =>
-    ["Hex", "RGB", "CSS", "HSL", "HSB"].find(label =>
+    ["Hex", "RGB", "HSL", "HSB"].find(label =>
       renderToStaticMarkup(<>{row.props.children}</>).includes(`>${label}<`),
     );
 
@@ -288,7 +288,7 @@ describe("color format control", () => {
     // overlay primitive. Guard against replacing it with local open-state code.
     expect(formatPopover).toBeDefined();
     expect(formatRows(renderer).map(rowLabel)).toEqual([
-      "Hex", "RGB", "CSS", "HSL", "HSB",
+      "Hex", "RGB", "HSL", "HSB",
     ]);
     expect(formatRows(renderer).filter(row => row.props["aria-checked"] === true)
       .map(rowLabel)).toEqual(["Hex"]);

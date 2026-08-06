@@ -8,7 +8,7 @@ import { hexToHsb, hsbToHex } from "../../lib/color";
 import { SingleTab, Tabs } from "./Tabs";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { Slider, PickerHandle, GradientStopHandle } from "./Slider";
-import { InputField, ColorInput, NumericInput, NumericInputMulti } from "./Input";
+import { ColorInput, NumericInput } from "./Input";
 import { Button } from "./Button";
 import { Dropdown } from "./Dropdown";
 import { Chit } from "./Chit";
@@ -16,6 +16,7 @@ import { Chit } from "./Chit";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type FillType = "solid" | "linear" | "radial" | "angular" | "diamond" | "image" | "video" | "drop-zone";
+export type FillMode = "solid" | "gradient" | "image" | "video" | "drop-zone";
 export type MediaFillFit = "fill" | "fit" | "crop" | "tile";
 
 export interface GradientStop {
@@ -89,10 +90,16 @@ export interface ColorDialogProps {
   capabilities?: ColorDialogCapabilities;
   /** Restrict the dialog to a representable solid color (effects, text decoration, etc.). */
   solidOnly?: boolean;
+  /** Context-owned top-level modes. Gradient subtypes remain inside Gradient. */
+  allowedFillModes?: readonly FillMode[];
   /** Selects which controlled representation seeds the picker model on each open session. */
   pickerSource?: "hex" | "hsb";
   /** "On this page" swatch hexes (with #). Defaults to demo swatches. */
   swatches?: string[];
+  /** Host-owned composition sampler. Omitted means no inert pipette is rendered. */
+  onEyedropperActivate?: () => void;
+  /** True while the host's composition sampling mode is active. */
+  eyedropperActive?: boolean;
   imageExposure?: number;
   imageContrast?: number;
   imageSaturation?: number;
@@ -574,8 +581,37 @@ const GRADIENT_TYPES: { value: FillType; label: string }[] = [
   { value: "angular", label: "Angular" },
   { value: "diamond", label: "Diamond" },
 ];
-const COLOR_FORMATS = ["Hex", "RGB", "CSS", "HSL", "HSB"] as const;
+const COLOR_FORMATS = ["Hex", "RGB", "HSL", "HSB"] as const;
 type ColorFormat = (typeof COLOR_FORMATS)[number];
+
+const byte = (value: number) => Math.max(0, Math.min(255, Math.round(value)));
+const percent = (value: number) => Math.max(0, Math.min(100, value));
+const normalizedHue = (value: number) => ((value % 360) + 360) % 360;
+const rgbForHex = (value: string) => {
+  const clean = value.replace(/^#/, "").padEnd(6, "0").slice(0, 6);
+  return [0, 2, 4].map(index => parseInt(clean.slice(index, index + 2), 16) || 0) as [number, number, number];
+};
+const hexForRgb = (values: readonly number[]) => values.map(value => byte(value).toString(16).padStart(2, "0")).join("").toUpperCase();
+const hslForHex = (value: string): [number, number, number] => {
+  const [r8, g8, b8] = rgbForHex(value), r = r8 / 255, g = g8 / 255, b = b8 / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), delta = max - min;
+  const lightness = (max + min) / 2;
+  const saturation = delta === 0 ? 0 : delta / (1 - Math.abs(2 * lightness - 1));
+  let nextHue = 0;
+  if (delta !== 0) {
+    if (max === r) nextHue = 60 * (((g - b) / delta) % 6);
+    else if (max === g) nextHue = 60 * ((b - r) / delta + 2);
+    else nextHue = 60 * ((r - g) / delta + 4);
+  }
+  return [Math.round(normalizedHue(nextHue)), Math.round(saturation * 100), Math.round(lightness * 100)];
+};
+const hexForHsl = (values: readonly number[]) => {
+  const h = normalizedHue(values[0]), s = percent(values[1]) / 100, l = percent(values[2]) / 100;
+  const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = l - c / 2;
+  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x]
+    : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return hexForRgb([(r + m) * 255, (g + m) * 255, (b + m) * 255]);
+};
 
 export function ColorDialog({
   open,
@@ -591,7 +627,6 @@ export function ColorDialog({
   opacity: opacityProp = 100,
   hex: hexProp = "FFFFFF",
   onHueChange,
-  onOpacityChange,
   onHexChange,
   gradientStops: stopsProp,
   onStopsChange,
@@ -602,8 +637,11 @@ export function ColorDialog({
   onSelectLibraryColor,
   capabilities,
   solidOnly = false,
+  allowedFillModes,
   pickerSource = "hsb",
-  swatches = ["#383838", "#f5f5f5", "#1e1e1e", "#ffffff", "#0d99ff", "#ff24bd"],
+  swatches = [],
+  onEyedropperActivate,
+  eyedropperActive = false,
   imageExposure = 0,
   imageContrast = 0,
   imageSaturation = 0,
@@ -641,10 +679,14 @@ export function ColorDialog({
   // Same shape as videoAvailable: the tab appears only when the host can
   // actually service it, so the dialog never offers a control that does nothing.
   const dropZoneAvailable = (capabilities?.dropZone ?? false) && !!onSelectDropZoneSource;
+  const configuredModes: readonly FillMode[] = solidOnly
+    ? ["solid"]
+    : allowedFillModes ?? ["solid", "gradient", "image", "video", "drop-zone"];
+  const modeAvailable = (mode: FillMode) => configuredModes.includes(mode) &&
+    (mode !== "video" || videoAvailable) && (mode !== "drop-zone" || dropZoneAvailable);
   const boundSource = dropZoneSources.find(source => source.id === dropZoneSourceId);
   useEffect(() => { if (!librariesAvailable && activeTab === "libraries") setActiveTab("custom"); }, [activeTab, librariesAvailable]);
   const [hue,     setHue]     = useState(hueProp);
-  const [opacity, setOpacity] = useState(opacityProp);
   const [hex,     setHex]     = useState(hexProp);
   const [stops,   setStops]   = useState<GradientStop[]>(stopsProp ?? DEFAULT_STOPS);
   const wasOpen = useRef(false);
@@ -652,7 +694,7 @@ export function ColorDialog({
     if (open && !wasOpen.current) {
       const picker = pickerSource === "hex" ? hexToHsb(hexProp) : { hue: hueProp, saturation: satProp ?? 100, brightness: briProp ?? 100 };
       setFillType(solidOnly ? "solid" : fillTypeProp ?? "solid");
-      setHue(picker.hue); setOpacity(opacityProp); setHex(hexProp);
+      setHue(picker.hue); setHex(hexProp);
       setSat(picker.saturation); setBri(picker.brightness); setStops(stopsProp ?? DEFAULT_STOPS);
     }
     wasOpen.current = open;
@@ -678,7 +720,6 @@ export function ColorDialog({
   };
 
   const [colorFormat, setColorFormat] = useState<ColorFormat>("Hex");
-  const isSingleFmt = colorFormat === "Hex" || colorFormat === "CSS";
   const handleFillType = (t: FillType) => { setFillType(t); onFillTypeChange?.(t); };
   const handleHue      = (v: number)   => {
     setHue(v);
@@ -687,8 +728,17 @@ export function ColorDialog({
     setHex(nextHex);
     onHexChange?.(nextHex);
   };
-  const handleOpacity  = (v: number)   => { setOpacity(v);  onOpacityChange?.(v); };
   const handleHex      = (v: string)   => { setHex(v);      onHexChange?.(v); };
+  const colorComponents = colorFormat === "RGB" ? rgbForHex(hex)
+    : colorFormat === "HSL" ? hslForHex(hex) : [hue, sat, bri] as [number, number, number];
+  const handleColorComponent = (index: number, value: number) => {
+    const next = colorComponents.map((component, componentIndex) => componentIndex === index ? value : component);
+    const nextHex = colorFormat === "RGB" ? hexForRgb(next)
+      : colorFormat === "HSL" ? hexForHsl(next) : hsbToHex(next[0], next[1], next[2]);
+    const nextHsb = hexToHsb(nextHex);
+    setHue(nextHsb.hue); setSat(nextHsb.saturation); setBri(nextHsb.brightness);
+    handleHex(nextHex);
+  };
 
   // Stops are kept sorted by position. A gradient's ORDER is its positions, so
   // dragging a stop past its neighbour has to re-arrange the list — and the
@@ -839,24 +889,24 @@ export function ColorDialog({
           {/* Toolbar: fill-type tabs. The trailing utility icons are gone — all
               three (Blend mode, contrast check, Swap gradient) rendered with no
               onClick, so the row promised three features it did not have. */}
-          {!solidOnly && <div data-composa-color-dialog-toolbar className="flex h-[41px] shrink-0 items-center border-b border-c-border px-[8px]">
+          {configuredModes.length > 1 && <div data-composa-color-dialog-toolbar className="flex h-[41px] shrink-0 items-center border-b border-c-border px-[8px]">
             {/* Three fill-type tabs — gradient TYPE (linear/radial/…) lives in the dropdown, not here */}
             <div className="flex items-center gap-[2px]">
-              <Btn label="Solid" active={fillType === "solid"} onClick={() => handleFillType("solid")}>
+              {modeAvailable("solid") && <Btn label="Solid" active={fillType === "solid"} onClick={() => handleFillType("solid")}>
                 <FillTypeIcon type="solid" />
-              </Btn>
-              <Btn label="Gradient" active={isGradient} onClick={() => handleFillType("linear")}>
+              </Btn>}
+              {modeAvailable("gradient") && <Btn label="Gradient" active={isGradient} onClick={() => handleFillType(isGradient ? fillType : "linear")}>
                 <FillTypeIcon type="linear" />
-              </Btn>
-              <Btn label="Image" active={fillType === "image"} onClick={() => handleFillType("image")}>
+              </Btn>}
+              {modeAvailable("image") && <Btn label="Image" active={fillType === "image"} onClick={() => handleFillType("image")}>
                 <FillTypeIcon type="image" />
-              </Btn>
-              {videoAvailable && (
+              </Btn>}
+              {modeAvailable("video") && (
                 <Btn label="Video" active={fillType === "video"} onClick={() => handleFillType("video")}>
                   <FillTypeIcon type="video" />
                 </Btn>
               )}
-              {dropZoneAvailable && (
+              {modeAvailable("drop-zone") && (
                 <Btn label="Drop zone" active={fillType === "drop-zone"} onClick={() => handleFillType("drop-zone")}>
                   <FillTypeIcon type="drop-zone" />
                 </Btn>
@@ -899,21 +949,16 @@ export function ColorDialog({
               </div>
             </div>
 
-            {/* Eyedropper + hue + opacity sliders */}
+            {/* Eyedropper + hue. Paint opacity has one source: the owning row. */}
             <div data-composa-solid-slider-row className="flex h-[60px] items-center gap-[12px] px-[16px]">
-              <Btn label="Sample color">
+              {onEyedropperActivate && <Btn label={eyedropperActive ? "Cancel color sampling" : "Sample color"} active={eyedropperActive} onClick={onEyedropperActivate}>
                 <Pipette size={14} strokeWidth={1.5} />
-              </Btn>
-              <div className="flex-1 flex flex-col gap-[6px]">
+              </Btn>}
+              <div className="flex-1 min-w-0">
                 <Slider
                   value={hue} onChange={handleHue} min={0} max={360}
                   trackVariant="gradient"
                   trackGradient="linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)"
-                />
-                <Slider
-                  value={opacity} onChange={handleOpacity} min={0} max={100}
-                  trackVariant="alpha"
-                  trackGradient={`linear-gradient(to right, transparent, ${hueColor})`}
                 />
               </div>
             </div>
@@ -948,27 +993,32 @@ export function ColorDialog({
               </PopoverMenu>
               {colorFormat === "Hex" ? (
                 <div className="flex-1 min-w-0">
-                  <ColorInput fullWidth color={`#${hex}`} opacity={opacity} onColorChange={handleHex} onOpacityChange={handleOpacity} />
-                </div>
-              ) : colorFormat === "CSS" ? (
-                <div className="flex-1 min-w-0">
-                  <InputField value={`rgb(30, 30, 30, ${(opacity / 100).toFixed(2)})`} onChange={() => {}} />
+                  <ColorInput fullWidth color={`#${hex}`} onColorChange={handleHex} />
                 </div>
               ) : (
-                <div className="flex-1 min-w-0">
-                  <NumericInputMulti values={(colorFormat === "RGB" ? [30, 30, 30, opacity] : [0, 0, 12, opacity]).map(v => ({ value: v })) as [{ value: number }, { value: number }, { value: number }, { value: number }]} />
+                <div className="flex flex-1 min-w-0 gap-[2px]">
+                  {colorComponents.map((value, index) => <NumericInput
+                    key={index}
+                    ariaLabel={`${colorFormat} ${index + 1}`}
+                    value={value}
+                    min={index === 0 && colorFormat !== "RGB" ? 0 : 0}
+                    max={colorFormat === "RGB" ? 255 : index === 0 ? 360 : 100}
+                    onChange={next => handleColorComponent(index, next)}
+                    className="min-w-0 flex-1"
+                  />)}
                 </div>
               )}
             </div>
 
             <div className="h-[8px]" />
 
-            <div data-composa-solid-swatches className="h-[76px] border-t border-c-border">
+            <div data-composa-solid-swatches className="min-h-[76px] border-t border-c-border">
               <div className="h-[36px] px-[16px] pt-[12px]">
                 <Dropdown value="On this page" size="default" className="w-full" />
               </div>
 
-              <div className="flex h-[40px] flex-wrap items-center gap-[8px] px-[16px]">
+              <div className="flex min-h-[40px] flex-wrap items-center gap-[8px] px-[16px] py-[8px]">
+                {swatches.length === 0 && <span className="text-[11px] text-c-text-secondary">No colors on this page</span>}
                 {swatches.map(c => (
                   <button
                     key={c}

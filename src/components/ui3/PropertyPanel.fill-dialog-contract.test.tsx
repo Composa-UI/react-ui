@@ -130,22 +130,82 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
   });
 
   it("forwards slide background gradient and media commands without inventing mutations", () => {
+    const onType = vi.fn();
+    const onGradientType = vi.fn();
+    const onStops = vi.fn();
     const onFlipGradient = vi.fn();
     const onRotateGradient = vi.fn();
     const onRotateMedia = vi.fn();
+    const onImage = vi.fn();
+    const onVideo = vi.fn();
+    const onFit = vi.fn();
+    const onTileScale = vi.fn();
+    const onEditCrop = vi.fn();
+    const onDropZone = vi.fn();
+    const onEyedropper = vi.fn();
+    const stops = [{ id: "a", position: 0, color: "ff0000", opacity: 100 }, { id: "b", position: 100, color: "0000ff", opacity: 100 }];
     let renderer!: ReactTestRenderer;
 
     act(() => { renderer = create(<PropertyPanel
       mode="slide"
       slideBackgroundType="gradient"
+      slideBackgroundGradientType="radial"
+      slideBackgroundGradientStops={stops}
+      slideBackgroundImageSourceLabel="cover.png"
+      slideBackgroundImagePreviewUrl="blob:cover"
+      slideBackgroundVideoSourceLabel="clip.mp4"
+      slideBackgroundVideoPreviewUrl="blob:clip"
+      slideBackgroundMediaFit="crop"
+      slideBackgroundMediaTileScale={62}
+      slideBackgroundDropZoneSources={[{ id: "master-video", label: "Master video" }]}
+      slideBackgroundDropZoneSourceId="master-video"
+      slideBackgroundSwatches={["#ff0000"]}
+      capabilities={{ videoFill: true, dropZone: true }}
+      onSlideBackgroundTypeChange={onType}
+      onSlideBackgroundGradientTypeChange={onGradientType}
+      onSlideBackgroundGradientStopsChange={onStops}
+      onChooseSlideBackgroundImage={onImage}
+      onChooseSlideBackgroundVideo={onVideo}
+      onSlideBackgroundMediaFitChange={onFit}
+      onSlideBackgroundMediaTileScaleChange={onTileScale}
+      onEditSlideBackgroundCrop={onEditCrop}
+      onSelectSlideBackgroundDropZoneSource={onDropZone}
+      onSlideBackgroundEyedropperActivate={onEyedropper}
+      slideBackgroundEyedropperActive
       onFlipSlideBackgroundGradient={onFlipGradient}
       onRotateSlideBackgroundGradient={onRotateGradient}
       onRotateSlideBackgroundMedia={onRotateMedia}
     />); });
     act(() => capture.backgroundProps?.onFlipGradient?.());
     act(() => capture.backgroundProps?.onRotateGradient?.());
+    act(() => capture.backgroundProps?.onFillTypeChange?.("diamond"));
+    act(() => capture.backgroundProps?.onStopsChange?.(stops.slice().reverse()));
+    act(() => capture.backgroundProps?.onChooseImage?.());
+    act(() => capture.backgroundProps?.onChooseVideo?.());
+    act(() => capture.backgroundProps?.onMediaFitChange?.("fit"));
+    act(() => capture.backgroundProps?.onMediaTileScaleChange?.(70));
+    act(() => capture.backgroundProps?.onEditCrop?.());
+    act(() => capture.backgroundProps?.onSelectDropZoneSource?.("master-video"));
+    act(() => capture.backgroundProps?.onEyedropperActivate?.());
     expect(onFlipGradient).toHaveBeenCalledOnce();
     expect(onRotateGradient).toHaveBeenCalledOnce();
+    expect(onType).toHaveBeenCalledWith("gradient");
+    expect(onGradientType).toHaveBeenCalledWith("diamond");
+    expect(onStops).toHaveBeenCalledWith(stops.slice().reverse());
+    expect(onImage).toHaveBeenCalledOnce();
+    expect(onVideo).toHaveBeenCalledOnce();
+    expect(onFit).toHaveBeenCalledWith("fit");
+    expect(onTileScale).toHaveBeenCalledWith(70);
+    expect(onEditCrop).toHaveBeenCalledOnce();
+    expect(onDropZone).toHaveBeenCalledWith("master-video");
+    expect(onEyedropper).toHaveBeenCalledOnce();
+    expect(capture.backgroundProps).toMatchObject({
+      fillType: "radial", gradientStops: stops,
+      imageSourceLabel: "cover.png", imagePreviewUrl: "blob:cover",
+      videoSourceLabel: "clip.mp4", videoPreviewUrl: "blob:clip",
+      mediaFit: "crop", mediaTileScale: 62,
+      dropZoneSourceId: "master-video", swatches: ["#ff0000"], eyedropperActive: true,
+    });
 
     act(() => renderer.update(<PropertyPanel
       mode="slide"
