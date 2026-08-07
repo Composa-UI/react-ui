@@ -49,7 +49,7 @@ describe("NavRail / left-panel divider alignment (Composa#622)", () => {
 });
 
 describe("NavRail files affordance", () => {
-  it("opens a single 'Files' menu action that fires the callback", () => {
+  it("opens a single 'Back to files' menu action that fires the callback", () => {
     const calls: string[] = [];
     let renderer: ReturnType<typeof create>;
     act(() => { renderer = create(<NavRail onBackToFiles={() => calls.push("back")} />); });
@@ -61,7 +61,7 @@ describe("NavRail files affordance", () => {
     let closed = false;
     const rows = menuRows(popover, () => { closed = true; }).filter(r => r.type === MenuRow);
     expect(rows).toHaveLength(1);
-    expect(rows[0].props.label).toBe("Files");
+    expect(rows[0].props.label).toBe("Back to files");
 
     act(() => rows[0].props.onClick());
     expect(calls).toEqual(["back"]);

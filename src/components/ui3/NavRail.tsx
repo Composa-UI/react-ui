@@ -38,8 +38,8 @@ export function NavRail({
   active?: string;
   onSelect?: (id: string) => void;
   /**
-   * Optional handler for the "Files" affordance. When provided, the
-   * brand button becomes a menu trigger whose single action, "Files",
+   * Optional handler for the "Back to files" affordance. When provided, the
+   * brand button becomes a menu trigger whose single action, "Back to files",
    * invokes this callback (the consumer wires the actual editor → /projects
    * navigation). When omitted, the brand button stays inert as before, so
    * existing consumers are unaffected.
@@ -78,7 +78,7 @@ export function NavRail({
             {close => (
               <Menu>
                 <MenuRow
-                  label="Files"
+                  label="Back to files"
                   onClick={() => { close(); onBackToFiles(); }}
                 />
               </Menu>
