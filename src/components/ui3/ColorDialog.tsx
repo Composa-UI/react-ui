@@ -523,6 +523,15 @@ const timeLabel = (seconds: number) => {
   return `${minutes}:${Math.floor(safe % 60).toString().padStart(2, "0")}`;
 };
 
+const timeValue = (value: string) => {
+  const trimmed = value.trim();
+  if (/^\d+(?::\d{1,2})?$/.test(trimmed)) {
+    const [minutes, seconds] = trimmed.split(":").map(Number);
+    return seconds === undefined ? minutes : minutes * 60 + seconds;
+  }
+  return Number.NaN;
+};
+
 function VideoPlaybackControls({ previewUrl, value, onChange, onApplyToAll }: {
   previewUrl?: string;
   value: VideoPlaybackOptions;
@@ -533,6 +542,8 @@ function VideoPlaybackControls({ previewUrl, value, onChange, onApplyToAll }: {
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [editingTime, setEditingTime] = useState(false);
+  const [timeDraft, setTimeDraft] = useState("0:00");
   const togglePlayback = () => {
     const video = videoRef.current;
     if (!video) return;
@@ -541,8 +552,16 @@ function VideoPlaybackControls({ previewUrl, value, onChange, onApplyToAll }: {
   const seek = (seconds: number) => {
     const video = videoRef.current;
     if (!video) return;
-    video.currentTime = seconds;
-    setCurrentTime(seconds);
+    const next = Math.max(0, Math.min(seconds, duration > 0 ? duration : seconds));
+    video.currentTime = next;
+    setCurrentTime(next);
+    setTimeDraft(timeLabel(next));
+  };
+  const commitTime = () => {
+    const next = timeValue(timeDraft);
+    if (Number.isFinite(next)) seek(next);
+    else setTimeDraft(timeLabel(currentTime));
+    setEditingTime(false);
   };
   const rows: Array<[keyof VideoPlaybackOptions, string]> = [
     ["loop", "Loop"],
@@ -552,14 +571,31 @@ function VideoPlaybackControls({ previewUrl, value, onChange, onApplyToAll }: {
   ];
   return <div data-composa-video-playback-controls className="px-[16px] pb-[16px] pt-[8px]">
     {previewUrl && <video ref={videoRef} src={previewUrl} className="hidden" preload="metadata" loop={value.loop} muted={!value.playSound}
-      onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onTimeUpdate={event => setCurrentTime(event.currentTarget.currentTime)}
+      onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onTimeUpdate={event => {
+        const next = event.currentTarget.currentTime;
+        setCurrentTime(next);
+        if (!editingTime) setTimeDraft(timeLabel(next));
+      }}
       onLoadedMetadata={event => setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0)} />}
     <div className="mb-[12px] flex h-[24px] items-center gap-[8px]">
       <Button variant="Ghost" ariaLabel={playing ? "Pause video preview" : "Play video preview"} iconLead="center"
         icon={playing ? <Pause size={16} strokeWidth={1.5} /> : <Play size={16} strokeWidth={1.5} />} disabled={!previewUrl} onClick={togglePlayback} />
       <div className="min-w-0 flex-1"><Slider ariaLabel="Video preview position" min={0} max={Math.max(duration, 0.01)} step={0.01}
         value={Math.min(currentTime, Math.max(duration, 0.01))} onChange={seek} disabled={!previewUrl} /></div>
-      <span className="w-[36px] text-right text-[11px] text-c-text">{timeLabel(currentTime)}</span>
+      <input
+        aria-label="Video preview time"
+        inputMode="numeric"
+        value={editingTime ? timeDraft : timeLabel(currentTime)}
+        disabled={!previewUrl}
+        onFocus={() => { setEditingTime(true); setTimeDraft(timeLabel(currentTime)); }}
+        onChange={event => setTimeDraft(event.target.value)}
+        onBlur={commitTime}
+        onKeyDown={event => {
+          if (event.key === "Enter") { event.preventDefault(); commitTime(); }
+          if (event.key === "Escape") { event.preventDefault(); setTimeDraft(timeLabel(currentTime)); setEditingTime(false); }
+        }}
+        className="h-[24px] w-[44px] rounded-c-md bg-c-bg-secondary px-[4px] text-right text-[11px] text-c-text outline-none focus:ring-1 focus:ring-c-focus-ring disabled:opacity-60"
+      />
     </div>
     <div className="flex flex-col gap-[2px]">
       {rows.map(([key, label]) => <div key={key} className="flex h-[26px] items-center justify-between text-[11px] text-c-text">
@@ -567,6 +603,26 @@ function VideoPlaybackControls({ previewUrl, value, onChange, onApplyToAll }: {
       </div>)}
     </div>
     {onApplyToAll && <Button variant="Secondary" label="Apply to all videos" className="mt-[8px] w-full" onClick={onApplyToAll} />}
+  </div>;
+}
+
+function MediaAdjustments({ sourceLabel, onChange, values, keyframes, readOnly = false }: {
+  sourceLabel?: string;
+  onChange?: (adjustment: ImageAdjustment, value: number) => void;
+  values: Partial<ImageAdjustments>;
+  keyframes?: Partial<Record<ImageAdjustment, { active: boolean; onToggle: () => void }>>;
+  readOnly?: boolean;
+}) {
+  // A placeholder has no bound media document to receive an adjustment. Once a
+  // source is bound, Image and Video deliberately share this exact control set.
+  if (!sourceLabel || !onChange) return null;
+  const rows: Array<[ImageAdjustment, string]> = [
+    ["exposure", "Exposure"], ["contrast", "Contrast"], ["saturation", "Saturation"],
+    ["temperature", "Temperature"], ["tint", "Tint"], ["highlights", "Highlights"], ["shadows", "Shadows"],
+  ];
+  return <div data-composa-image-adjustments className="flex h-[232px] flex-col pt-[8px]">
+    {rows.map(([adjustment, label]) => <AdjustRow key={adjustment} label={label} value={values[adjustment] ?? 0}
+      disabled={readOnly} keyframe={keyframes?.[adjustment]} onChange={value => onChange(adjustment, value)} />)}
   </div>;
 }
 
@@ -751,6 +807,8 @@ export function ColorDialog({
   // Same shape as videoAvailable: the tab appears only when the host can
   // actually service it, so the dialog never offers a control that does nothing.
   const dropZoneAvailable = (capabilities?.dropZone ?? false) && !!onSelectDropZoneSource;
+  const imageAdjustmentValues = { exposure: imageExposure, contrast: imageContrast, saturation: imageSaturation, temperature: imageTemperature, tint: imageTint, highlights: imageHighlights, shadows: imageShadows };
+  const mediaAdjustmentsVisible = !!onImageAdjustmentChange && (fillType === "image" ? !!imageSourceLabel : fillType === "video" ? !!videoSourceLabel : false);
   const configuredModes: readonly FillMode[] = solidOnly
     ? ["solid"]
     : allowedFillModes ?? ["solid", "gradient", "image", "video", "drop-zone"];
@@ -1024,7 +1082,7 @@ export function ColorDialog({
           <ModalBody scrollable className={clsx(
             fillType === "solid" && "h-[408px]",
             isGradient && "max-h-[560px]",
-            fillType === "image" && imageSourceLabel && onImageAdjustmentChange && "h-[496px]",
+            (fillType === "image" || fillType === "video") && mediaAdjustmentsVisible && "h-[496px]",
           )}>
 
         {/* ── SOLID ──────────────────────────────────────────────────────── */}
@@ -1241,20 +1299,8 @@ export function ColorDialog({
             {/* Image adjustments — same rule: every slider was handed a value
                 and no onChange, so each drag was thrown away. Shown only when
                 the host can receive the change. */}
-            {imageSourceLabel && onImageAdjustmentChange && (
-              <>
-                <div data-composa-image-adjustments className="flex h-[232px] flex-col pt-[8px]">
-                  <AdjustRow label="Exposure"    value={imageExposure}    disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.exposure} onChange={v => onImageAdjustmentChange("exposure", v)} />
-                  <AdjustRow label="Contrast"    value={imageContrast}    disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.contrast} onChange={v => onImageAdjustmentChange("contrast", v)} />
-                  <AdjustRow label="Saturation"  value={imageSaturation}  disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.saturation} onChange={v => onImageAdjustmentChange("saturation", v)} />
-                  <AdjustRow label="Temperature" value={imageTemperature} disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.temperature} onChange={v => onImageAdjustmentChange("temperature", v)} />
-                  <AdjustRow label="Tint"        value={imageTint}        disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.tint} onChange={v => onImageAdjustmentChange("tint", v)} />
-                  <AdjustRow label="Highlights"  value={imageHighlights}  disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.highlights} onChange={v => onImageAdjustmentChange("highlights", v)} />
-                  <AdjustRow label="Shadows"     value={imageShadows}     disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.shadows} onChange={v => onImageAdjustmentChange("shadows", v)} />
-                </div>
-                <div aria-hidden className="h-[8px] shrink-0" />
-              </>
-            )}
+            <MediaAdjustments sourceLabel={imageSourceLabel} onChange={onImageAdjustmentChange} values={imageAdjustmentValues}
+              keyframes={imageAdjustmentKeyframes} readOnly={imageAdjustmentsReadOnly} />
           </>
         )}
 
@@ -1312,6 +1358,8 @@ export function ColorDialog({
               onChoose={onChooseVideo} bottomInset={!videoSourceLabel || !videoPlayback || !onVideoPlaybackChange} />
             {videoSourceLabel && videoPlayback && onVideoPlaybackChange && <VideoPlaybackControls previewUrl={videoPreviewUrl} value={videoPlayback}
               onChange={onVideoPlaybackChange} onApplyToAll={onApplyVideoPlaybackToAll} />}
+            <MediaAdjustments sourceLabel={videoSourceLabel} onChange={onImageAdjustmentChange} values={imageAdjustmentValues}
+              keyframes={imageAdjustmentKeyframes} readOnly={imageAdjustmentsReadOnly} />
           </>
         )}
           </ModalBody>

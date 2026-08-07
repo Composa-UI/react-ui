@@ -297,9 +297,16 @@ function EasingChoice({ id, value, callbacks }: { id: string; value: EasingPrese
 // ── Sequence ranks ────────────────────────────────────────────────────────────────
 // The engine's `ObjectAnimation.order` is the one grouping truth: distinct ranks are
 // sequential, while cards sharing a rank are simultaneous. A shared rank uses one
-// sequence number and a visible connector rail between its cards; it is not a bordered
-// container. Dragging onto its `With` target means simultaneous, while the explicit
+// sequence number; it is not a bordered container. Dragging onto its `With` target
+// means simultaneous, while the explicit
 // plus-spaces between ranks create standalone sequential ranks.
+
+function durationMs(animation: ObjectAnimationItem) {
+  const source = animation.buildDuration ?? animation.duration;
+  const value = Number.parseFloat(source);
+  if (!Number.isFinite(value)) return null;
+  return source.includes("ms") ? value : value * 1000;
+}
 
 /** The block's ordinal. Small muted label sitting on top of the card, outside the card's
  *  own `group` box so it never shifts the flush-left card or the hover-revealed drag
@@ -455,16 +462,10 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                   data-animation-sequence-space={key}
                   data-animation-sequence-target={placement}
                   data-animation-sequence-target-for={targetId}
-                  className="relative flex h-[20px] items-center justify-center"
+                  className="relative flex h-[20px] items-start justify-center"
                   {...targetHandlers(targetId, placement)}
                 >
-                  <span aria-hidden className={clsx("absolute inset-x-0 top-1/2 h-px", active ? "bg-c-border-selected" : "bg-c-border")} />
-                  <span className={clsx(
-                    "relative flex size-[16px] items-center justify-center rounded-full border bg-c-bg",
-                    active ? "border-c-border-selected text-c-icon-selected" : "border-c-border text-c-icon-secondary",
-                  )}>
-                    <Plus size={10} strokeWidth={1.5} />
-                  </span>
+                  <span aria-hidden className={clsx("absolute inset-x-0 top-0 border-t border-dashed", active ? "border-c-border-selected" : "border-c-border")} />
                 </div>
               );
             };
@@ -569,7 +570,16 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                 const following = next?.rows[0];
                 const groupStart = Math.min(...group.rows.map(row => row.animation.startMs ?? 0));
                 const followingStart = following ? Math.min(...next.rows.map(row => row.animation.startMs ?? 0)) : 0;
-                const delayBetween = following ? Math.max(0, followingStart - groupStart) : 0;
+                const groupEnd = Math.max(...group.rows.map(row => {
+                  const start = row.animation.startMs;
+                  const duration = durationMs(row.animation);
+                  return start != null && duration != null ? start + duration : Number.NaN;
+                }));
+                const delayBetween = following && Number.isFinite(groupEnd) ? Math.max(0, followingStart - groupEnd) : 0;
+                // A connector communicates temporal continuity, not merely adjacent
+                // render order. A timeline drag that leaves a gap must visibly break it.
+                const connectedToNext = !dragged && !!following && !!next && next.rank === group.rank + 1 &&
+                  Number.isFinite(groupEnd) && Math.abs(followingStart - groupEnd) < 1;
                 return (
                   <div
                     key={group.rank}
@@ -581,13 +591,8 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                     <BlockNumberLabel n={group.rank} />
                     <div
                       data-animation-shared-rank={shared ? group.rank : undefined}
-                      className={clsx("relative flex flex-col gap-[4px]", shared && "pl-[12px]")}
+                      className="relative flex flex-col gap-[4px]"
                     >
-                      {shared && <span
-                        aria-hidden
-                        data-animation-sequence-connector={group.rank}
-                        className="pointer-events-none absolute bottom-[12px] left-[3px] top-[12px] w-px bg-c-border-selected"
-                      />}
                       {dragged && withTargetId && (
                         <div
                           role="button"
@@ -606,12 +611,7 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                           {withActive && <span aria-hidden data-animation-sequence-drop-indicator="with" className="pointer-events-none absolute inset-[2px] rounded-c-xs border border-c-border-selected" />}
                         </div>
                       )}
-                      {group.rows.map(row => shared ? (
-                        <div key={row.id} data-animation-sequence-branch={row.id} className="relative">
-                          <span aria-hidden className="pointer-events-none absolute -left-[9px] top-[20px] h-px w-[9px] bg-c-border-selected" />
-                          {renderActionRow(row.animation, row.index)}
-                        </div>
-                      ) : renderActionRow(row.animation, row.index))}
+                      {group.rows.map(row => renderActionRow(row.animation, row.index))}
                     </div>
                     {afterTargetId && insertionSpace(
                       `after-${group.rank}`,
@@ -619,16 +619,16 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                       afterPlacement,
                       next ? `Insert animation between sequence ${group.rank} and ${next.rank}` : `Insert animation after sequence ${group.rank}`,
                     )}
-                    {!dragged && following && <div data-animation-sequence-connector-between={`${group.rank}-${next!.rank}`} className="group/sequence-gap relative flex h-[40px] items-center justify-center">
+                    {connectedToNext && <div data-animation-sequence-connector-between={`${group.rank}-${next!.rank}`} className="group/sequence-gap relative flex h-[40px] items-center justify-center">
                       <span aria-hidden className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-c-border" />
-                      <div className="relative flex h-[28px] max-w-[28px] items-center overflow-hidden rounded-c-md bg-c-bg-secondary px-[7px] text-[11px] text-c-text transition-[max-width] group-hover/sequence-gap:max-w-[168px] group-focus-within/sequence-gap:max-w-[168px]">
+                      <div className="relative flex h-[28px] max-w-[28px] items-center rounded-c-md bg-c-bg-secondary px-[7px] text-[11px] text-c-text transition-[max-width] group-hover/sequence-gap:max-w-[168px] group-focus-within/sequence-gap:max-w-[168px]">
                         <span aria-hidden className="relative size-[14px] shrink-0">
                           <Plus size={14} className={clsx("absolute inset-0 transition-opacity", delayBetween > 0 && "opacity-0", "group-hover/sequence-gap:opacity-0 group-focus-within/sequence-gap:opacity-0")} />
                           <Clock size={14} strokeWidth={1.5} className={clsx("absolute inset-0 transition-opacity", delayBetween <= 0 && "opacity-0", "group-hover/sequence-gap:opacity-100 group-focus-within/sequence-gap:opacity-100")} />
                         </span>
-                        <span className="ml-[6px] mr-[6px] shrink-0 opacity-0 transition-opacity group-hover/sequence-gap:opacity-100 group-focus-within/sequence-gap:opacity-100">After</span>
+                        <span className="ml-[6px] mr-[6px] shrink-0 pointer-events-none opacity-0 transition-opacity group-hover/sequence-gap:pointer-events-auto group-hover/sequence-gap:opacity-100 group-focus-within/sequence-gap:pointer-events-auto group-focus-within/sequence-gap:opacity-100">After</span>
                         <NumericInput ariaLabel={`Delay between sequence ${group.rank} and ${next!.rank}`} value={delayBetween} min={0} suffix="ms" commitOnBlur
-                          className="w-[88px] shrink-0 opacity-0 transition-opacity group-hover/sequence-gap:opacity-100 group-focus-within/sequence-gap:opacity-100"
+                          className="w-[88px] shrink-0 pointer-events-none opacity-0 transition-opacity group-hover/sequence-gap:pointer-events-auto group-hover/sequence-gap:opacity-100 group-focus-within/sequence-gap:pointer-events-auto group-focus-within/sequence-gap:opacity-100"
                           onChange={value => callbacks?.onDelayBetweenChange?.(group.rows[0].id, following.id, value)} />
                       </div>
                     </div>}

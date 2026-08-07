@@ -109,6 +109,17 @@ export interface ElementFillSetting {
   /** A host-owned visual track binding for a standalone drop-zone fill. */
   dropZoneSourceId?: string;
 }
+
+/** Canvas gradient chrome is an editor for one authored gradient, never a
+ * generic colour-dialog affordance. Resolving this from the current fill list
+ * also clears stale chrome when the inspector selection changes. */
+export function activeGradientFillDialogId(activeStackDialog: string | null, fills: readonly ElementFillSetting[] | undefined): string | null {
+  if (!activeStackDialog?.startsWith("fill-color:")) return null;
+  const id = activeStackDialog.slice("fill-color:".length);
+  const type = fills?.find(fill => fill.id === id)?.fillType;
+  return type === "linear" || type === "radial" || type === "angular" || type === "diamond" ? id : null;
+}
+
 export type StrokeWeightMode = "all" | "top" | "bottom" | "left" | "right" | "custom";
 export interface StrokeEdgeWeights { top: number; right: number; bottom: number; left: number; }
 export interface ElementStrokeSetting extends ElementFillSetting {
@@ -1820,7 +1831,8 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
                 fullWidth
                 color={fill.color}
                 gradient={fill.gradientPreview}
-                fillType={fill.fillType === "linear" || fill.fillType === "radial" || fill.fillType === "angular" || fill.fillType === "diamond" ? "Gradient" : "Fill"}
+                fillType={fill.fillType === "linear" || fill.fillType === "radial" || fill.fillType === "angular" || fill.fillType === "diamond"
+                  ? "Gradient" : fill.fillType === "image" ? "Image" : fill.fillType === "video" ? "Video" : fill.fillType === "drop-zone" ? "Drop zone" : "Fill"}
                 fillLabel={fill.label}
                 opacity={fill.opacity}
                 colorKeyframe={fill.fillType === undefined || fill.fillType === "solid" ? fill.keyframes?.color : undefined}
@@ -3247,7 +3259,8 @@ export interface PropertyPanelProps {
   onAddFill?: () => void; onUpdateFill?: (id: string, patch: Partial<Omit<ElementFillSetting, "id">>) => void; onToggleFill?: (id: string, visible: boolean) => void; onReorderFill?: (id: string, targetId: string) => void; onRemoveFill?: (id: string) => void;
   /** Detailed Fill/Color dialog seams. Values live on each fill; callbacks remain host-owned. */
   onFillTypeChange?: (id: string, type: FillType) => void;
-  /** Reports the exact element fill whose shared dialog is open, for canvas controls. */
+  /** Reports the exact current gradient fill whose shared dialog is open;
+   * non-gradient dialogs and stale selections report null so canvas chrome clears. */
   onActiveFillDialogChange?: (id: string | null) => void;
   /** Activates host-owned composition sampling for one exact fill/gradient stop. */
   onFillEyedropperActivate?: (id: string, gradientStopId?: string) => void;
@@ -3963,8 +3976,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
   const activeFillDialogChangeRef = useRef(props.onActiveFillDialogChange);
   activeFillDialogChangeRef.current = props.onActiveFillDialogChange;
   useEffect(() => {
-    activeFillDialogChangeRef.current?.(activeStackDialog?.startsWith("fill-color:") ? activeStackDialog.slice("fill-color:".length) : null);
-  }, [activeStackDialog]);
+    activeFillDialogChangeRef.current?.(activeGradientFillDialogId(activeStackDialog, fills));
+  }, [activeStackDialog, fills]);
   const tab = props.activeTab ?? uncontrolledTab;
   const setTab = (next: string) => {
     if (next !== "design" && next !== "animate" && next !== "prototype") return;

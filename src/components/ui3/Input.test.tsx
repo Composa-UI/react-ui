@@ -108,10 +108,13 @@ describe("ColorInput motion controls", () => {
 });
 
 describe("joined combo field/action anatomy", () => {
+  const leadingNumericShell = (html: string) =>
+    html.match(/<div data-composa-numeric-input="" class="([^"]*)">/)?.[1] ?? "";
+
   it("joins the single numeric editor and keyframe without a rounded leading seam", () => {
     const html = renderToStaticMarkup(<NumericInput ariaLabel="Rotation" value={30} keyframe={{ active: false, onToggle: () => undefined }} />);
     expect(html).toContain("data-composa-separated-field-actions");
-    expect(html).toContain("gap-px");
+    expect(html).toContain("gap-0");
     expect(html).toContain("!rounded-r-none");
     expect(html).toContain("last:rounded-r-c-md");
     expect(html).toContain("pr-[8px]");
@@ -119,6 +122,21 @@ describe("joined combo field/action anatomy", () => {
     // The action is not an internal border-left segment of the editable shell.
     const action = html.match(/<button[^>]*data-composa-field-action[^>]*>/)?.[0] ?? "";
     expect(action).not.toContain("border-l");
+    expect(leadingNumericShell(html)).toContain("!rounded-r-none");
+  });
+
+  it("makes the Duration editor the leading segment of its mode-menu combo", () => {
+    const html = renderToStaticMarkup(
+      <NumericComboInput
+        ariaLabel="Duration"
+        dropdownAriaLabel="Duration mode"
+        value={4}
+        menu={() => null}
+      />,
+    );
+    expect(html).toContain("gap-0");
+    expect(leadingNumericShell(html)).toContain("!rounded-r-none");
+    expect(html).toMatch(/aria-label="Duration mode"[^>]*class="[^"]*rounded-r-c-md/);
   });
 
   it("reserves independent cells after a pair without shrinking either input into an action segment", () => {
@@ -132,6 +150,7 @@ describe("joined combo field/action anatomy", () => {
     expect(html).toContain('aria-label="Position X/Position Y keyframe"');
     expect(html).toContain('aria-label="Aspect ratio lock"');
     expect(html).toContain("flex-1 min-w-0");
+    expect(leadingNumericShell(html)).toContain("!rounded-r-none");
   });
 
   it("gives color and opacity actions the same separate active, disabled, and pressed semantics", () => {
@@ -152,6 +171,16 @@ describe("joined combo field/action anatomy", () => {
     expect(onColorToggle).not.toHaveBeenCalled();
     expect(renderer!.root.findByProps({ "aria-label": "Fill color opacity keyframe" }).props["aria-pressed"]).toBe(false);
     act(() => renderer!.unmount());
+  });
+
+  it("keeps the ColorInput shell square at its trailing seam when a keyframe action follows", () => {
+    const html = renderToStaticMarkup(<ColorInput
+      ariaLabel="Fill color"
+      color="#336699"
+      keyframe={{ active: false, onToggle: () => undefined }}
+    />);
+    expect(html).toContain("!rounded-r-none");
+    expect(html).toContain("last:rounded-r-c-md");
   });
 });
 

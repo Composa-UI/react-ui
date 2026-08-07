@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { type ReactElement, type ReactNode } from "react";
 import { clsx } from "clsx";
 
 interface SplitButtonProps {
@@ -18,14 +18,33 @@ interface SplitButtonProps {
    * open state visually — matching the creation toolbar's split-button chevron.
    */
   menuOpen?: boolean;
+  /** Wrap only the chevron segment in a collision-aware menu trigger. This
+   * keeps the primary action independent while allowing portalled menus. */
+  menuTrigger?: (trigger: ReactElement) => ReactNode;
   onIconClick?: () => void;
   onChevronClick?: () => void;
   className?: string;
 }
 
-export function SplitButton({ icon, accentColor, size = "default", actionLabel, menuLabel, selected, disabled, menuOpen, onIconClick, onChevronClick, className }: SplitButtonProps) {
+export function SplitButton({ icon, accentColor, size = "default", actionLabel, menuLabel, selected, disabled, menuOpen, menuTrigger, onIconClick, onChevronClick, className }: SplitButtonProps) {
   const large = size === "large";
   const hasMenuSemantics = menuOpen !== undefined;
+  const menuButton = <button
+    type="button"
+    aria-label={menuLabel}
+    aria-haspopup={hasMenuSemantics ? "menu" : undefined}
+    aria-expanded={hasMenuSemantics ? menuOpen : undefined}
+    onClick={onChevronClick}
+    className={clsx(
+      "flex items-center justify-center self-stretch rounded-r-c-md transition-colors duration-100 outline-none text-c-icon bg-c-bg hover:bg-c-bg-hover active:bg-c-bg-secondary",
+      large ? "w-[20px]" : "py-[4px] w-[16px]",
+      menuOpen && "bg-c-bg-hover",
+    )}
+  >
+    <svg width="6" height="4" viewBox="0 0 6 4" fill="none">
+      <path d="M0.5 0.5L3 3L5.5 0.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  </button>;
   return (
     <div className={clsx("flex items-center rounded-c-md shrink-0 overflow-hidden bg-c-bg-secondary", large && "h-[32px]", className)}>
       <button
@@ -46,22 +65,7 @@ export function SplitButton({ icon, accentColor, size = "default", actionLabel, 
       >
         {icon}
       </button>
-      <button
-        type="button"
-        aria-label={menuLabel}
-        aria-haspopup={hasMenuSemantics ? "menu" : undefined}
-        aria-expanded={hasMenuSemantics ? menuOpen : undefined}
-        onClick={onChevronClick}
-        className={clsx(
-          "flex items-center justify-center self-stretch rounded-r-c-md transition-colors duration-100 outline-none text-c-icon bg-c-bg hover:bg-c-bg-hover active:bg-c-bg-secondary",
-          large ? "w-[20px]" : "py-[4px] w-[16px]",
-          menuOpen && "bg-c-bg-hover",
-        )}
-      >
-        <svg width="6" height="4" viewBox="0 0 6 4" fill="none">
-          <path d="M0.5 0.5L3 3L5.5 0.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
+      {menuTrigger ? menuTrigger(menuButton) : menuButton}
     </div>
   );
 }

@@ -33,15 +33,15 @@ describe("AnimatePanel — sequence ranks are the one grouping truth (row 60)", 
     act(() => renderer!.unmount());
   });
 
-  it("connects cards that share one rank and renders that sequence number once", () => {
+  it("keeps cards that share one rank unboxed and free of a left-side connector rail", () => {
     const shared = [
       { ...TWO_PULSES[0], n: 1 },
       { ...TWO_PULSES[1], id: "accent", elementId: "accent", name: "Accent", n: 1 },
     ];
     const html = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={shared} />);
     expect(html).toContain('data-animation-shared-rank="1"');
-    expect(html).toContain('data-animation-sequence-connector="1"');
-    expect(html.match(/data-animation-sequence-branch=/g)).toHaveLength(2);
+    expect(html).not.toContain("data-animation-sequence-connector=");
+    expect(html).not.toContain("data-animation-sequence-branch=");
     expect(html.match(/data-animation-block-number="1"/g)).toHaveLength(1);
     expect(html).toContain('data-animation-card-id="p1"');
     expect(html).toContain('data-animation-card-id="accent"');
@@ -54,7 +54,7 @@ describe("AnimatePanel — sequence ranks are the one grouping truth (row 60)", 
     expect(html).not.toContain("data-combined-card-element-id");
     expect(html).not.toContain("data-combined-connector");
     expect(html).not.toContain("data-delay-between-following");
-    expect(html).toContain("Delay between sequence 1 and 2");
+    expect(html).not.toContain("Delay between sequence 1 and 2");
   });
 
   it("numbers blocks from the engine's order (`n`), not from render position", () => {
@@ -407,7 +407,14 @@ describe("AnimatePanel — connected rank and plus-space drag targets (issue #30
 
     drag("Body");
     expect(renderer!.root.findAll(node => node.props["data-animation-sequence-space"] !== undefined).length).toBeGreaterThan(0);
-    drop(renderer!.root.findByProps({ "data-animation-sequence-space": "after-1" }), "before");
+    const trailingTarget = renderer!.root.findByProps({ "data-animation-sequence-space": "after-1" });
+    expect(trailingTarget.props.className).toContain("items-start");
+    expect(
+      trailingTarget.findAll(
+        node => typeof node.props.className === "string" && node.props.className.includes("rounded-full"),
+      ),
+    ).toHaveLength(0);
+    drop(trailingTarget, "before");
 
     drag("Body");
     drop(renderer!.root.findByProps({ "data-animation-sequence-group-target": 2 }), "with");
@@ -454,21 +461,35 @@ describe("AnimatePanel — connected rank and plus-space drag targets (issue #30
     expect(html).toContain("lucide-clock");
   });
 
+  it("breaks the connector when a timeline drag leaves a temporal gap or rank gap", () => {
+    const separatedInTime = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={[
+      { ...ANIMS[0], n: 1, startMs: 0 }, { ...ANIMS[1], n: 2, startMs: 900 },
+    ]} objectAnimationCallbacks={{ onDelayBetweenChange: () => undefined }} />);
+    const separatedInRank = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={[
+      { ...ANIMS[0], n: 1, startMs: 0 }, { ...ANIMS[1], n: 3, startMs: 600 },
+    ]} objectAnimationCallbacks={{ onDelayBetweenChange: () => undefined }} />);
+    expect(separatedInTime).not.toContain("data-animation-sequence-connector-between");
+    expect(separatedInTime).not.toContain("Delay between sequence");
+    expect(separatedInRank).not.toContain("data-animation-sequence-connector-between");
+  });
+
   it("keeps the zero-delay plus expandable into an editable timing value", () => {
     const onDelayBetweenChange = vi.fn();
     let renderer: ReturnType<typeof create>;
     act(() => { renderer = create(
       <AnimatePanel
         selectionType="element"
-        anims={[{ ...ANIMS[0], n: 1, startMs: 0 }, { ...ANIMS[1], n: 2, startMs: 0 }]}
+        anims={[{ ...ANIMS[0], n: 1, startMs: 0 }, { ...ANIMS[1], n: 2, startMs: 600 }]}
         objectAnimationCallbacks={{ onDelayBetweenChange }}
       />,
     ); });
     const input = renderer!.root.findByProps({ "aria-label": "Delay between sequence 1 and 2" });
+    expect(input.props.value).toBe("0");
     act(() => input.props.onChange({ target: { value: "240" } }));
     act(() => renderer!.root.findByProps({ "aria-label": "Delay between sequence 1 and 2" }).props.onBlur());
     expect(onDelayBetweenChange).toHaveBeenCalledWith(ANIMS[0].id, ANIMS[1].id, 240);
-    expect(renderer!.root.findAll(node => typeof node.props.className === "string" && node.props.className.includes("lucide-plus")).length).toBeGreaterThan(0);
+    const connector = renderer!.root.findByProps({ "data-animation-sequence-connector-between": "1-2" });
+    expect(connector.props.className).toContain("group/sequence-gap");
     act(() => renderer!.unmount());
   });
 

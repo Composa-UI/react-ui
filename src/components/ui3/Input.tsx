@@ -63,14 +63,21 @@ interface ShellProps {
   children: ReactNode;
   className?: string;
   numeric?: boolean;
+  /**
+   * This shell is the leading segment in a joined field/action control. The
+   * shell owns the radius change so wrapper layout classes cannot leave a
+   * rounded seam between the editable field and its following action/menu.
+   */
+  joined?: boolean;
 }
 
-export function FieldShell({ focused, disabled = false, variant = "default", size = "medium", children, className, numeric = false }: ShellProps) {
+export function FieldShell({ focused, disabled = false, variant = "default", size = "medium", children, className, numeric = false, joined = false }: ShellProps) {
   return (
     <div data-composa-numeric-input={numeric ? "" : undefined} className={clsx(
       "relative flex items-center w-full rounded-c-md overflow-hidden",
       "bg-c-bg-secondary transition-shadow duration-100",
       H[size],
+      joined && "!rounded-r-none",
       // No resting border (Figma fields have none) — ring only on focus / non-default variant.
       (focused || variant !== "default") && clsx("ring-1 ring-inset", ringColor(focused, disabled, variant)),
       disabled && "opacity-60 cursor-not-allowed",
@@ -83,7 +90,7 @@ export function FieldShell({ focused, disabled = false, variant = "default", siz
 
 /** Joins an editable value and its trailing actions into one combo field. */
 function SeparatedFieldActions({ children, className }: { children: ReactNode; className?: string }) {
-  return <div data-composa-separated-field-actions className={clsx("flex min-w-0 w-full items-center gap-px", className)}>{children}</div>;
+  return <div data-composa-separated-field-actions className={clsx("flex min-w-0 w-full items-center gap-0", className)}>{children}</div>;
 }
 
 function FieldAction({
@@ -323,6 +330,8 @@ export interface NumericInputProps extends NumericEditSessionCallbacks {
   onChange?: (value: number) => void;
   /** Buffer typed edits and emit once on blur/Enter. Scrub and arrow changes remain immediate. */
   commitOnBlur?: boolean;
+  /** This editor is followed by a separate action/menu segment in a joined control. */
+  joined?: boolean;
   className?: string;
 }
 
@@ -349,6 +358,7 @@ export function NumericInput({
   onEditCommit,
   onEditCancel,
   commitOnBlur = false,
+  joined = false,
   className,
 }: NumericInputProps) {
   const inheritedSession = useContext(NumericEditSessionContext);
@@ -505,7 +515,7 @@ export function NumericInput({
 
   return (
     <SeparatedFieldActions className={className}>
-      <FieldShell focused={focused || scrubbing} disabled={disabled} size={size} className={clsx("flex-1 min-w-0", keyframe && "!rounded-r-none")} numeric>
+      <FieldShell focused={focused || scrubbing} disabled={disabled} size={size} joined={joined || Boolean(keyframe)} className="flex-1 min-w-0" numeric>
       {/* scrubber label */}
       {iconLead && (
         <span
@@ -718,7 +728,7 @@ export function NumericPairInput({ a, b, keyframe, trailing, size = "medium", di
   const onFocusChange = (value: boolean) => setFocusCount(count => Math.max(0, count + (value ? 1 : -1)));
   return (
     <SeparatedFieldActions className={className}>
-      <FieldShell focused={focusCount > 0} disabled={disabled} size={size} className={clsx("flex-1 min-w-0", (keyframe || trailing) && "!rounded-r-none")} numeric>
+      <FieldShell focused={focusCount > 0} disabled={disabled} size={size} joined={Boolean(keyframe || trailing)} className="flex-1 min-w-0" numeric>
         <PairSegment seg={a} size={size} isLast={false} disabled={disabled} onFocusChange={onFocusChange} />
         <PairSegment seg={b} size={size} isLast={true} disabled={disabled} onFocusChange={onFocusChange} />
       </FieldShell>
@@ -772,10 +782,10 @@ export function NumericComboInput({
   ...numericProps
 }: NumericComboInputProps) {
   return (
-    <div data-composa-numeric-combo={dataMode ?? "fixed"} className={clsx("flex items-start gap-px", className)}>
+    <div data-composa-numeric-combo={dataMode ?? "fixed"} className={clsx("flex items-start gap-0", className)}>
       <div className="group relative flex-1 min-w-0">
         {readOnlyLabel !== undefined ? (
-          <FieldShell focused={false} disabled={disabled} size={size} numeric className="!rounded-r-none">
+          <FieldShell focused={false} disabled={disabled} size={size} numeric joined>
             {iconLead && (
               <span className={clsx("absolute left-0 flex items-center justify-center size-[24px] text-c-text-secondary pointer-events-none", FONT, T[size])}>
                 {iconLead}
@@ -789,8 +799,8 @@ export function NumericComboInput({
             iconLead={iconLead}
             size={size}
             disabled={disabled}
+            joined
             className={clsx(
-              "!rounded-r-none",
               idleLabel && "[&_input]:text-transparent group-focus-within:[&_input]:text-c-text",
             )}
           />
@@ -959,7 +969,7 @@ export function NumericInputMulti({ iconLead, values, step = 1, size = "medium",
 
 // ─── ColorInput ───────────────────────────────────────────────────────────────
 
-export type ColorFillType = "Fill" | "Opacity" | "Gradient" | "Image" | "Video" | "Variable";
+export type ColorFillType = "Fill" | "Opacity" | "Gradient" | "Image" | "Video" | "Drop zone" | "Variable";
 
 interface ColorInputProps {
   ariaLabel?: string;
@@ -1033,10 +1043,10 @@ export function ColorInput({
     }
   };
   const isVariable = fillType === "Variable";
-  const isTextLabel = fillType === "Gradient" || fillType === "Image" || fillType === "Video" || isVariable;
+  const isTextLabel = fillType === "Gradient" || fillType === "Image" || fillType === "Video" || fillType === "Drop zone" || isVariable;
 
   // chit type mapping
-  const chitType = fillType === "Variable" || fillType === "Video" ? "Fill" : fillType as ChitType;
+  const chitType = fillType === "Variable" || fillType === "Video" || fillType === "Drop zone" ? "Fill" : fillType as ChitType;
 
   const midText = isVariable
     ? variableValue ?? "bg-assistive"
@@ -1053,10 +1063,13 @@ export function ColorInput({
       )}
 
       <SeparatedFieldActions className={clsx(isVariable || fullWidth ? "w-full" : "w-[144px]")}>
-        <FieldShell focused={focused} disabled={disabled} size={size} className={clsx(
-          "flex-1 min-w-0",
-          !isVariable && (colorKeyframe || keyframe || showOpacity && opacityKeyframe) && "!rounded-r-none",
-        )}>
+        <FieldShell
+          focused={focused}
+          disabled={disabled}
+          size={size}
+          joined={!isVariable && Boolean(colorKeyframe || keyframe || showOpacity && opacityKeyframe)}
+          className="flex-1 min-w-0"
+        >
         {/* chit */}
         {!isVariable && (
           <label className="relative shrink-0 flex items-center justify-center size-[24px] cursor-pointer">

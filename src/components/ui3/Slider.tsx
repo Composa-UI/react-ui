@@ -34,6 +34,7 @@ const HANDLE_SHADOW =
 
 export type SliderHandleVariant = "fill" | "stroke" | "chit";
 export type SliderTrackVariant  = "default" | "gradient" | "alpha";
+export type SliderSize = "default" | "compact";
 
 interface SliderProps {
   /** Accessible name for the native range input when its visible label lives outside this primitive. */
@@ -54,6 +55,11 @@ interface SliderProps {
   showSteps?: boolean;
   /** alpha = checkerboard + gradient; gradient = pure CSS gradient */
   trackVariant?: SliderTrackVariant;
+  /**
+   * `compact` keeps the 16px handle and a 24px pointer target, but reduces the
+   * visible rail to 6px. It is for dense floating controls such as crop tools.
+   */
+  size?: SliderSize;
   /** CSS gradient string for gradient / alpha track variants */
   trackGradient?: string;
   /**
@@ -137,6 +143,7 @@ export function Slider({
   showDelta = false,
   showSteps = false,
   trackVariant = "default",
+  size = "default",
   trackGradient,
   fillOrigin = "leading",
   onChange,
@@ -186,22 +193,29 @@ export function Slider({
   const trackBorderColor = focused && !disabled
     ? "var(--color-border-selected)"
     : "var(--color-border-translucent)";
+  const compact = size === "compact";
+  const trackPosition = compact
+    ? "absolute inset-x-0 top-1/2 h-[6px] -translate-y-1/2"
+    : "absolute inset-0";
+  const fillPosition = compact
+    ? "absolute left-0 top-1/2 h-[6px] -translate-y-1/2"
+    : "absolute left-0 top-0 h-full";
 
   return (
     // Disabled = 30% opacity on the whole component (Figma spec)
-    <div className={clsx("relative h-[16px] w-full", disabled && "opacity-30", className)}>
+    <div className={clsx("relative w-full", compact ? "h-[24px]" : "h-[16px]", disabled && "opacity-30", className)}>
 
       {/* ── Track background ─────────────────────────────────────────────── */}
       {trackVariant === "default" && (
         <div
-          className="absolute inset-0 rounded-full bg-c-bg-secondary"
+          className={clsx(trackPosition, "rounded-full bg-c-bg-secondary")}
           style={{ border: `1px solid ${trackBorderColor}` }}
         />
       )}
 
       {trackVariant === "gradient" && (
         <div
-          className="absolute inset-0 rounded-full overflow-hidden"
+          className={clsx(trackPosition, "rounded-full overflow-hidden")}
           style={{ border: `1px solid ${trackBorderColor}` }}
         >
           {trackGradient && (
@@ -212,7 +226,7 @@ export function Slider({
 
       {trackVariant === "alpha" && (
         <div
-          className="absolute inset-0 rounded-full overflow-hidden"
+          className={clsx(trackPosition, "rounded-full overflow-hidden")}
           style={{ border: `1px solid ${trackBorderColor}` }}
         >
           <div
@@ -231,14 +245,17 @@ export function Slider({
       {/* ── Fill (brand blue) ────────────────────────────────────────────── */}
       {trackVariant === "default" && fillOrigin === "leading" && pct > 0 && (
         <div
-          className="absolute left-0 top-0 h-full rounded-full bg-c-bg-brand pointer-events-none"
+          className={clsx(fillPosition, "rounded-full bg-c-bg-brand pointer-events-none")}
           style={{ width: fillWidth }}
         />
       )}
       {trackVariant === "default" && fillOrigin === "default" && hasDelta && (
         <div
           data-composa-slider-centered-fill
-          className="absolute top-0 h-full rounded-full bg-c-bg-brand pointer-events-none"
+          className={clsx(
+            compact ? "absolute top-1/2 h-[6px] -translate-y-1/2" : "absolute top-0 h-full",
+            "rounded-full bg-c-bg-brand pointer-events-none",
+          )}
           style={{
             left: `calc((100% - ${THUMB}px) * ${centeredFillLeft / 100} + ${THUMB / 2}px)`,
             width: `calc((100% - ${THUMB}px) * ${centeredFillWidth / 100})`,
