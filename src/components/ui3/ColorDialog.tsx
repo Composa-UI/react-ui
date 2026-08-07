@@ -505,7 +505,8 @@ function MediaFillPreview({ kind, sourceLabel, previewUrl, fit, tileScale, onCho
           previewUrl ? "bg-black/35 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100" : "opacity-100",
         )}
       >
-        {onChoose && <Button variant="Primary" label={selected ? "Replace media…" : "Choose media…"} className="w-full" onClick={onChoose} />}
+        {onChoose && <Button variant="Primary" label={selected ? "Replace media…" : "Choose media…"}
+          ariaLabel={selected ? "Replace media…" : "Choose media…"} className="w-full" onClick={onChoose} />}
         {kind === "image" && onMakeImage && <Button variant="Secondary" icon={<ImagePlus size={14} strokeWidth={1.5} />}
           iconLead="left" label="Make an image" className="w-full" onClick={onMakeImage} />}
       </div>}

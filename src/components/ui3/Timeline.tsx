@@ -982,10 +982,10 @@ function TimelineChildConnector({ index, count, depth }: { index: number; count:
   // centre (x=40), then stop four pixels before the child label at x=48.
   const left = 40 + depth * 16;
   const last = index === count - 1;
-  // Child labels begin at x=48 (+ depth). Carry the elbow to x=44 so the
-  // remaining 4px reads as label breathing room, rather than as a detached
+  // Child labels align with the parent text at x=56 (+ depth). Carry the elbow
+  // farther so more of the branch remains visible while preserving 4px of
   // vertical guide. This mirrors Figma's compact "└─ Property" row anatomy.
-  const elbowWidth = 4;
+  const elbowWidth = 12;
   return (
     <span
       aria-hidden
@@ -1131,7 +1131,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
         const presetProjection = timelineDurationBarProjection(preset.timeRange, viewport);
         return (
         <div key={preset.id} className={clsx("group/preset flex", preset.hidden && "opacity-40")} style={{ height: ROW_PROP }}>
-          <div className="relative shrink-0 flex items-center gap-[6px] pr-[8px]" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
+          <div className="relative shrink-0 flex items-center gap-[6px] pr-[8px]" style={{ width: LEFT_W, paddingLeft: 56 + depth * 16 }}>
             <TimelineChildConnector index={childIndex} count={childCount} depth={depth} />
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate text-c-text-secondary")}>{preset.label}</span>
             {preset.editable !== false && <button type="button"
@@ -1165,7 +1165,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
           className={clsx("flex", p.hidden && "opacity-40", propSelected ? "bg-c-bg-selected" : rowGraySelected && "bg-c-bg-secondary")}
           style={{ height: ROW_PROP }}
           onClick={event => { if (!(event.target as Element).closest?.("button,[data-keyframe-id],[data-easing-segment]")) onPropertyRowSelect?.(propertyId); }}>
-          <div className="group/prop relative shrink-0 flex items-center gap-[6px] pr-[8px]" style={{ width: LEFT_W, paddingLeft: 48 + depth * 16 }}>
+          <div className="group/prop relative shrink-0 flex items-center gap-[6px] pr-[8px]" style={{ width: LEFT_W, paddingLeft: 56 + depth * 16 }}>
             <TimelineChildConnector index={presetCount + i} count={childCount} depth={depth} />
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate", p.accent ? "text-[#8638e5]" : "text-c-text-secondary")}>{p.name}</span>
             {/* keyframe stepper: ◀ prev-keyframe · ◇ toggle-at-playhead · ▶ next-keyframe */}
@@ -1581,6 +1581,7 @@ function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onC
                 // raw UA focus outline (Composa#584) — keyboard focus shows the DS ring,
                 // mouse click shows nothing.
                 "absolute inset-y-[4px] rounded-[4px] flex items-center px-[10px] overflow-hidden border outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring",
+                i === 0 && blocks[1] && Math.abs(blocks[1].range[0] - b.range[1]) < 1 && "rounded-r-none",
                 // A switched-off lane's bars read the same way a hidden property row
                 // does (Composa#661 / TL-3): the eye — or another lane's solo — is
                 // what dims them.

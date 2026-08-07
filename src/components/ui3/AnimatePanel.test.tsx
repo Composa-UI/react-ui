@@ -437,6 +437,23 @@ describe("AnimatePanel — connected rank and plus-space drag targets (issue #30
     expect(html).not.toContain("data-animation-sequence-drop-indicator=");
   });
 
+  it("connects distinct ranks with a compact timing affordance", () => {
+    const html = renderToStaticMarkup(
+      <AnimatePanel
+        selectionType="element"
+        anims={[
+          { ...ANIMS[0], n: 1, startMs: 0 },
+          { ...ANIMS[1], n: 2, startMs: 600 },
+        ]}
+        objectAnimationCallbacks={{ onDelayBetweenChange: () => undefined }}
+      />,
+    );
+    expect(html).toContain('data-animation-sequence-connector-between="1-2"');
+    expect(html).toContain('aria-label="Delay between sequence 1 and 2"');
+    expect(html).toContain("After");
+    expect(html).toContain("lucide-clock");
+  });
+
   it("does not offer With back into the dragged card's current shared rank", () => {
     const shared = [
       { ...ANIMS[0], n: 1 },

@@ -88,7 +88,7 @@ describe("Timeline DOM contracts", () => {
     expect(html.match(/data-timeline-child-connector-gap="4"/g)).toHaveLength(3);
     expect(html).toContain('data-timeline-child-trunk-origin="icon-bottom"');
     expect(html).toContain('left:40px;top:calc(50% + 8px)');
-    expect(html.match(/left:40px;width:4px/g)).toHaveLength(3);
+    expect(html.match(/left:40px;width:12px/g)).toHaveLength(3);
     expect(html).toContain('data-composa-row-highlight="timeline-full-lane"');
     expect(html).toContain('data-timeline-preset-bar="pulse"');
     expect(html).toContain('data-keyframe-id="opacity-0"');
@@ -826,6 +826,16 @@ describe("Timeline bar hover + focus (Composa#583 / #584)", () => {
     // The Intro composition bar carries the hover border + outline-none focus ring.
     expect(html).toContain("hover:border-c-border-selected");
     expect(html).toContain("focus-visible:ring-c-focus-ring");
+  });
+
+  it("joins the first composition segment to its contiguous neighbor", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={2_000}
+      blocks={[
+        { id: "intro", name: "Intro", range: [0, 1_000] },
+        { id: "outro", name: "Outro", range: [1_000, 2_000] },
+      ]} />);
+    expect(html).toContain('data-timeline-block-id="intro"');
+    expect(html).toContain("rounded-r-none");
   });
 
   it("applies the hover highlight to every master clip type (comp/video/audio)", () => {

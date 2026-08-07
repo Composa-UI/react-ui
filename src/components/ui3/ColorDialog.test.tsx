@@ -103,7 +103,7 @@ describe("ColorDialog anchored inspector contract", () => {
     expect(available).toContain('data-state="empty"');
     expect(available).toContain("size-[208px]");
     expect(available).toContain("lucide-square-play");
-    expect(available).toContain('aria-label="Select video"');
+    expect(available).toContain('aria-label="Choose media…"');
   });
 
   it.each([
@@ -125,7 +125,7 @@ describe("ColorDialog anchored inspector contract", () => {
     expect(html).toContain("size-[208px]");
     expect(html).toContain(`src="${previewUrl}"`);
     expect(html).toContain(sourceLabel);
-    expect(html).toContain(`aria-label="Replace ${kind}"`);
+    expect(html).toContain('aria-label="Replace media…"');
   });
 
   it("projects persisted renderer-backed fit modes into both media previews", () => {
