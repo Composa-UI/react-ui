@@ -1,4 +1,4 @@
-import { useEffect, useState, Fragment, type ReactNode } from "react";
+import { useEffect, useRef, useState, Fragment, type ReactNode } from "react";
 import { clsx } from "clsx";
 import {
   RotateCw, FlipHorizontal2, FlipVertical2,
@@ -3915,9 +3915,11 @@ export function PropertyPanel(props: PropertyPanelProps) {
   };
   const [uncontrolledTab, setUncontrolledTab] = useState<"design" | "animate" | "prototype">("design");
   const [activeStackDialog, setActiveStackDialog] = useState<string | null>(null);
+  const activeFillDialogChangeRef = useRef(props.onActiveFillDialogChange);
+  activeFillDialogChangeRef.current = props.onActiveFillDialogChange;
   useEffect(() => {
-    props.onActiveFillDialogChange?.(activeStackDialog?.startsWith("fill-color:") ? activeStackDialog.slice("fill-color:".length) : null);
-  }, [activeStackDialog, props.onActiveFillDialogChange]);
+    activeFillDialogChangeRef.current?.(activeStackDialog?.startsWith("fill-color:") ? activeStackDialog.slice("fill-color:".length) : null);
+  }, [activeStackDialog]);
   const tab = props.activeTab ?? uncontrolledTab;
   const setTab = (next: string) => {
     if (next !== "design" && next !== "animate" && next !== "prototype") return;
