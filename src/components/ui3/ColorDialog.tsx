@@ -689,13 +689,20 @@ export function ColorDialog({
   const [hue,     setHue]     = useState(hueProp);
   const [hex,     setHex]     = useState(hexProp);
   const [stops,   setStops]   = useState<GradientStop[]>(stopsProp ?? DEFAULT_STOPS);
+  const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const wasOpen = useRef(false);
   useEffect(() => {
     if (open && !wasOpen.current) {
-      const picker = pickerSource === "hex" ? hexToHsb(hexProp) : { hue: hueProp, saturation: satProp ?? 100, brightness: briProp ?? 100 };
-      setFillType(solidOnly ? "solid" : fillTypeProp ?? "solid");
-      setHue(picker.hue); setHex(hexProp);
-      setSat(picker.saturation); setBri(picker.brightness); setStops(stopsProp ?? DEFAULT_STOPS);
+      const nextType = solidOnly ? "solid" : fillTypeProp ?? "solid";
+      const nextStops = stopsProp ?? DEFAULT_STOPS;
+      const gradient = nextType === "linear" || nextType === "radial" || nextType === "angular" || nextType === "diamond";
+      const initialStop = gradient ? nextStops[0] : undefined;
+      const initialHex = initialStop?.color ?? hexProp;
+      const picker = initialStop || pickerSource === "hex" ? hexToHsb(initialHex) : { hue: hueProp, saturation: satProp ?? 100, brightness: briProp ?? 100 };
+      setFillType(nextType);
+      setSelectedStopId(initialStop?.id ?? null);
+      setHue(picker.hue); setHex(initialHex);
+      setSat(picker.saturation); setBri(picker.brightness); setStops(nextStops);
     }
     wasOpen.current = open;
   }, [open, solidOnly, pickerSource, fillTypeProp, hueProp, opacityProp, hexProp, satProp, briProp, stopsProp]);
@@ -715,8 +722,7 @@ export function ColorDialog({
     setBri(nextBri);
     // The picker commits a concrete color — consumers only speak hex.
     const nextHex = hsbToHex(hue, nextSat, nextBri);
-    setHex(nextHex);
-    onHexChange?.(nextHex);
+    commitPickerHex(nextHex);
   };
 
   const [colorFormat, setColorFormat] = useState<ColorFormat>("Hex");
@@ -725,10 +731,9 @@ export function ColorDialog({
     setHue(v);
     onHueChange?.(v);
     const nextHex = hsbToHex(v, sat, bri);
-    setHex(nextHex);
-    onHexChange?.(nextHex);
+    commitPickerHex(nextHex);
   };
-  const handleHex      = (v: string)   => { setHex(v);      onHexChange?.(v); };
+  const handleHex      = (v: string)   => commitPickerHex(v);
   const colorComponents = colorFormat === "RGB" ? rgbForHex(hex)
     : colorFormat === "HSL" ? hslForHex(hex) : [hue, sat, bri] as [number, number, number];
   const handleColorComponent = (index: number, value: number) => {
@@ -755,6 +760,23 @@ export function ColorDialog({
     commitStops(stops.map(x => x.id === id ? { ...x, opacity: Math.min(100, Math.max(0, v)) } : x));
   const handleStopColor = (id: string, hexValue: string) =>
     commitStops(stops.map(x => x.id === id ? { ...x, color: hexValue.replace(/^#/, "") } : x));
+  const isGradient = fillType === "linear" || fillType === "radial" || fillType === "angular" || fillType === "diamond";
+  const commitPickerHex = (value: string) => {
+    setHex(value);
+    if (!isGradient) {
+      onHexChange?.(value);
+      return;
+    }
+    const stopId = selectedStopId ?? stops[0]?.id;
+    if (stopId) handleStopColor(stopId, value);
+  };
+  const selectGradientStop = (id: string) => {
+    setSelectedStopId(id);
+    const stop = stops.find(item => item.id === id);
+    if (!stop) return;
+    const next = hexToHsb(stop.color);
+    setHex(stop.color); setHue(next.hue); setSat(next.saturation); setBri(next.brightness);
+  };
   const handleStopRemove = (id: string) => commitStops(stops.filter(x => x.id !== id));
   const handleStopAdd    = () =>
     commitStops([...stops, { id: String(Date.now()), position: 50, color: "888888", opacity: 100 }]);
@@ -763,7 +785,6 @@ export function ColorDialog({
   // The handles used to render with no pointer handlers at all, and the stop's
   // swatch fell through to the browser's native colour picker. Both are handled
   // here instead: the handle drags, and selecting one focuses its hex field.
-  const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const stopTrackRef = useRef<HTMLDivElement>(null);
   const stopListRef = useRef<HTMLDivElement>(null);
   const stopDrag = useRef<{ pointerId: number; id: string; moved: boolean } | null>(null);
@@ -789,7 +810,7 @@ export function ColorDialog({
   const beginStopDrag = (id: string) => (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
     event.preventDefault();
-    setSelectedStopId(id);
+    selectGradientStop(id);
     stopDrag.current = { pointerId: event.pointerId, id, moved: false };
     try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* synthetic */ }
   };
@@ -814,7 +835,7 @@ export function ColorDialog({
     const step = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0;
     if (step === 0) return;
     event.preventDefault();
-    setSelectedStopId(stop.id);
+    selectGradientStop(stop.id);
     handleStopPos(stop.id, stop.position + step * (event.shiftKey ? 10 : 1));
   };
 
@@ -823,7 +844,6 @@ export function ColorDialog({
   // Canvas gradient: saturation (left→right) × brightness (top→bottom)
   const canvasBg = `linear-gradient(to bottom, transparent, black), linear-gradient(to right, white, ${hueColor})`;
 
-  const isGradient = fillType === "linear" || fillType === "radial" || fillType === "angular" || fillType === "diamond";
   // CSS needs at least two colour stops, so a lone stop is repeated to render as
   // the flat colour it is rather than dropping the declaration entirely.
   const previewStops = stops.length === 0 ? DEFAULT_STOPS : stops.length === 1 ? [stops[0], stops[0]] : stops;
@@ -916,7 +936,7 @@ export function ColorDialog({
 
           <ModalBody scrollable className={clsx(
             fillType === "solid" && "h-[408px]",
-            isGradient && "h-[216px]",
+            isGradient && "h-[560px]",
             fillType === "image" && onImageAdjustmentChange && "h-[496px]",
           )}>
 
@@ -1015,7 +1035,7 @@ export function ColorDialog({
 
             <div data-composa-solid-swatches className="min-h-[76px] border-t border-c-border">
               <div className="h-[36px] px-[16px] pt-[12px]">
-                <Dropdown value="On this page" size="default" className="w-full" />
+                <span className={clsx(FONT, "text-[11px] font-[550] text-c-text")}>On this page</span>
               </div>
 
               <div className="flex min-h-[40px] flex-wrap items-center gap-[8px] px-[16px] py-[8px]">
@@ -1090,10 +1110,6 @@ export function ColorDialog({
             <div data-composa-gradient-stops-header className="flex h-[40px] items-center justify-between pl-[16px] pr-[8px]">
               <span className={clsx(FONT, "text-[11px] font-[550] text-c-text")}>Stops</span>
               <div className="flex items-center gap-[4px]">
-                {onEyedropperActivate && <Btn label={eyedropperActive ? "Cancel color sampling" : "Sample color"} active={eyedropperActive}
-                  onClick={() => onEyedropperActivate(selectedStopId ?? stops[0]?.id)}>
-                  <Pipette size={14} strokeWidth={1.5} />
-                </Btn>}
                 <button
                   type="button"
                   aria-label="Add gradient stop"
@@ -1116,9 +1132,59 @@ export function ColorDialog({
                   onOpacity={handleStopOp}
                   onColor={handleStopColor}
                   onRemove={handleStopRemove}
-                  onFocusHex={focusStopHex}
+                  onFocusHex={id => { selectGradientStop(id); focusStopHex(id); }}
                 />
               ))}
+            </div>
+
+            {/* The active gradient stop uses the same color editor as Solid. */}
+            <div
+              ref={canvasRef}
+              data-composa-gradient-color-picker
+              className="relative mx-[16px] mt-[8px] cursor-crosshair touch-none select-none"
+              style={{ height: 208, width: 208 }}
+              onPointerDown={e => { setDragging(true); updatePicker(e); try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* synthetic */ } }}
+              onPointerMove={e => { if (dragging) updatePicker(e); }}
+              onPointerUp={e => { setDragging(false); e.currentTarget.releasePointerCapture(e.pointerId); }}
+            >
+              <div className="absolute inset-0 rounded-c-md overflow-hidden pointer-events-none" style={{ background: canvasBg }} />
+              <div className="absolute inset-0 rounded-c-md pointer-events-none shadow-[inset_0_0_0_1px_rgba(0,0,0,0.12)]" />
+              <div className="absolute -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none"
+                style={{ left: (sat / 100) * 208, top: (1 - bri / 100) * 208 }}>
+                <PickerHandle color={pickerColor} />
+              </div>
+            </div>
+
+            <div data-composa-gradient-slider-row className="flex h-[60px] items-center gap-[12px] px-[16px]">
+              {onEyedropperActivate && <Btn label={eyedropperActive ? "Cancel color sampling" : "Sample color"} active={eyedropperActive}
+                onClick={() => onEyedropperActivate(selectedStopId ?? stops[0]?.id)}>
+                <Pipette size={14} strokeWidth={1.5} />
+              </Btn>}
+              <div className="flex-1 min-w-0"><Slider value={hue} onChange={handleHue} min={0} max={360}
+                trackVariant="gradient" trackGradient="linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)" /></div>
+            </div>
+
+            <div data-composa-gradient-format-row className="flex h-[40px] items-center gap-[8px] px-[16px]">
+              <PopoverMenu align="left" className="w-[64px] shrink-0" trigger={<Dropdown ariaLabel={`Color format: ${colorFormat}`} value={colorFormat} fullWidth />}>
+                {close => <Menu>{COLOR_FORMATS.map(format => <MenuRow key={format} label={format} checked={format === colorFormat}
+                  selectionRole="radio" onClick={() => { setColorFormat(format); close(); }} />)}</Menu>}
+              </PopoverMenu>
+              {colorFormat === "Hex" ? <div className="flex-1 min-w-0"><ColorInput fullWidth color={`#${hex}`}
+                onSwatchClick={() => { const id = selectedStopId ?? stops[0]?.id; if (id) focusStopHex(id); }}
+                onColorChange={handleHex} /></div>
+                : <div className="flex flex-1 min-w-0 gap-[2px]">{colorComponents.map((value, index) => <NumericInput key={index}
+                  ariaLabel={`${colorFormat} ${index + 1}`} value={value} min={0}
+                  max={colorFormat === "RGB" ? 255 : index === 0 ? 360 : 100}
+                  onChange={next => handleColorComponent(index, next)} className="min-w-0 flex-1" />)}</div>}
+            </div>
+
+            <div data-composa-gradient-swatches className="min-h-[76px] border-t border-c-border">
+              <div className="h-[36px] px-[16px] pt-[12px]"><span className={clsx(FONT, "text-[11px] font-[550] text-c-text")}>On this page</span></div>
+              <div className="flex min-h-[40px] flex-wrap items-center gap-[8px] px-[16px] py-[8px]">
+                {swatches.length === 0 && <span className="text-[11px] text-c-text-secondary">No colors on this page</span>}
+                {swatches.map(color => <button key={color} type="button" className="rounded-[3px] size-[16px] ring-1 ring-inset ring-[rgba(0,0,0,0.1)]"
+                  style={{ backgroundColor: color }} aria-label={color} onClick={() => handleHex(color.replace("#", ""))} />)}
+              </div>
             </div>
 
             <div className="pb-[12px]" />

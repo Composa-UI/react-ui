@@ -1640,7 +1640,7 @@ export default function Playground() {
       <div className="relative h-[520px] w-[820px] overflow-hidden rounded-c-lg bg-c-bg shadow-lg">
         <img src={cropPlaygroundMedia} alt="Crop playground media" className="absolute inset-0 size-full object-cover" style={{ transform: `translate(${cropOffset.x}px, ${cropOffset.y}px) scale(1.15)` }} />
         <CanvasCropOverlay style={{ left: 120, top: 90, width: 580, height: 326 }} onMove={(x, y) => setCropOffset(current => ({ x: current.x + x, y: current.y + y }))} />
-        <div className="absolute inset-x-0 bottom-[72px] flex justify-center"><CropToolbar aspect={cropAspect} onAspectChange={setCropAspect} onResizeToFit={() => setCropOffset({ x: 0, y: 0 })} onDone={() => undefined} /></div>
+        <div className="absolute inset-x-0 bottom-[72px] flex justify-center"><CropToolbar aspect={cropAspect} onAspectChange={setCropAspect} onResizeToFit={() => setCropOffset({ x: 0, y: 0 })} onCancel={() => undefined} onDone={() => undefined} /></div>
         <div className="absolute inset-x-0 bottom-[16px] flex justify-center"><CreationToolbar /></div>
       </div>
     </div>;

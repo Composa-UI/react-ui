@@ -232,7 +232,8 @@ describe("gradient type control", () => {
     expect(labels.filter(label => label.includes("Radial"))).toHaveLength(1);
     expect(labels.filter(label => label.includes("Angular"))).toHaveLength(1);
     expect(labels.filter(label => label.includes("Diamond"))).toHaveLength(1);
-    expect(rows.filter(row => row.props["aria-checked"] === true)).toHaveLength(1);
+    const gradientRows = rows.filter((_, index) => labels[index] && ["Linear", "Radial", "Angular", "Diamond"].some(label => labels[index].includes(label)));
+    expect(gradientRows.filter(row => row.props["aria-checked"] === true)).toHaveLength(1);
     act(() => renderer.unmount());
   });
 
@@ -358,6 +359,15 @@ describe("gradient stops", () => {
     const markup = html({ fillType: "linear", gradientStops: stops });
     expect(markup).toContain('aria-label="Stop 1 hex"');           // the stop rows DID render
     expect(markup).not.toContain('type="color"');
+  });
+
+  it("shows the full color editor for the selected gradient stop", () => {
+    const markup = html({ fillType: "linear", gradientStops: stops, swatches: ["#112233"] });
+    expect(markup).toContain("data-composa-gradient-color-picker");
+    expect(markup).toContain("data-composa-gradient-slider-row");
+    expect(markup).toContain("data-composa-gradient-format-row");
+    expect(markup).toContain("data-composa-gradient-swatches");
+    expect(markup).toContain("On this page");
   });
 
   it("re-orders the gradient when a stop is dragged past its neighbour", () => {

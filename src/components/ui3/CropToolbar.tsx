@@ -1,4 +1,4 @@
-import { Check, Maximize2 } from "lucide-react";
+import { Check, Maximize2, X } from "lucide-react";
 import { clsx } from "clsx";
 import { Button } from "./Button";
 import { Dropdown } from "./Dropdown";
@@ -15,12 +15,13 @@ export interface CropToolbarProps {
   aspect: CropAspect;
   onAspectChange: (aspect: CropAspect) => void;
   onResizeToFit: () => void;
+  onCancel: () => void;
   onDone: () => void;
   className?: string;
 }
 
 /** Canonical UI3 crop controls. The host owns document mutations and canvas geometry. */
-export function CropToolbar({ aspect, onAspectChange, onResizeToFit, onDone, className }: CropToolbarProps) {
+export function CropToolbar({ aspect, onAspectChange, onResizeToFit, onCancel, onDone, className }: CropToolbarProps) {
   const aspects = Object.keys(LABELS) as CropAspect[];
   return <div role="toolbar" aria-label="Crop tools" className={clsx(
     "inline-flex items-center gap-[6px] rounded-c-lg bg-c-bg p-[6px] ring-1 ring-inset ring-c-border-translucent",
@@ -31,6 +32,7 @@ export function CropToolbar({ aspect, onAspectChange, onResizeToFit, onDone, cla
     <PopoverMenu align="left" trigger={<Dropdown ariaLabel="Crop aspect ratio" value={LABELS[aspect]} />}>
       {close => <Menu>{aspects.map(value => <MenuRow key={value} label={LABELS[value]} checked={aspect === value} selectionRole="radio" onClick={() => { onAspectChange(value); close(); }} />)}</Menu>}
     </PopoverMenu>
+    <Button variant="Secondary" label="Cancel" iconLead="left" icon={<X size={14} strokeWidth={1.5} />} onClick={onCancel} />
     <Button variant="Primary" label="Done" iconLead="left" icon={<Check size={14} strokeWidth={1.5} />} onClick={onDone} />
   </div>;
 }
