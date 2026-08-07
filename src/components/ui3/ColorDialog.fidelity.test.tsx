@@ -20,7 +20,7 @@ describe("ColorDialog Editor-Study fidelity geometry", () => {
       headerHeight: 40,
       toolbarHeight: 41,
       solid: { height: 489, bodyHeight: 408, pickerSize: 208, formatRowHeight: 40 },
-      gradient: { height: 297, bodyHeight: 216, typeRowHeight: 48, barWidth: 208, barHeight: 32, stopRowHeight: 32 },
+      gradient: { height: 641, bodyHeight: 560, typeRowHeight: 48, barWidth: 208, barHeight: 32, stopRowHeight: 32 },
       image: { height: 577, bodyHeight: 496, fitRowHeight: 48, previewSize: 208, adjustmentRowHeight: 32, adjustmentSliderWidth: 120 },
     });
   });
@@ -51,7 +51,7 @@ describe("ColorDialog Editor-Study fidelity geometry", () => {
       onFlipGradient: () => undefined,
       onRotateGradient: () => undefined,
     });
-    expect(html).toContain("h-[216px]");
+    expect(html).toContain("h-[560px]");
     expect(html).toContain('aria-label="Gradient type"');
     expect(html).toContain("data-composa-gradient-preview");
     expect(html).toContain("h-[32px]");
@@ -61,6 +61,8 @@ describe("ColorDialog Editor-Study fidelity geometry", () => {
     expect(html).toContain('aria-label="Flip gradient"');
     expect(html).toContain('aria-label="Rotate gradient"');
     expect(html.match(/data-composa-gradient-stop-row=/g)).toHaveLength(2);
+    expect(html).toContain("data-composa-gradient-color-picker");
+    expect(html).toContain("data-composa-gradient-swatches");
   });
 
   it.each([false, true])("keeps %s bound Image media on the 208px preview contract", bound => {

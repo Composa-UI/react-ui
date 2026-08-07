@@ -45,13 +45,14 @@ export type ImageAdjustments = Record<ImageAdjustment, number>;
 export const COLOR_DIALOG_WIDTH = 240;
 export const COLOR_DIALOG_INSPECTOR_SIDE_OFFSET = 24;
 export const COLOR_DIALOG_NESTED_EFFECT_SIDE_OFFSET = 100;
-/** Measured Editor-Study geometry for issue #206. Kept public so consumers and proof can share one contract. */
+/** Approved dialog geometry. Gradient expands beyond the original summary-only
+ * study so its selected stop can use the complete shared color editor. */
 export const COLOR_DIALOG_REFERENCE_GEOMETRY = Object.freeze({
   width: 240,
   headerHeight: 40,
   toolbarHeight: 41,
   solid: { height: 489, bodyHeight: 408, pickerSize: 208, formatRowHeight: 40 },
-  gradient: { height: 297, bodyHeight: 216, typeRowHeight: 48, barWidth: 208, barHeight: 32, stopRowHeight: 32 },
+  gradient: { height: 641, bodyHeight: 560, typeRowHeight: 48, barWidth: 208, barHeight: 32, stopRowHeight: 32 },
   image: { height: 577, bodyHeight: 496, fitRowHeight: 48, previewSize: 208, adjustmentRowHeight: 32, adjustmentSliderWidth: 120 },
 });
 
