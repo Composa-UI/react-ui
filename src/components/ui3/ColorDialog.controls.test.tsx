@@ -273,6 +273,25 @@ describe("video fill", () => {
     act(() => renderer.unmount());
   });
 
+  it("lets the preview time be typed as timecode", () => {
+    const renderer = render({
+      fillType: "video",
+      capabilities: { videoFill: true },
+      onChooseVideo: () => undefined,
+      videoSourceLabel: "clip.mp4",
+      videoPreviewUrl: "blob:clip",
+      videoPlayback: playback,
+      onVideoPlaybackChange: () => undefined,
+    }, nodeMock());
+    const [time] = byLabel(renderer, "Video preview time");
+    expect(time.type).toBe("input");
+    act(() => time.props.onFocus());
+    act(() => time.props.onChange({ target: { value: "0:12" } }));
+    act(() => time.props.onBlur());
+    expect(byLabel(renderer, "Video preview time")[0].props.value).toBe("0:12");
+    act(() => renderer.unmount());
+  });
+
   it("omits the apply-all action unless the host owns the command", () => {
     const base = { fillType: "video", capabilities: { videoFill: true }, onChooseVideo: () => undefined, videoSourceLabel: "clip.mp4", videoPlayback: playback, onVideoPlaybackChange: () => undefined };
     expect(html(base)).not.toContain("Apply to all videos");
