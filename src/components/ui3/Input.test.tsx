@@ -79,6 +79,15 @@ describe("NumericInput presentation contract", () => {
 });
 
 describe("ColorInput motion controls", () => {
+  it("renders bound image and video assets inside their shared fill chits", () => {
+    const image = renderToStaticMarkup(<ColorInput fillType="Image" fillLabel="cover.png" previewUrl="blob:image-preview" />);
+    const video = renderToStaticMarkup(<ColorInput fillType="Video" fillLabel="clip.mp4" previewUrl="blob:video-preview" />);
+
+    expect(image).toContain('<img src="blob:image-preview"');
+    expect(video).toContain('<video src="blob:video-preview"');
+    expect(video).toContain('repeating-conic-gradient');
+  });
+
   it("makes the component root fluid when fullWidth is requested", () => {
     const html = renderToStaticMarkup(<ColorInput ariaLabel="Selection color" fullWidth color="#336699" />);
     expect(html).toMatch(/^<div class="[^"]*w-full[^"]*min-w-0/);
