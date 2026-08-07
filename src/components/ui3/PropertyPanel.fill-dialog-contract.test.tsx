@@ -7,6 +7,7 @@ import { PropertyPanel } from "./PropertyPanel";
 const capture = vi.hoisted(() => ({
   props: undefined as ColorDialogProps | undefined,
   backgroundProps: undefined as ColorDialogProps | undefined,
+  selectionProps: undefined as ColorDialogProps | undefined,
 }));
 
 vi.mock("./ColorDialog", () => ({
@@ -14,6 +15,7 @@ vi.mock("./ColorDialog", () => ({
     capture.props = props;
     const trigger = props.trigger as ReactElement<{ ariaLabel?: string }>;
     if (trigger.props.ariaLabel?.startsWith("Background")) capture.backgroundProps = props;
+    if (trigger.props.ariaLabel?.startsWith("Selection")) capture.selectionProps = props;
     return <div data-test-dialog="fill-color">{props.trigger as ReactElement}</div>;
   },
 }));
@@ -132,6 +134,20 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
       }]} fillImageAdjustmentsReadOnly onFillImageAdjustmentChange={() => undefined} />); });
     expect(capture.props?.imageAdjustmentKeyframes?.exposure).toEqual({ active: true, onToggle });
     expect(capture.props?.imageAdjustmentsReadOnly).toBe(true);
+    act(() => renderer.unmount());
+  });
+
+  it("keeps a gradient as one controlled Selection colors entry", () => {
+    const onUpdate = vi.fn();
+    const stops = [{ id: "a", position: 0, color: "ff0000", opacity: 100 }, { id: "b", position: 100, color: "0000ff", opacity: 100 }];
+    let renderer!: ReactTestRenderer;
+    act(() => { renderer = create(<PropertyPanel mode="slide" selectionColors={[{
+      id: "gradient:one", color: "#ff0000", opacity: 80, usageCount: 2,
+      fillType: "linear", gradientStops: stops, gradientPreview: "linear-gradient(90deg,#f00,#00f)",
+    }]} onUpdateSelectionColor={onUpdate} />); });
+    expect(capture.selectionProps).toMatchObject({ fillType: "linear", gradientStops: stops, opacity: 80 });
+    act(() => capture.selectionProps?.onStopsChange?.(stops.slice().reverse()));
+    expect(onUpdate).toHaveBeenCalledWith("gradient:one", { gradientStops: stops.slice().reverse() });
     act(() => renderer.unmount());
   });
 

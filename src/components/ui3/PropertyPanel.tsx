@@ -138,7 +138,13 @@ export interface ElementStrokeSetting extends ElementFillSetting {
 }
 export interface ElementEffectSetting extends EffectDetailsValue { id: string; }
 export interface ElementLayoutGuideSetting { id: string; type: "Grid" | "Columns" | "Rows"; visible: boolean; size: number; }
-export interface ElementSelectionColorSetting { id: string; color: string; opacity: number; usageCount?: number; }
+export interface ElementSelectionColorSetting {
+  id: string; color: string; opacity: number; usageCount?: number;
+  /** A shared gradient remains one Selection colors entry, never one row per stop. */
+  fillType?: Extract<FillType, "linear" | "radial" | "angular" | "diamond">;
+  gradientStops?: GradientStop[];
+  gradientPreview?: string;
+}
 export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; dropZone?: boolean; animationDelay?: boolean; layoutFidelityTools?: boolean; }
 export interface ElementTypographySettings {
   fontFamily: string; fontWeight: string; fontSize: number; lineHeight: number; letterSpacing: number;
@@ -2292,10 +2298,15 @@ function SelectionColorsSection({ colors, onUpdate, onSelectAll, swatches, capab
               capabilities={capabilities}
               open={colorOpen && activeIndex === index}
               onClose={() => setColorOpen(false)}
-              trigger={<ColorInput ariaLabel="Selection color" fullWidth color={c.color} opacity={c.opacity} onSwatchClick={() => { setActiveIndex(index); setColorOpen(true); }} />}
+              trigger={<ColorInput ariaLabel="Selection color" fullWidth color={c.color} opacity={c.opacity}
+                fillType={c.fillType ? "Gradient" : "Fill"} gradient={c.gradientPreview}
+                onSwatchClick={() => { setActiveIndex(index); setColorOpen(true); }} />}
               hex={c.color.replace(/^#/, "")}
               swatches={swatches}
               opacity={c.opacity}
+              fillType={c.fillType}
+              gradientStops={c.gradientStops}
+              onStopsChange={stops => onUpdate?.(c.id, { gradientStops: stops })}
               onHexChange={hex => onUpdate?.(c.id, { color: `#${hex.replace(/^#/, "")}` })}
               onOpacityChange={opacity => onUpdate?.(c.id, { opacity })}
             />
