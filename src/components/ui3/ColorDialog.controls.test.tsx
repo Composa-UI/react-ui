@@ -175,7 +175,7 @@ describe("image fill", () => {
     expect(html({ fillType: "image", onChooseImage: () => undefined })).not.toContain('aria-label="Rotate image 90 degrees"');
 
     const onRotateMedia = vi.fn();
-    const renderer = render({ fillType: "image", onChooseImage: () => undefined, onRotateMedia });
+    const renderer = render({ fillType: "image", imageSourceLabel: "bound.png", onChooseImage: () => undefined, onRotateMedia });
     const [rotate] = byLabel(renderer, "Rotate image 90 degrees");
     act(() => rotate.props.onClick());
     expect(onRotateMedia).toHaveBeenCalledOnce();

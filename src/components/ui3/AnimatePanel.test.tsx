@@ -54,7 +54,7 @@ describe("AnimatePanel — sequence ranks are the one grouping truth (row 60)", 
     expect(html).not.toContain("data-combined-card-element-id");
     expect(html).not.toContain("data-combined-connector");
     expect(html).not.toContain("data-delay-between-following");
-    expect(html).not.toContain("Delay between");
+    expect(html).toContain("Delay between sequence 1 and 2");
   });
 
   it("numbers blocks from the engine's order (`n`), not from render position", () => {
@@ -452,6 +452,24 @@ describe("AnimatePanel — connected rank and plus-space drag targets (issue #30
     expect(html).toContain('aria-label="Delay between sequence 1 and 2"');
     expect(html).toContain("After");
     expect(html).toContain("lucide-clock");
+  });
+
+  it("keeps the zero-delay plus expandable into an editable timing value", () => {
+    const onDelayBetweenChange = vi.fn();
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(
+      <AnimatePanel
+        selectionType="element"
+        anims={[{ ...ANIMS[0], n: 1, startMs: 0 }, { ...ANIMS[1], n: 2, startMs: 0 }]}
+        objectAnimationCallbacks={{ onDelayBetweenChange }}
+      />,
+    ); });
+    const input = renderer!.root.findByProps({ "aria-label": "Delay between sequence 1 and 2" });
+    act(() => input.props.onChange({ target: { value: "240" } }));
+    act(() => renderer!.root.findByProps({ "aria-label": "Delay between sequence 1 and 2" }).props.onBlur());
+    expect(onDelayBetweenChange).toHaveBeenCalledWith(ANIMS[0].id, ANIMS[1].id, 240);
+    expect(renderer!.root.findAll(node => typeof node.props.className === "string" && node.props.className.includes("lucide-plus")).length).toBeGreaterThan(0);
+    act(() => renderer!.unmount());
   });
 
   it("does not offer With back into the dragged card's current shared rank", () => {

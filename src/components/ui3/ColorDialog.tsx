@@ -1231,10 +1231,10 @@ export function ColorDialog({
         {/* ── IMAGE ─────────────────────────────────────────────────────── */}
         {fillType === "image" && (
           <>
-            <MediaFitControl kind="image" value={mediaFit} onChange={onMediaFitChange}
+            {imageSourceLabel && <MediaFitControl kind="image" value={mediaFit} onChange={onMediaFitChange}
               tileScale={mediaTileScale} tileScaleKeyframe={mediaTileScaleKeyframe} onTileScaleChange={onMediaTileScaleChange}
               onRotate={onRotateMedia}
-              />
+              />}
             <MediaFillPreview kind="image" sourceLabel={imageSourceLabel} previewUrl={imagePreviewUrl} fit={mediaFit} tileScale={mediaTileScale}
               onChoose={onChooseImage} onMakeImage={onMakeImage} />
 
@@ -1304,10 +1304,10 @@ export function ColorDialog({
 
         {fillType === "video" && videoAvailable && (
           <>
-            <MediaFitControl kind="video" value={mediaFit === "tile" ? "fill" : mediaFit} onChange={onMediaFitChange}
+            {videoSourceLabel && <MediaFitControl kind="video" value={mediaFit === "tile" ? "fill" : mediaFit} onChange={onMediaFitChange}
               tileScale={mediaTileScale}
               onRotate={onRotateMedia}
-              />
+              />}
             <MediaFillPreview kind="video" sourceLabel={videoSourceLabel} previewUrl={videoPreviewUrl} fit={mediaFit === "tile" ? "fill" : mediaFit} tileScale={mediaTileScale}
               onChoose={onChooseVideo} bottomInset={!videoSourceLabel || !videoPlayback || !onVideoPlaybackChange} />
             {videoSourceLabel && videoPlayback && onVideoPlaybackChange && <VideoPlaybackControls previewUrl={videoPreviewUrl} value={videoPlayback}

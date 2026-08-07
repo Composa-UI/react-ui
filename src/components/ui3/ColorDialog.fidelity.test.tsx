@@ -76,17 +76,18 @@ describe("ColorDialog Editor-Study fidelity geometry", () => {
       imagePreviewUrl: bound ? "blob:cover" : undefined,
       onImageAdjustmentChange: bound ? () => undefined : undefined,
     });
-    expect(html).toContain("data-composa-media-fit-row");
-    expect(html).toContain("h-[48px]");
+    expect(html).toContain(bound ? "data-composa-media-fit-row" : "data-state=\"empty\"");
     expect(html).toContain("size-[208px]");
     expect(html).toContain(`aria-label="${bound ? "Replace" : "Choose"} media…"`);
-    expect(html).toContain('aria-label="Rotate image 90 degrees"');
+    expect(html).toContain(bound ? 'aria-label="Rotate image 90 degrees"' : 'data-state="empty"');
     if (bound) {
       expect(html).toContain("h-[496px]");
       expect(html.match(/data-composa-image-adjustment-row=/g)).toHaveLength(7);
       expect(html).toContain("w-[120px]");
     } else {
       expect(html).toContain('data-state="empty"');
+      expect(html).not.toContain("data-composa-media-fit-row");
+      expect(html).not.toContain('aria-label="Rotate image 90 degrees"');
       expect(html).not.toContain("data-composa-image-adjustments");
     }
   });
@@ -97,6 +98,10 @@ describe("ColorDialog Editor-Study fidelity geometry", () => {
       videoPlayback: { loop: true, playSound: false, autoplay: true, showPlaybackControls: true }, onVideoPlaybackChange: () => undefined });
     expect(image).not.toContain("data-composa-image-adjustments");
     expect(video).not.toContain("data-composa-video-playback-controls");
+    expect(image).not.toContain("data-composa-media-fit-row");
+    expect(video).not.toContain("data-composa-media-fit-row");
+    expect(image).not.toContain("Rotate image 90 degrees");
+    expect(video).not.toContain("Rotate video 90 degrees");
     expect(image).toContain("Choose media…");
     expect(video).toContain("Choose media…");
   });

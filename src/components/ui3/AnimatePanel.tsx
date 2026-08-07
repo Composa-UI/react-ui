@@ -622,13 +622,14 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                     {!dragged && following && <div data-animation-sequence-connector-between={`${group.rank}-${next!.rank}`} className="group/sequence-gap relative flex h-[40px] items-center justify-center">
                       <span aria-hidden className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-c-border" />
                       <div className="relative flex h-[28px] max-w-[28px] items-center overflow-hidden rounded-c-md bg-c-bg-secondary px-[7px] text-[11px] text-c-text transition-[max-width] group-hover/sequence-gap:max-w-[168px] group-focus-within/sequence-gap:max-w-[168px]">
-                        {delayBetween <= 0 ? <Plus size={14} className="shrink-0" /> : <>
-                          <Clock size={14} strokeWidth={1.5} className="shrink-0" />
-                          <span className="mr-[6px] shrink-0 opacity-0 transition-opacity group-hover/sequence-gap:opacity-100 group-focus-within/sequence-gap:opacity-100">After</span>
-                          <NumericInput ariaLabel={`Delay between sequence ${group.rank} and ${next!.rank}`} value={delayBetween} min={0} suffix="ms" commitOnBlur
-                            className="ml-[6px] w-[88px] shrink-0 opacity-0 transition-opacity group-hover/sequence-gap:opacity-100 group-focus-within/sequence-gap:opacity-100"
-                            onChange={value => callbacks?.onDelayBetweenChange?.(group.rows[0].id, following.id, value)} />
-                        </>}
+                        <span aria-hidden className="relative size-[14px] shrink-0">
+                          <Plus size={14} className={clsx("absolute inset-0 transition-opacity", delayBetween > 0 && "opacity-0", "group-hover/sequence-gap:opacity-0 group-focus-within/sequence-gap:opacity-0")} />
+                          <Clock size={14} strokeWidth={1.5} className={clsx("absolute inset-0 transition-opacity", delayBetween <= 0 && "opacity-0", "group-hover/sequence-gap:opacity-100 group-focus-within/sequence-gap:opacity-100")} />
+                        </span>
+                        <span className="ml-[6px] mr-[6px] shrink-0 opacity-0 transition-opacity group-hover/sequence-gap:opacity-100 group-focus-within/sequence-gap:opacity-100">After</span>
+                        <NumericInput ariaLabel={`Delay between sequence ${group.rank} and ${next!.rank}`} value={delayBetween} min={0} suffix="ms" commitOnBlur
+                          className="w-[88px] shrink-0 opacity-0 transition-opacity group-hover/sequence-gap:opacity-100 group-focus-within/sequence-gap:opacity-100"
+                          onChange={value => callbacks?.onDelayBetweenChange?.(group.rows[0].id, following.id, value)} />
                       </div>
                     </div>}
                   </div>
