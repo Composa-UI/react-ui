@@ -2,7 +2,7 @@ import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { ColorDialogProps } from "./ColorDialog";
-import { PropertyPanel } from "./PropertyPanel";
+import { activeGradientFillDialogId, PropertyPanel } from "./PropertyPanel";
 
 const capture = vi.hoisted(() => ({
   props: undefined as ColorDialogProps | undefined,
@@ -26,6 +26,17 @@ vi.mock("./ColorDialog", () => ({
 }));
 
 describe("PropertyPanel Fill/Color controlled contract", () => {
+  it("keeps canvas gradient chrome scoped to an open gradient dialog on the current selection", () => {
+    const gradient = { id: "gradient", color: "#000000", opacity: 100, visible: true, fillType: "linear" as const };
+    const image = { id: "image", color: "#000000", opacity: 100, visible: true, fillType: "image" as const };
+    expect(activeGradientFillDialogId("fill-color:gradient", [gradient])).toBe("gradient");
+    expect(activeGradientFillDialogId("fill-color:image", [image])).toBeNull();
+    // Replacing the inspector entries is how selection changes reach this
+    // component; its old dialog id must no longer keep a canvas editor alive.
+    expect(activeGradientFillDialogId("fill-color:gradient", [image])).toBeNull();
+    expect(activeGradientFillDialogId(null, [gradient])).toBeNull();
+  });
+
   it("forwards every detailed fill value and emits entry-scoped callbacks", () => {
     const onType = vi.fn();
     const onStops = vi.fn();

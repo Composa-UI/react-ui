@@ -189,7 +189,7 @@ describe("image fill", () => {
     expect(markup).not.toContain("Shadows");
   });
 
-  it("commits each adjustment under its own name once a handler exists", () => {
+  it("commits each adjustment under its own name once a media source is bound", () => {
     const onAdjust = vi.fn();
     const markup = html({ fillType: "image", imageSourceLabel: "bound.png", onImageAdjustmentChange: onAdjust });
     expect(markup).toContain("Exposure");
@@ -204,6 +204,19 @@ describe("image fill", () => {
     expect(onAdjust).toHaveBeenCalledWith("exposure", 40);
     act(() => sliders[6].props.onChange({ target: { value: "-30" } }));
     expect(onAdjust).toHaveBeenCalledWith("shadows", -30);
+    act(() => renderer.unmount());
+  });
+
+  it("keeps the same adjustment sliders for a bound video and hides them for its placeholder", () => {
+    const onAdjust = vi.fn();
+    expect(html({ fillType: "video", capabilities: { videoFill: true }, onChooseVideo: () => undefined, onImageAdjustmentChange: onAdjust }))
+      .not.toContain("data-composa-image-adjustments");
+    const renderer = render({ fillType: "video", capabilities: { videoFill: true }, onChooseVideo: () => undefined,
+      videoSourceLabel: "intro.mp4", onImageAdjustmentChange: onAdjust }, nodeMock());
+    const sliders = host(renderer, instance => instance.type === "input" && instance.props.type === "range");
+    expect(sliders).toHaveLength(7);
+    act(() => sliders[1].props.onChange({ target: { value: "24" } }));
+    expect(onAdjust).toHaveBeenCalledWith("contrast", 24);
     act(() => renderer.unmount());
   });
 

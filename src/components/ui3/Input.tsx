@@ -969,7 +969,7 @@ export function NumericInputMulti({ iconLead, values, step = 1, size = "medium",
 
 // ─── ColorInput ───────────────────────────────────────────────────────────────
 
-export type ColorFillType = "Fill" | "Opacity" | "Gradient" | "Image" | "Video" | "Variable";
+export type ColorFillType = "Fill" | "Opacity" | "Gradient" | "Image" | "Video" | "Drop zone" | "Variable";
 
 interface ColorInputProps {
   ariaLabel?: string;
@@ -1043,10 +1043,10 @@ export function ColorInput({
     }
   };
   const isVariable = fillType === "Variable";
-  const isTextLabel = fillType === "Gradient" || fillType === "Image" || fillType === "Video" || isVariable;
+  const isTextLabel = fillType === "Gradient" || fillType === "Image" || fillType === "Video" || fillType === "Drop zone" || isVariable;
 
   // chit type mapping
-  const chitType = fillType === "Variable" || fillType === "Video" ? "Fill" : fillType as ChitType;
+  const chitType = fillType === "Variable" || fillType === "Video" || fillType === "Drop zone" ? "Fill" : fillType as ChitType;
 
   const midText = isVariable
     ? variableValue ?? "bg-assistive"
