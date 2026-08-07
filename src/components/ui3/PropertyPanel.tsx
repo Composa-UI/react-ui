@@ -1747,6 +1747,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
   onFillTypeChange, onGradientStopsChange, onChooseImage, onChooseVideo,
   onFlipGradient, onRotateGradient, onRotateMedia,
   onImageAdjustmentChange, onMediaFitChange, onMediaTileScaleChange, onEditCrop, dropZoneSources, onSelectDropZoneSource,
+  onEyedropperActivate, activeEyedropperId,
   imageAdjustmentsReadOnly = false, swatches, capabilities, activeStackDialog, onActiveStackDialogChange }: {
   entries?: FillEntry[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<FillEntry, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
@@ -1763,6 +1764,8 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
   imageAdjustmentsReadOnly?: boolean;
   dropZoneSources?: { id: string; label: string }[];
   onSelectDropZoneSource?: (id: string, sourceId: string) => void;
+  onEyedropperActivate?: (id: string, gradientStopId?: string) => void;
+  activeEyedropperId?: string | null;
   swatches?: string[];
   capabilities: Required<InspectorCapabilities>;
   activeStackDialog: string | null;
@@ -1831,6 +1834,8 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
               gradientStops={fill.gradientStops}
               gradientStopKeyframes={fill.keyframes?.gradientStops}
               onStopsChange={onGradientStopsChange ? stops => onGradientStopsChange(fill.id, stops) : undefined}
+              onEyedropperActivate={onEyedropperActivate ? stopId => onEyedropperActivate(fill.id, stopId) : undefined}
+              eyedropperActive={activeEyedropperId === fill.id}
               onFlipGradient={onFlipGradient ? () => onFlipGradient(fill.id) : undefined}
               onRotateGradient={onRotateGradient ? () => onRotateGradient(fill.id) : undefined}
               imageSourceLabel={fill.imageSourceLabel}
@@ -2632,7 +2637,7 @@ function SlideBackgroundSection({
   onMediaTileScaleChange?: (scale: number) => void;
   onEditCrop?: () => void;
   onSelectDropZoneSource?: (sourceId: string) => void;
-  onEyedropperActivate?: () => void;
+  onEyedropperActivate?: (gradientStopId?: string) => void;
   eyedropperActive?: boolean;
   onDialogOpenChange?: (open: boolean) => void;
   onRotateMedia?: () => void;
@@ -3226,6 +3231,9 @@ export interface PropertyPanelProps {
   onFillTypeChange?: (id: string, type: FillType) => void;
   /** Reports the exact element fill whose shared dialog is open, for canvas controls. */
   onActiveFillDialogChange?: (id: string | null) => void;
+  /** Activates host-owned composition sampling for one exact fill/gradient stop. */
+  onFillEyedropperActivate?: (id: string, gradientStopId?: string) => void;
+  activeFillEyedropperId?: string | null;
   onFillGradientStopsChange?: (id: string, stops: GradientStop[]) => void;
   /** Host-owned gradient transform commands for a specific fill entry. */
   onFlipFillGradient?: (id: string) => void;
@@ -3354,7 +3362,7 @@ export interface PropertyPanelProps {
   onSlideBackgroundMediaTileScaleChange?: (scale: number) => void;
   onEditSlideBackgroundCrop?: () => void;
   onSelectSlideBackgroundDropZoneSource?: (sourceId: string) => void;
-  onSlideBackgroundEyedropperActivate?: () => void;
+  onSlideBackgroundEyedropperActivate?: (gradientStopId?: string) => void;
   slideBackgroundEyedropperActive?: boolean;
   /** Keeps host-owned canvas controls synchronized with the background fill dialog. */
   onSlideBackgroundFillDialogChange?: (open: boolean) => void;
@@ -4383,6 +4391,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onMediaFitChange={props.onFillMediaFitChange}
             onMediaTileScaleChange={props.onFillMediaTileScaleChange}
             onEditCrop={props.onEditFillCrop}
+            onEyedropperActivate={props.onFillEyedropperActivate} activeEyedropperId={props.activeFillEyedropperId}
             dropZoneSources={props.fillDropZoneSources} onSelectDropZoneSource={props.onSelectFillDropZoneSource}
             swatches={props.pageSwatches}
             capabilities={capabilities}

@@ -97,7 +97,7 @@ export interface ColorDialogProps {
   /** "On this page" swatch hexes (with #). Defaults to demo swatches. */
   swatches?: string[];
   /** Host-owned composition sampler. Omitted means no inert pipette is rendered. */
-  onEyedropperActivate?: () => void;
+  onEyedropperActivate?: (gradientStopId?: string) => void;
   /** True while the host's composition sampling mode is active. */
   eyedropperActive?: boolean;
   imageExposure?: number;
@@ -951,7 +951,8 @@ export function ColorDialog({
 
             {/* Eyedropper + hue. Paint opacity has one source: the owning row. */}
             <div data-composa-solid-slider-row className="flex h-[60px] items-center gap-[12px] px-[16px]">
-              {onEyedropperActivate && <Btn label={eyedropperActive ? "Cancel color sampling" : "Sample color"} active={eyedropperActive} onClick={onEyedropperActivate}>
+              {onEyedropperActivate && <Btn label={eyedropperActive ? "Cancel color sampling" : "Sample color"} active={eyedropperActive}
+                onClick={() => onEyedropperActivate(isGradient ? selectedStopId ?? stops[0]?.id : undefined)}>
                 <Pipette size={14} strokeWidth={1.5} />
               </Btn>}
               <div className="flex-1 min-w-0">
@@ -1088,12 +1089,20 @@ export function ColorDialog({
             {/* Stops header */}
             <div data-composa-gradient-stops-header className="flex h-[40px] items-center justify-between pl-[16px] pr-[8px]">
               <span className={clsx(FONT, "text-[11px] font-[550] text-c-text")}>Stops</span>
-              <button
-                onClick={handleStopAdd}
-                className="flex items-center justify-center size-[24px] rounded-c-sm text-c-icon hover:bg-c-bg-hover"
-              >
-                <Plus size={12} strokeWidth={1.5} />
-              </button>
+              <div className="flex items-center gap-[4px]">
+                {onEyedropperActivate && <Btn label={eyedropperActive ? "Cancel color sampling" : "Sample color"} active={eyedropperActive}
+                  onClick={() => onEyedropperActivate(selectedStopId ?? stops[0]?.id)}>
+                  <Pipette size={14} strokeWidth={1.5} />
+                </Btn>}
+                <button
+                  type="button"
+                  aria-label="Add gradient stop"
+                  onClick={handleStopAdd}
+                  className="flex items-center justify-center size-[24px] rounded-c-sm text-c-icon hover:bg-c-bg-hover"
+                >
+                  <Plus size={12} strokeWidth={1.5} />
+                </button>
+              </div>
             </div>
 
             <div ref={stopListRef} className="pt-[4px]">

@@ -35,6 +35,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     const onEditCrop = vi.fn();
     const onDropZone = vi.fn();
     const onActiveDialog = vi.fn();
+    const onFillEyedropper = vi.fn();
     const stopPosition = { active: true, onToggle: vi.fn() };
     const stopColor = { active: false, onToggle: vi.fn() };
     const stopOpacity = { active: false, onToggle: vi.fn() };
@@ -61,6 +62,8 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
         }]}
         onFillTypeChange={onType}
         onActiveFillDialogChange={onActiveDialog}
+        onFillEyedropperActivate={onFillEyedropper}
+        activeFillEyedropperId="fill-1"
         onFillGradientStopsChange={onStops}
         onFlipFillGradient={onFlipGradient}
         onRotateFillGradient={onRotateGradient}
@@ -83,6 +86,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     expect(onActiveDialog).toHaveBeenLastCalledWith(null);
     expect(props.fillType).toBe("linear");
     expect(props.gradientStops).toEqual(stops);
+    expect(props.eyedropperActive).toBe(true);
     expect(props.gradientStopKeyframes).toEqual({ a: { position: stopPosition, color: stopColor, opacity: stopOpacity } });
     expect(props.imageSourceLabel).toBe("cover.png");
     expect(props.imagePreviewUrl).toBe("blob:image-preview");
@@ -107,6 +111,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     act(() => props.onMediaTileScaleChange?.(72));
     act(() => props.onEditCrop?.());
     act(() => props.onSelectDropZoneSource?.("track:video"));
+    act(() => props.onEyedropperActivate?.("a"));
 
     expect(onType).toHaveBeenCalledWith("fill-1", "diamond");
     expect(onStops).toHaveBeenCalledWith("fill-1", stops.slice().reverse());
@@ -120,6 +125,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     expect(onTileScale).toHaveBeenCalledWith("fill-1", 72);
     expect(onEditCrop).toHaveBeenCalledWith("fill-1");
     expect(onDropZone).toHaveBeenCalledWith("fill-1", "track:video");
+    expect(onFillEyedropper).toHaveBeenCalledWith("fill-1", "a");
 
     act(() => renderer.unmount());
   });

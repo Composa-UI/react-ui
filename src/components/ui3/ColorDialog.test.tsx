@@ -187,4 +187,28 @@ describe("ColorDialog anchored inspector contract", () => {
       onMediaFitChange={() => undefined} onEditCrop={onEditCrop} />));
     expect(renderer.root.findAll(node => node.props["aria-label"] === "Edit crop")).toHaveLength(0);
   });
+
+  it("samples the selected gradient stop instead of silently replacing the first stop", () => {
+    const onEyedropperActivate = vi.fn();
+    let renderer!: ReactTestRenderer;
+    act(() => { renderer = create(
+      <ColorDialog open onClose={() => undefined} trigger={<button>Color</button>}
+        fillType="linear"
+        gradientStops={[
+          { id: "start", position: 0, color: "111111", opacity: 100 },
+          { id: "end", position: 100, color: "EEEEEE", opacity: 100 },
+        ]}
+        onEyedropperActivate={onEyedropperActivate} />,
+    ); });
+    const secondStop = renderer.root.findByProps({ "aria-label": "Stop 2" });
+    act(() => secondStop.props.onPointerDown({
+      button: 0,
+      pointerId: 7,
+      preventDefault: () => undefined,
+      currentTarget: { setPointerCapture: () => undefined },
+    }));
+    const pipette = renderer.root.findByProps({ "aria-label": "Sample color" });
+    act(() => pipette.props.onClick());
+    expect(onEyedropperActivate).toHaveBeenCalledWith("end");
+  });
 });
