@@ -7,12 +7,13 @@ describe("CropToolbar", () => {
   it("exposes resize, aspect, and completion without owning document state", () => {
     const calls: string[] = [];
     let renderer!: ReactTestRenderer;
-    act(() => { renderer = create(<CropToolbar aspect="16:9" onAspectChange={value => calls.push(value)} onResizeToFill={() => calls.push("fill")} onCancel={() => calls.push("cancel")} onDone={() => calls.push("done")} />); });
+    act(() => { renderer = create(<CropToolbar aspect="16:9" onAspectChange={value => calls.push(value)} onResizeToFill={() => calls.push("fill")} zoom={1} onZoomChange={value => calls.push(`zoom:${value}`)} onCancel={() => calls.push("cancel")} onDone={() => calls.push("done")} />); });
     expect(renderer.root.findByProps({ role: "toolbar" }).props["aria-label"]).toBe("Crop tools");
-    act(() => renderer.root.findByProps({ label: "Resize to fill" }).props.onClick());
+    act(() => renderer.root.findByProps({ "aria-label": "Crop zoom" }).props.onChange({ target: { value: "1.5" } }));
+    act(() => renderer.root.findByProps({ ariaLabel: "Resize to fill" }).props.onClick());
     act(() => renderer.root.findByProps({ label: "Cancel" }).props.onClick());
-    act(() => renderer.root.findByProps({ label: "Done" }).props.onClick());
-    expect(calls).toEqual(["fill", "cancel", "done"]);
+    act(() => renderer.root.findByProps({ ariaLabel: "Done" }).props.onClick());
+    expect(calls).toEqual(["zoom:1.5", "fill", "cancel", "done"]);
 
     const popover = renderer.root.findByType(PopoverMenu);
     let menu!: ReactTestRenderer;
@@ -20,7 +21,7 @@ describe("CropToolbar", () => {
     const rows = menu.root.findAllByType(MenuRow);
     expect(rows.map(row => row.props.label)).toEqual(["Free", "Original", "1:1", "4:3", "16:9"]);
     act(() => rows.find(row => row.props.label === "4:3")!.props.onClick());
-    expect(calls).toEqual(["fill", "cancel", "done", "4:3", "closed"]);
+    expect(calls).toEqual(["zoom:1.5", "fill", "cancel", "done", "4:3", "closed"]);
   });
 
   it("publishes pointer start, incremental deltas, and one end for pointer up/cancel", () => {

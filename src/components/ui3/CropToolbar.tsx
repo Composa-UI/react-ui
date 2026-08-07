@@ -1,8 +1,9 @@
-import { Check, Maximize2, X } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { clsx } from "clsx";
 import { Button } from "./Button";
-import { Dropdown } from "./Dropdown";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
+import { Slider } from "./Slider";
+import { iconForSemantic } from "./icon-semantics";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 
 export type CropAspect = "free" | "original" | "1:1" | "4:3" | "16:9";
@@ -15,25 +16,35 @@ export interface CropToolbarProps {
   aspect: CropAspect;
   onAspectChange: (aspect: CropAspect) => void;
   onResizeToFill: () => void;
+  zoom: number;
+  onZoomChange: (zoom: number) => void;
   onCancel: () => void;
   onDone: () => void;
   className?: string;
 }
 
 /** Canonical UI3 crop controls. The host owns document mutations and canvas geometry. */
-export function CropToolbar({ aspect, onAspectChange, onResizeToFill, onCancel, onDone, className }: CropToolbarProps) {
+const ResizeToFitIcon = iconForSemantic("resize-to-fit");
+
+export function CropToolbar({ aspect, onAspectChange, onResizeToFill, zoom, onZoomChange, onCancel, onDone, className }: CropToolbarProps) {
   const aspects = Object.keys(LABELS) as CropAspect[];
   return <div role="toolbar" aria-label="Crop tools" className={clsx(
-    "inline-flex items-center gap-[6px] rounded-c-lg bg-c-bg p-[6px] ring-1 ring-inset ring-c-border-translucent",
+    "inline-flex h-[64px] items-center rounded-[16px] bg-c-bg px-[16px] ring-1 ring-inset ring-c-border-translucent",
     "shadow-[0px_0px_0.5px_rgba(0,0,0,0.18),0px_3px_8px_rgba(0,0,0,0.12),0px_1px_2px_rgba(0,0,0,0.1)]",
     className,
   )}>
-    <Button variant="Secondary" label="Resize to fill" iconLead="left" icon={<Maximize2 size={14} strokeWidth={1.5} />} onClick={onResizeToFill} />
-    <PopoverMenu align="left" trigger={<Dropdown ariaLabel="Crop aspect ratio" value={LABELS[aspect]} />}>
+    <span className="pr-[16px] text-[18px] font-[450] text-c-text">Crop</span>
+    <span aria-hidden className="h-full w-px bg-c-border" />
+    <div className="mx-[16px] flex h-[40px] w-[240px] items-center rounded-[10px] bg-c-bg-secondary px-[16px]">
+      <Slider ariaLabel="Crop zoom" min={1} max={4} step={0.01} value={zoom} defaultValue={1} onChange={onZoomChange} />
+    </div>
+    <Button variant="Ghost" ariaLabel="Resize to fill" iconLead="center" icon={<ResizeToFitIcon size={20} strokeWidth={1.5} />} onClick={onResizeToFill} className="size-[40px]" />
+    <PopoverMenu align="left" trigger={<Button variant="Ghost" ariaLabel={`Crop aspect ratio: ${LABELS[aspect]}`} iconLead="center" icon={<ChevronDown size={20} strokeWidth={1.5} />} className="size-[40px]" />}>
       {close => <Menu>{aspects.map(value => <MenuRow key={value} label={LABELS[value]} checked={aspect === value} selectionRole="radio" onClick={() => { onAspectChange(value); close(); }} />)}</Menu>}
     </PopoverMenu>
-    <Button variant="Secondary" label="Cancel" iconLead="left" icon={<X size={14} strokeWidth={1.5} />} onClick={onCancel} />
-    <Button variant="Primary" label="Done" iconLead="left" icon={<Check size={14} strokeWidth={1.5} />} onClick={onDone} />
+    <span aria-hidden className="mx-[16px] h-full w-px bg-c-border" />
+    <Button variant="Ghost" label="Cancel" size="large" onClick={onCancel} className="text-[18px]" />
+    <Button variant="Primary" ariaLabel="Done" iconLead="center" icon={<Check size={24} strokeWidth={1.5} />} onClick={onDone} className="ml-[12px] size-[48px] rounded-[12px]" />
   </div>;
 }
 

@@ -56,6 +56,12 @@ interface SliderProps {
   trackVariant?: SliderTrackVariant;
   /** CSS gradient string for gradient / alpha track variants */
   trackGradient?: string;
+  /**
+   * Where the blue value segment begins. Adjustment sliders use `default`
+   * so positive and negative edits grow away from the neutral value instead
+   * of reading like an ordinary left-to-right percentage.
+   */
+  fillOrigin?: "leading" | "default";
   onChange?: (value: number) => void;
   className?: string;
 }
@@ -132,6 +138,7 @@ export function Slider({
   showSteps = false,
   trackVariant = "default",
   trackGradient,
+  fillOrigin = "leading",
   onChange,
   className,
 }: SliderProps) {
@@ -161,6 +168,8 @@ export function Slider({
   const fillWidth = pct === 0
     ? "0px"
     : `calc((100% - ${THUMB}px) * ${pct / 100} + ${THUMB / 2}px)`;
+  const centeredFillLeft = Math.min(pct, defaultPct);
+  const centeredFillWidth = Math.abs(pct - defaultPct);
 
   // Delta marker: thin vertical line at defaultValue position on track
   const deltaLeft = `calc((100% - ${THUMB}px) * ${defaultPct / 100} + ${THUMB / 2}px)`;
@@ -220,10 +229,20 @@ export function Slider({
       )}
 
       {/* ── Fill (brand blue) ────────────────────────────────────────────── */}
-      {trackVariant === "default" && pct > 0 && (
+      {trackVariant === "default" && fillOrigin === "leading" && pct > 0 && (
         <div
           className="absolute left-0 top-0 h-full rounded-full bg-c-bg-brand pointer-events-none"
           style={{ width: fillWidth }}
+        />
+      )}
+      {trackVariant === "default" && fillOrigin === "default" && hasDelta && (
+        <div
+          data-composa-slider-centered-fill
+          className="absolute top-0 h-full rounded-full bg-c-bg-brand pointer-events-none"
+          style={{
+            left: `calc((100% - ${THUMB}px) * ${centeredFillLeft / 100} + ${THUMB / 2}px)`,
+            width: `calc((100% - ${THUMB}px) * ${centeredFillWidth / 100})`,
+          }}
         />
       )}
 
@@ -248,7 +267,7 @@ export function Slider({
       })}
 
       {/* ── Delta indicator (default value marker) ───────────────────────── */}
-      {hasDelta && (
+      {hasDelta && fillOrigin !== "default" && (
         <div
           className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none bg-c-bg-brand-pressed"
           style={{ left: deltaLeft, width: 2, height: 8 }}

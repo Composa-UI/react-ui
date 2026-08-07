@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, type ReactElement } from "react";
 import { clsx } from "clsx";
-import { Image, ImagePlus, Pipette, Plus, Minus, RotateCcw, RotateCw, ArrowLeftRight, Disc, Diamond, Search, LayoutGrid, ChevronDown, X, SquarePlay, SquareDashedMousePointer, Crop } from "lucide-react";
+import { Image, ImagePlus, Pipette, Plus, Minus, RotateCcw, RotateCw, ArrowLeftRight, Disc, Diamond, Search, LayoutGrid, ChevronDown, X, SquarePlay, SquareDashedMousePointer, Play, Pause } from "lucide-react";
 import { ModalBody, ModalDivider } from "./Dialog";
 import { InspectorDialog } from "./InspectorDialog";
 import type { AnchoredInspectorOverlayAlign } from "./AnchoredInspectorOverlay";
@@ -12,12 +12,14 @@ import { ColorInput, NumericInput } from "./Input";
 import { Button } from "./Button";
 import { Dropdown } from "./Dropdown";
 import { Chit } from "./Chit";
+import { Checkbox } from "./Checkbox";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type FillType = "solid" | "linear" | "radial" | "angular" | "diamond" | "image" | "video" | "drop-zone";
 export type FillMode = "solid" | "gradient" | "image" | "video" | "drop-zone";
 export type MediaFillFit = "fill" | "fit" | "crop" | "tile";
+export interface VideoPlaybackOptions { loop: boolean; playSound: boolean; autoplay: boolean; showPlaybackControls: boolean; }
 
 export interface GradientStop {
   id: string;
@@ -118,6 +120,8 @@ export interface ColorDialogProps {
    * whatsoever, so the dialog advertised an upload it could never perform.
    */
   onChooseImage?: () => void;
+  /** Optional host-backed image-generation entry point shown in the preview. */
+  onMakeImage?: () => void;
   /** Label for the chosen image fill source, shown in place of the empty state. */
   imageSourceLabel?: string;
   /** Host-resolved object URL for the chosen image. The kit never loads assets itself. */
@@ -138,6 +142,9 @@ export interface ColorDialogProps {
   videoPreviewUrl?: string;
   /** Host-backed media picker. When absent, Video is not offered. */
   onChooseVideo?: () => void;
+  videoPlayback?: VideoPlaybackOptions;
+  onVideoPlaybackChange?: (patch: Partial<VideoPlaybackOptions>) => void;
+  onApplyVideoPlaybackToAll?: () => void;
   /** Persisted renderer-backed fit mode for Image and Video fills. */
   mediaFit?: MediaFillFit;
   /** Host mutation for the selected media fill's fit mode. */
@@ -393,7 +400,8 @@ function AdjustRow({ label, value, onChange, keyframe, disabled = false }: {
       <div data-composa-separated-field-actions className="ml-[24px] flex w-[120px] shrink-0 items-center">
         <div className={keyframe ? "w-[88px]" : "w-[120px]"}>
         <Slider ariaLabel={`${label} value`} value={value} onChange={disabled ? undefined : onChange}
-          min={-100} max={100} defaultValue={0} disabled={disabled} />
+          min={-100} max={100} defaultValue={0} fillOrigin="default" showDelta
+          handleVariant={value === 0 ? "fill" : "stroke"} disabled={disabled} />
         </div>
         {keyframe && <button
           type="button"
@@ -417,19 +425,16 @@ function AdjustRow({ label, value, onChange, keyframe, disabled = false }: {
 
 const MEDIA_FIT_LABELS: Record<MediaFillFit, string> = { fill: "Fill", fit: "Fit", crop: "Crop", tile: "Tile" };
 
-function MediaFitControl({ kind, value, onChange, tileScale, tileScaleKeyframe, onTileScaleChange, onEditCrop, onRotate, selected, onChoose }: {
+function MediaFitControl({ kind, value, onChange, tileScale, tileScaleKeyframe, onTileScaleChange, onRotate }: {
   kind: "image" | "video";
   value: MediaFillFit;
   onChange?: (fit: MediaFillFit) => void;
   tileScale: number;
   tileScaleKeyframe?: ColorDialogKeyframeControl;
   onTileScaleChange?: (scale: number) => void;
-  onEditCrop?: () => void;
   onRotate?: () => void;
-  selected: boolean;
-  onChoose?: () => void;
 }) {
-  if (!onChange && !onChoose && !onEditCrop && !onRotate) return null;
+  if (!onChange && !onRotate) return null;
   const options: MediaFillFit[] = kind === "image" ? ["fill", "fit", "crop", "tile"] : ["fill", "fit", "crop"];
   return <div data-composa-media-fit-row={kind} className="flex h-[48px] items-center gap-[4px] pl-[16px] pr-[8px]">
     {onChange && <PopoverMenu
@@ -460,12 +465,6 @@ function MediaFitControl({ kind, value, onChange, tileScale, tileScaleKeyframe, 
       className="w-[76px] shrink-0"
     />}
     <div className="ml-auto flex items-center gap-[4px]">
-      {onChoose && <Btn label={`${selected ? "Replace" : "Select"} ${kind}`} onClick={onChoose}>
-        <ImagePlus size={14} strokeWidth={1.5} />
-      </Btn>}
-      {value === "crop" && onEditCrop && <Btn label="Edit crop" onClick={onEditCrop}>
-        <Crop size={14} strokeWidth={1.5} />
-      </Btn>}
       {onRotate && <Btn label={`Rotate ${kind} 90 degrees`} onClick={onRotate}>
         <RotateCw size={14} strokeWidth={1.5} />
       </Btn>}
@@ -473,12 +472,14 @@ function MediaFitControl({ kind, value, onChange, tileScale, tileScaleKeyframe, 
   </div>;
 }
 
-function MediaFillPreview({ kind, sourceLabel, previewUrl, fit, tileScale }: {
+function MediaFillPreview({ kind, sourceLabel, previewUrl, fit, tileScale, onChoose, onMakeImage }: {
   kind: "image" | "video";
   sourceLabel?: string;
   previewUrl?: string;
   fit: MediaFillFit;
   tileScale: number;
+  onChoose?: () => void;
+  onMakeImage?: () => void;
 }) {
   const selected = !!sourceLabel;
   return <>
@@ -487,7 +488,7 @@ function MediaFillPreview({ kind, sourceLabel, previewUrl, fit, tileScale }: {
       data-state={previewUrl ? "bound" : "empty"}
       data-fit={fit}
       aria-label={selected ? `${kind} preview: ${sourceLabel}` : `${kind} preview: empty`}
-      className="relative mx-[16px] size-[208px] shrink-0 overflow-hidden rounded-c-md bg-c-bg-secondary ring-1 ring-inset ring-c-border"
+      className="group relative mx-[16px] size-[208px] shrink-0 overflow-hidden rounded-c-md bg-c-bg-secondary ring-1 ring-inset ring-c-border"
       style={!previewUrl ? {
         backgroundImage: "repeating-conic-gradient(var(--color-bg-secondary) 0% 25%, var(--color-bg) 0% 50%)",
         backgroundSize: "16px 16px",
@@ -496,11 +497,75 @@ function MediaFillPreview({ kind, sourceLabel, previewUrl, fit, tileScale }: {
       {previewUrl && kind === "image" && fit === "tile" && <div aria-hidden className="absolute inset-0" style={{ backgroundImage: `url(${JSON.stringify(previewUrl)})`, backgroundRepeat: "repeat", backgroundSize: `${tileScale}% auto` }} />}
       {previewUrl && kind === "image" && fit !== "tile" && <img src={previewUrl} alt="" className={clsx("absolute inset-0 size-full", fit === "fit" ? "object-contain" : fit === "fill" ? "object-fill" : "object-cover")} />}
       {previewUrl && kind === "video" && <video src={previewUrl} aria-hidden muted playsInline preload="metadata" className={clsx("absolute inset-0 size-full", fit === "fit" ? "object-contain" : fit === "fill" ? "object-fill" : "object-cover")} />}
-      {!previewUrl && <div className="absolute inset-0 flex items-center justify-center text-c-icon-secondary">
+      {(onChoose || (kind === "image" && onMakeImage)) && <div
+        data-composa-media-preview-actions
+        className={clsx(
+          "absolute inset-0 flex flex-col items-center justify-center gap-[8px] px-[32px] transition-opacity",
+          previewUrl ? "bg-black/35 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100" : "opacity-100",
+        )}
+      >
+        {onChoose && <Button variant="Primary" label={selected ? "Replace media…" : "Choose media…"} className="w-full" onClick={onChoose} />}
+        {kind === "image" && onMakeImage && <Button variant="Secondary" icon={<ImagePlus size={14} strokeWidth={1.5} />}
+          iconLead="left" label="Make an image" className="w-full" onClick={onMakeImage} />}
+      </div>}
+      {!previewUrl && !onChoose && <div className="absolute inset-0 flex items-center justify-center text-c-icon-secondary">
         {kind === "image" ? <Image size={24} strokeWidth={1.5} /> : <SquarePlay size={24} strokeWidth={1.5} />}
       </div>}
     </div>
   </>;
+}
+
+const timeLabel = (seconds: number) => {
+  const safe = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+  const minutes = Math.floor(safe / 60);
+  return `${minutes}:${Math.floor(safe % 60).toString().padStart(2, "0")}`;
+};
+
+function VideoPlaybackControls({ previewUrl, value, onChange, onApplyToAll }: {
+  previewUrl?: string;
+  value: VideoPlaybackOptions;
+  onChange: (patch: Partial<VideoPlaybackOptions>) => void;
+  onApplyToAll?: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const togglePlayback = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) void video.play(); else video.pause();
+  };
+  const seek = (seconds: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.currentTime = seconds;
+    setCurrentTime(seconds);
+  };
+  const rows: Array<[keyof VideoPlaybackOptions, string]> = [
+    ["loop", "Loop"],
+    ["playSound", "Play sound"],
+    ["autoplay", "Autoplay"],
+    ["showPlaybackControls", "Show playback controls"],
+  ];
+  return <div data-composa-video-playback-controls className="px-[16px] pb-[16px] pt-[8px]">
+    {previewUrl && <video ref={videoRef} src={previewUrl} className="hidden" preload="metadata" loop={value.loop} muted={!value.playSound}
+      onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onTimeUpdate={event => setCurrentTime(event.currentTarget.currentTime)}
+      onLoadedMetadata={event => setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0)} />}
+    <div className="mb-[12px] flex h-[24px] items-center gap-[8px]">
+      <Button variant="Ghost" ariaLabel={playing ? "Pause video preview" : "Play video preview"} iconLead="center"
+        icon={playing ? <Pause size={16} strokeWidth={1.5} /> : <Play size={16} strokeWidth={1.5} />} disabled={!previewUrl} onClick={togglePlayback} />
+      <div className="min-w-0 flex-1"><Slider ariaLabel="Video preview position" min={0} max={Math.max(duration, 0.01)} step={0.01}
+        value={Math.min(currentTime, Math.max(duration, 0.01))} onChange={seek} disabled={!previewUrl} /></div>
+      <span className="w-[36px] text-right text-[11px] text-c-text">{timeLabel(currentTime)}</span>
+    </div>
+    <div className="flex flex-col gap-[2px]">
+      {rows.map(([key, label]) => <div key={key} className="flex h-[26px] items-center justify-between text-[11px] text-c-text">
+        <span>{label}</span><Checkbox checked={value[key]} label={label} onChange={checked => onChange({ [key]: checked })} />
+      </div>)}
+    </div>
+    {onApplyToAll && <Button variant="Secondary" label="Apply to all videos" className="mt-[8px] w-full" onClick={onApplyToAll} />}
+  </div>;
 }
 
 // ─── Gradient stop row ────────────────────────────────────────────────────────
@@ -653,12 +718,16 @@ export function ColorDialog({
   imageAdjustmentKeyframes,
   imageAdjustmentsReadOnly = false,
   onChooseImage,
+  onMakeImage,
   imageSourceLabel,
   imagePreviewUrl,
   onImageAdjustmentChange,
   onCreateStyleOrVariable,
   videoSourceLabel,
   videoPreviewUrl,
+  videoPlayback,
+  onVideoPlaybackChange,
+  onApplyVideoPlaybackToAll,
   onChooseVideo,
   mediaFit = "fill",
   onMediaFitChange,
@@ -1212,10 +1281,10 @@ export function ColorDialog({
           <>
             <MediaFitControl kind="image" value={mediaFit} onChange={onMediaFitChange}
               tileScale={mediaTileScale} tileScaleKeyframe={mediaTileScaleKeyframe} onTileScaleChange={onMediaTileScaleChange}
-              selected={!!imageSourceLabel} onChoose={onChooseImage}
               onRotate={onRotateMedia}
-              onEditCrop={imageSourceLabel && onEditCrop ? () => { onEditCrop(); onClose(); } : undefined} />
-            <MediaFillPreview kind="image" sourceLabel={imageSourceLabel} previewUrl={imagePreviewUrl} fit={mediaFit} tileScale={mediaTileScale} />
+              />
+            <MediaFillPreview kind="image" sourceLabel={imageSourceLabel} previewUrl={imagePreviewUrl} fit={mediaFit} tileScale={mediaTileScale}
+              onChoose={onChooseImage} onMakeImage={onMakeImage} />
 
             {/* Image adjustments — same rule: every slider was handed a value
                 and no onChange, so each drag was thrown away. Shown only when
@@ -1285,10 +1354,12 @@ export function ColorDialog({
           <>
             <MediaFitControl kind="video" value={mediaFit === "tile" ? "fill" : mediaFit} onChange={onMediaFitChange}
               tileScale={mediaTileScale}
-              selected={!!videoSourceLabel} onChoose={onChooseVideo}
               onRotate={onRotateMedia}
-              onEditCrop={videoSourceLabel && onEditCrop ? () => { onEditCrop(); onClose(); } : undefined} />
-            <MediaFillPreview kind="video" sourceLabel={videoSourceLabel} previewUrl={videoPreviewUrl} fit={mediaFit === "tile" ? "fill" : mediaFit} tileScale={mediaTileScale} />
+              />
+            <MediaFillPreview kind="video" sourceLabel={videoSourceLabel} previewUrl={videoPreviewUrl} fit={mediaFit === "tile" ? "fill" : mediaFit} tileScale={mediaTileScale}
+              onChoose={onChooseVideo} />
+            {videoPlayback && onVideoPlaybackChange && <VideoPlaybackControls previewUrl={videoPreviewUrl} value={videoPlayback}
+              onChange={onVideoPlaybackChange} onApplyToAll={onApplyVideoPlaybackToAll} />}
           </>
         )}
           </ModalBody>

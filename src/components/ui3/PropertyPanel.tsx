@@ -26,7 +26,7 @@ import { SegmentedControl } from "./SegmentedControl";
 import { AlignmentControl, type AlignmentValue } from "./AlignmentControl";
 import { Chit } from "./Chit";
 import { Checkbox } from "./Checkbox";
-import { ColorDialog, type FillType, type GradientStop, type GradientStopKeyframeControls, type ImageAdjustment, type ImageAdjustments, type MediaFillFit } from "./ColorDialog";
+import { ColorDialog, type FillType, type GradientStop, type GradientStopKeyframeControls, type ImageAdjustment, type ImageAdjustments, type MediaFillFit, type VideoPlaybackOptions } from "./ColorDialog";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { AnimatePanel } from "./AnimatePanel";
 import { Avatar, type AvatarColor } from "./Avatar";
@@ -102,6 +102,7 @@ export interface ElementFillSetting {
   imagePreviewUrl?: string;
   videoSourceLabel?: string;
   videoPreviewUrl?: string;
+  videoPlayback?: VideoPlaybackOptions;
   mediaFit?: MediaFillFit;
   mediaTileScale?: number;
   imageAdjustments?: Partial<ImageAdjustments>;
@@ -1746,7 +1747,7 @@ type FillEntry = ElementFillSetting;
 function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
   onFillTypeChange, onGradientStopsChange, onChooseImage, onChooseVideo,
   onFlipGradient, onRotateGradient, onRotateMedia,
-  onImageAdjustmentChange, onMediaFitChange, onMediaTileScaleChange, onEditCrop, dropZoneSources, onSelectDropZoneSource,
+  onImageAdjustmentChange, onVideoPlaybackChange, onApplyVideoPlaybackToAll, onMediaFitChange, onMediaTileScaleChange, onEditCrop, dropZoneSources, onSelectDropZoneSource,
   onEyedropperActivate, activeEyedropperId,
   imageAdjustmentsReadOnly = false, swatches, capabilities, activeStackDialog, onActiveStackDialogChange }: {
   entries?: FillEntry[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<FillEntry, "id">>) => void;
@@ -1758,6 +1759,8 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
   onRotateMedia?: (id: string) => void;
   onChooseImage?: (id: string) => void; onChooseVideo?: (id: string) => void;
   onImageAdjustmentChange?: (id: string, adjustment: ImageAdjustment, value: number) => void;
+  onVideoPlaybackChange?: (id: string, patch: Partial<VideoPlaybackOptions>) => void;
+  onApplyVideoPlaybackToAll?: (id: string) => void;
   onMediaFitChange?: (id: string, fit: MediaFillFit) => void;
   onMediaTileScaleChange?: (id: string, scale: number) => void;
   onEditCrop?: (id: string) => void;
@@ -1854,6 +1857,9 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
               videoSourceLabel={fill.videoSourceLabel}
               videoPreviewUrl={fill.videoPreviewUrl}
               onChooseVideo={onChooseVideo ? () => onChooseVideo(fill.id) : undefined}
+              videoPlayback={fill.videoPlayback}
+              onVideoPlaybackChange={onVideoPlaybackChange ? patch => onVideoPlaybackChange(fill.id, patch) : undefined}
+              onApplyVideoPlaybackToAll={onApplyVideoPlaybackToAll ? () => onApplyVideoPlaybackToAll(fill.id) : undefined}
               mediaFit={fill.mediaFit}
               onMediaFitChange={onMediaFitChange ? fit => onMediaFitChange(fill.id, fit) : undefined}
               mediaTileScale={fill.mediaTileScale}
@@ -3253,6 +3259,8 @@ export interface PropertyPanelProps {
   onChooseFillImage?: (id: string) => void;
   onChooseFillVideo?: (id: string) => void;
   onFillImageAdjustmentChange?: (id: string, adjustment: ImageAdjustment, value: number) => void;
+  onFillVideoPlaybackChange?: (id: string, patch: Partial<VideoPlaybackOptions>) => void;
+  onApplyFillVideoPlaybackToAll?: (id: string) => void;
   onFillMediaFitChange?: (id: string, fit: MediaFillFit) => void;
   onFillMediaTileScaleChange?: (id: string, scale: number) => void;
   onRotateFillMedia?: (id: string) => void;
@@ -4408,6 +4416,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onRotateMedia={props.onRotateFillMedia}
             onChooseImage={props.onChooseFillImage} onChooseVideo={props.onChooseFillVideo}
             onImageAdjustmentChange={props.onFillImageAdjustmentChange}
+            onVideoPlaybackChange={props.onFillVideoPlaybackChange}
+            onApplyVideoPlaybackToAll={props.onApplyFillVideoPlaybackToAll}
             onMediaFitChange={props.onFillMediaFitChange}
             onMediaTileScaleChange={props.onFillMediaTileScaleChange}
             onEditCrop={props.onEditFillCrop}
