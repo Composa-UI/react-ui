@@ -60,7 +60,7 @@ describe("ColorDialog anchored inspector contract", () => {
     expect(html).toContain('data-side-offset="24"');
     expect(html).toContain('data-align="start"');
     expect(html).toContain('data-elevation="400"');
-    expect(html).toContain('data-class-name="flex flex-col"');
+    expect(html).toContain('data-class-name="flex max-h-[calc(100vh-32px)] flex-col overflow-hidden"');
     expect(html).toContain(">Open color</button>");
   });
 

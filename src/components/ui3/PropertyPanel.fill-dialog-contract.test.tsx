@@ -65,6 +65,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     const onRotateMedia = vi.fn();
     const onImage = vi.fn();
     const onVideo = vi.fn();
+    const onOpenEffects = vi.fn();
     const onAdjust = vi.fn();
     const onFit = vi.fn();
     const onTileScale = vi.fn();
@@ -106,6 +107,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
         onRotateFillMedia={onRotateMedia}
         onChooseFillImage={onImage}
         onChooseFillVideo={onVideo}
+        onOpenFillMediaEffects={onOpenEffects}
         onFillImageAdjustmentChange={onAdjust}
         onFillMediaFitChange={onFit}
         onFillMediaTileScaleChange={onTileScale}
@@ -142,6 +144,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     act(() => props.onRotateMedia?.());
     act(() => props.onChooseImage?.());
     act(() => props.onChooseVideo?.());
+    act(() => props.onOpenMediaEffects?.());
     act(() => props.onImageAdjustmentChange?.("contrast", 22));
     act(() => props.onMediaFitChange?.("fit"));
     act(() => props.onMediaTileScaleChange?.(72));
@@ -156,6 +159,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     expect(onRotateMedia).toHaveBeenCalledWith("fill-1");
     expect(onImage).toHaveBeenCalledWith("fill-1");
     expect(onVideo).toHaveBeenCalledWith("fill-1");
+    expect(onOpenEffects).toHaveBeenCalledWith("fill-1");
     expect(onAdjust).toHaveBeenCalledWith("fill-1", "contrast", 22);
     expect(onFit).toHaveBeenCalledWith("fill-1", "fit");
     expect(onTileScale).toHaveBeenCalledWith("fill-1", 72);
@@ -163,6 +167,24 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     expect(onDropZone).toHaveBeenCalledWith("fill-1", "track:video");
     expect(onFillEyedropper).toHaveBeenCalledWith("fill-1", "a");
 
+    act(() => renderer.unmount());
+  });
+
+  it("renders a dedicated media-effects inspector with persisted color controls and video chroma key", () => {
+    const onAdjust = vi.fn();
+    const onBack = vi.fn();
+    let renderer!: ReactTestRenderer;
+    act(() => { renderer = create(<PropertyPanel mode="media-effects" mediaEffectsKind="video"
+      mediaEffectsSourceLabel="clip.mp4" mediaEffectsAdjustments={{ exposure: 18, shadows: -7 }}
+      onMediaEffectsAdjustmentChange={onAdjust} onCloseMediaEffects={onBack} />); });
+    expect(renderer.root.findByProps({ "aria-label": "Back to fill" })).toBeTruthy();
+    expect(renderer.root.findByProps({ "aria-label": "Exposure value" }).props.value).toBe("18");
+    expect(renderer.root.findByProps({ "aria-label": "Shadows value" }).props.value).toBe("-7");
+    expect(JSON.stringify(renderer.toJSON())).toContain("Chroma key");
+    act(() => renderer.root.findByProps({ "aria-label": "Exposure value" }).props.onChange({ target: { value: "25" } }));
+    expect(onAdjust).toHaveBeenCalledWith("exposure", 25);
+    act(() => renderer.root.findByProps({ "aria-label": "Back to fill" }).props.onClick());
+    expect(onBack).toHaveBeenCalledOnce();
     act(() => renderer.unmount());
   });
 

@@ -166,11 +166,6 @@ describe("image fill", () => {
     expect(markup.indexOf("Replace media…")).toBeGreaterThan(markup.indexOf('data-composa-media-fill-preview="image"'));
   });
 
-  it("renders adjustment value as a centered delta from neutral", () => {
-    const markup = html({ fillType: "image", imageSourceLabel: "bound.png", imageExposure: 25, onImageAdjustmentChange: () => undefined });
-    expect(markup).toContain('data-composa-slider-centered-fill="true"');
-  });
-
   it("renders media rotation only for a host command and invokes it", () => {
     expect(html({ fillType: "image", onChooseImage: () => undefined })).not.toContain('aria-label="Rotate image 90 degrees"');
 
@@ -189,65 +184,14 @@ describe("image fill", () => {
     expect(markup).not.toContain("Shadows");
   });
 
-  it("commits each adjustment under its own name once a media source is bound", () => {
-    const onAdjust = vi.fn();
-    const markup = html({ fillType: "image", imageSourceLabel: "bound.png", onImageAdjustmentChange: onAdjust });
-    expect(markup).toContain("Exposure");
-    expect(markup).toContain("Shadows");
-
-    // Each slider's own input has to reach the host — the regression was seven
-    // sliders that moved, kept their own internal state, and told nobody.
-    const renderer = render({ fillType: "image", imageSourceLabel: "bound.png", onImageAdjustmentChange: onAdjust }, nodeMock());
-    const sliders = host(renderer, instance => instance.type === "input" && instance.props.type === "range");
-    expect(sliders).toHaveLength(7);
-    act(() => sliders[0].props.onChange({ target: { value: "40" } }));
-    expect(onAdjust).toHaveBeenCalledWith("exposure", 40);
-    act(() => sliders[6].props.onChange({ target: { value: "-30" } }));
-    expect(onAdjust).toHaveBeenCalledWith("shadows", -30);
-    act(() => renderer.unmount());
-  });
-
-  it("keeps the same adjustment sliders for a bound video and hides them for its placeholder", () => {
-    const onAdjust = vi.fn();
-    expect(html({ fillType: "video", capabilities: { videoFill: true }, onChooseVideo: () => undefined, onImageAdjustmentChange: onAdjust }))
-      .not.toContain("data-composa-image-adjustments");
-    const renderer = render({ fillType: "video", capabilities: { videoFill: true }, onChooseVideo: () => undefined,
-      videoSourceLabel: "intro.mp4", onImageAdjustmentChange: onAdjust }, nodeMock());
-    const sliders = host(renderer, instance => instance.type === "input" && instance.props.type === "range");
-    expect(sliders).toHaveLength(7);
-    act(() => sliders[1].props.onChange({ target: { value: "24" } }));
-    expect(onAdjust).toHaveBeenCalledWith("contrast", 24);
-    act(() => renderer.unmount());
-  });
-
-  it("keeps adjustment values visible while every editor and diamond is inert when read-only", () => {
-    const onAdjust = vi.fn();
-    const onToggle = vi.fn();
-    const renderer = render({
-      fillType: "image",
-      imageSourceLabel: "locked.png",
-      imageExposure: 37,
-      imageAdjustmentsReadOnly: true,
-      imageAdjustmentKeyframes: { exposure: { active: true, onToggle } },
-      onImageAdjustmentChange: onAdjust,
-    }, nodeMock());
-
-    const sliders = host(renderer, instance => instance.type === "input" && instance.props.type === "range");
-    expect(sliders).toHaveLength(7);
-    expect(sliders.every(slider => slider.props.disabled === true)).toBe(true);
-    act(() => sliders[0].props.onChange({ target: { value: "80" } }));
-
-    const [exposure] = byLabel(renderer, "Exposure value");
-    expect(exposure.props.value).toBe(37);
-    expect(exposure.props.disabled).toBe(true);
-    act(() => exposure.props.onChange({ target: { value: "80" } }));
-
-    const [diamond] = byLabel(renderer, "Exposure value keyframe");
-    expect(diamond.props.disabled).toBe(true);
-    expect(diamond.props["aria-pressed"]).toBe(true);
-    act(() => diamond.props.onClick());
-    expect(onToggle).not.toHaveBeenCalled();
-    expect(onAdjust).not.toHaveBeenCalled();
+  it("routes bound media adjustments to the dedicated inspector instead of rendering inline sliders", () => {
+    const onOpen = vi.fn();
+    const renderer = render({ fillType: "image", imageSourceLabel: "bound.png", onChooseImage: () => undefined,
+      onOpenMediaEffects: onOpen }, nodeMock());
+    expect(host(renderer, instance => instance.type === "input" && instance.props.type === "range")).toHaveLength(0);
+    const [effects] = byLabel(renderer, "Image effects");
+    act(() => effects.props.onClick());
+    expect(onOpen).toHaveBeenCalledOnce();
     act(() => renderer.unmount());
   });
 });
@@ -267,7 +211,7 @@ describe("video fill", () => {
       onVideoPlaybackChange: onChange,
     }, nodeMock());
     expect(host(renderer, instance => instance.props["data-composa-video-playback-controls"] === true)).toHaveLength(1);
-    const playSound = renderer.root.findByProps({ label: "Play sound" });
+    const playSound = renderer.root.findByProps({ ariaLabel: "Play sound" });
     act(() => playSound.props.onChange(true));
     expect(onChange).toHaveBeenCalledWith({ playSound: true });
     act(() => renderer.unmount());

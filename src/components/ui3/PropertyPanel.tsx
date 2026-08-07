@@ -11,7 +11,7 @@ import {
   MoveHorizontal, MoveVertical, Play, Pause, MonitorPlay,
   Image as ImageIcon, Clock, SquareSquare,
   ArrowLeftFromLine, ArrowRightFromLine, Timer,
-  Square, SquareDashedMousePointer, PanelTop, PanelBottom, PanelLeft, PanelRight, Diamond,
+  Square, SquareDashedMousePointer, PanelTop, PanelBottom, PanelLeft, PanelRight, Diamond, ArrowLeft,
 } from "lucide-react";
 import { CirclesFour } from "@phosphor-icons/react";
 import { ProposedSquareText, ProposedTextMargins } from "../../icons/proposed-lucide";
@@ -57,7 +57,7 @@ import { COMPOSA_NON_SELECTABLE_CHROME_CLASS } from "./AnchoredInspectorOverlay"
 
 export type ElementType = "text" | "frame" | "frame-auto" | "frame-grid" | "shape" | "component" | "group";
 
-export type PanelMode = "project" | "slide" | "element" | "video-clip" | "audio-clip";
+export type PanelMode = "project" | "slide" | "element" | "video-clip" | "audio-clip" | "media-effects";
 
 // ─── Video / Audio inspector types (effects-mental-model.md) ──────────────────
 // The AV inspectors are STRUCTURE ONLY: controls render at sensible defaults and
@@ -1759,6 +1759,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
   onFillTypeChange, onGradientStopsChange, onChooseImage, onChooseVideo,
   onFlipGradient, onRotateGradient, onRotateMedia,
   onImageAdjustmentChange, onVideoPlaybackChange, onApplyVideoPlaybackToAll, onMediaFitChange, onMediaTileScaleChange, onEditCrop, dropZoneSources, onSelectDropZoneSource,
+  onOpenMediaEffects,
   onEyedropperActivate, activeEyedropperId,
   imageAdjustmentsReadOnly = false, swatches, capabilities, activeStackDialog, onActiveStackDialogChange }: {
   entries?: FillEntry[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<FillEntry, "id">>) => void;
@@ -1770,6 +1771,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
   onRotateMedia?: (id: string) => void;
   onChooseImage?: (id: string) => void; onChooseVideo?: (id: string) => void;
   onImageAdjustmentChange?: (id: string, adjustment: ImageAdjustment, value: number) => void;
+  onOpenMediaEffects?: (id: string) => void;
   onVideoPlaybackChange?: (id: string, patch: Partial<VideoPlaybackOptions>) => void;
   onApplyVideoPlaybackToAll?: (id: string) => void;
   onMediaFitChange?: (id: string, fit: MediaFillFit) => void;
@@ -1869,6 +1871,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
               videoSourceLabel={fill.videoSourceLabel}
               videoPreviewUrl={fill.videoPreviewUrl}
               onChooseVideo={onChooseVideo ? () => onChooseVideo(fill.id) : undefined}
+              onOpenMediaEffects={onOpenMediaEffects ? () => { onActiveStackDialogChange(null); onOpenMediaEffects(fill.id); } : undefined}
               videoPlayback={fill.videoPlayback}
               onVideoPlaybackChange={onVideoPlaybackChange ? patch => onVideoPlaybackChange(fill.id, patch) : undefined}
               onApplyVideoPlaybackToAll={onApplyVideoPlaybackToAll ? () => onApplyVideoPlaybackToAll(fill.id) : undefined}
@@ -3039,6 +3042,33 @@ function ChromaKeyBody({ swatches }: { swatches?: string[] }) {
   );
 }
 
+function MediaEffectsBody({ kind = "video", sourceLabel, adjustments = {}, onAdjustmentChange, onBack, swatches }: {
+  kind?: "image" | "video";
+  sourceLabel?: string;
+  adjustments?: Partial<ImageAdjustments>;
+  onAdjustmentChange?: (adjustment: ImageAdjustment, value: number) => void;
+  onBack?: () => void;
+  swatches?: string[];
+}) {
+  const rows: Array<[ImageAdjustment, string]> = [
+    ["exposure", "Exposure"], ["contrast", "Contrast"], ["saturation", "Saturation"],
+    ["temperature", "Temperature"], ["tint", "Tint"], ["highlights", "Highlights"], ["shadows", "Shadows"],
+  ];
+  return <ScrollArea>
+    <div className="flex h-[40px] items-center gap-[8px] border-b border-c-border px-[8px]">
+      {onBack && <Button variant="Ghost" ariaLabel="Back to fill" iconLead="center" icon={<ArrowLeft size={16} strokeWidth={1.5} />} onClick={onBack} />}
+      <span className="min-w-0 flex-1 truncate text-[11px] font-[550] text-c-text">{kind === "video" ? "Video effects" : "Image effects"}</span>
+      {sourceLabel && <span className="max-w-[96px] truncate text-[9px] text-c-text-tertiary">{sourceLabel}</span>}
+    </div>
+    <PanelSection title="Color adjustments" landmark>
+      {rows.map(([adjustment, label]) => <PanelSliderRow key={adjustment} label={label}
+        value={adjustments[adjustment] ?? 0} defaultValue={0} min={-100} max={100}
+        onChange={value => onAdjustmentChange?.(adjustment, value)} />)}
+    </PanelSection>
+    {kind === "video" && <PanelSection title="Chroma key" landmark><ChromaKeyBody swatches={swatches} /></PanelSection>}
+  </ScrollArea>;
+}
+
 // ─── Audio inspector sections (effects-mental-model.md) ───────────────────────
 // A distinct "audio-clip" inspector mode. Volume is host-wired; the effect
 // sections are added with "+" and structural (unwired) until the DSP lands.
@@ -3272,7 +3302,14 @@ export interface PropertyPanelProps {
   onRotateFillGradient?: (id: string) => void;
   onChooseFillImage?: (id: string) => void;
   onChooseFillVideo?: (id: string) => void;
+  /** Leaves the fill dialog for a dedicated, host-selected media-effects inspector. */
+  onOpenFillMediaEffects?: (id: string) => void;
   onFillImageAdjustmentChange?: (id: string, adjustment: ImageAdjustment, value: number) => void;
+  mediaEffectsKind?: "image" | "video";
+  mediaEffectsSourceLabel?: string;
+  mediaEffectsAdjustments?: Partial<ImageAdjustments>;
+  onMediaEffectsAdjustmentChange?: (adjustment: ImageAdjustment, value: number) => void;
+  onCloseMediaEffects?: () => void;
   onFillVideoPlaybackChange?: (id: string, patch: Partial<VideoPlaybackOptions>) => void;
   onApplyFillVideoPlaybackToAll?: (id: string) => void;
   onFillMediaFitChange?: (id: string, fit: MediaFillFit) => void;
@@ -4252,6 +4289,11 @@ export function PropertyPanel(props: PropertyPanelProps) {
         </>
       )}
 
+      {mode === "media-effects" && <MediaEffectsBody kind={props.mediaEffectsKind}
+        sourceLabel={props.mediaEffectsSourceLabel} adjustments={props.mediaEffectsAdjustments}
+        onAdjustmentChange={props.onMediaEffectsAdjustmentChange} onBack={props.onCloseMediaEffects}
+        swatches={props.pageSwatches} />}
+
       {/* ── VIDEO CLIP mode (video-clip-inspector-mode.md) ───────────────────
           Active exclusively when a base-video clip block is selected in the
           master timeline (not a slide — Slides/Layers panels don't update).
@@ -4432,6 +4474,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onFlipGradient={props.onFlipFillGradient} onRotateGradient={props.onRotateFillGradient}
             onRotateMedia={props.onRotateFillMedia}
             onChooseImage={props.onChooseFillImage} onChooseVideo={props.onChooseFillVideo}
+            onOpenMediaEffects={props.onOpenFillMediaEffects}
             onImageAdjustmentChange={props.onFillImageAdjustmentChange}
             onVideoPlaybackChange={props.onFillVideoPlaybackChange}
             onApplyVideoPlaybackToAll={props.onApplyFillVideoPlaybackToAll}
