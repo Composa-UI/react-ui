@@ -81,14 +81,9 @@ export function FieldShell({ focused, disabled = false, variant = "default", siz
   );
 }
 
-/**
- * Keeps editable fields and their adjacent keyframe/toggle controls as distinct
- * surfaces. The four-pixel gutter is deliberate: action controls are not an
- * internal border segment of a field, so focus, hover, and pressed states each
- * have an unambiguous owner.
- */
+/** Joins an editable value and its trailing actions into one combo field. */
 function SeparatedFieldActions({ children, className }: { children: ReactNode; className?: string }) {
-  return <div data-composa-separated-field-actions className={clsx("flex min-w-0 w-full items-center gap-[4px]", className)}>{children}</div>;
+  return <div data-composa-separated-field-actions className={clsx("flex min-w-0 w-full items-center gap-px", className)}>{children}</div>;
 }
 
 function FieldAction({
@@ -112,7 +107,7 @@ function FieldAction({
     disabled={disabled}
     onClick={event => { event.stopPropagation(); if (!disabled) onClick(); }}
     className={clsx(
-      "size-[24px] shrink-0 rounded-c-sm bg-c-bg-secondary flex items-center justify-center",
+      "size-[24px] shrink-0 rounded-none last:rounded-r-c-md bg-c-bg-secondary flex items-center justify-center",
       "hover:bg-c-bg-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-c-focus-ring",
       active && "bg-c-bg-selected text-c-text-brand",
       !active && "text-c-icon-secondary",
@@ -123,7 +118,7 @@ function FieldAction({
 
 /** A fixed-size host for an externally supplied trailing action. */
 function FieldActionSlot({ children }: { children: ReactNode }) {
-  return <span data-composa-field-action="" className="size-[24px] shrink-0 rounded-c-sm bg-c-bg-secondary flex items-center justify-center [&>button]:size-full [&>button]:rounded-c-sm [&>button]:bg-c-bg-secondary [&>button:hover]:bg-c-bg-hover [&>button:focus-visible]:outline-none [&>button:focus-visible]:ring-1 [&>button:focus-visible]:ring-c-focus-ring">{children}</span>;
+  return <span data-composa-field-action="" className="size-[24px] shrink-0 rounded-none last:rounded-r-c-md bg-c-bg-secondary flex items-center justify-center [&>button]:size-full [&>button]:rounded-none [&>button]:bg-c-bg-secondary [&>button:hover]:bg-c-bg-hover [&>button:focus-visible]:outline-none [&>button:focus-visible]:ring-1 [&>button:focus-visible]:ring-c-focus-ring">{children}</span>;
 }
 
 // ─── InputField (TextInput) ───────────────────────────────────────────────────
@@ -510,7 +505,7 @@ export function NumericInput({
 
   return (
     <SeparatedFieldActions className={className}>
-      <FieldShell focused={focused || scrubbing} disabled={disabled} size={size} className="flex-1 min-w-0" numeric>
+      <FieldShell focused={focused || scrubbing} disabled={disabled} size={size} className={clsx("flex-1 min-w-0", keyframe && "!rounded-r-none")} numeric>
       {/* scrubber label */}
       {iconLead && (
         <span
@@ -723,7 +718,7 @@ export function NumericPairInput({ a, b, keyframe, trailing, size = "medium", di
   const onFocusChange = (value: boolean) => setFocusCount(count => Math.max(0, count + (value ? 1 : -1)));
   return (
     <SeparatedFieldActions className={className}>
-      <FieldShell focused={focusCount > 0} disabled={disabled} size={size} className="flex-1 min-w-0" numeric>
+      <FieldShell focused={focusCount > 0} disabled={disabled} size={size} className={clsx("flex-1 min-w-0", (keyframe || trailing) && "!rounded-r-none")} numeric>
         <PairSegment seg={a} size={size} isLast={false} disabled={disabled} onFocusChange={onFocusChange} />
         <PairSegment seg={b} size={size} isLast={true} disabled={disabled} onFocusChange={onFocusChange} />
       </FieldShell>
@@ -1058,7 +1053,10 @@ export function ColorInput({
       )}
 
       <SeparatedFieldActions className={clsx(isVariable || fullWidth ? "w-full" : "w-[144px]")}>
-        <FieldShell focused={focused} disabled={disabled} size={size} className="flex-1 min-w-0">
+        <FieldShell focused={focused} disabled={disabled} size={size} className={clsx(
+          "flex-1 min-w-0",
+          !isVariable && (colorKeyframe || keyframe || showOpacity && opacityKeyframe) && "!rounded-r-none",
+        )}>
         {/* chit */}
         {!isVariable && (
           <label className="relative shrink-0 flex items-center justify-center size-[24px] cursor-pointer">
