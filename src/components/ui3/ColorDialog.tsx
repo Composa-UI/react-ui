@@ -842,21 +842,31 @@ export function ColorDialog({
   const [bri, setBri] = useState(briProp ?? 100);
   const [dragging, setDragging] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const stopsPropSignature = stopsProp?.map(stop => `${stop.id}:${stop.position}:${stop.color}:${stop.opacity}`).join("|") ?? "";
+  const lastSyncedGradient = useRef("");
   // A controlled host can change Solid → Gradient while this same dialog stays
-  // open. Synchronize the active stop and shared picker to the new authored
-  // ramp; otherwise the picker keeps displaying (and editing) the old solid.
+  // open. Synchronize from authored values, but only when those values actually
+  // change. Inspector projectors intentionally return fresh arrays every render.
   useEffect(() => {
     const nextType = fillTypeProp;
     const gradient = nextType === "linear" || nextType === "radial" || nextType === "angular" || nextType === "diamond";
-    if (!open || !gradient || !stopsProp?.length) return;
+    if (!open || !gradient || !stopsProp?.length) {
+      lastSyncedGradient.current = "";
+      return;
+    }
+    const syncKey = `${nextType}|${stopsPropSignature}`;
+    if (lastSyncedGradient.current === syncKey) return;
+    lastSyncedGradient.current = syncKey;
     const nextStop = stopsProp.find(stop => stop.id === selectedStopId) ?? stopsProp[0];
     const picker = hexToHsb(nextStop.color);
-    setFillType(nextType);
-    setStops(stopsProp);
-    setSelectedStopId(nextStop.id);
-    setHex(nextStop.color);
-    setHue(picker.hue); setSat(picker.saturation); setBri(picker.brightness);
-  }, [open, fillTypeProp, selectedStopId, stopsProp]);
+    setFillType(current => current === nextType ? current : nextType);
+    setStops(current => current.map(stop => `${stop.id}:${stop.position}:${stop.color}:${stop.opacity}`).join("|") === stopsPropSignature ? current : stopsProp);
+    setSelectedStopId(current => current === nextStop.id ? current : nextStop.id);
+    setHex(current => current === nextStop.color ? current : nextStop.color);
+    setHue(current => current === picker.hue ? current : picker.hue);
+    setSat(current => current === picker.saturation ? current : picker.saturation);
+    setBri(current => current === picker.brightness ? current : picker.brightness);
+  }, [open, fillTypeProp, stopsPropSignature]);
   const updatePicker = (e: { clientX: number; clientY: number }) => {
     const el = canvasRef.current;
     if (!el) return;

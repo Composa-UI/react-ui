@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
-import type { ReactElement, ReactNode } from "react";
+import { useState, type ReactElement, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
   COLOR_DIALOG_INSPECTOR_SIDE_OFFSET,
@@ -220,5 +220,23 @@ describe("ColorDialog anchored inspector contract", () => {
       { id: "end", position: 100, color: "ABCDEF", opacity: 100 },
     ]);
     expect(onHexChange).not.toHaveBeenCalled();
+  });
+
+  it("does not loop when a controlled host projects a fresh gradient-stop array after switching modes", () => {
+    const ControlledDialog = () => {
+      const [fillType, setFillType] = useState<"solid" | "linear">("solid");
+      return <ColorDialog open onClose={() => undefined} trigger={<button>Color</button>}
+        fillType={fillType}
+        gradientStops={fillType === "linear" ? [
+          { id: "start", position: 0, color: "123456", opacity: 100 },
+          { id: "end", position: 100, color: "ABCDEF", opacity: 100 },
+        ] : undefined}
+        onFillTypeChange={type => setFillType(type === "solid" ? "solid" : "linear")} />;
+    };
+    let renderer!: ReactTestRenderer;
+    act(() => { renderer = create(<ControlledDialog />); });
+    const gradient = renderer.root.findByProps({ "aria-label": "Gradient" });
+    expect(() => act(() => gradient.props.onClick())).not.toThrow();
+    expect(renderer.root.findByProps({ "aria-label": "Stop 1 hex" }).props.value).toBe("123456");
   });
 });

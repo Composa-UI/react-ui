@@ -30,6 +30,13 @@ describe("Export mode (owner feedback Row 63)", () => {
     act(() => renderer.unmount());
   });
 
+  it("does not offer Animated export when the selected target has no authored motion", () => {
+    const renderer = render({ animatedExportAvailable: false });
+    expect(renderer.root.findAllByType(SegmentedControl).find(node => node.props.ariaLabel === "Export mode")).toBeUndefined();
+    expect(renderer.root.findAllByType(Button).find(node => node.props.label === "Export Rectangle")).toBeTruthy();
+    act(() => renderer.unmount());
+  });
+
   it("emits the controlled mode and labels the evaluated-still action honestly", () => {
     const onExportModeChange = vi.fn();
     const onProjectFrameRateChange = vi.fn();
@@ -65,8 +72,8 @@ describe("Export mode (owner feedback Row 63)", () => {
     const slot = remove.parent as ReactTestInstance;
 
     expect(slot.props["data-composa-export-remove-slot"]).toBe(true);
-    expect(String(slot.props.className).split(/\s+/)).toContain("self-end");
-    expect(String(slot.props.className).split(/\s+/)).not.toEqual(expect.arrayContaining(["self-start", "pt-[17px]"]));
+    expect(String(slot.props.className).split(/\s+/)).toEqual(expect.arrayContaining(["self-start", "mt-[16px]"]));
+    expect(String(slot.props.className).split(/\s+/)).not.toContain("self-end");
     expect(slot.parent?.children[slot.parent.children.length - 1]).toBe(slot);
 
     act(() => renderer.unmount());

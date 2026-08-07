@@ -106,6 +106,21 @@ describe("AnimatePanel — collapsed preset cards carry no phase arrow (RP-11)",
   });
 });
 
+describe("AnimatePanel — legacy unsupported preset records", () => {
+  it("names an unsupported style instead of degrading the field to Value", () => {
+    const anims: ObjectAnimationItem[] = [
+      { id: "legacy", n: 1, name: "Frame", kind: "In", duration: "0.5s", style: "blur-in" },
+    ];
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<AnimatePanel selectionType="element" anims={anims} />); });
+    const card = renderer!.root.findByProps({ "data-animation-card-id": "legacy" });
+    act(() => card.findAll(node => node.props["aria-expanded"] === false)[0]!.props.onClick());
+    expect(renderer!.root.findByProps({ "aria-label": "Style: Blur In (unsupported)" })).toBeTruthy();
+    expect(renderer!.root.findAll(node => node.props.value === "Value")).toHaveLength(0);
+    act(() => renderer!.unmount());
+  });
+});
+
 // ── RP-10: easing on EVERY preset card ──────────────────────────────────────────────
 // The owner's correction: "the easing thing doesn't apply to bounce only but all presets".
 describe("AnimatePanel — every preset card offers easing (RP-10)", () => {

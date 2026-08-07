@@ -29,13 +29,13 @@ describe("PropertyPanel slide Duration mode combo", () => {
     const combo = durationCombo(renderer)!;
     expect(combo.props.dataMode).toBe("fixed");
 
-    // The mode menu offers exactly Fixed duration + Hug contents.
+    // The mode menu names exactly what the composition follows.
     let menuRenderer: ReactTestRenderer;
     act(() => { menuRenderer = create(combo.props.menu(() => {}) as never); });
     const rows = menuRenderer!.root.findAllByType(MenuRow);
-    expect(rows.map(row => row.props.label)).toEqual(["Fixed duration", "Hug contents"]);
+    expect(rows.map(row => row.props.label)).toEqual(["Fixed duration", "Hug content and animations"]);
 
-    act(() => rows.find(row => row.props.label === "Hug contents")!.props.onClick());
+    act(() => rows.find(row => row.props.label === "Hug content and animations")!.props.onClick());
     expect(onMode).toHaveBeenCalledWith("hug");
   });
 
