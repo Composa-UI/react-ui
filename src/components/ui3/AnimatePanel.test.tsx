@@ -484,6 +484,7 @@ describe("AnimatePanel — connected rank and plus-space drag targets (issue #30
       />,
     ); });
     const input = renderer!.root.findByProps({ "aria-label": "Delay between sequence 1 and 2" });
+    expect(input.props.value).toBe("0");
     act(() => input.props.onChange({ target: { value: "240" } }));
     act(() => renderer!.root.findByProps({ "aria-label": "Delay between sequence 1 and 2" }).props.onBlur());
     expect(onDelayBetweenChange).toHaveBeenCalledWith(ANIMS[0].id, ANIMS[1].id, 240);

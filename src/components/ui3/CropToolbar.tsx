@@ -1,8 +1,7 @@
 import { Check, Proportions } from "lucide-react";
 import { clsx } from "clsx";
-import { useState } from "react";
 import { Button } from "./Button";
-import { Menu, MenuRow } from "./Menu";
+import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { Slider } from "./Slider";
 import { SplitButton } from "./SplitButton";
 import { iconForSemantic } from "./IconSemantics";
@@ -29,51 +28,25 @@ export interface CropToolbarProps {
 const ResizeToFitIcon = iconForSemantic("resize-to-fit");
 
 function CropAspectControl({ aspect, onAspectChange }: Pick<CropToolbarProps, "aspect" | "onAspectChange">) {
-  const [open, setOpen] = useState(false);
   const aspects = Object.keys(LABELS) as CropAspect[];
 
   return (
-    <div
-      className="relative shrink-0"
-      onBlur={event => {
-        if (open && !event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
-      }}
-      onKeyDownCapture={event => {
-        if (open && event.key === "Escape") {
-          event.preventDefault();
-          event.stopPropagation();
-          setOpen(false);
-        }
-      }}
-    >
-      <SplitButton
-        icon={<Proportions size={16} strokeWidth={1.5} />}
-        actionLabel="Unlock crop proportions"
-        menuLabel={`Crop aspect ratio: ${LABELS[aspect]}`}
-        selected={aspect !== "free"}
-        menuOpen={open}
-        onIconClick={() => onAspectChange("free")}
-        onChevronClick={() => setOpen(value => !value)}
-      />
-      {open && (
-        <>
-          <div aria-hidden className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-[calc(100%+4px)] z-50">
-            <Menu>
-              {aspects.map(value => (
-                <MenuRow
-                  key={value}
-                  label={LABELS[value]}
-                  checked={aspect === value}
-                  selectionRole="radio"
-                  onClick={() => { onAspectChange(value); setOpen(false); }}
-                />
-              ))}
-            </Menu>
-          </div>
-        </>
-      )}
-    </div>
+    <SplitButton
+      icon={<Proportions size={16} strokeWidth={1.5} />}
+      actionLabel="Unlock crop proportions"
+      menuLabel={`Crop aspect ratio: ${LABELS[aspect]}`}
+      selected={aspect !== "free"}
+      onIconClick={() => onAspectChange("free")}
+      menuTrigger={trigger => <PopoverMenu directTrigger align="left" trigger={trigger}>
+        {close => <Menu>{aspects.map(value => <MenuRow
+          key={value}
+          label={LABELS[value]}
+          checked={aspect === value}
+          selectionRole="radio"
+          onClick={() => { onAspectChange(value); close(); }}
+        />)}</Menu>}
+      </PopoverMenu>}
+    />
   );
 }
 

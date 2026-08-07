@@ -14,9 +14,10 @@ Element-mode sections remain presentational and retain their standalone demo sta
   foreground plus selected background). Neutral `active` remains reserved for
   transient open/pressed surfaces such as dialog triggers.
 - Animate sequence ranks use one number per distinct rank. Cards that share a
-  rank are joined by the selected-blue connector rail and branches instead of
-  being boxed into a second contained surface. The transient `With` drop target
-  remains the explicit simultaneous-grouping interaction; mere overlap never
-  changes sequence ownership.
+  rank remain flush independent cards without a selected-blue rail. The
+  transient `With` drop target remains the explicit simultaneous-grouping
+  interaction; mere overlap never changes sequence ownership. A between-rank
+  connector appears only for consecutive ranks whose timeline bounds are
+  contiguous, and its delay is measured from the preceding rank's end.
 
 The UI package never mutates controlled arrays. Hosts apply emitted patches and pass the next state back. Use `?view=element-contract` for side-by-side text and auto-layout contract examples.

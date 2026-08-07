@@ -3259,7 +3259,8 @@ export interface PropertyPanelProps {
   onAddFill?: () => void; onUpdateFill?: (id: string, patch: Partial<Omit<ElementFillSetting, "id">>) => void; onToggleFill?: (id: string, visible: boolean) => void; onReorderFill?: (id: string, targetId: string) => void; onRemoveFill?: (id: string) => void;
   /** Detailed Fill/Color dialog seams. Values live on each fill; callbacks remain host-owned. */
   onFillTypeChange?: (id: string, type: FillType) => void;
-  /** Reports the exact element fill whose shared dialog is open, for canvas controls. */
+  /** Reports the exact current gradient fill whose shared dialog is open;
+   * non-gradient dialogs and stale selections report null so canvas chrome clears. */
   onActiveFillDialogChange?: (id: string | null) => void;
   /** Activates host-owned composition sampling for one exact fill/gradient stop. */
   onFillEyedropperActivate?: (id: string, gradientStopId?: string) => void;

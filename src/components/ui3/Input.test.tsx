@@ -114,7 +114,7 @@ describe("joined combo field/action anatomy", () => {
   it("joins the single numeric editor and keyframe without a rounded leading seam", () => {
     const html = renderToStaticMarkup(<NumericInput ariaLabel="Rotation" value={30} keyframe={{ active: false, onToggle: () => undefined }} />);
     expect(html).toContain("data-composa-separated-field-actions");
-    expect(html).toContain("gap-px");
+    expect(html).toContain("gap-0");
     expect(html).toContain("!rounded-r-none");
     expect(html).toContain("last:rounded-r-c-md");
     expect(html).toContain("pr-[8px]");
@@ -134,7 +134,7 @@ describe("joined combo field/action anatomy", () => {
         menu={() => null}
       />,
     );
-    expect(html).toContain("gap-px");
+    expect(html).toContain("gap-0");
     expect(leadingNumericShell(html)).toContain("!rounded-r-none");
     expect(html).toMatch(/aria-label="Duration mode"[^>]*class="[^"]*rounded-r-c-md/);
   });

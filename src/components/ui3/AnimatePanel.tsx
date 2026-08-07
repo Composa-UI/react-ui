@@ -570,12 +570,12 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                 const following = next?.rows[0];
                 const groupStart = Math.min(...group.rows.map(row => row.animation.startMs ?? 0));
                 const followingStart = following ? Math.min(...next.rows.map(row => row.animation.startMs ?? 0)) : 0;
-                const delayBetween = following ? Math.max(0, followingStart - groupStart) : 0;
                 const groupEnd = Math.max(...group.rows.map(row => {
                   const start = row.animation.startMs;
                   const duration = durationMs(row.animation);
                   return start != null && duration != null ? start + duration : Number.NaN;
                 }));
+                const delayBetween = following && Number.isFinite(groupEnd) ? Math.max(0, followingStart - groupEnd) : 0;
                 // A connector communicates temporal continuity, not merely adjacent
                 // render order. A timeline drag that leaves a gap must visibly break it.
                 const connectedToNext = !dragged && !!following && !!next && next.rank === group.rank + 1 &&

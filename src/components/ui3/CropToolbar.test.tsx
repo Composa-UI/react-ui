@@ -1,7 +1,7 @@
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { describe, expect, it } from "vitest";
 import { CanvasCropOverlay, CropToolbar } from "./CropToolbar";
-import { MenuRow } from "./Menu";
+import { MenuRow, PopoverMenu } from "./Menu";
 import { Slider } from "./Slider";
 import { SplitButton } from "./SplitButton";
 
@@ -25,11 +25,15 @@ describe("CropToolbar", () => {
     const proportions = renderer.root.findByType(SplitButton);
     act(() => proportions.props.onIconClick());
     expect(calls).toEqual(["zoom:1.5", "fill", "cancel", "done", "free"]);
-    act(() => proportions.props.onChevronClick());
-    const rows = renderer.root.findAllByType(MenuRow);
+    const overlay = proportions.props.menuTrigger(<button />);
+    expect(overlay.type).toBe(PopoverMenu);
+    let menuRenderer!: ReactTestRenderer;
+    act(() => { menuRenderer = create(overlay.props.children(() => undefined)); });
+    const rows = menuRenderer.root.findAllByType(MenuRow);
     expect(rows.map(row => row.props.label)).toEqual(["Free", "Original", "1:1", "4:3", "16:9"]);
     act(() => rows.find(row => row.props.label === "4:3")!.props.onClick());
     expect(calls).toEqual(["zoom:1.5", "fill", "cancel", "done", "free", "4:3"]);
+    act(() => menuRenderer.unmount());
   });
 
   it("publishes pointer start, incremental deltas, and one end for pointer up/cancel", () => {
