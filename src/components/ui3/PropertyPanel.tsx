@@ -1727,7 +1727,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
   onFillTypeChange, onGradientStopsChange, onChooseImage, onChooseVideo,
   onFlipGradient, onRotateGradient, onRotateMedia,
   onImageAdjustmentChange, onMediaFitChange, onMediaTileScaleChange, onEditCrop, dropZoneSources, onSelectDropZoneSource,
-  imageAdjustmentsReadOnly = false, capabilities, activeStackDialog, onActiveStackDialogChange }: {
+  imageAdjustmentsReadOnly = false, swatches, capabilities, activeStackDialog, onActiveStackDialogChange }: {
   entries?: FillEntry[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<FillEntry, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
   onFillTypeChange?: (id: string, type: FillType) => void;
@@ -1743,6 +1743,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
   imageAdjustmentsReadOnly?: boolean;
   dropZoneSources?: { id: string; label: string }[];
   onSelectDropZoneSource?: (id: string, sourceId: string) => void;
+  swatches?: string[];
   capabilities: Required<InspectorCapabilities>;
   activeStackDialog: string | null;
   onActiveStackDialogChange: (dialog: string | null) => void;
@@ -1803,6 +1804,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
                 onSwatchClick={() => onActiveStackDialogChange(`fill-color:${fill.id}`)}
               />}
               hex={fill.color.replace("#", "")}
+              swatches={swatches}
               onHexChange={color => updateFill(fill.id, { color: `#${color.replace(/^#/, "")}` })}
               fillType={fill.fillType}
               onFillTypeChange={onFillTypeChange ? type => onFillTypeChange(fill.id, type) : undefined}
@@ -1863,9 +1865,10 @@ function strokeWeightModeIcon(mode: StrokeWeightMode, size = 16) {
   return <Square {...props} />;
 }
 
-function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities, readOnly, activeStackDialog, onActiveStackDialogChange }: {
+function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, swatches, capabilities, readOnly, activeStackDialog, onActiveStackDialogChange }: {
   entries?: ElementStrokeSetting[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<ElementStrokeSetting, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
+  swatches?: string[];
   capabilities: Required<InspectorCapabilities>;
   readOnly: boolean;
   activeStackDialog: string | null;
@@ -1907,6 +1910,8 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
           >
             <ColorDialog
               capabilities={capabilities}
+              solidOnly
+              swatches={swatches}
               open={activeStackDialog === `stroke-color:${stroke.id}`}
               onClose={() => onActiveStackDialogChange(null)}
               trigger={<ColorInput
@@ -2253,10 +2258,11 @@ const DEMO_SELECTION_COLORS: ElementSelectionColorSetting[] = [
   { id: "demo-selection-6", color: "#9747FF", opacity: 100 },
 ];
 
-function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = { templates: true, styles: true, variables: true, libraries: true, videoFill: false, dropZone: false, animationDelay: false, layoutFidelityTools: false } }: {
+function SelectionColorsSection({ colors, onUpdate, onSelectAll, swatches, capabilities = { templates: true, styles: true, variables: true, libraries: true, videoFill: false, dropZone: false, animationDelay: false, layoutFidelityTools: false } }: {
   colors?: ElementSelectionColorSetting[];
   onUpdate?: (id: string, patch: Partial<Omit<ElementSelectionColorSetting, "id">>) => void;
   onSelectAll?: (id: string) => void;
+  swatches?: string[];
   capabilities?: Required<InspectorCapabilities>;
 }) {
   const renderedColors = colors ?? DEMO_SELECTION_COLORS;
@@ -2274,6 +2280,7 @@ function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = 
               onClose={() => setColorOpen(false)}
               trigger={<ColorInput ariaLabel="Selection color" fullWidth color={c.color} opacity={c.opacity} onSwatchClick={() => { setActiveIndex(index); setColorOpen(true); }} />}
               hex={c.color.replace(/^#/, "")}
+              swatches={swatches}
               opacity={c.opacity}
               onHexChange={hex => onUpdate?.(c.id, { color: `#${hex.replace(/^#/, "")}` })}
               onOpacityChange={opacity => onUpdate?.(c.id, { opacity })}
@@ -2951,7 +2958,7 @@ function ClipColorBody() {
 }
 
 // Chroma key — added with "+"; Key colour swatch + hex, then Threshold %.
-function ChromaKeyBody() {
+function ChromaKeyBody({ swatches }: { swatches?: string[] }) {
   const [color, setColor] = useState("#00FF00");
   const [colorDialogOpen, setColorDialogOpen] = useState(false);
   const [threshold, setThreshold] = useState(50);
@@ -2965,7 +2972,7 @@ function ChromaKeyBody() {
             trigger={<ColorInput ariaLabel="Key color" fullWidth color={color} opacity={100} onColorChange={setColor} onSwatchClick={() => setColorDialogOpen(true)} />}
             solidOnly
             capabilities={{ styles: false, variables: false, libraries: false, videoFill: false, dropZone: false }}
-            swatches={[]}
+            swatches={swatches}
             hex={color.replace("#", "")}
             onHexChange={value => setColor(`#${value.replace(/^#/, "")}`)}
           />
@@ -3091,6 +3098,8 @@ function AudioLoudnessSection() {
 export interface PropertyPanelProps {
   /** Host-owned feature availability; UI only hides unsupported entry points. */
   capabilities?: InspectorCapabilities;
+  /** Real unique colors from the active composition; never demo palette data. */
+  pageSwatches?: string[];
   /** Controlled Design/Animate tab seam. A timeline preset can reveal its matching Animate card. */
   activeTab?: "design" | "animate";
   onActiveTabChange?: (tab: "design" | "animate") => void;
@@ -4115,7 +4124,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             mediaTileScale={slideBackgroundMediaTileScale}
             dropZoneSources={slideBackgroundDropZoneSources}
             dropZoneSourceId={slideBackgroundDropZoneSourceId}
-            swatches={slideBackgroundSwatches}
+            swatches={slideBackgroundSwatches ?? props.pageSwatches}
             onTypeChange={onSlideBackgroundTypeChange}
             onColorChange={onSlideBackgroundColorChange}
             onOpacityChange={onSlideBackgroundOpacityChange}
@@ -4135,7 +4144,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           />
           {capabilities.layoutFidelityTools && <LayoutGuideSection entries={layoutGuides} onAdd={onAddLayoutGuide} onUpdate={onUpdateLayoutGuide} onRemove={onRemoveLayoutGuide} />}
           {/* Selection colors — reuse the existing element-mode section */}
-          <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} capabilities={capabilities} />
+          <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} swatches={props.pageSwatches} capabilities={capabilities} />
           <ExportSection settings={exportSettings} mode={exportMode} frameRate={projectFrameRate} onModeChange={onExportModeChange} onFrameRateChange={onProjectFrameRateChange} targetName={exportTargetName ?? renderedSlideName}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
           </>}
@@ -4192,7 +4201,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
               WebGL colour pipeline. */}
           <ClipBlendSection mode={clipBlendMode} controlled={props.clipBlendMode !== undefined} onModeChange={onClipBlendModeChange} />
           <ToggleableSection title="Color" addLabel="Add color"><ClipColorBody /></ToggleableSection>
-          <ToggleableSection title="Chroma key" addLabel="Add chroma key"><ChromaKeyBody /></ToggleableSection>
+          <ToggleableSection title="Chroma key" addLabel="Add chroma key"><ChromaKeyBody swatches={props.pageSwatches} /></ToggleableSection>
         </ScrollArea>
       )}
 
@@ -4346,15 +4355,16 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onMediaTileScaleChange={props.onFillMediaTileScaleChange}
             onEditCrop={props.onEditFillCrop}
             dropZoneSources={props.fillDropZoneSources} onSelectDropZoneSource={props.onSelectFillDropZoneSource}
+            swatches={props.pageSwatches}
             capabilities={capabilities}
             activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
-          <StrokeSection entries={strokes} onAdd={onAddStroke} onUpdate={onUpdateStroke} onToggle={onToggleStroke} onReorder={onReorderStroke} onRemove={onRemoveStroke} capabilities={capabilities}
+          <StrokeSection entries={strokes} onAdd={onAddStroke} onUpdate={onUpdateStroke} onToggle={onToggleStroke} onReorder={onReorderStroke} onRemove={onRemoveStroke} swatches={props.pageSwatches} capabilities={capabilities}
             readOnly={strokeReadOnly} activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
           <EffectsSection entries={effects} onAdd={onAddEffect} onUpdate={onUpdateEffect} onToggle={onToggleEffect} onReorder={onReorderEffect} onRemove={onRemoveEffect} capabilities={capabilities}
             activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
 
           {/* Selection Colors — multi-select only (§5.8), positioned right after Effects */}
-          {multiSelect && <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} capabilities={capabilities} />}
+          {multiSelect && <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} swatches={props.pageSwatches} capabilities={capabilities} />}
 
           <ExportSection settings={exportSettings} mode={exportMode} frameRate={projectFrameRate} onModeChange={onExportModeChange} onFrameRateChange={onProjectFrameRateChange} targetName={exportTargetName ?? elementLabel[elementType]}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
