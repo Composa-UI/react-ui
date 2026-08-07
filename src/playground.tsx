@@ -1664,7 +1664,7 @@ export default function Playground() {
         style={{ height: "100vh", width: "100vw", display: "flex", flexDirection: "column", background: dark ? "#1e1e1e" : "#e6e6e6" }}
       >
         <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
-          <NavRail active={nav} onSelect={setNav} onBackToFiles={() => window.alert("Back to Files (app wires editor → /projects)")} />
+          <NavRail active={nav} onSelect={setNav} onBackToFiles={() => window.alert("Files (app wires editor → /projects)")} />
           {nav === "composition" ? <CompositionPanel /> : nav === "assets" ? <AssetsPanel /> : <EditorAgentColumn />}
           <div style={{ flex: 1, minWidth: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <div style={{ width: "70%", aspectRatio: "16/9", background: dark ? "#2c2c2c" : "#fff", borderRadius: 6, boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }} />

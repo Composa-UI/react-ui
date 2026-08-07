@@ -1,5 +1,5 @@
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
-import type { ReactElement } from "react";
+import { useState, type ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { ColorDialogProps } from "./ColorDialog";
 import { activeGradientFillDialogId, PropertyPanel } from "./PropertyPanel";
@@ -26,6 +26,26 @@ vi.mock("./ColorDialog", () => ({
 }));
 
 describe("PropertyPanel Fill/Color controlled contract", () => {
+  it("reports an active gradient dialog once even when the host rebuilds its fill projection", () => {
+    const onActiveDialog = vi.fn();
+    const Host = () => {
+      const [, setReport] = useState<{ id: string | null } | null>(null);
+      return <PropertyPanel elementType="shape" fills={[{
+        id: "gradient", color: "#000000", opacity: 100, visible: true, fillType: "linear",
+        gradientStops: [{ id: "start", position: 0, color: "000000", opacity: 100 }, { id: "end", position: 100, color: "ffffff", opacity: 100 }],
+      }]} onActiveFillDialogChange={id => { onActiveDialog(id); setReport({ id }); }} />;
+    };
+    let renderer!: ReactTestRenderer;
+    expect(() => act(() => { renderer = create(<Host />); })).not.toThrow();
+    expect(onActiveDialog).toHaveBeenCalledTimes(1);
+    expect(onActiveDialog).toHaveBeenLastCalledWith(null);
+
+    act(() => (capture.props!.trigger as ReactElement<{ onSwatchClick?: () => void }>).props.onSwatchClick?.());
+    expect(onActiveDialog).toHaveBeenCalledTimes(2);
+    expect(onActiveDialog).toHaveBeenLastCalledWith("gradient");
+    act(() => renderer.unmount());
+  });
+
   it("keeps canvas gradient chrome scoped to an open gradient dialog on the current selection", () => {
     const gradient = { id: "gradient", color: "#000000", opacity: 100, visible: true, fillType: "linear" as const };
     const image = { id: "image", color: "#000000", opacity: 100, visible: true, fillType: "image" as const };

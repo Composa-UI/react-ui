@@ -90,7 +90,7 @@ export function FieldShell({ focused, disabled = false, variant = "default", siz
 
 /** Joins an editable value and its trailing actions into one combo field. */
 function SeparatedFieldActions({ children, className }: { children: ReactNode; className?: string }) {
-  return <div data-composa-separated-field-actions className={clsx("flex min-w-0 w-full items-center gap-0", className)}>{children}</div>;
+  return <div data-composa-separated-field-actions className={clsx("flex min-w-0 w-full items-center gap-px", className)}>{children}</div>;
 }
 
 function FieldAction({
@@ -782,7 +782,7 @@ export function NumericComboInput({
   ...numericProps
 }: NumericComboInputProps) {
   return (
-    <div data-composa-numeric-combo={dataMode ?? "fixed"} className={clsx("flex items-start gap-0", className)}>
+    <div data-composa-numeric-combo={dataMode ?? "fixed"} className={clsx("flex items-start gap-px", className)}>
       <div className="group relative flex-1 min-w-0">
         {readOnlyLabel !== undefined ? (
           <FieldShell focused={false} disabled={disabled} size={size} numeric joined>

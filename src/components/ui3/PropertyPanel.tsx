@@ -2122,10 +2122,11 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
 
 // ─── Section: Export ──────────────────────────────────────────────────────────
 
-function ExportSection({ settings, targetName = "selection", mode = "static", frameRate, onModeChange, onFrameRateChange, onAdd, onRemove, onUpdate, onExport }: {
+function ExportSection({ settings, targetName = "selection", mode = "static", animatedAvailable = true, frameRate, onModeChange, onFrameRateChange, onAdd, onRemove, onUpdate, onExport }: {
   settings?: InspectorExportSetting[];
   targetName?: string;
   mode?: InspectorExportMode;
+  animatedAvailable?: boolean;
   frameRate?: ProjectFrameRate;
   onModeChange?: (mode: InspectorExportMode) => void;
   onFrameRateChange?: (frameRate: ProjectFrameRate) => void;
@@ -2155,7 +2156,7 @@ function ExportSection({ settings, targetName = "selection", mode = "static", fr
       muted={exports.length === 0}
       rightActions={<PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add export" onClick={add} />}
     >
-      {exports.length > 0 && <div className="px-[16px] pt-[4px] pb-[8px]">
+      {exports.length > 0 && animatedAvailable && <div className="px-[16px] pt-[4px] pb-[8px]">
         <SegmentedControl
           ariaLabel="Export mode"
           segments={[{ value: "static", label: "Static" }, { value: "frame", label: "Animated" }]}
@@ -2197,7 +2198,7 @@ function ExportSection({ settings, targetName = "selection", mode = "static", fr
           </div>
           <div
             data-composa-export-remove-slot
-            className="self-end shrink-0 flex items-center gap-[4px] pl-[8px]"
+            className="self-start mt-[16px] shrink-0 flex items-center gap-[4px] pl-[8px]"
           >
             <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove export" onClick={() => remove(exp.id)} />
           </div>
@@ -2527,7 +2528,7 @@ function SlideTimingSection({
               menu={close => (
                 <Menu>
                   <MenuRow type="checkmark" leading={<SizingFixedIcon data-icon-semantic="sizing-fixed" size={14} strokeWidth={1.5} />} label="Fixed duration" checked={!hugging} onClick={() => { onDurationModeChange("fixed"); close(); }} />
-                  <MenuRow type="checkmark" leading={<SizingHugIcon data-icon-semantic="sizing-hug" size={14} strokeWidth={1.5} />} label="Hug contents" checked={hugging} onClick={() => { onDurationModeChange("hug"); close(); }} />
+                  <MenuRow type="checkmark" leading={<SizingHugIcon data-icon-semantic="sizing-hug" size={14} strokeWidth={1.5} />} label="Hug content and animations" checked={hugging} onClick={() => { onDurationModeChange("hug"); close(); }} />
                 </Menu>
               )}
               className="w-full"
@@ -3355,6 +3356,8 @@ export interface PropertyPanelProps {
   /** Shared element/selection/slide still-image export contract. */
   exportSettings?: InspectorExportSetting[];
   exportMode?: InspectorExportMode;
+  /** Show the Animated export choice only when the selected target has authored motion. */
+  animatedExportAvailable?: boolean;
   exportTargetName?: string;
   onExportModeChange?: (mode: InspectorExportMode) => void;
   onAddExportSetting?: () => void;
@@ -3975,9 +3978,10 @@ export function PropertyPanel(props: PropertyPanelProps) {
   const [activeStackDialog, setActiveStackDialog] = useState<string | null>(null);
   const activeFillDialogChangeRef = useRef(props.onActiveFillDialogChange);
   activeFillDialogChangeRef.current = props.onActiveFillDialogChange;
+  const activeFillDialogId = activeGradientFillDialogId(activeStackDialog, fills);
   useEffect(() => {
-    activeFillDialogChangeRef.current?.(activeGradientFillDialogId(activeStackDialog, fills));
-  }, [activeStackDialog, fills]);
+    activeFillDialogChangeRef.current?.(activeFillDialogId);
+  }, [activeFillDialogId]);
   const tab = props.activeTab ?? uncontrolledTab;
   const setTab = (next: string) => {
     if (next !== "design" && next !== "animate" && next !== "prototype") return;
@@ -4226,7 +4230,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor}
             onEyedropperActivate={props.onSelectionColorEyedropperActivate} activeEyedropperId={props.activeSelectionColorEyedropperId}
             swatches={props.pageSwatches} capabilities={capabilities} />
-          <ExportSection settings={exportSettings} mode={exportMode} frameRate={projectFrameRate} onModeChange={onExportModeChange} onFrameRateChange={onProjectFrameRateChange} targetName={exportTargetName ?? renderedSlideName}
+          <ExportSection settings={exportSettings} mode={exportMode} animatedAvailable={props.animatedExportAvailable} frameRate={projectFrameRate} onModeChange={onExportModeChange} onFrameRateChange={onProjectFrameRateChange} targetName={exportTargetName ?? renderedSlideName}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
           </>}
           </ScrollArea></div>}
@@ -4451,7 +4455,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onEyedropperActivate={props.onSelectionColorEyedropperActivate} activeEyedropperId={props.activeSelectionColorEyedropperId}
             swatches={props.pageSwatches} capabilities={capabilities} />}
 
-          <ExportSection settings={exportSettings} mode={exportMode} frameRate={projectFrameRate} onModeChange={onExportModeChange} onFrameRateChange={onProjectFrameRateChange} targetName={exportTargetName ?? elementLabel[elementType]}
+          <ExportSection settings={exportSettings} mode={exportMode} animatedAvailable={props.animatedExportAvailable} frameRate={projectFrameRate} onModeChange={onExportModeChange} onFrameRateChange={onProjectFrameRateChange} targetName={exportTargetName ?? elementLabel[elementType]}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
           {easing && <EasingInspectorSection key={easing.interactionKey} value={easing} applyScope={easingApplyScope} applyToLabel={easingApplyToLabel}
             onChange={onEasingChange} onApplyScopeChange={onEasingApplyScopeChange}

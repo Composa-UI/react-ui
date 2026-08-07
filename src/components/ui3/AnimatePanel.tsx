@@ -479,6 +479,9 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
             const styleOptions = phase === "build-in" ? ["fade-in", "move-in", "slide-in", "wipe-in"] : phase === "build-out" ? ["fade-out", "move-out", "slide-out", "wipe-out"] : ACTION_STYLE_OPTIONS;
             const directional = !!a.style && (/^(move|slide|wipe)-/.test(a.style) || (phase === "action" && a.style === "move"));
             const styleLabels = Object.fromEntries(styleOptions.map(style => [style, style.split("-").map(word => word[0].toUpperCase() + word.slice(1)).join(" ")])) as Record<string, string>;
+            const selectedStyle = a.style ?? styleOptions[0];
+            const selectedStyleLabel = styleLabels[selectedStyle]
+              ?? `${selectedStyle.split("-").map(word => word[0].toUpperCase() + word.slice(1)).join(" ")} (unsupported)`;
             const deliveryLabels = { "all-at-once": "All at once", "by-object": "By object", "by-word": "By word", "by-character": "By character" };
             const deliveryValue = Object.entries(deliveryLabels).find(([, label]) => label === a.delivery)?.[0] as keyof typeof deliveryLabels | undefined;
             return <div
@@ -529,12 +532,12 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                       onClose={() => setActiveStyleDialog(null)}
                       title={`${phaseLabel} styles`}
                       groups={[{ label: phase === "action" ? "Emphasis" : "Basic", options: styleOptions.map(style => ({ value: style, label: styleLabels[style] })) }]}
-                      value={a.style ?? styleOptions[0]}
+                      value={selectedStyle}
                       onSelect={style => { callbacks?.onStyleChange?.(id, style); setActiveStyleDialog(null); }}
                       trigger={<Dropdown
-                        ariaLabel={`Style: ${styleLabels[a.style ?? styleOptions[0]]}`}
+                        ariaLabel={`Style: ${selectedStyleLabel}`}
                         aria-haspopup="dialog"
-                        value={styleLabels[a.style ?? styleOptions[0]]}
+                        value={selectedStyleLabel}
                         state={activeStyleDialog === id ? "active" : "default"}
                         fullWidth
                         onClick={() => setActiveStyleDialog(current => current === id ? null : id)}
