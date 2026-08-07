@@ -14,21 +14,21 @@ const LABELS: Record<CropAspect, string> = {
 export interface CropToolbarProps {
   aspect: CropAspect;
   onAspectChange: (aspect: CropAspect) => void;
-  onResizeToFit: () => void;
+  onResizeToFill: () => void;
   onCancel: () => void;
   onDone: () => void;
   className?: string;
 }
 
 /** Canonical UI3 crop controls. The host owns document mutations and canvas geometry. */
-export function CropToolbar({ aspect, onAspectChange, onResizeToFit, onCancel, onDone, className }: CropToolbarProps) {
+export function CropToolbar({ aspect, onAspectChange, onResizeToFill, onCancel, onDone, className }: CropToolbarProps) {
   const aspects = Object.keys(LABELS) as CropAspect[];
   return <div role="toolbar" aria-label="Crop tools" className={clsx(
     "inline-flex items-center gap-[6px] rounded-c-lg bg-c-bg p-[6px] ring-1 ring-inset ring-c-border-translucent",
     "shadow-[0px_0px_0.5px_rgba(0,0,0,0.18),0px_3px_8px_rgba(0,0,0,0.12),0px_1px_2px_rgba(0,0,0,0.1)]",
     className,
   )}>
-    <Button variant="Secondary" label="Resize to fit" iconLead="left" icon={<Maximize2 size={14} strokeWidth={1.5} />} onClick={onResizeToFit} />
+    <Button variant="Secondary" label="Resize to fill" iconLead="left" icon={<Maximize2 size={14} strokeWidth={1.5} />} onClick={onResizeToFill} />
     <PopoverMenu align="left" trigger={<Dropdown ariaLabel="Crop aspect ratio" value={LABELS[aspect]} />}>
       {close => <Menu>{aspects.map(value => <MenuRow key={value} label={LABELS[value]} checked={aspect === value} selectionRole="radio" onClick={() => { onAspectChange(value); close(); }} />)}</Menu>}
     </PopoverMenu>
