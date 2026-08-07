@@ -1170,12 +1170,17 @@ describe("video clips raise a context menu (Composa#661)", () => {
   const clip = { baseClips: [{ id: "v1", name: "shot", range: [0, 1_000] }] };
 
   it("advertises the menu on the bar once a host handler is wired", () => {
-    expect(tagWithLabel(master({ ...clip, onClipContextMenu: () => undefined }), "shot")).toContain('aria-haspopup="menu"');
+    const html = master({ ...clip, onClipContextMenu: () => undefined });
+    expect(tagWithLabel(html, "shot")).toContain('aria-haspopup="menu"');
+    expect(html).toContain('aria-label="More options for shot"');
+    expect(html).toContain("group-hover/clip:opacity-100");
   });
 
   it("promises nothing when no host handler is wired", () => {
     // The bar must still be there — otherwise the missing attribute means nothing.
-    expect(tagWithLabel(master(clip), "shot")).not.toContain("aria-haspopup");
+    const html = master(clip);
+    expect(tagWithLabel(html, "shot")).not.toContain("aria-haspopup");
+    expect(html).not.toContain('aria-label="More options for shot"');
   });
 });
 

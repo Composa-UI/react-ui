@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
 import { clsx } from "clsx";
-import { Play, Pause, Square, Diamond, Repeat, PanelBottomClose, PanelBottomOpen, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, Layers } from "lucide-react";
+import { Play, Pause, Square, Diamond, Repeat, PanelBottomClose, PanelBottomOpen, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, Layers, MoreHorizontal } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { collectAggregateKeyframes, createTimelineEdgeDragController, formatMasterRulerTick, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineAnchorRatioAtX, timelineDragDeltaMs, timelinePointerPanDelta, timelineScrollbarPan, timelineScrollbarThumb, timelineScrollTop, timelineViewportChanged, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
 import { LayerTypeIcon, type LayerAutoLayoutAlign, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
@@ -1777,7 +1777,7 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
               onPointerCancel: () => finish(true),
               onLostPointerCapture: () => finish(true),
             })}
-            className={clsx("absolute inset-y-[4px] rounded-[4px] overflow-hidden border outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring",
+            className={clsx("group/clip absolute inset-y-[4px] rounded-[4px] overflow-hidden border outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring",
               // Blue hover highlight on rest (Composa#583); focus ring instead of the raw
               // UA outline (Composa#584).
               // Selected takes the same solid fill as a selected audio or composition
@@ -1804,6 +1804,24 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
               ) : null}
               <span className={clsx(FONT, "relative min-w-0 truncate text-[11px] font-[450]", onSelected ? "text-white" : "text-c-text-secondary")}>{clip.name}</span>
             </div>
+            {hasContextMenu ? <button
+              type="button"
+              aria-label={`More options for ${clip.name}`}
+              aria-haspopup="menu"
+              onPointerDown={event => event.stopPropagation()}
+              onClick={event => {
+                event.preventDefault();
+                event.stopPropagation();
+                const rect = event.currentTarget.getBoundingClientRect();
+                const bar = event.currentTarget.parentElement as HTMLDivElement;
+                onContextMenu!(clip.id, { clientX: rect.left + rect.width / 2, clientY: rect.bottom, currentTarget: bar, source: "pointer" });
+              }}
+              className={clsx(
+                "absolute right-[10px] top-1/2 z-[3] flex size-[20px] -translate-y-1/2 items-center justify-center rounded-c-sm outline-none transition-opacity hover:bg-c-bg-hover focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-c-focus-ring",
+                onSelected ? "text-white" : "text-c-icon-secondary",
+                "opacity-0 group-hover/clip:opacity-100",
+              )}
+            ><MoreHorizontal size={14} strokeWidth={1.5} /></button> : null}
             {/* Audio strip — video with sound reads at a glance the way the Audio lane
                 does, reusing that lane's renderer rather than a second one. Pinned to
                 the bottom so it never competes with the clip name (Composa#661).
