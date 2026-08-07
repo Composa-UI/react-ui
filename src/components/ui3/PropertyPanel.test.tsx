@@ -167,19 +167,20 @@ describe("Video Clip inspector semantics", () => {
     const html = renderToStaticMarkup(<PropertyPanel mode="video-clip" clipStart={2} clipDuration={3}
       clipTrimIn={0} clipTrimOut={3} clipSpeed={1} />);
 
-    // Source/Timeline/Trim/Playback + the effect sections (Appearance/Color/Chroma key).
-    expect(html.match(/role="region"/g)).toHaveLength(7);
-    for (const title of ["Source", "Timeline", "Trim", "Playback", "Appearance", "Color", "Chroma key"]) expect(html).toContain(`>${title}</span>`);
+    // Source/Timeline/Trim/Playback plus the one modeled effect section.
+    expect(html.match(/role="region"/g)).toHaveLength(5);
+    for (const title of ["Source", "Timeline", "Trim", "Playback", "Appearance"]) expect(html).toContain(`>${title}</span>`);
+    for (const unavailable of ["Color", "Chroma key"]) expect(html).not.toContain(`>${unavailable}</span>`);
     // Appearance section: the composite blend-mode trigger maps to a host field.
     expect(html).toContain('aria-label="Blend mode: Normal"');
-    for (const name of ["Start", "End", "Duration", "Trim in", "Trim out", "Volume"]) {
+    for (const name of ["Start", "End", "Duration", "Trim in", "Trim out"]) {
       expect(html).toContain(`aria-label="${name}"`);
     }
     const speedTrigger = html.match(/<button[^>]*aria-label="Speed: 1×"[^>]*>/)?.[0];
     expect(speedTrigger).toBeTruthy();
     expect(speedTrigger).toContain('aria-haspopup="menu"');
     expect(speedTrigger).toContain('aria-expanded="false"');
-    expect(html).toMatch(/aria-label="Volume"[^>]*disabled=""/);
+    expect(html).not.toContain('aria-label="Volume"');
   });
 });
 

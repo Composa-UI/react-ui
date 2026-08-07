@@ -2819,8 +2819,9 @@ function ClipTrimSection({
   );
 }
 
-// Playback §Playback — Speed dropdown (default 1x); Volume deferred to V2
-// (disabled row, "Audio coming soon" per spec).
+// Playback §Playback — only modeled actions are shown. Audio clips own the real
+// volume field; a disabled video-volume promise was misleading when the selected
+// video already carried audio.
 const CLIP_SPEEDS: ClipSpeed[] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 4];
 const CLIP_SPEED_LABELS = Object.fromEntries(CLIP_SPEEDS.map(speed => [String(speed), `${speed}×`])) as Record<string, string>;
 
@@ -2829,16 +2830,9 @@ function ClipPlaybackSection({ speed = 1, onSpeedChange, controlled = false }: {
   const renderedSpeed = controlled ? speed : internalSpeed;
   return (
     <PanelSection title="Playback" landmark>
-      <DualField
-        leftLabel="Speed"
-        left={<ChoiceDropdown ariaLabel="Speed" value={String(renderedSpeed)} options={CLIP_SPEEDS.map(String)} labels={CLIP_SPEED_LABELS} onChange={value => { const next = Number(value) as ClipSpeed; if (!controlled) setInternalSpeed(next); onSpeedChange?.(next); }} />}
-        rightLabel="Volume"
-        right={
-          <div className="w-full" title="Audio coming soon">
-            <Dropdown ariaLabel="Volume" value="—" disabled fullWidth />
-          </div>
-        }
-      />
+      <PanelFullRow label="Speed">
+        <ChoiceDropdown ariaLabel="Speed" value={String(renderedSpeed)} options={CLIP_SPEEDS.map(String)} labels={CLIP_SPEED_LABELS} onChange={value => { const next = Number(value) as ClipSpeed; if (!controlled) setInternalSpeed(next); onSpeedChange?.(next); }} />
+      </PanelFullRow>
     </PanelSection>
   );
 }
@@ -4196,12 +4190,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onDurationChange={onClipDurationChange} />
           <ClipTrimSection trimIn={clipTrimIn} trimOut={clipTrimOut} controlled={props.clipTrimIn !== undefined || props.clipTrimOut !== undefined} onTrimInChange={onClipTrimInChange} onTrimOutChange={onClipTrimOutChange} />
           <ClipPlaybackSection speed={clipSpeed} controlled={props.clipSpeed !== undefined} onSpeedChange={onClipSpeedChange} />
-          {/* Effect sections (effects-mental-model.md). Appearance (blend mode)
-              maps to a host field; Color grading + Chroma keying are the later
-              WebGL colour pipeline. */}
+          {/* Only Appearance is modeled today. Color grading and Chroma key stay
+              absent until the engine can persist and render them truthfully. */}
           <ClipBlendSection mode={clipBlendMode} controlled={props.clipBlendMode !== undefined} onModeChange={onClipBlendModeChange} />
-          <ToggleableSection title="Color" addLabel="Add color"><ClipColorBody /></ToggleableSection>
-          <ToggleableSection title="Chroma key" addLabel="Add chroma key"><ChromaKeyBody swatches={props.pageSwatches} /></ToggleableSection>
         </ScrollArea>
       )}
 
