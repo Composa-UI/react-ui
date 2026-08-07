@@ -2589,6 +2589,7 @@ function SlideBackgroundSection({
   onSelectDropZoneSource,
   onEyedropperActivate,
   eyedropperActive,
+  onDialogOpenChange,
   onRotateMedia,
   capabilities,
 }: {
@@ -2622,6 +2623,7 @@ function SlideBackgroundSection({
   onSelectDropZoneSource?: (sourceId: string) => void;
   onEyedropperActivate?: () => void;
   eyedropperActive?: boolean;
+  onDialogOpenChange?: (open: boolean) => void;
   onRotateMedia?: () => void;
   capabilities: Required<InspectorCapabilities>;
 }) {
@@ -2679,7 +2681,7 @@ function SlideBackgroundSection({
             capabilities={capabilities}
             allowedFillModes={allowedFillModes}
             open={colorOpen}
-            onClose={() => setColorOpen(false)}
+            onClose={() => { setColorOpen(false); onDialogOpenChange?.(false); }}
             trigger={<ColorInput
               ariaLabel="Background fill"
               fullWidth
@@ -2688,7 +2690,7 @@ function SlideBackgroundSection({
               color={color}
               opacity={opacity}
               gradient={gradientPreview}
-              onSwatchClick={() => setColorOpen(true)}
+              onSwatchClick={() => { setColorOpen(true); onDialogOpenChange?.(true); }}
               onColorChange={value => {
                 if (controlledColor === undefined) setInternalColor(value);
                 onColorChange?.(value);
@@ -3211,6 +3213,8 @@ export interface PropertyPanelProps {
   onAddFill?: () => void; onUpdateFill?: (id: string, patch: Partial<Omit<ElementFillSetting, "id">>) => void; onToggleFill?: (id: string, visible: boolean) => void; onReorderFill?: (id: string, targetId: string) => void; onRemoveFill?: (id: string) => void;
   /** Detailed Fill/Color dialog seams. Values live on each fill; callbacks remain host-owned. */
   onFillTypeChange?: (id: string, type: FillType) => void;
+  /** Reports the exact element fill whose shared dialog is open, for canvas controls. */
+  onActiveFillDialogChange?: (id: string | null) => void;
   onFillGradientStopsChange?: (id: string, stops: GradientStop[]) => void;
   /** Host-owned gradient transform commands for a specific fill entry. */
   onFlipFillGradient?: (id: string) => void;
@@ -3341,6 +3345,8 @@ export interface PropertyPanelProps {
   onSelectSlideBackgroundDropZoneSource?: (sourceId: string) => void;
   onSlideBackgroundEyedropperActivate?: () => void;
   slideBackgroundEyedropperActive?: boolean;
+  /** Keeps host-owned canvas controls synchronized with the background fill dialog. */
+  onSlideBackgroundFillDialogChange?: (open: boolean) => void;
   onFlipSlideBackgroundGradient?: () => void;
   onRotateSlideBackgroundGradient?: () => void;
   onRotateSlideBackgroundMedia?: () => void;
@@ -3853,6 +3859,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onSelectSlideBackgroundDropZoneSource,
   onSlideBackgroundEyedropperActivate,
   slideBackgroundEyedropperActive,
+  onSlideBackgroundFillDialogChange,
   slideTransitionType,
   slideTransitionDirection,
   slideTransitionDuration,
@@ -3908,6 +3915,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
   };
   const [uncontrolledTab, setUncontrolledTab] = useState<"design" | "animate" | "prototype">("design");
   const [activeStackDialog, setActiveStackDialog] = useState<string | null>(null);
+  useEffect(() => {
+    props.onActiveFillDialogChange?.(activeStackDialog?.startsWith("fill-color:") ? activeStackDialog.slice("fill-color:".length) : null);
+  }, [activeStackDialog, props.onActiveFillDialogChange]);
   const tab = props.activeTab ?? uncontrolledTab;
   const setTab = (next: string) => {
     if (next !== "design" && next !== "animate" && next !== "prototype") return;
@@ -4148,6 +4158,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onSelectDropZoneSource={onSelectSlideBackgroundDropZoneSource}
             onEyedropperActivate={onSlideBackgroundEyedropperActivate}
             eyedropperActive={slideBackgroundEyedropperActive}
+            onDialogOpenChange={onSlideBackgroundFillDialogChange}
             onRotateMedia={props.onRotateSlideBackgroundMedia}
           />
           {capabilities.layoutFidelityTools && <LayoutGuideSection entries={layoutGuides} onAdd={onAddLayoutGuide} onUpdate={onUpdateLayoutGuide} onRemove={onRemoveLayoutGuide} />}

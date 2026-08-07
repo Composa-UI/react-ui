@@ -32,6 +32,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     const onTileScale = vi.fn();
     const onEditCrop = vi.fn();
     const onDropZone = vi.fn();
+    const onActiveDialog = vi.fn();
     const stopPosition = { active: true, onToggle: vi.fn() };
     const stopColor = { active: false, onToggle: vi.fn() };
     const stopOpacity = { active: false, onToggle: vi.fn() };
@@ -57,6 +58,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
           dropZoneSourceId: "track:video",
         }]}
         onFillTypeChange={onType}
+        onActiveFillDialogChange={onActiveDialog}
         onFillGradientStopsChange={onStops}
         onFlipFillGradient={onFlipGradient}
         onRotateFillGradient={onRotateGradient}
@@ -73,6 +75,10 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     });
 
     const props = capture.props!;
+    act(() => (props.trigger as ReactElement<{ onSwatchClick?: () => void }>).props.onSwatchClick?.());
+    expect(onActiveDialog).toHaveBeenLastCalledWith("fill-1");
+    act(() => props.onClose());
+    expect(onActiveDialog).toHaveBeenLastCalledWith(null);
     expect(props.fillType).toBe("linear");
     expect(props.gradientStops).toEqual(stops);
     expect(props.gradientStopKeyframes).toEqual({ a: { position: stopPosition, color: stopColor, opacity: stopOpacity } });
@@ -143,6 +149,7 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
     const onEditCrop = vi.fn();
     const onDropZone = vi.fn();
     const onEyedropper = vi.fn();
+    const onDialogOpen = vi.fn();
     const stops = [{ id: "a", position: 0, color: "ff0000", opacity: 100 }, { id: "b", position: 100, color: "0000ff", opacity: 100 }];
     let renderer!: ReactTestRenderer;
 
@@ -172,10 +179,15 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
       onSelectSlideBackgroundDropZoneSource={onDropZone}
       onSlideBackgroundEyedropperActivate={onEyedropper}
       slideBackgroundEyedropperActive
+      onSlideBackgroundFillDialogChange={onDialogOpen}
       onFlipSlideBackgroundGradient={onFlipGradient}
       onRotateSlideBackgroundGradient={onRotateGradient}
       onRotateSlideBackgroundMedia={onRotateMedia}
     />); });
+    act(() => (capture.backgroundProps!.trigger as ReactElement<{ onSwatchClick?: () => void }>).props.onSwatchClick?.());
+    expect(onDialogOpen).toHaveBeenLastCalledWith(true);
+    act(() => capture.backgroundProps?.onClose());
+    expect(onDialogOpen).toHaveBeenLastCalledWith(false);
     act(() => capture.backgroundProps?.onFlipGradient?.());
     act(() => capture.backgroundProps?.onRotateGradient?.());
     act(() => capture.backgroundProps?.onFillTypeChange?.("diamond"));
