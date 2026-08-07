@@ -107,11 +107,13 @@ describe("ColorInput motion controls", () => {
   });
 });
 
-describe("separated field/action anatomy", () => {
-  it("keeps the single numeric editor and its keyframe in independent 24px surfaces", () => {
+describe("joined combo field/action anatomy", () => {
+  it("joins the single numeric editor and keyframe without a rounded leading seam", () => {
     const html = renderToStaticMarkup(<NumericInput ariaLabel="Rotation" value={30} keyframe={{ active: false, onToggle: () => undefined }} />);
     expect(html).toContain("data-composa-separated-field-actions");
-    expect(html).toContain("gap-[4px]");
+    expect(html).toContain("gap-px");
+    expect(html).toContain("!rounded-r-none");
+    expect(html).toContain("last:rounded-r-c-md");
     expect(html).toContain("pr-[8px]");
     expect(html).toMatch(/data-composa-field-action[^>]*aria-label="Rotation keyframe"[^>]*class="[^"]*size-\[24px\][^"]*focus-visible:ring-c-focus-ring/);
     // The action is not an internal border-left segment of the editable shell.

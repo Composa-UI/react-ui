@@ -29,6 +29,8 @@ export interface ObjectAnimationItem {
   name: string;
   kind: AnimKind;
   duration: string;
+  /** Scheduled start in composition-local milliseconds, used by the connector between sequence ranks. */
+  startMs?: number;
   style?: string;
   buildDuration?: string;
   direction?: "left" | "right" | "up" | "down";
@@ -54,6 +56,7 @@ export interface ObjectAnimationCallbacks {
   onDeliveryChange?: (id: string, delivery: "all-at-once" | "by-object" | "by-word" | "by-character") => void;
   onIntensityChange?: (id: string, intensity: "small" | "medium" | "large") => void;
   onReorder?: (id: string, targetId: string, placement: "before" | "after" | "with") => void;
+  onDelayBetweenChange?: (precedingId: string, followingId: string, delayMs: number) => void;
   /** A house easing preset picked on the card. Every preset card offers this, not only the
    *  bounce-style actions (iteration-2 RP-10).
    *  REQUIRED to see the control: the Easing row renders only when this is supplied, so an
@@ -563,6 +566,10 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                   : nextTargetId ?? group.rows.find(row => row.id !== dragged)?.id;
                 const afterPlacement = next ? "before" as const : "after" as const;
                 const withActive = !!withTargetId && dropTarget?.targetId === withTargetId && dropTarget.placement === "with";
+                const following = next?.rows[0];
+                const groupStart = Math.min(...group.rows.map(row => row.animation.startMs ?? 0));
+                const followingStart = following ? Math.min(...next.rows.map(row => row.animation.startMs ?? 0)) : 0;
+                const delayBetween = following ? Math.max(0, followingStart - groupStart) : 0;
                 return (
                   <div
                     key={group.rank}
@@ -612,6 +619,19 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                       afterPlacement,
                       next ? `Insert animation between sequence ${group.rank} and ${next.rank}` : `Insert animation after sequence ${group.rank}`,
                     )}
+                    {!dragged && following && <div data-animation-sequence-connector-between={`${group.rank}-${next!.rank}`} className="group/sequence-gap relative flex h-[40px] items-center justify-center">
+                      <span aria-hidden className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-c-border" />
+                      <div className="relative flex h-[28px] max-w-[28px] items-center overflow-hidden rounded-c-md bg-c-bg-secondary px-[7px] text-[11px] text-c-text transition-[max-width] group-hover/sequence-gap:max-w-[168px] group-focus-within/sequence-gap:max-w-[168px]">
+                        <span aria-hidden className="relative size-[14px] shrink-0">
+                          <Plus size={14} className={clsx("absolute inset-0 transition-opacity", delayBetween > 0 && "opacity-0", "group-hover/sequence-gap:opacity-0 group-focus-within/sequence-gap:opacity-0")} />
+                          <Clock size={14} strokeWidth={1.5} className={clsx("absolute inset-0 transition-opacity", delayBetween <= 0 && "opacity-0", "group-hover/sequence-gap:opacity-100 group-focus-within/sequence-gap:opacity-100")} />
+                        </span>
+                        <span className="ml-[6px] mr-[6px] shrink-0 opacity-0 transition-opacity group-hover/sequence-gap:opacity-100 group-focus-within/sequence-gap:opacity-100">After</span>
+                        <NumericInput ariaLabel={`Delay between sequence ${group.rank} and ${next!.rank}`} value={delayBetween} min={0} suffix="ms" commitOnBlur
+                          className="w-[88px] shrink-0 opacity-0 transition-opacity group-hover/sequence-gap:opacity-100 group-focus-within/sequence-gap:opacity-100"
+                          onChange={value => callbacks?.onDelayBetweenChange?.(group.rows[0].id, following.id, value)} />
+                      </div>
+                    </div>}
                   </div>
                 );
               })}

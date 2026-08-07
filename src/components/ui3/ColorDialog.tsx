@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, type ReactElement } from "react";
 import { clsx } from "clsx";
-import { Image, ImagePlus, Pipette, Plus, Minus, RotateCcw, RotateCw, ArrowLeftRight, Disc, Diamond, Search, LayoutGrid, ChevronDown, X, SquarePlay, SquareDashedMousePointer, Crop } from "lucide-react";
+import { Image, ImagePlus, Pipette, Plus, Minus, RotateCcw, RotateCw, ArrowLeftRight, Disc, Diamond, Search, LayoutGrid, ChevronDown, X, SquarePlay, SquareDashedMousePointer, Play, Pause } from "lucide-react";
 import { ModalBody, ModalDivider } from "./Dialog";
 import { InspectorDialog } from "./InspectorDialog";
 import type { AnchoredInspectorOverlayAlign } from "./AnchoredInspectorOverlay";
@@ -12,12 +12,14 @@ import { ColorInput, NumericInput } from "./Input";
 import { Button } from "./Button";
 import { Dropdown } from "./Dropdown";
 import { Chit } from "./Chit";
+import { Checkbox } from "./Checkbox";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type FillType = "solid" | "linear" | "radial" | "angular" | "diamond" | "image" | "video" | "drop-zone";
 export type FillMode = "solid" | "gradient" | "image" | "video" | "drop-zone";
 export type MediaFillFit = "fill" | "fit" | "crop" | "tile";
+export interface VideoPlaybackOptions { loop: boolean; playSound: boolean; autoplay: boolean; showPlaybackControls: boolean; }
 
 export interface GradientStop {
   id: string;
@@ -52,7 +54,7 @@ export const COLOR_DIALOG_REFERENCE_GEOMETRY = Object.freeze({
   headerHeight: 40,
   toolbarHeight: 41,
   solid: { height: 489, bodyHeight: 408, pickerSize: 208, formatRowHeight: 40 },
-  gradient: { height: 641, bodyHeight: 560, typeRowHeight: 48, barWidth: 208, barHeight: 32, stopRowHeight: 32 },
+  gradient: { height: 297, bodyHeight: 216, typeRowHeight: 48, barWidth: 208, barHeight: 32, stopRowHeight: 32 },
   image: { height: 577, bodyHeight: 496, fitRowHeight: 48, previewSize: 208, adjustmentRowHeight: 32, adjustmentSliderWidth: 120 },
 });
 
@@ -118,6 +120,8 @@ export interface ColorDialogProps {
    * whatsoever, so the dialog advertised an upload it could never perform.
    */
   onChooseImage?: () => void;
+  /** Optional host-backed image-generation entry point shown in the preview. */
+  onMakeImage?: () => void;
   /** Label for the chosen image fill source, shown in place of the empty state. */
   imageSourceLabel?: string;
   /** Host-resolved object URL for the chosen image. The kit never loads assets itself. */
@@ -138,6 +142,9 @@ export interface ColorDialogProps {
   videoPreviewUrl?: string;
   /** Host-backed media picker. When absent, Video is not offered. */
   onChooseVideo?: () => void;
+  videoPlayback?: VideoPlaybackOptions;
+  onVideoPlaybackChange?: (patch: Partial<VideoPlaybackOptions>) => void;
+  onApplyVideoPlaybackToAll?: () => void;
   /** Persisted renderer-backed fit mode for Image and Video fills. */
   mediaFit?: MediaFillFit;
   /** Host mutation for the selected media fill's fit mode. */
@@ -393,7 +400,8 @@ function AdjustRow({ label, value, onChange, keyframe, disabled = false }: {
       <div data-composa-separated-field-actions className="ml-[24px] flex w-[120px] shrink-0 items-center">
         <div className={keyframe ? "w-[88px]" : "w-[120px]"}>
         <Slider ariaLabel={`${label} value`} value={value} onChange={disabled ? undefined : onChange}
-          min={-100} max={100} defaultValue={0} disabled={disabled} />
+          min={-100} max={100} defaultValue={0} fillOrigin="default" showDelta
+          handleVariant={value === 0 ? "fill" : "stroke"} disabled={disabled} />
         </div>
         {keyframe && <button
           type="button"
@@ -417,19 +425,16 @@ function AdjustRow({ label, value, onChange, keyframe, disabled = false }: {
 
 const MEDIA_FIT_LABELS: Record<MediaFillFit, string> = { fill: "Fill", fit: "Fit", crop: "Crop", tile: "Tile" };
 
-function MediaFitControl({ kind, value, onChange, tileScale, tileScaleKeyframe, onTileScaleChange, onEditCrop, onRotate, selected, onChoose }: {
+function MediaFitControl({ kind, value, onChange, tileScale, tileScaleKeyframe, onTileScaleChange, onRotate }: {
   kind: "image" | "video";
   value: MediaFillFit;
   onChange?: (fit: MediaFillFit) => void;
   tileScale: number;
   tileScaleKeyframe?: ColorDialogKeyframeControl;
   onTileScaleChange?: (scale: number) => void;
-  onEditCrop?: () => void;
   onRotate?: () => void;
-  selected: boolean;
-  onChoose?: () => void;
 }) {
-  if (!onChange && !onChoose && !onEditCrop && !onRotate) return null;
+  if (!onChange && !onRotate) return null;
   const options: MediaFillFit[] = kind === "image" ? ["fill", "fit", "crop", "tile"] : ["fill", "fit", "crop"];
   return <div data-composa-media-fit-row={kind} className="flex h-[48px] items-center gap-[4px] pl-[16px] pr-[8px]">
     {onChange && <PopoverMenu
@@ -460,12 +465,6 @@ function MediaFitControl({ kind, value, onChange, tileScale, tileScaleKeyframe, 
       className="w-[76px] shrink-0"
     />}
     <div className="ml-auto flex items-center gap-[4px]">
-      {onChoose && <Btn label={`${selected ? "Replace" : "Select"} ${kind}`} onClick={onChoose}>
-        <ImagePlus size={14} strokeWidth={1.5} />
-      </Btn>}
-      {value === "crop" && onEditCrop && <Btn label="Edit crop" onClick={onEditCrop}>
-        <Crop size={14} strokeWidth={1.5} />
-      </Btn>}
       {onRotate && <Btn label={`Rotate ${kind} 90 degrees`} onClick={onRotate}>
         <RotateCw size={14} strokeWidth={1.5} />
       </Btn>}
@@ -473,12 +472,15 @@ function MediaFitControl({ kind, value, onChange, tileScale, tileScaleKeyframe, 
   </div>;
 }
 
-function MediaFillPreview({ kind, sourceLabel, previewUrl, fit, tileScale }: {
+function MediaFillPreview({ kind, sourceLabel, previewUrl, fit, tileScale, onChoose, onMakeImage, bottomInset = false }: {
   kind: "image" | "video";
   sourceLabel?: string;
   previewUrl?: string;
   fit: MediaFillFit;
   tileScale: number;
+  onChoose?: () => void;
+  onMakeImage?: () => void;
+  bottomInset?: boolean;
 }) {
   const selected = !!sourceLabel;
   return <>
@@ -487,7 +489,7 @@ function MediaFillPreview({ kind, sourceLabel, previewUrl, fit, tileScale }: {
       data-state={previewUrl ? "bound" : "empty"}
       data-fit={fit}
       aria-label={selected ? `${kind} preview: ${sourceLabel}` : `${kind} preview: empty`}
-      className="relative mx-[16px] size-[208px] shrink-0 overflow-hidden rounded-c-md bg-c-bg-secondary ring-1 ring-inset ring-c-border"
+      className={clsx("group relative mx-[16px] size-[208px] shrink-0 overflow-hidden rounded-c-md bg-c-bg-secondary ring-1 ring-inset ring-c-border", bottomInset && "mb-[16px]")}
       style={!previewUrl ? {
         backgroundImage: "repeating-conic-gradient(var(--color-bg-secondary) 0% 25%, var(--color-bg) 0% 50%)",
         backgroundSize: "16px 16px",
@@ -496,11 +498,76 @@ function MediaFillPreview({ kind, sourceLabel, previewUrl, fit, tileScale }: {
       {previewUrl && kind === "image" && fit === "tile" && <div aria-hidden className="absolute inset-0" style={{ backgroundImage: `url(${JSON.stringify(previewUrl)})`, backgroundRepeat: "repeat", backgroundSize: `${tileScale}% auto` }} />}
       {previewUrl && kind === "image" && fit !== "tile" && <img src={previewUrl} alt="" className={clsx("absolute inset-0 size-full", fit === "fit" ? "object-contain" : fit === "fill" ? "object-fill" : "object-cover")} />}
       {previewUrl && kind === "video" && <video src={previewUrl} aria-hidden muted playsInline preload="metadata" className={clsx("absolute inset-0 size-full", fit === "fit" ? "object-contain" : fit === "fill" ? "object-fill" : "object-cover")} />}
-      {!previewUrl && <div className="absolute inset-0 flex items-center justify-center text-c-icon-secondary">
+      {(onChoose || (kind === "image" && onMakeImage)) && <div
+        data-composa-media-preview-actions
+        className={clsx(
+          "absolute inset-0 flex flex-col items-center justify-center gap-[8px] px-[32px] transition-opacity",
+          previewUrl ? "bg-black/35 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100" : "opacity-100",
+        )}
+      >
+        {onChoose && <Button variant="Primary" label={selected ? "Replace media…" : "Choose media…"}
+          ariaLabel={selected ? "Replace media…" : "Choose media…"} className="w-full" onClick={onChoose} />}
+        {kind === "image" && onMakeImage && <Button variant="Secondary" icon={<ImagePlus size={14} strokeWidth={1.5} />}
+          iconLead="left" label="Make an image" className="w-full" onClick={onMakeImage} />}
+      </div>}
+      {!previewUrl && !onChoose && <div className="absolute inset-0 flex items-center justify-center text-c-icon-secondary">
         {kind === "image" ? <Image size={24} strokeWidth={1.5} /> : <SquarePlay size={24} strokeWidth={1.5} />}
       </div>}
     </div>
   </>;
+}
+
+const timeLabel = (seconds: number) => {
+  const safe = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+  const minutes = Math.floor(safe / 60);
+  return `${minutes}:${Math.floor(safe % 60).toString().padStart(2, "0")}`;
+};
+
+function VideoPlaybackControls({ previewUrl, value, onChange, onApplyToAll }: {
+  previewUrl?: string;
+  value: VideoPlaybackOptions;
+  onChange: (patch: Partial<VideoPlaybackOptions>) => void;
+  onApplyToAll?: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const togglePlayback = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) void video.play(); else video.pause();
+  };
+  const seek = (seconds: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.currentTime = seconds;
+    setCurrentTime(seconds);
+  };
+  const rows: Array<[keyof VideoPlaybackOptions, string]> = [
+    ["loop", "Loop"],
+    ["playSound", "Play sound"],
+    ["autoplay", "Autoplay"],
+    ["showPlaybackControls", "Show playback controls"],
+  ];
+  return <div data-composa-video-playback-controls className="px-[16px] pb-[16px] pt-[8px]">
+    {previewUrl && <video ref={videoRef} src={previewUrl} className="hidden" preload="metadata" loop={value.loop} muted={!value.playSound}
+      onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onTimeUpdate={event => setCurrentTime(event.currentTarget.currentTime)}
+      onLoadedMetadata={event => setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0)} />}
+    <div className="mb-[12px] flex h-[24px] items-center gap-[8px]">
+      <Button variant="Ghost" ariaLabel={playing ? "Pause video preview" : "Play video preview"} iconLead="center"
+        icon={playing ? <Pause size={16} strokeWidth={1.5} /> : <Play size={16} strokeWidth={1.5} />} disabled={!previewUrl} onClick={togglePlayback} />
+      <div className="min-w-0 flex-1"><Slider ariaLabel="Video preview position" min={0} max={Math.max(duration, 0.01)} step={0.01}
+        value={Math.min(currentTime, Math.max(duration, 0.01))} onChange={seek} disabled={!previewUrl} /></div>
+      <span className="w-[36px] text-right text-[11px] text-c-text">{timeLabel(currentTime)}</span>
+    </div>
+    <div className="flex flex-col gap-[2px]">
+      {rows.map(([key, label]) => <div key={key} className="flex h-[26px] items-center justify-between text-[11px] text-c-text">
+        <span>{label}</span><Checkbox checked={value[key]} label={label} onChange={checked => onChange({ [key]: checked })} />
+      </div>)}
+    </div>
+    {onApplyToAll && <Button variant="Secondary" label="Apply to all videos" className="mt-[8px] w-full" onClick={onApplyToAll} />}
+  </div>;
 }
 
 // ─── Gradient stop row ────────────────────────────────────────────────────────
@@ -653,12 +720,16 @@ export function ColorDialog({
   imageAdjustmentKeyframes,
   imageAdjustmentsReadOnly = false,
   onChooseImage,
+  onMakeImage,
   imageSourceLabel,
   imagePreviewUrl,
   onImageAdjustmentChange,
   onCreateStyleOrVariable,
   videoSourceLabel,
   videoPreviewUrl,
+  videoPlayback,
+  onVideoPlaybackChange,
+  onApplyVideoPlaybackToAll,
   onChooseVideo,
   mediaFit = "fill",
   onMediaFitChange,
@@ -952,8 +1023,8 @@ export function ColorDialog({
 
           <ModalBody scrollable className={clsx(
             fillType === "solid" && "h-[408px]",
-            isGradient && "h-[560px]",
-            fillType === "image" && onImageAdjustmentChange && "h-[496px]",
+            isGradient && "max-h-[560px]",
+            fillType === "image" && imageSourceLabel && onImageAdjustmentChange && "h-[496px]",
           )}>
 
         {/* ── SOLID ──────────────────────────────────────────────────────── */}
@@ -1153,56 +1224,6 @@ export function ColorDialog({
               ))}
             </div>
 
-            {/* The active gradient stop uses the same color editor as Solid. */}
-            <div
-              ref={canvasRef}
-              data-composa-gradient-color-picker
-              className="relative mx-[16px] mt-[8px] cursor-crosshair touch-none select-none"
-              style={{ height: 208, width: 208 }}
-              onPointerDown={e => { setDragging(true); updatePicker(e); try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* synthetic */ } }}
-              onPointerMove={e => { if (dragging) updatePicker(e); }}
-              onPointerUp={e => { setDragging(false); e.currentTarget.releasePointerCapture(e.pointerId); }}
-            >
-              <div className="absolute inset-0 rounded-c-md overflow-hidden pointer-events-none" style={{ background: canvasBg }} />
-              <div className="absolute inset-0 rounded-c-md pointer-events-none shadow-[inset_0_0_0_1px_rgba(0,0,0,0.12)]" />
-              <div className="absolute -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none"
-                style={{ left: (sat / 100) * 208, top: (1 - bri / 100) * 208 }}>
-                <PickerHandle color={pickerColor} />
-              </div>
-            </div>
-
-            <div data-composa-gradient-slider-row className="flex h-[60px] items-center gap-[12px] px-[16px]">
-              {onEyedropperActivate && <Btn label={eyedropperActive ? "Cancel color sampling" : "Sample color"} active={eyedropperActive}
-                onClick={() => onEyedropperActivate(selectedStopId ?? stops[0]?.id)}>
-                <Pipette size={14} strokeWidth={1.5} />
-              </Btn>}
-              <div className="flex-1 min-w-0"><Slider value={hue} onChange={handleHue} min={0} max={360}
-                trackVariant="gradient" trackGradient="linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)" /></div>
-            </div>
-
-            <div data-composa-gradient-format-row className="flex h-[40px] items-center gap-[8px] px-[16px]">
-              <PopoverMenu align="left" className="w-[64px] shrink-0" trigger={<Dropdown ariaLabel={`Color format: ${colorFormat}`} value={colorFormat} fullWidth />}>
-                {close => <Menu>{COLOR_FORMATS.map(format => <MenuRow key={format} label={format} checked={format === colorFormat}
-                  selectionRole="radio" onClick={() => { setColorFormat(format); close(); }} />)}</Menu>}
-              </PopoverMenu>
-              {colorFormat === "Hex" ? <div className="flex-1 min-w-0"><ColorInput fullWidth color={`#${hex}`}
-                onSwatchClick={() => { const id = selectedStopId ?? stops[0]?.id; if (id) focusStopHex(id); }}
-                onColorChange={handleHex} /></div>
-                : <div className="flex flex-1 min-w-0 gap-[2px]">{colorComponents.map((value, index) => <NumericInput key={index}
-                  ariaLabel={`${colorFormat} ${index + 1}`} value={value} min={0}
-                  max={colorFormat === "RGB" ? 255 : index === 0 ? 360 : 100}
-                  onChange={next => handleColorComponent(index, next)} className="min-w-0 flex-1" />)}</div>}
-            </div>
-
-            <div data-composa-gradient-swatches className="min-h-[76px] border-t border-c-border">
-              <div className="h-[36px] px-[16px] pt-[12px]"><span className={clsx(FONT, "text-[11px] font-[550] text-c-text")}>On this page</span></div>
-              <div className="flex min-h-[40px] flex-wrap items-center gap-[8px] px-[16px] py-[8px]">
-                {swatches.length === 0 && <span className="text-[11px] text-c-text-secondary">No colors on this page</span>}
-                {swatches.map(color => <button key={color} type="button" className="rounded-[3px] size-[16px] ring-1 ring-inset ring-[rgba(0,0,0,0.1)]"
-                  style={{ backgroundColor: color }} aria-label={color} onClick={() => handleHex(color.replace("#", ""))} />)}
-              </div>
-            </div>
-
             <div className="pb-[12px]" />
           </>
         )}
@@ -1210,17 +1231,17 @@ export function ColorDialog({
         {/* ── IMAGE ─────────────────────────────────────────────────────── */}
         {fillType === "image" && (
           <>
-            <MediaFitControl kind="image" value={mediaFit} onChange={onMediaFitChange}
+            {imageSourceLabel && <MediaFitControl kind="image" value={mediaFit} onChange={onMediaFitChange}
               tileScale={mediaTileScale} tileScaleKeyframe={mediaTileScaleKeyframe} onTileScaleChange={onMediaTileScaleChange}
-              selected={!!imageSourceLabel} onChoose={onChooseImage}
               onRotate={onRotateMedia}
-              onEditCrop={imageSourceLabel && onEditCrop ? () => { onEditCrop(); onClose(); } : undefined} />
-            <MediaFillPreview kind="image" sourceLabel={imageSourceLabel} previewUrl={imagePreviewUrl} fit={mediaFit} tileScale={mediaTileScale} />
+              />}
+            <MediaFillPreview kind="image" sourceLabel={imageSourceLabel} previewUrl={imagePreviewUrl} fit={mediaFit} tileScale={mediaTileScale}
+              onChoose={onChooseImage} onMakeImage={onMakeImage} />
 
             {/* Image adjustments — same rule: every slider was handed a value
                 and no onChange, so each drag was thrown away. Shown only when
                 the host can receive the change. */}
-            {onImageAdjustmentChange && (
+            {imageSourceLabel && onImageAdjustmentChange && (
               <>
                 <div data-composa-image-adjustments className="flex h-[232px] flex-col pt-[8px]">
                   <AdjustRow label="Exposure"    value={imageExposure}    disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.exposure} onChange={v => onImageAdjustmentChange("exposure", v)} />
@@ -1283,12 +1304,14 @@ export function ColorDialog({
 
         {fillType === "video" && videoAvailable && (
           <>
-            <MediaFitControl kind="video" value={mediaFit === "tile" ? "fill" : mediaFit} onChange={onMediaFitChange}
+            {videoSourceLabel && <MediaFitControl kind="video" value={mediaFit === "tile" ? "fill" : mediaFit} onChange={onMediaFitChange}
               tileScale={mediaTileScale}
-              selected={!!videoSourceLabel} onChoose={onChooseVideo}
               onRotate={onRotateMedia}
-              onEditCrop={videoSourceLabel && onEditCrop ? () => { onEditCrop(); onClose(); } : undefined} />
-            <MediaFillPreview kind="video" sourceLabel={videoSourceLabel} previewUrl={videoPreviewUrl} fit={mediaFit === "tile" ? "fill" : mediaFit} tileScale={mediaTileScale} />
+              />}
+            <MediaFillPreview kind="video" sourceLabel={videoSourceLabel} previewUrl={videoPreviewUrl} fit={mediaFit === "tile" ? "fill" : mediaFit} tileScale={mediaTileScale}
+              onChoose={onChooseVideo} bottomInset={!videoSourceLabel || !videoPlayback || !onVideoPlaybackChange} />
+            {videoSourceLabel && videoPlayback && onVideoPlaybackChange && <VideoPlaybackControls previewUrl={videoPreviewUrl} value={videoPlayback}
+              onChange={onVideoPlaybackChange} onApplyToAll={onApplyVideoPlaybackToAll} />}
           </>
         )}
           </ModalBody>

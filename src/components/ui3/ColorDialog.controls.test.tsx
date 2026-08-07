@@ -137,24 +137,45 @@ describe("image fill", () => {
   it("hides the select control when no host picker is wired", () => {
     const markup = html({ fillType: "image" });
     expect(markup).toContain("repeating-conic-gradient");         // the image panel DID render
-    expect(markup).not.toContain("Select image");
+    expect(markup).not.toContain("Choose media…");
   });
 
   it("shows an explicit select control that actually calls the host picker", () => {
     const chooseImage = vi.fn();
     const renderer = render({ fillType: "image", onChooseImage: chooseImage });
-    const [upload] = byLabel(renderer, "Select image");
+    const [upload] = byLabel(renderer, "Choose media…");
     expect(upload).toBeDefined();
     act(() => upload.props.onClick({}));
     expect(chooseImage).toHaveBeenCalledOnce();
     act(() => renderer.unmount());
   });
 
+  it("keeps image actions on the preview and reveals populated actions on hover or focus", () => {
+    const markup = html({
+      fillType: "image",
+      imageSourceLabel: "photo.png",
+      imagePreviewUrl: "blob:photo",
+      onChooseImage: () => undefined,
+      onMakeImage: () => undefined,
+    });
+    expect(markup).toContain('data-composa-media-preview-actions="true"');
+    expect(markup).toContain("group-hover:opacity-100");
+    expect(markup).toContain("group-focus-within:opacity-100");
+    expect(markup).toContain("Replace media…");
+    expect(markup).toContain("Make an image");
+    expect(markup.indexOf("Replace media…")).toBeGreaterThan(markup.indexOf('data-composa-media-fill-preview="image"'));
+  });
+
+  it("renders adjustment value as a centered delta from neutral", () => {
+    const markup = html({ fillType: "image", imageSourceLabel: "bound.png", imageExposure: 25, onImageAdjustmentChange: () => undefined });
+    expect(markup).toContain('data-composa-slider-centered-fill="true"');
+  });
+
   it("renders media rotation only for a host command and invokes it", () => {
     expect(html({ fillType: "image", onChooseImage: () => undefined })).not.toContain('aria-label="Rotate image 90 degrees"');
 
     const onRotateMedia = vi.fn();
-    const renderer = render({ fillType: "image", onChooseImage: () => undefined, onRotateMedia });
+    const renderer = render({ fillType: "image", imageSourceLabel: "bound.png", onChooseImage: () => undefined, onRotateMedia });
     const [rotate] = byLabel(renderer, "Rotate image 90 degrees");
     act(() => rotate.props.onClick());
     expect(onRotateMedia).toHaveBeenCalledOnce();
@@ -170,13 +191,13 @@ describe("image fill", () => {
 
   it("commits each adjustment under its own name once a handler exists", () => {
     const onAdjust = vi.fn();
-    const markup = html({ fillType: "image", onImageAdjustmentChange: onAdjust });
+    const markup = html({ fillType: "image", imageSourceLabel: "bound.png", onImageAdjustmentChange: onAdjust });
     expect(markup).toContain("Exposure");
     expect(markup).toContain("Shadows");
 
     // Each slider's own input has to reach the host — the regression was seven
     // sliders that moved, kept their own internal state, and told nobody.
-    const renderer = render({ fillType: "image", onImageAdjustmentChange: onAdjust }, nodeMock());
+    const renderer = render({ fillType: "image", imageSourceLabel: "bound.png", onImageAdjustmentChange: onAdjust }, nodeMock());
     const sliders = host(renderer, instance => instance.type === "input" && instance.props.type === "range");
     expect(sliders).toHaveLength(7);
     act(() => sliders[0].props.onChange({ target: { value: "40" } }));
@@ -215,6 +236,34 @@ describe("image fill", () => {
     expect(onToggle).not.toHaveBeenCalled();
     expect(onAdjust).not.toHaveBeenCalled();
     act(() => renderer.unmount());
+  });
+});
+
+describe("video fill", () => {
+  const playback = { loop: true, playSound: false, autoplay: true, showPlaybackControls: true };
+
+  it("renders preview transport and only persisted playback controls", () => {
+    const onChange = vi.fn();
+    const renderer = render({
+      fillType: "video",
+      capabilities: { videoFill: true },
+      onChooseVideo: () => undefined,
+      videoSourceLabel: "clip.mp4",
+      videoPreviewUrl: "blob:clip",
+      videoPlayback: playback,
+      onVideoPlaybackChange: onChange,
+    }, nodeMock());
+    expect(host(renderer, instance => instance.props["data-composa-video-playback-controls"] === true)).toHaveLength(1);
+    const playSound = renderer.root.findByProps({ label: "Play sound" });
+    act(() => playSound.props.onChange(true));
+    expect(onChange).toHaveBeenCalledWith({ playSound: true });
+    act(() => renderer.unmount());
+  });
+
+  it("omits the apply-all action unless the host owns the command", () => {
+    const base = { fillType: "video", capabilities: { videoFill: true }, onChooseVideo: () => undefined, videoSourceLabel: "clip.mp4", videoPlayback: playback, onVideoPlaybackChange: () => undefined };
+    expect(html(base)).not.toContain("Apply to all videos");
+    expect(html({ ...base, onApplyVideoPlaybackToAll: () => undefined })).toContain("Apply to all videos");
   });
 });
 
@@ -361,13 +410,12 @@ describe("gradient stops", () => {
     expect(markup).not.toContain('type="color"');
   });
 
-  it("shows the full color editor for the selected gradient stop", () => {
+  it("keeps gradient editing compact after the stop rows", () => {
     const markup = html({ fillType: "linear", gradientStops: stops, swatches: ["#112233"] });
-    expect(markup).toContain("data-composa-gradient-color-picker");
-    expect(markup).toContain("data-composa-gradient-slider-row");
-    expect(markup).toContain("data-composa-gradient-format-row");
-    expect(markup).toContain("data-composa-gradient-swatches");
-    expect(markup).toContain("On this page");
+    expect(markup).not.toContain("data-composa-gradient-color-picker");
+    expect(markup).not.toContain("data-composa-gradient-slider-row");
+    expect(markup).not.toContain("data-composa-gradient-format-row");
+    expect(markup).not.toContain("data-composa-gradient-swatches");
   });
 
   it("re-orders the gradient when a stop is dragged past its neighbour", () => {

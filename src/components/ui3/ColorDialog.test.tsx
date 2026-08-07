@@ -103,7 +103,7 @@ describe("ColorDialog anchored inspector contract", () => {
     expect(available).toContain('data-state="empty"');
     expect(available).toContain("size-[208px]");
     expect(available).toContain("lucide-square-play");
-    expect(available).toContain('aria-label="Select video"');
+    expect(available).toContain('aria-label="Choose media…"');
   });
 
   it.each([
@@ -125,7 +125,7 @@ describe("ColorDialog anchored inspector contract", () => {
     expect(html).toContain("size-[208px]");
     expect(html).toContain(`src="${previewUrl}"`);
     expect(html).toContain(sourceLabel);
-    expect(html).toContain(`aria-label="Replace ${kind}"`);
+    expect(html).toContain('aria-label="Replace media…"');
   });
 
   it("projects persisted renderer-backed fit modes into both media previews", () => {
@@ -174,21 +174,17 @@ describe("ColorDialog anchored inspector contract", () => {
     expect(html).toContain('aria-pressed="true"');
   });
 
-  it("offers Edit crop only for bound Crop media and closes after emitting it", () => {
+  it("does not add a second Edit crop entry point after Crop is selected", () => {
     const onEditCrop = vi.fn(), onClose = vi.fn();
     let renderer!: ReactTestRenderer;
     act(() => { renderer = create(<ColorDialog open onClose={onClose} trigger={<button>Color</button>} fillType="image" mediaFit="crop"
       onMediaFitChange={() => undefined} imageSourceLabel="cover.png" imagePreviewUrl="blob:image" onEditCrop={onEditCrop} />); });
-    const edit = renderer.root.findByProps({ "aria-label": "Edit crop" });
-    act(() => edit.props.onClick());
-    expect(onEditCrop).toHaveBeenCalledOnce();
-    expect(onClose).toHaveBeenCalledOnce();
-    act(() => renderer.update(<ColorDialog open onClose={onClose} trigger={<button>Color</button>} fillType="image" mediaFit="crop"
-      onMediaFitChange={() => undefined} onEditCrop={onEditCrop} />));
     expect(renderer.root.findAll(node => node.props["aria-label"] === "Edit crop")).toHaveLength(0);
+    expect(onEditCrop).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
-  it("samples the selected gradient stop instead of silently replacing the first stop", () => {
+  it("does not append the full picker or eyedropper after compact gradient stop rows", () => {
     const onEyedropperActivate = vi.fn();
     let renderer!: ReactTestRenderer;
     act(() => { renderer = create(
@@ -200,16 +196,8 @@ describe("ColorDialog anchored inspector contract", () => {
         ]}
         onEyedropperActivate={onEyedropperActivate} />,
     ); });
-    const secondStop = renderer.root.findByProps({ "aria-label": "Stop 2" });
-    act(() => secondStop.props.onPointerDown({
-      button: 0,
-      pointerId: 7,
-      preventDefault: () => undefined,
-      currentTarget: { setPointerCapture: () => undefined },
-    }));
-    const pipette = renderer.root.findByProps({ "aria-label": "Sample color" });
-    act(() => pipette.props.onClick());
-    expect(onEyedropperActivate).toHaveBeenCalledWith("end");
+    expect(renderer.root.findAll(node => node.props["aria-label"] === "Sample color")).toHaveLength(0);
+    expect(onEyedropperActivate).not.toHaveBeenCalled();
   });
 
   it("synchronizes the shared picker when a controlled host switches Solid to Gradient in place", () => {
@@ -222,8 +210,7 @@ describe("ColorDialog anchored inspector contract", () => {
         { id: "start", position: 0, color: "123456", opacity: 100 },
         { id: "end", position: 100, color: "ABCDEF", opacity: 100 },
       ]} onStopsChange={onStopsChange} onHexChange={onHexChange} />));
-    expect(renderer.root.findByProps({ "data-composa-gradient-color-picker": true })).toBeDefined();
-    const activeHex = renderer.root.findByProps({ "aria-label": "Color hex" });
+    const activeHex = renderer.root.findByProps({ "aria-label": "Stop 1 hex" });
     expect(activeHex.props.value).toBe("123456");
     act(() => activeHex.props.onFocus({ currentTarget: { select: () => undefined } }));
     act(() => activeHex.props.onChange({ target: { value: "654321" } }));

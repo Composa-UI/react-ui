@@ -20,7 +20,7 @@ describe("ColorDialog Editor-Study fidelity geometry", () => {
       headerHeight: 40,
       toolbarHeight: 41,
       solid: { height: 489, bodyHeight: 408, pickerSize: 208, formatRowHeight: 40 },
-      gradient: { height: 641, bodyHeight: 560, typeRowHeight: 48, barWidth: 208, barHeight: 32, stopRowHeight: 32 },
+      gradient: { height: 297, bodyHeight: 216, typeRowHeight: 48, barWidth: 208, barHeight: 32, stopRowHeight: 32 },
       image: { height: 577, bodyHeight: 496, fitRowHeight: 48, previewSize: 208, adjustmentRowHeight: 32, adjustmentSliderWidth: 120 },
     });
   });
@@ -51,7 +51,7 @@ describe("ColorDialog Editor-Study fidelity geometry", () => {
       onFlipGradient: () => undefined,
       onRotateGradient: () => undefined,
     });
-    expect(html).toContain("h-[560px]");
+    expect(html).toContain("max-h-[560px]");
     expect(html).toContain('aria-label="Gradient type"');
     expect(html).toContain("data-composa-gradient-preview");
     expect(html).toContain("h-[32px]");
@@ -61,8 +61,8 @@ describe("ColorDialog Editor-Study fidelity geometry", () => {
     expect(html).toContain('aria-label="Flip gradient"');
     expect(html).toContain('aria-label="Rotate gradient"');
     expect(html.match(/data-composa-gradient-stop-row=/g)).toHaveLength(2);
-    expect(html).toContain("data-composa-gradient-color-picker");
-    expect(html).toContain("data-composa-gradient-swatches");
+    expect(html).not.toContain("data-composa-gradient-color-picker");
+    expect(html).not.toContain("data-composa-gradient-swatches");
   });
 
   it.each([false, true])("keeps %s bound Image media on the 208px preview contract", bound => {
@@ -76,18 +76,33 @@ describe("ColorDialog Editor-Study fidelity geometry", () => {
       imagePreviewUrl: bound ? "blob:cover" : undefined,
       onImageAdjustmentChange: bound ? () => undefined : undefined,
     });
-    expect(html).toContain("data-composa-media-fit-row");
-    expect(html).toContain("h-[48px]");
+    expect(html).toContain(bound ? "data-composa-media-fit-row" : "data-state=\"empty\"");
     expect(html).toContain("size-[208px]");
-    expect(html).toContain(`aria-label="${bound ? "Replace" : "Select"} image"`);
-    expect(html).toContain('aria-label="Rotate image 90 degrees"');
+    expect(html).toContain(`aria-label="${bound ? "Replace" : "Choose"} media…"`);
+    expect(html).toContain(bound ? 'aria-label="Rotate image 90 degrees"' : 'data-state="empty"');
     if (bound) {
       expect(html).toContain("h-[496px]");
       expect(html.match(/data-composa-image-adjustment-row=/g)).toHaveLength(7);
       expect(html).toContain("w-[120px]");
     } else {
       expect(html).toContain('data-state="empty"');
+      expect(html).not.toContain("data-composa-media-fit-row");
+      expect(html).not.toContain('aria-label="Rotate image 90 degrees"');
       expect(html).not.toContain("data-composa-image-adjustments");
     }
+  });
+
+  it("keeps adjustment and playback controls out of unbound media placeholders", () => {
+    const image = render({ fillType: "image", onChooseImage: () => undefined, onImageAdjustmentChange: () => undefined });
+    const video = render({ fillType: "video", capabilities: { videoFill: true }, onChooseVideo: () => undefined,
+      videoPlayback: { loop: true, playSound: false, autoplay: true, showPlaybackControls: true }, onVideoPlaybackChange: () => undefined });
+    expect(image).not.toContain("data-composa-image-adjustments");
+    expect(video).not.toContain("data-composa-video-playback-controls");
+    expect(image).not.toContain("data-composa-media-fit-row");
+    expect(video).not.toContain("data-composa-media-fit-row");
+    expect(image).not.toContain("Rotate image 90 degrees");
+    expect(video).not.toContain("Rotate video 90 degrees");
+    expect(image).toContain("Choose media…");
+    expect(video).toContain("Choose media…");
   });
 });
