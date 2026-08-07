@@ -594,7 +594,8 @@ describe("Inspector fidelity semantics", () => {
     expect(blend).toContain('fill="none"');
     expect(element).not.toContain("BlendDroplet");
 
-    const slide = renderToStaticMarkup(<PropertyPanel mode="slide" slideBackgroundType="video" />);
+    const slide = renderToStaticMarkup(<PropertyPanel mode="slide" slideBackgroundType="video"
+      capabilities={{ videoFill: true }} onChooseSlideBackgroundVideo={() => undefined} />);
     expect(slide).toContain('data-icon-semantic="fill-video"');
     expect(slide).toContain("lucide-square-play");
 
