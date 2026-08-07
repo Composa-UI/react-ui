@@ -1890,9 +1890,11 @@ function strokeWeightModeIcon(mode: StrokeWeightMode, size = 16) {
   return <Square {...props} />;
 }
 
-function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, swatches, capabilities, readOnly, activeStackDialog, onActiveStackDialogChange }: {
+function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, onEyedropperActivate, activeEyedropperId, swatches, capabilities, readOnly, activeStackDialog, onActiveStackDialogChange }: {
   entries?: ElementStrokeSetting[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<ElementStrokeSetting, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
+  onEyedropperActivate?: (id: string) => void;
+  activeEyedropperId?: string | null;
   swatches?: string[];
   capabilities: Required<InspectorCapabilities>;
   readOnly: boolean;
@@ -1952,6 +1954,8 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
               />}
               hex={stroke.color.replace("#", "")}
               onHexChange={color => update(stroke.id, { color: `#${color.replace(/^#/, "")}` })}
+              onEyedropperActivate={onEyedropperActivate ? () => onEyedropperActivate(stroke.id) : undefined}
+              eyedropperActive={activeEyedropperId === stroke.id}
             />
           </PanelEntry>
           {/* Row 2 — Position · Weight · settings · edge targeting */}
@@ -2044,9 +2048,11 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
 
 // ─── Section: Effects ─────────────────────────────────────────────────────────
 
-function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities, activeStackDialog, onActiveStackDialogChange }: {
+function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, onEyedropperActivate, activeEyedropperId, capabilities, activeStackDialog, onActiveStackDialogChange }: {
   entries?: ElementEffectSetting[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<ElementEffectSetting, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
+  onEyedropperActivate?: (id: string) => void;
+  activeEyedropperId?: string | null;
   capabilities: Required<InspectorCapabilities>;
   activeStackDialog: string | null;
   onActiveStackDialogChange: (dialog: string | null) => void;
@@ -2086,6 +2092,8 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
             <EffectDetailsDialog open={activeStackDialog === `effect:${effect.id}`} value={effect}
               trigger={<Dropdown value={effect.type} fullWidth ariaLabel={`Effect type: ${effect.type}`} onClick={() => onActiveStackDialogChange(`effect:${effect.id}`)} />}
               capabilities={capabilities}
+              onEyedropperActivate={onEyedropperActivate ? () => onEyedropperActivate(effect.id) : undefined}
+              eyedropperActive={activeEyedropperId === effect.id}
               onChange={patch => update(effect.id, patch)} onClose={() => onActiveStackDialogChange(null)} />
           </PanelEntry>
         </PanelReorderableEntry>
@@ -2283,10 +2291,12 @@ const DEMO_SELECTION_COLORS: ElementSelectionColorSetting[] = [
   { id: "demo-selection-6", color: "#9747FF", opacity: 100 },
 ];
 
-function SelectionColorsSection({ colors, onUpdate, onSelectAll, swatches, capabilities = { templates: true, styles: true, variables: true, libraries: true, videoFill: false, dropZone: false, animationDelay: false, layoutFidelityTools: false } }: {
+function SelectionColorsSection({ colors, onUpdate, onSelectAll, onEyedropperActivate, activeEyedropperId, swatches, capabilities = { templates: true, styles: true, variables: true, libraries: true, videoFill: false, dropZone: false, animationDelay: false, layoutFidelityTools: false } }: {
   colors?: ElementSelectionColorSetting[];
   onUpdate?: (id: string, patch: Partial<Omit<ElementSelectionColorSetting, "id">>) => void;
   onSelectAll?: (id: string) => void;
+  onEyedropperActivate?: (id: string, gradientStopId?: string) => void;
+  activeEyedropperId?: string | null;
   swatches?: string[];
   capabilities?: Required<InspectorCapabilities>;
 }) {
@@ -2314,6 +2324,8 @@ function SelectionColorsSection({ colors, onUpdate, onSelectAll, swatches, capab
               onStopsChange={stops => onUpdate?.(c.id, { gradientStops: stops })}
               onHexChange={hex => onUpdate?.(c.id, { color: `#${hex.replace(/^#/, "")}` })}
               onOpacityChange={opacity => onUpdate?.(c.id, { opacity })}
+              onEyedropperActivate={onEyedropperActivate ? stopId => onEyedropperActivate(c.id, stopId) : undefined}
+              eyedropperActive={activeEyedropperId === c.id}
             />
           </div>
           {/* Reserved slot; actions reveal on this row's hover — no reflow (§5.8) */}
@@ -3252,13 +3264,19 @@ export interface PropertyPanelProps {
   /** Locked or inherited-locked selections may inspect Stroke Settings but cannot mutate them. */
   strokeReadOnly?: boolean;
   onAddStroke?: () => void; onUpdateStroke?: (id: string, patch: Partial<Omit<ElementStrokeSetting, "id">>) => void; onToggleStroke?: (id: string, visible: boolean) => void; onReorderStroke?: (id: string, targetId: string) => void; onRemoveStroke?: (id: string) => void;
+  onStrokeEyedropperActivate?: (id: string) => void;
+  activeStrokeEyedropperId?: string | null;
   effects?: ElementEffectSetting[];
   onAddEffect?: () => void; onUpdateEffect?: (id: string, patch: Partial<Omit<ElementEffectSetting, "id">>) => void; onToggleEffect?: (id: string, visible: boolean) => void; onReorderEffect?: (id: string, targetId: string) => void; onRemoveEffect?: (id: string) => void;
+  onEffectEyedropperActivate?: (id: string) => void;
+  activeEffectEyedropperId?: string | null;
   layoutGuides?: ElementLayoutGuideSetting[];
   onAddLayoutGuide?: () => void; onUpdateLayoutGuide?: (id: string, patch: Partial<Omit<ElementLayoutGuideSetting, "id">>) => void; onRemoveLayoutGuide?: (id: string) => void;
   selectionColors?: ElementSelectionColorSetting[];
   onUpdateSelectionColor?: (id: string, patch: Partial<Omit<ElementSelectionColorSetting, "id">>) => void;
   onSelectAllUsingColor?: (id: string) => void;
+  onSelectionColorEyedropperActivate?: (id: string, gradientStopId?: string) => void;
+  activeSelectionColorEyedropperId?: string | null;
   /** Controlled object-animation rows. Pass an empty list for the canonical null state. */
   objectAnimations?: import("./AnimatePanel").ObjectAnimationItem[];
   objectAnimationCallbacks?: import("./AnimatePanel").ObjectAnimationCallbacks;
@@ -4184,7 +4202,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
           />
           {capabilities.layoutFidelityTools && <LayoutGuideSection entries={layoutGuides} onAdd={onAddLayoutGuide} onUpdate={onUpdateLayoutGuide} onRemove={onRemoveLayoutGuide} />}
           {/* Selection colors — reuse the existing element-mode section */}
-          <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} swatches={props.pageSwatches} capabilities={capabilities} />
+          <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor}
+            onEyedropperActivate={props.onSelectionColorEyedropperActivate} activeEyedropperId={props.activeSelectionColorEyedropperId}
+            swatches={props.pageSwatches} capabilities={capabilities} />
           <ExportSection settings={exportSettings} mode={exportMode} frameRate={projectFrameRate} onModeChange={onExportModeChange} onFrameRateChange={onProjectFrameRateChange} targetName={exportTargetName ?? renderedSlideName}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
           </>}
@@ -4397,12 +4417,16 @@ export function PropertyPanel(props: PropertyPanelProps) {
             capabilities={capabilities}
             activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
           <StrokeSection entries={strokes} onAdd={onAddStroke} onUpdate={onUpdateStroke} onToggle={onToggleStroke} onReorder={onReorderStroke} onRemove={onRemoveStroke} swatches={props.pageSwatches} capabilities={capabilities}
+            onEyedropperActivate={props.onStrokeEyedropperActivate} activeEyedropperId={props.activeStrokeEyedropperId}
             readOnly={strokeReadOnly} activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
           <EffectsSection entries={effects} onAdd={onAddEffect} onUpdate={onUpdateEffect} onToggle={onToggleEffect} onReorder={onReorderEffect} onRemove={onRemoveEffect} capabilities={capabilities}
+            onEyedropperActivate={props.onEffectEyedropperActivate} activeEyedropperId={props.activeEffectEyedropperId}
             activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
 
           {/* Selection Colors — multi-select only (§5.8), positioned right after Effects */}
-          {multiSelect && <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} swatches={props.pageSwatches} capabilities={capabilities} />}
+          {multiSelect && <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor}
+            onEyedropperActivate={props.onSelectionColorEyedropperActivate} activeEyedropperId={props.activeSelectionColorEyedropperId}
+            swatches={props.pageSwatches} capabilities={capabilities} />}
 
           <ExportSection settings={exportSettings} mode={exportMode} frameRate={projectFrameRate} onModeChange={onExportModeChange} onFrameRateChange={onProjectFrameRateChange} targetName={exportTargetName ?? elementLabel[elementType]}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />

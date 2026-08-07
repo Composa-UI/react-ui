@@ -44,6 +44,8 @@ export interface EffectDetailsDialogProps {
   value: EffectDetailsValue;
   trigger: ReactElement;
   capabilities?: ColorDialogCapabilities;
+  onEyedropperActivate?: () => void;
+  eyedropperActive?: boolean;
   onChange?: (patch: Partial<EffectDetailsValue>) => void;
   onClose: () => void;
 }
@@ -83,7 +85,7 @@ function PositionRow({ x, y, onXChange, onYChange, keyframe }: {
   </div>;
 }
 
-export function EffectDetailsDialog({ open, value, trigger, capabilities, onChange, onClose }: EffectDetailsDialogProps) {
+export function EffectDetailsDialog({ open, value, trigger, capabilities, onEyedropperActivate, eyedropperActive, onChange, onClose }: EffectDetailsDialogProps) {
   const shadow = value.type === "Drop shadow" || value.type === "Inner shadow";
   // The rendered field anatomy is the capability boundary: both shadow types
   // expose every shadow binding, while blur-only effects can consume only their
@@ -126,6 +128,8 @@ export function EffectDetailsDialog({ open, value, trigger, capabilities, onChan
               solidOnly
               pickerSource="hex"
               capabilities={capabilities}
+              onEyedropperActivate={onEyedropperActivate}
+              eyedropperActive={eyedropperActive}
               hex={(value.color ?? "#000000").replace(/^#/, "")}
               opacity={value.opacity ?? 25}
               onHexChange={hex => onChange?.({ color: `#${hex.replace(/^#/, "")}` })}

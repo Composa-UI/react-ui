@@ -8,14 +8,19 @@ const capture = vi.hoisted(() => ({
   props: undefined as ColorDialogProps | undefined,
   backgroundProps: undefined as ColorDialogProps | undefined,
   selectionProps: undefined as ColorDialogProps | undefined,
+  strokeProps: undefined as ColorDialogProps | undefined,
+  effectProps: undefined as ColorDialogProps | undefined,
 }));
 
 vi.mock("./ColorDialog", () => ({
+  COLOR_DIALOG_NESTED_EFFECT_SIDE_OFFSET: 100,
   ColorDialog: (props: ColorDialogProps) => {
     capture.props = props;
     const trigger = props.trigger as ReactElement<{ ariaLabel?: string }>;
     if (trigger.props.ariaLabel?.startsWith("Background")) capture.backgroundProps = props;
     if (trigger.props.ariaLabel?.startsWith("Selection")) capture.selectionProps = props;
+    if (trigger.props.ariaLabel?.startsWith("Stroke")) capture.strokeProps = props;
+    if (trigger.props.ariaLabel?.startsWith("Effect")) capture.effectProps = props;
     return <div data-test-dialog="fill-color">{props.trigger as ReactElement}</div>;
   },
 }));
@@ -145,15 +150,38 @@ describe("PropertyPanel Fill/Color controlled contract", () => {
 
   it("keeps a gradient as one controlled Selection colors entry", () => {
     const onUpdate = vi.fn();
+    const onEyedropper = vi.fn();
     const stops = [{ id: "a", position: 0, color: "ff0000", opacity: 100 }, { id: "b", position: 100, color: "0000ff", opacity: 100 }];
     let renderer!: ReactTestRenderer;
     act(() => { renderer = create(<PropertyPanel mode="slide" selectionColors={[{
       id: "gradient:one", color: "#ff0000", opacity: 80, usageCount: 2,
       fillType: "linear", gradientStops: stops, gradientPreview: "linear-gradient(90deg,#f00,#00f)",
-    }]} onUpdateSelectionColor={onUpdate} />); });
-    expect(capture.selectionProps).toMatchObject({ fillType: "linear", gradientStops: stops, opacity: 80 });
+    }]} onUpdateSelectionColor={onUpdate} onSelectionColorEyedropperActivate={onEyedropper}
+      activeSelectionColorEyedropperId="gradient:one" />); });
+    expect(capture.selectionProps).toMatchObject({ fillType: "linear", gradientStops: stops, opacity: 80, eyedropperActive: true });
     act(() => capture.selectionProps?.onStopsChange?.(stops.slice().reverse()));
+    act(() => capture.selectionProps?.onEyedropperActivate?.("b"));
     expect(onUpdate).toHaveBeenCalledWith("gradient:one", { gradientStops: stops.slice().reverse() });
+    expect(onEyedropper).toHaveBeenCalledWith("gradient:one", "b");
+    act(() => renderer.unmount());
+  });
+
+  it("keeps the shared solid picker live for stroke and effect colors", () => {
+    const onStrokeEyedropper = vi.fn(), onEffectEyedropper = vi.fn();
+    let renderer!: ReactTestRenderer;
+    act(() => { renderer = create(<PropertyPanel elementType="shape"
+      strokes={[{ id: "stroke-1", color: "#000000", opacity: 100, visible: true, weight: 1, align: "inside" }]}
+      effects={[{ id: "effect-1", type: "Drop shadow", visible: true, color: "#000000", opacity: 25 }]}
+      onStrokeEyedropperActivate={onStrokeEyedropper} activeStrokeEyedropperId="stroke-1"
+      onEffectEyedropperActivate={onEffectEyedropper} activeEffectEyedropperId="effect-1" />); });
+    expect(capture.strokeProps).toMatchObject({ solidOnly: true, eyedropperActive: true });
+    act(() => capture.strokeProps?.onEyedropperActivate?.());
+    expect(onStrokeEyedropper).toHaveBeenCalledWith("stroke-1");
+    if (capture.effectProps) {
+      expect(capture.effectProps).toMatchObject({ solidOnly: true, eyedropperActive: true });
+      act(() => capture.effectProps?.onEyedropperActivate?.());
+      expect(onEffectEyedropper).toHaveBeenCalledWith("effect-1");
+    }
     act(() => renderer.unmount());
   });
 
