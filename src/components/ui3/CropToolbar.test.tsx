@@ -1,27 +1,35 @@
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { describe, expect, it } from "vitest";
 import { CanvasCropOverlay, CropToolbar } from "./CropToolbar";
-import { MenuRow, PopoverMenu } from "./Menu";
+import { MenuRow } from "./Menu";
+import { Slider } from "./Slider";
+import { SplitButton } from "./SplitButton";
 
 describe("CropToolbar", () => {
-  it("exposes resize, aspect, and completion without owning document state", () => {
+  it("exposes compact crop controls and completion without owning document state", () => {
     const calls: string[] = [];
     let renderer!: ReactTestRenderer;
     act(() => { renderer = create(<CropToolbar aspect="16:9" onAspectChange={value => calls.push(value)} onResizeToFill={() => calls.push("fill")} zoom={1} onZoomChange={value => calls.push(`zoom:${value}`)} onCancel={() => calls.push("cancel")} onDone={() => calls.push("done")} />); });
-    expect(renderer.root.findByProps({ role: "toolbar" }).props["aria-label"]).toBe("Crop tools");
+    const toolbar = renderer.root.findByProps({ role: "toolbar" });
+    expect(toolbar.props["aria-label"]).toBe("Crop tools");
+    expect(toolbar.props.className).toContain("h-[40px]");
+    expect(renderer.root.findByType(Slider).props.size).toBe("compact");
     act(() => renderer.root.findByProps({ "aria-label": "Crop zoom" }).props.onChange({ target: { value: "1.5" } }));
     act(() => renderer.root.findByProps({ ariaLabel: "Resize to fill" }).props.onClick());
     act(() => renderer.root.findByProps({ label: "Cancel" }).props.onClick());
     act(() => renderer.root.findByProps({ ariaLabel: "Done" }).props.onClick());
     expect(calls).toEqual(["zoom:1.5", "fill", "cancel", "done"]);
+    expect(renderer.root.findByProps({ label: "Cancel" }).props.variant).toBe("Secondary");
+    expect(renderer.root.findByProps({ ariaLabel: "Done" }).props.className).toContain("size-[24px]");
 
-    const popover = renderer.root.findByType(PopoverMenu);
-    let menu!: ReactTestRenderer;
-    act(() => { menu = create(popover.props.children(() => calls.push("closed"))); });
-    const rows = menu.root.findAllByType(MenuRow);
+    const proportions = renderer.root.findByType(SplitButton);
+    act(() => proportions.props.onIconClick());
+    expect(calls).toEqual(["zoom:1.5", "fill", "cancel", "done", "free"]);
+    act(() => proportions.props.onChevronClick());
+    const rows = renderer.root.findAllByType(MenuRow);
     expect(rows.map(row => row.props.label)).toEqual(["Free", "Original", "1:1", "4:3", "16:9"]);
     act(() => rows.find(row => row.props.label === "4:3")!.props.onClick());
-    expect(calls).toEqual(["zoom:1.5", "fill", "cancel", "done", "4:3", "closed"]);
+    expect(calls).toEqual(["zoom:1.5", "fill", "cancel", "done", "free", "4:3"]);
   });
 
   it("publishes pointer start, incremental deltas, and one end for pointer up/cancel", () => {
