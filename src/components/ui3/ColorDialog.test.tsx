@@ -213,13 +213,25 @@ describe("ColorDialog anchored inspector contract", () => {
   });
 
   it("synchronizes the shared picker when a controlled host switches Solid to Gradient in place", () => {
+    const onStopsChange = vi.fn();
+    const onHexChange = vi.fn();
     let renderer!: ReactTestRenderer;
     act(() => { renderer = create(<ColorDialog open onClose={() => undefined} trigger={<button>Color</button>} fillType="solid" hex="171717" />); });
     act(() => renderer.update(<ColorDialog open onClose={() => undefined} trigger={<button>Color</button>} fillType="linear"
       gradientStops={[
         { id: "start", position: 0, color: "123456", opacity: 100 },
         { id: "end", position: 100, color: "ABCDEF", opacity: 100 },
-      ]} />));
-    expect(renderer.root.findByProps({ "aria-label": "Color hex" }).props.value).toBe("123456");
+      ]} onStopsChange={onStopsChange} onHexChange={onHexChange} />));
+    expect(renderer.root.findByProps({ "data-composa-gradient-color-picker": true })).toBeDefined();
+    const activeHex = renderer.root.findByProps({ "aria-label": "Color hex" });
+    expect(activeHex.props.value).toBe("123456");
+    act(() => activeHex.props.onFocus({ currentTarget: { select: () => undefined } }));
+    act(() => activeHex.props.onChange({ target: { value: "654321" } }));
+    act(() => activeHex.props.onBlur());
+    expect(onStopsChange).toHaveBeenLastCalledWith([
+      { id: "start", position: 0, color: "654321", opacity: 100 },
+      { id: "end", position: 100, color: "ABCDEF", opacity: 100 },
+    ]);
+    expect(onHexChange).not.toHaveBeenCalled();
   });
 });

@@ -722,6 +722,7 @@ export function ColorDialog({
     if (!open || !gradient || !stopsProp?.length) return;
     const nextStop = stopsProp.find(stop => stop.id === selectedStopId) ?? stopsProp[0];
     const picker = hexToHsb(nextStop.color);
+    setFillType(nextType);
     setStops(stopsProp);
     setSelectedStopId(nextStop.id);
     setHex(nextStop.color);
