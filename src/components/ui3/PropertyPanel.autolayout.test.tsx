@@ -198,9 +198,10 @@ describe("Auto-layout gap keyframe affordances (#625)", () => {
       layout={autoLayout({ wrap: true, rowGap: 24 })}
       keyframeControls={{ layoutGap: item, layoutCounterGap: row }} />); });
     const scope = group(renderer!.root, "Alignment and gap");
-    expect(scope.findByType(NumericComboInput).props.keyframe).toBe(item);
+    const itemGap = scope.findAllByType(NumericComboInput).find(node => node.props.ariaLabel === "Gap")!;
+    expect(itemGap.props.keyframe).toBe(item);
     expect(scope.findAllByType(NumericInput).find(node => node.props.ariaLabel === "Row gap")!.props.keyframe).toBe(row);
-    act(() => scope.findByType(NumericComboInput).props.keyframe.onToggle());
+    act(() => itemGap.props.keyframe.onToggle());
     act(() => scope.findAllByType(NumericInput).find(node => node.props.ariaLabel === "Row gap")!.props.keyframe.onToggle());
     expect(item.onToggle).toHaveBeenCalledOnce();
     expect(row.onToggle).toHaveBeenCalledOnce();

@@ -186,7 +186,7 @@ export interface ElementLayoutSettings {
   /** Horizontal-only wrap modifier. */
   wrap?: boolean;
   /** Cross-axis gap between wrapped rows. Meaningful only while wrapping. */
-  rowGap?: number;
+  rowGap?: number | "auto";
   padding: { top: number; right: number; bottom: number; left: number };
   align: string; widthMode: "fixed" | "hug" | "fill"; heightMode: "fixed" | "hug" | "fill"; clipsContent: boolean;
   positioning?: "auto" | "absolute";
@@ -1051,7 +1051,7 @@ interface LayoutAutoProps {
   width?: number; height?: number;
   flowMode?: ElementLayoutSettings["mode"];
   wrap?: boolean;
-  rowGap?: number;
+  rowGap?: number | "auto";
   grid?: ElementGridSettings;
   widthMode?: "fixed" | "hug" | "fill";
   heightMode?: "fixed" | "hug" | "fill";
@@ -1144,8 +1144,9 @@ function LayoutAutoSection({
   const [internalWrap, setInternalWrap] = useState(!!wrapProp);
   const wrapping = renderedFlow === "h" && (wrapControlled ? !!wrapProp : internalWrap);
   const rowGapControlled = rowGapProp !== undefined;
-  const [internalRowGap, setInternalRowGap] = useState(rowGapProp ?? (typeof renderedGap === "number" ? renderedGap : 0));
+  const [internalRowGap, setInternalRowGap] = useState<number | "auto">(rowGapProp ?? (typeof renderedGap === "number" ? renderedGap : 0));
   const renderedRowGap = rowGapControlled ? rowGapProp : internalRowGap;
+  const [lastFixedRowGap, setLastFixedRowGap] = useState(typeof renderedRowGap === "number" ? renderedRowGap : 0);
   const [indivPadding, setIndivPadding] = useState(false);
   // Combined presentation owns two axes, not one all-sides scalar: Top is the
   // vertical source and Right is the horizontal source.
@@ -1193,17 +1194,22 @@ function LayoutAutoSection({
     onLayoutChange?.({ gap: value });
   };
 
-  const emitRowGap = (value: number) => {
-    const next = Math.max(0, value);
+  const emitRowGap = (value: number | "auto") => {
+    const next = value === "auto" ? value : Math.max(0, value);
     if (!rowGapControlled) setInternalRowGap(next);
+    if (typeof next === "number") setLastFixedRowGap(next);
     onLayoutChange?.({ rowGap: next });
   };
 
   useEffect(() => {
     if (typeof gapProp === "number") setLastFixedGap(gapProp);
   }, [gapProp]);
+  useEffect(() => {
+    if (typeof rowGapProp === "number") setLastFixedRowGap(rowGapProp);
+  }, [rowGapProp]);
 
   const gapMode = renderedGap === "auto" ? "auto" : "fixed";
+  const rowGapMode = renderedRowGap === "auto" ? "auto" : "fixed";
   const gapAxis = renderedFlow === "v" ? "vertical" : "horizontal";
   const gapIcon = <AutoLayoutSpacingIcon kind="gap" axis={gapAxis} />;
 
@@ -1225,6 +1231,10 @@ function LayoutAutoSection({
       )}
     </Menu>
   );
+  const rowGapMenu = (close: () => void) => <Menu>
+    <MenuRow type="checkmark" label="Fixed" checked={rowGapMode === "fixed"} onClick={() => { emitRowGap(lastFixedRowGap); close(); }} />
+    <MenuRow type="checkmark" label="Auto" checked={rowGapMode === "auto"} onClick={() => { emitRowGap("auto"); close(); }} />
+  </Menu>;
 
   const settingsValue = {
     mode: flowMode ?? (renderedFlow === "h" ? "horizontal" : renderedFlow === "v" ? "vertical" : renderedFlow === "grid" ? "grid" : "none"),
@@ -1359,15 +1369,19 @@ function LayoutAutoSection({
             // grid section's gap column so the two blocks stay structurally the same
             // ("row gap does not need a title row gap").
             <div>
-              <NumericInput
+              <NumericComboInput
+                dataMode={rowGapMode}
                 ariaLabel="Row gap"
+                dropdownAriaLabel={`Row gap sizing mode: ${rowGapMode === "auto" ? "Auto" : "Fixed"}`}
                 iconLead={<AutoLayoutSpacingIcon kind="gap" axis="vertical" />}
-                value={renderedRowGap}
-                defaultValue={renderedRowGap}
+                readOnlyLabel={rowGapMode === "auto" ? "Auto" : undefined}
+                value={rowGapControlled && typeof renderedRowGap === "number" ? renderedRowGap : undefined}
+                defaultValue={lastFixedRowGap}
                 onChange={emitRowGap}
-                keyframe={rowGapKeyframe}
+                keyframe={rowGapMode === "fixed" ? rowGapKeyframe : undefined}
                 min={0}
                 suffix="px"
+                menu={rowGapMenu}
                 className="w-full"
               />
             </div>
