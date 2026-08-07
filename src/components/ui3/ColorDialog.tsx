@@ -1024,7 +1024,7 @@ export function ColorDialog({
           <ModalBody scrollable className={clsx(
             fillType === "solid" && "h-[408px]",
             isGradient && "max-h-[560px]",
-            fillType === "image" && onImageAdjustmentChange && "h-[496px]",
+            fillType === "image" && imageSourceLabel && onImageAdjustmentChange && "h-[496px]",
           )}>
 
         {/* ── SOLID ──────────────────────────────────────────────────────── */}
@@ -1241,7 +1241,7 @@ export function ColorDialog({
             {/* Image adjustments — same rule: every slider was handed a value
                 and no onChange, so each drag was thrown away. Shown only when
                 the host can receive the change. */}
-            {onImageAdjustmentChange && (
+            {imageSourceLabel && onImageAdjustmentChange && (
               <>
                 <div data-composa-image-adjustments className="flex h-[232px] flex-col pt-[8px]">
                   <AdjustRow label="Exposure"    value={imageExposure}    disabled={imageAdjustmentsReadOnly} keyframe={imageAdjustmentKeyframes?.exposure} onChange={v => onImageAdjustmentChange("exposure", v)} />
@@ -1309,8 +1309,8 @@ export function ColorDialog({
               onRotate={onRotateMedia}
               />
             <MediaFillPreview kind="video" sourceLabel={videoSourceLabel} previewUrl={videoPreviewUrl} fit={mediaFit === "tile" ? "fill" : mediaFit} tileScale={mediaTileScale}
-              onChoose={onChooseVideo} bottomInset={!videoPlayback || !onVideoPlaybackChange} />
-            {videoPlayback && onVideoPlaybackChange && <VideoPlaybackControls previewUrl={videoPreviewUrl} value={videoPlayback}
+              onChoose={onChooseVideo} bottomInset={!videoSourceLabel || !videoPlayback || !onVideoPlaybackChange} />
+            {videoSourceLabel && videoPlayback && onVideoPlaybackChange && <VideoPlaybackControls previewUrl={videoPreviewUrl} value={videoPlayback}
               onChange={onVideoPlaybackChange} onApplyToAll={onApplyVideoPlaybackToAll} />}
           </>
         )}

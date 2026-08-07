@@ -167,7 +167,7 @@ describe("image fill", () => {
   });
 
   it("renders adjustment value as a centered delta from neutral", () => {
-    const markup = html({ fillType: "image", imageExposure: 25, onImageAdjustmentChange: () => undefined });
+    const markup = html({ fillType: "image", imageSourceLabel: "bound.png", imageExposure: 25, onImageAdjustmentChange: () => undefined });
     expect(markup).toContain('data-composa-slider-centered-fill="true"');
   });
 
@@ -191,13 +191,13 @@ describe("image fill", () => {
 
   it("commits each adjustment under its own name once a handler exists", () => {
     const onAdjust = vi.fn();
-    const markup = html({ fillType: "image", onImageAdjustmentChange: onAdjust });
+    const markup = html({ fillType: "image", imageSourceLabel: "bound.png", onImageAdjustmentChange: onAdjust });
     expect(markup).toContain("Exposure");
     expect(markup).toContain("Shadows");
 
     // Each slider's own input has to reach the host — the regression was seven
     // sliders that moved, kept their own internal state, and told nobody.
-    const renderer = render({ fillType: "image", onImageAdjustmentChange: onAdjust }, nodeMock());
+    const renderer = render({ fillType: "image", imageSourceLabel: "bound.png", onImageAdjustmentChange: onAdjust }, nodeMock());
     const sliders = host(renderer, instance => instance.type === "input" && instance.props.type === "range");
     expect(sliders).toHaveLength(7);
     act(() => sliders[0].props.onChange({ target: { value: "40" } }));
@@ -261,7 +261,7 @@ describe("video fill", () => {
   });
 
   it("omits the apply-all action unless the host owns the command", () => {
-    const base = { fillType: "video", capabilities: { videoFill: true }, onChooseVideo: () => undefined, videoPlayback: playback, onVideoPlaybackChange: () => undefined };
+    const base = { fillType: "video", capabilities: { videoFill: true }, onChooseVideo: () => undefined, videoSourceLabel: "clip.mp4", videoPlayback: playback, onVideoPlaybackChange: () => undefined };
     expect(html(base)).not.toContain("Apply to all videos");
     expect(html({ ...base, onApplyVideoPlaybackToAll: () => undefined })).toContain("Apply to all videos");
   });

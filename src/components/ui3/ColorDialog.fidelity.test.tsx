@@ -90,4 +90,14 @@ describe("ColorDialog Editor-Study fidelity geometry", () => {
       expect(html).not.toContain("data-composa-image-adjustments");
     }
   });
+
+  it("keeps adjustment and playback controls out of unbound media placeholders", () => {
+    const image = render({ fillType: "image", onChooseImage: () => undefined, onImageAdjustmentChange: () => undefined });
+    const video = render({ fillType: "video", capabilities: { videoFill: true }, onChooseVideo: () => undefined,
+      videoPlayback: { loop: true, playSound: false, autoplay: true, showPlaybackControls: true }, onVideoPlaybackChange: () => undefined });
+    expect(image).not.toContain("data-composa-image-adjustments");
+    expect(video).not.toContain("data-composa-video-playback-controls");
+    expect(image).toContain("Choose media…");
+    expect(video).toContain("Choose media…");
+  });
 });
