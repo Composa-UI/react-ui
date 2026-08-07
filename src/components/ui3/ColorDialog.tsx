@@ -54,7 +54,7 @@ export const COLOR_DIALOG_REFERENCE_GEOMETRY = Object.freeze({
   headerHeight: 40,
   toolbarHeight: 41,
   solid: { height: 489, bodyHeight: 408, pickerSize: 208, formatRowHeight: 40 },
-  gradient: { height: 641, bodyHeight: 560, typeRowHeight: 48, barWidth: 208, barHeight: 32, stopRowHeight: 32 },
+  gradient: { height: 297, bodyHeight: 216, typeRowHeight: 48, barWidth: 208, barHeight: 32, stopRowHeight: 32 },
   image: { height: 577, bodyHeight: 496, fitRowHeight: 48, previewSize: 208, adjustmentRowHeight: 32, adjustmentSliderWidth: 120 },
 });
 
@@ -472,7 +472,7 @@ function MediaFitControl({ kind, value, onChange, tileScale, tileScaleKeyframe, 
   </div>;
 }
 
-function MediaFillPreview({ kind, sourceLabel, previewUrl, fit, tileScale, onChoose, onMakeImage }: {
+function MediaFillPreview({ kind, sourceLabel, previewUrl, fit, tileScale, onChoose, onMakeImage, bottomInset = false }: {
   kind: "image" | "video";
   sourceLabel?: string;
   previewUrl?: string;
@@ -480,6 +480,7 @@ function MediaFillPreview({ kind, sourceLabel, previewUrl, fit, tileScale, onCho
   tileScale: number;
   onChoose?: () => void;
   onMakeImage?: () => void;
+  bottomInset?: boolean;
 }) {
   const selected = !!sourceLabel;
   return <>
@@ -488,7 +489,7 @@ function MediaFillPreview({ kind, sourceLabel, previewUrl, fit, tileScale, onCho
       data-state={previewUrl ? "bound" : "empty"}
       data-fit={fit}
       aria-label={selected ? `${kind} preview: ${sourceLabel}` : `${kind} preview: empty`}
-      className="group relative mx-[16px] size-[208px] shrink-0 overflow-hidden rounded-c-md bg-c-bg-secondary ring-1 ring-inset ring-c-border"
+      className={clsx("group relative mx-[16px] size-[208px] shrink-0 overflow-hidden rounded-c-md bg-c-bg-secondary ring-1 ring-inset ring-c-border", bottomInset && "mb-[16px]")}
       style={!previewUrl ? {
         backgroundImage: "repeating-conic-gradient(var(--color-bg-secondary) 0% 25%, var(--color-bg) 0% 50%)",
         backgroundSize: "16px 16px",
@@ -1021,7 +1022,7 @@ export function ColorDialog({
 
           <ModalBody scrollable className={clsx(
             fillType === "solid" && "h-[408px]",
-            isGradient && "h-[560px]",
+            isGradient && "max-h-[560px]",
             fillType === "image" && onImageAdjustmentChange && "h-[496px]",
           )}>
 
@@ -1222,56 +1223,6 @@ export function ColorDialog({
               ))}
             </div>
 
-            {/* The active gradient stop uses the same color editor as Solid. */}
-            <div
-              ref={canvasRef}
-              data-composa-gradient-color-picker
-              className="relative mx-[16px] mt-[8px] cursor-crosshair touch-none select-none"
-              style={{ height: 208, width: 208 }}
-              onPointerDown={e => { setDragging(true); updatePicker(e); try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* synthetic */ } }}
-              onPointerMove={e => { if (dragging) updatePicker(e); }}
-              onPointerUp={e => { setDragging(false); e.currentTarget.releasePointerCapture(e.pointerId); }}
-            >
-              <div className="absolute inset-0 rounded-c-md overflow-hidden pointer-events-none" style={{ background: canvasBg }} />
-              <div className="absolute inset-0 rounded-c-md pointer-events-none shadow-[inset_0_0_0_1px_rgba(0,0,0,0.12)]" />
-              <div className="absolute -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none"
-                style={{ left: (sat / 100) * 208, top: (1 - bri / 100) * 208 }}>
-                <PickerHandle color={pickerColor} />
-              </div>
-            </div>
-
-            <div data-composa-gradient-slider-row className="flex h-[60px] items-center gap-[12px] px-[16px]">
-              {onEyedropperActivate && <Btn label={eyedropperActive ? "Cancel color sampling" : "Sample color"} active={eyedropperActive}
-                onClick={() => onEyedropperActivate(selectedStopId ?? stops[0]?.id)}>
-                <Pipette size={14} strokeWidth={1.5} />
-              </Btn>}
-              <div className="flex-1 min-w-0"><Slider value={hue} onChange={handleHue} min={0} max={360}
-                trackVariant="gradient" trackGradient="linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)" /></div>
-            </div>
-
-            <div data-composa-gradient-format-row className="flex h-[40px] items-center gap-[8px] px-[16px]">
-              <PopoverMenu align="left" className="w-[64px] shrink-0" trigger={<Dropdown ariaLabel={`Color format: ${colorFormat}`} value={colorFormat} fullWidth />}>
-                {close => <Menu>{COLOR_FORMATS.map(format => <MenuRow key={format} label={format} checked={format === colorFormat}
-                  selectionRole="radio" onClick={() => { setColorFormat(format); close(); }} />)}</Menu>}
-              </PopoverMenu>
-              {colorFormat === "Hex" ? <div className="flex-1 min-w-0"><ColorInput fullWidth color={`#${hex}`}
-                onSwatchClick={() => { const id = selectedStopId ?? stops[0]?.id; if (id) focusStopHex(id); }}
-                onColorChange={handleHex} /></div>
-                : <div className="flex flex-1 min-w-0 gap-[2px]">{colorComponents.map((value, index) => <NumericInput key={index}
-                  ariaLabel={`${colorFormat} ${index + 1}`} value={value} min={0}
-                  max={colorFormat === "RGB" ? 255 : index === 0 ? 360 : 100}
-                  onChange={next => handleColorComponent(index, next)} className="min-w-0 flex-1" />)}</div>}
-            </div>
-
-            <div data-composa-gradient-swatches className="min-h-[76px] border-t border-c-border">
-              <div className="h-[36px] px-[16px] pt-[12px]"><span className={clsx(FONT, "text-[11px] font-[550] text-c-text")}>On this page</span></div>
-              <div className="flex min-h-[40px] flex-wrap items-center gap-[8px] px-[16px] py-[8px]">
-                {swatches.length === 0 && <span className="text-[11px] text-c-text-secondary">No colors on this page</span>}
-                {swatches.map(color => <button key={color} type="button" className="rounded-[3px] size-[16px] ring-1 ring-inset ring-[rgba(0,0,0,0.1)]"
-                  style={{ backgroundColor: color }} aria-label={color} onClick={() => handleHex(color.replace("#", ""))} />)}
-              </div>
-            </div>
-
             <div className="pb-[12px]" />
           </>
         )}
@@ -1357,7 +1308,7 @@ export function ColorDialog({
               onRotate={onRotateMedia}
               />
             <MediaFillPreview kind="video" sourceLabel={videoSourceLabel} previewUrl={videoPreviewUrl} fit={mediaFit === "tile" ? "fill" : mediaFit} tileScale={mediaTileScale}
-              onChoose={onChooseVideo} />
+              onChoose={onChooseVideo} bottomInset={!videoPlayback || !onVideoPlaybackChange} />
             {videoPlayback && onVideoPlaybackChange && <VideoPlaybackControls previewUrl={videoPreviewUrl} value={videoPlayback}
               onChange={onVideoPlaybackChange} onApplyToAll={onApplyVideoPlaybackToAll} />}
           </>

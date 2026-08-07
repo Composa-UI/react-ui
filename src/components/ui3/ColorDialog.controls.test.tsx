@@ -410,13 +410,12 @@ describe("gradient stops", () => {
     expect(markup).not.toContain('type="color"');
   });
 
-  it("shows the full color editor for the selected gradient stop", () => {
+  it("keeps gradient editing compact after the stop rows", () => {
     const markup = html({ fillType: "linear", gradientStops: stops, swatches: ["#112233"] });
-    expect(markup).toContain("data-composa-gradient-color-picker");
-    expect(markup).toContain("data-composa-gradient-slider-row");
-    expect(markup).toContain("data-composa-gradient-format-row");
-    expect(markup).toContain("data-composa-gradient-swatches");
-    expect(markup).toContain("On this page");
+    expect(markup).not.toContain("data-composa-gradient-color-picker");
+    expect(markup).not.toContain("data-composa-gradient-slider-row");
+    expect(markup).not.toContain("data-composa-gradient-format-row");
+    expect(markup).not.toContain("data-composa-gradient-swatches");
   });
 
   it("re-orders the gradient when a stop is dragged past its neighbour", () => {

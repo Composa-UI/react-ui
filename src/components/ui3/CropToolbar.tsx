@@ -3,7 +3,7 @@ import { clsx } from "clsx";
 import { Button } from "./Button";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { Slider } from "./Slider";
-import { iconForSemantic } from "./icon-semantics";
+import { iconForSemantic } from "./IconSemantics";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 
 export type CropAspect = "free" | "original" | "1:1" | "4:3" | "16:9";
