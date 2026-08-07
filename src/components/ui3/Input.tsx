@@ -977,6 +977,8 @@ interface ColorInputProps {
   color?: string;
   /** Exact authored gradient CSS for Gradient chits. */
   gradient?: string;
+  /** Bound media preview rendered inside Image/Video chits. */
+  previewUrl?: string;
   opacity?: number;
   fillType?: ColorFillType;
   fillLabel?: string;         // for Gradient/Image/Variable — replaces hex
@@ -1009,6 +1011,7 @@ export function ColorInput({
   label,
   color = "#ff24bd",
   gradient,
+  previewUrl,
   opacity = 100,
   fillType = "Fill",
   fillLabel,
@@ -1046,7 +1049,7 @@ export function ColorInput({
   const isTextLabel = fillType === "Gradient" || fillType === "Image" || fillType === "Video" || fillType === "Drop zone" || isVariable;
 
   // chit type mapping
-  const chitType = fillType === "Variable" || fillType === "Video" || fillType === "Drop zone" ? "Fill" : fillType as ChitType;
+  const chitType = fillType === "Variable" || fillType === "Drop zone" ? "Fill" : fillType as ChitType;
 
   const midText = isVariable
     ? variableValue ?? "bg-assistive"
@@ -1073,7 +1076,7 @@ export function ColorInput({
         {/* chit */}
         {!isVariable && (
           <label className="relative shrink-0 flex items-center justify-center size-[24px] cursor-pointer">
-            <Chit color={color} gradient={gradient} type={chitType} />
+            <Chit color={color} gradient={gradient} previewUrl={previewUrl} type={chitType} />
             {onSwatchClick ? (
               <button
                 type="button"

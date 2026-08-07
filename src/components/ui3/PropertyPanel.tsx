@@ -1833,6 +1833,7 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
                 fullWidth
                 color={fill.color}
                 gradient={fill.gradientPreview}
+                previewUrl={fill.fillType === "image" ? fill.imagePreviewUrl : fill.fillType === "video" ? fill.videoPreviewUrl : undefined}
                 fillType={fill.fillType === "linear" || fill.fillType === "radial" || fill.fillType === "angular" || fill.fillType === "diamond"
                   ? "Gradient" : fill.fillType === "image" ? "Image" : fill.fillType === "video" ? "Video" : fill.fillType === "drop-zone" ? "Drop zone" : "Fill"}
                 fillLabel={fill.label}
@@ -2740,6 +2741,7 @@ function SlideBackgroundSection({
               color={color}
               opacity={opacity}
               gradient={gradientPreview}
+              previewUrl={fillType === "image" ? imagePreviewUrl : fillType === "video" ? videoPreviewUrl : undefined}
               onSwatchClick={() => { setColorOpen(true); onDialogOpenChange?.(true); }}
               onColorChange={value => {
                 if (controlledColor === undefined) setInternalColor(value);
