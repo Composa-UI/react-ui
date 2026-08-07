@@ -1,4 +1,4 @@
-import { useEffect, useState, Fragment, type ReactNode } from "react";
+import { useEffect, useRef, useState, Fragment, type ReactNode } from "react";
 import { clsx } from "clsx";
 import {
   RotateCw, FlipHorizontal2, FlipVertical2,
@@ -11,7 +11,7 @@ import {
   MoveHorizontal, MoveVertical, Play, Pause, MonitorPlay,
   Image as ImageIcon, Clock, SquareSquare,
   ArrowLeftFromLine, ArrowRightFromLine, Timer,
-  Square, PanelTop, PanelBottom, PanelLeft, PanelRight, Diamond,
+  Square, SquareDashedMousePointer, PanelTop, PanelBottom, PanelLeft, PanelRight, Diamond,
 } from "lucide-react";
 import { CirclesFour } from "@phosphor-icons/react";
 import { ProposedSquareText, ProposedTextMargins } from "../../icons/proposed-lucide";
@@ -67,7 +67,7 @@ export type PanelMode = "project" | "slide" | "element" | "video-clip" | "audio-
 export type ClipBlendMode = "Normal" | "Add" | "Subtract" | "Reverse subtract";
 export const CLIP_BLEND_MODES: ClipBlendMode[] = ["Normal", "Add", "Subtract", "Reverse subtract"];
 
-export type SlideBackgroundType = "solid" | "gradient" | "image" | "video";
+export type SlideBackgroundType = "solid" | "gradient" | "image" | "video" | "drop-zone";
 export type SlideTransitionType = "none" | "fade" | "push" | "slide" | "wipe";
 export type SlideTransitionDirection = "left" | "right" | "up" | "down";
 export type SlideTransitionEasing = EasingPreset;
@@ -138,7 +138,13 @@ export interface ElementStrokeSetting extends ElementFillSetting {
 }
 export interface ElementEffectSetting extends EffectDetailsValue { id: string; }
 export interface ElementLayoutGuideSetting { id: string; type: "Grid" | "Columns" | "Rows"; visible: boolean; size: number; }
-export interface ElementSelectionColorSetting { id: string; color: string; opacity: number; usageCount?: number; }
+export interface ElementSelectionColorSetting {
+  id: string; color: string; opacity: number; usageCount?: number;
+  /** A shared gradient remains one Selection colors entry, never one row per stop. */
+  fillType?: Extract<FillType, "linear" | "radial" | "angular" | "diamond">;
+  gradientStops?: GradientStop[];
+  gradientPreview?: string;
+}
 export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; dropZone?: boolean; animationDelay?: boolean; layoutFidelityTools?: boolean; }
 export interface ElementTypographySettings {
   fontFamily: string; fontWeight: string; fontSize: number; lineHeight: number; letterSpacing: number;
@@ -186,7 +192,7 @@ export interface ElementLayoutSettings {
   /** Horizontal-only wrap modifier. */
   wrap?: boolean;
   /** Cross-axis gap between wrapped rows. Meaningful only while wrapping. */
-  rowGap?: number;
+  rowGap?: number | "auto";
   padding: { top: number; right: number; bottom: number; left: number };
   align: string; widthMode: "fixed" | "hug" | "fill"; heightMode: "fixed" | "hug" | "fill"; clipsContent: boolean;
   positioning?: "auto" | "absolute";
@@ -1051,7 +1057,7 @@ interface LayoutAutoProps {
   width?: number; height?: number;
   flowMode?: ElementLayoutSettings["mode"];
   wrap?: boolean;
-  rowGap?: number;
+  rowGap?: number | "auto";
   grid?: ElementGridSettings;
   widthMode?: "fixed" | "hug" | "fill";
   heightMode?: "fixed" | "hug" | "fill";
@@ -1144,8 +1150,9 @@ function LayoutAutoSection({
   const [internalWrap, setInternalWrap] = useState(!!wrapProp);
   const wrapping = renderedFlow === "h" && (wrapControlled ? !!wrapProp : internalWrap);
   const rowGapControlled = rowGapProp !== undefined;
-  const [internalRowGap, setInternalRowGap] = useState(rowGapProp ?? (typeof renderedGap === "number" ? renderedGap : 0));
+  const [internalRowGap, setInternalRowGap] = useState<number | "auto">(rowGapProp ?? (typeof renderedGap === "number" ? renderedGap : 0));
   const renderedRowGap = rowGapControlled ? rowGapProp : internalRowGap;
+  const [lastFixedRowGap, setLastFixedRowGap] = useState(typeof renderedRowGap === "number" ? renderedRowGap : 0);
   const [indivPadding, setIndivPadding] = useState(false);
   // Combined presentation owns two axes, not one all-sides scalar: Top is the
   // vertical source and Right is the horizontal source.
@@ -1193,17 +1200,22 @@ function LayoutAutoSection({
     onLayoutChange?.({ gap: value });
   };
 
-  const emitRowGap = (value: number) => {
-    const next = Math.max(0, value);
+  const emitRowGap = (value: number | "auto") => {
+    const next = value === "auto" ? value : Math.max(0, value);
     if (!rowGapControlled) setInternalRowGap(next);
+    if (typeof next === "number") setLastFixedRowGap(next);
     onLayoutChange?.({ rowGap: next });
   };
 
   useEffect(() => {
     if (typeof gapProp === "number") setLastFixedGap(gapProp);
   }, [gapProp]);
+  useEffect(() => {
+    if (typeof rowGapProp === "number") setLastFixedRowGap(rowGapProp);
+  }, [rowGapProp]);
 
   const gapMode = renderedGap === "auto" ? "auto" : "fixed";
+  const rowGapMode = renderedRowGap === "auto" ? "auto" : "fixed";
   const gapAxis = renderedFlow === "v" ? "vertical" : "horizontal";
   const gapIcon = <AutoLayoutSpacingIcon kind="gap" axis={gapAxis} />;
 
@@ -1225,6 +1237,10 @@ function LayoutAutoSection({
       )}
     </Menu>
   );
+  const rowGapMenu = (close: () => void) => <Menu>
+    <MenuRow type="checkmark" label="Fixed" checked={rowGapMode === "fixed"} onClick={() => { emitRowGap(lastFixedRowGap); close(); }} />
+    <MenuRow type="checkmark" label="Auto" checked={rowGapMode === "auto"} onClick={() => { emitRowGap("auto"); close(); }} />
+  </Menu>;
 
   const settingsValue = {
     mode: flowMode ?? (renderedFlow === "h" ? "horizontal" : renderedFlow === "v" ? "vertical" : renderedFlow === "grid" ? "grid" : "none"),
@@ -1359,15 +1375,19 @@ function LayoutAutoSection({
             // grid section's gap column so the two blocks stay structurally the same
             // ("row gap does not need a title row gap").
             <div>
-              <NumericInput
+              <NumericComboInput
+                dataMode={rowGapMode}
                 ariaLabel="Row gap"
+                dropdownAriaLabel={`Row gap sizing mode: ${rowGapMode === "auto" ? "Auto" : "Fixed"}`}
                 iconLead={<AutoLayoutSpacingIcon kind="gap" axis="vertical" />}
-                value={renderedRowGap}
-                defaultValue={renderedRowGap}
+                readOnlyLabel={rowGapMode === "auto" ? "Auto" : undefined}
+                value={rowGapControlled && typeof renderedRowGap === "number" ? renderedRowGap : undefined}
+                defaultValue={lastFixedRowGap}
                 onChange={emitRowGap}
-                keyframe={rowGapKeyframe}
+                keyframe={rowGapMode === "fixed" ? rowGapKeyframe : undefined}
                 min={0}
                 suffix="px"
+                menu={rowGapMenu}
                 className="w-full"
               />
             </div>
@@ -1727,7 +1747,8 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
   onFillTypeChange, onGradientStopsChange, onChooseImage, onChooseVideo,
   onFlipGradient, onRotateGradient, onRotateMedia,
   onImageAdjustmentChange, onMediaFitChange, onMediaTileScaleChange, onEditCrop, dropZoneSources, onSelectDropZoneSource,
-  imageAdjustmentsReadOnly = false, capabilities, activeStackDialog, onActiveStackDialogChange }: {
+  onEyedropperActivate, activeEyedropperId,
+  imageAdjustmentsReadOnly = false, swatches, capabilities, activeStackDialog, onActiveStackDialogChange }: {
   entries?: FillEntry[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<FillEntry, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
   onFillTypeChange?: (id: string, type: FillType) => void;
@@ -1743,6 +1764,9 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
   imageAdjustmentsReadOnly?: boolean;
   dropZoneSources?: { id: string; label: string }[];
   onSelectDropZoneSource?: (id: string, sourceId: string) => void;
+  onEyedropperActivate?: (id: string, gradientStopId?: string) => void;
+  activeEyedropperId?: string | null;
+  swatches?: string[];
   capabilities: Required<InspectorCapabilities>;
   activeStackDialog: string | null;
   onActiveStackDialogChange: (dialog: string | null) => void;
@@ -1803,12 +1827,15 @@ function FillSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove,
                 onSwatchClick={() => onActiveStackDialogChange(`fill-color:${fill.id}`)}
               />}
               hex={fill.color.replace("#", "")}
+              swatches={swatches}
               onHexChange={color => updateFill(fill.id, { color: `#${color.replace(/^#/, "")}` })}
               fillType={fill.fillType}
               onFillTypeChange={onFillTypeChange ? type => onFillTypeChange(fill.id, type) : undefined}
               gradientStops={fill.gradientStops}
               gradientStopKeyframes={fill.keyframes?.gradientStops}
               onStopsChange={onGradientStopsChange ? stops => onGradientStopsChange(fill.id, stops) : undefined}
+              onEyedropperActivate={onEyedropperActivate ? stopId => onEyedropperActivate(fill.id, stopId) : undefined}
+              eyedropperActive={activeEyedropperId === fill.id}
               onFlipGradient={onFlipGradient ? () => onFlipGradient(fill.id) : undefined}
               onRotateGradient={onRotateGradient ? () => onRotateGradient(fill.id) : undefined}
               imageSourceLabel={fill.imageSourceLabel}
@@ -1863,9 +1890,12 @@ function strokeWeightModeIcon(mode: StrokeWeightMode, size = 16) {
   return <Square {...props} />;
 }
 
-function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities, readOnly, activeStackDialog, onActiveStackDialogChange }: {
+function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, onEyedropperActivate, activeEyedropperId, swatches, capabilities, readOnly, activeStackDialog, onActiveStackDialogChange }: {
   entries?: ElementStrokeSetting[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<ElementStrokeSetting, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
+  onEyedropperActivate?: (id: string) => void;
+  activeEyedropperId?: string | null;
+  swatches?: string[];
   capabilities: Required<InspectorCapabilities>;
   readOnly: boolean;
   activeStackDialog: string | null;
@@ -1907,6 +1937,8 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
           >
             <ColorDialog
               capabilities={capabilities}
+              solidOnly
+              swatches={swatches}
               open={activeStackDialog === `stroke-color:${stroke.id}`}
               onClose={() => onActiveStackDialogChange(null)}
               trigger={<ColorInput
@@ -1922,6 +1954,8 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
               />}
               hex={stroke.color.replace("#", "")}
               onHexChange={color => update(stroke.id, { color: `#${color.replace(/^#/, "")}` })}
+              onEyedropperActivate={onEyedropperActivate ? () => onEyedropperActivate(stroke.id) : undefined}
+              eyedropperActive={activeEyedropperId === stroke.id}
             />
           </PanelEntry>
           {/* Row 2 — Position · Weight · settings · edge targeting */}
@@ -2014,9 +2048,11 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
 
 // ─── Section: Effects ─────────────────────────────────────────────────────────
 
-function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, capabilities, activeStackDialog, onActiveStackDialogChange }: {
+function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove, onEyedropperActivate, activeEyedropperId, capabilities, activeStackDialog, onActiveStackDialogChange }: {
   entries?: ElementEffectSetting[]; onAdd?: () => void; onUpdate?: (id: string, patch: Partial<Omit<ElementEffectSetting, "id">>) => void;
   onToggle?: (id: string, visible: boolean) => void; onReorder?: (id: string, targetId: string) => void; onRemove?: (id: string) => void;
+  onEyedropperActivate?: (id: string) => void;
+  activeEyedropperId?: string | null;
   capabilities: Required<InspectorCapabilities>;
   activeStackDialog: string | null;
   onActiveStackDialogChange: (dialog: string | null) => void;
@@ -2056,6 +2092,8 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
             <EffectDetailsDialog open={activeStackDialog === `effect:${effect.id}`} value={effect}
               trigger={<Dropdown value={effect.type} fullWidth ariaLabel={`Effect type: ${effect.type}`} onClick={() => onActiveStackDialogChange(`effect:${effect.id}`)} />}
               capabilities={capabilities}
+              onEyedropperActivate={onEyedropperActivate ? () => onEyedropperActivate(effect.id) : undefined}
+              eyedropperActive={activeEyedropperId === effect.id}
               onChange={patch => update(effect.id, patch)} onClose={() => onActiveStackDialogChange(null)} />
           </PanelEntry>
         </PanelReorderableEntry>
@@ -2253,10 +2291,13 @@ const DEMO_SELECTION_COLORS: ElementSelectionColorSetting[] = [
   { id: "demo-selection-6", color: "#9747FF", opacity: 100 },
 ];
 
-function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = { templates: true, styles: true, variables: true, libraries: true, videoFill: false, dropZone: false, animationDelay: false, layoutFidelityTools: false } }: {
+function SelectionColorsSection({ colors, onUpdate, onSelectAll, onEyedropperActivate, activeEyedropperId, swatches, capabilities = { templates: true, styles: true, variables: true, libraries: true, videoFill: false, dropZone: false, animationDelay: false, layoutFidelityTools: false } }: {
   colors?: ElementSelectionColorSetting[];
   onUpdate?: (id: string, patch: Partial<Omit<ElementSelectionColorSetting, "id">>) => void;
   onSelectAll?: (id: string) => void;
+  onEyedropperActivate?: (id: string, gradientStopId?: string) => void;
+  activeEyedropperId?: string | null;
+  swatches?: string[];
   capabilities?: Required<InspectorCapabilities>;
 }) {
   const renderedColors = colors ?? DEMO_SELECTION_COLORS;
@@ -2272,11 +2313,19 @@ function SelectionColorsSection({ colors, onUpdate, onSelectAll, capabilities = 
               capabilities={capabilities}
               open={colorOpen && activeIndex === index}
               onClose={() => setColorOpen(false)}
-              trigger={<ColorInput ariaLabel="Selection color" fullWidth color={c.color} opacity={c.opacity} onSwatchClick={() => { setActiveIndex(index); setColorOpen(true); }} />}
+              trigger={<ColorInput ariaLabel="Selection color" fullWidth color={c.color} opacity={c.opacity}
+                fillType={c.fillType ? "Gradient" : "Fill"} gradient={c.gradientPreview}
+                onSwatchClick={() => { setActiveIndex(index); setColorOpen(true); }} />}
               hex={c.color.replace(/^#/, "")}
+              swatches={swatches}
               opacity={c.opacity}
+              fillType={c.fillType}
+              gradientStops={c.gradientStops}
+              onStopsChange={stops => onUpdate?.(c.id, { gradientStops: stops })}
               onHexChange={hex => onUpdate?.(c.id, { color: `#${hex.replace(/^#/, "")}` })}
               onOpacityChange={opacity => onUpdate?.(c.id, { opacity })}
+              onEyedropperActivate={onEyedropperActivate ? stopId => onEyedropperActivate(c.id, stopId) : undefined}
+              eyedropperActive={activeEyedropperId === c.id}
             />
           </div>
           {/* Reserved slot; actions reveal on this row's hover — no reflow (§5.8) */}
@@ -2485,7 +2534,7 @@ function SlideTimingSection({
 // iconography: solid = filled square, gradient = a diagonal css-gradient swatch,
 // image/video = the matching lucide icon), so Slide-mode's Background reads
 // consistent with the Fill/Color dialog rather than text-labeled segments.
-function SlideFillTypeIcon({ type }: { type: "solid" | "gradient" | "image" | "video" }) {
+function SlideFillTypeIcon({ type }: { type: "solid" | "gradient" | "image" | "video" | "drop-zone" }) {
   if (type === "solid") {
     return (
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -2501,6 +2550,7 @@ function SlideFillTypeIcon({ type }: { type: "solid" | "gradient" | "image" | "v
     );
   }
   if (type === "image") return <ImageIcon size={12} strokeWidth={1.5} />;
+  if (type === "drop-zone") return <SquareDashedMousePointer size={12} strokeWidth={1.5} />;
   return <VideoFillIcon data-icon-semantic="fill-video" size={12} strokeWidth={1.5} />;
 }
 
@@ -2543,11 +2593,31 @@ function SlideBackgroundSection({
   gradientPreview,
   gradientType = "linear",
   gradientStops,
+  imageSourceLabel,
+  imagePreviewUrl,
+  videoSourceLabel,
+  videoPreviewUrl,
+  mediaFit = "fill",
+  mediaTileScale = 50,
+  dropZoneSources,
+  dropZoneSourceId,
+  swatches,
   onTypeChange,
   onColorChange,
   onOpacityChange,
+  onGradientTypeChange,
+  onGradientStopsChange,
   onFlipGradient,
   onRotateGradient,
+  onChooseImage,
+  onChooseVideo,
+  onMediaFitChange,
+  onMediaTileScaleChange,
+  onEditCrop,
+  onSelectDropZoneSource,
+  onEyedropperActivate,
+  eyedropperActive,
+  onDialogOpenChange,
   onRotateMedia,
   capabilities,
 }: {
@@ -2557,18 +2627,40 @@ function SlideBackgroundSection({
   gradientPreview?: string;
   gradientType?: Extract<FillType, "linear" | "radial" | "angular" | "diamond">;
   gradientStops?: GradientStop[];
+  imageSourceLabel?: string;
+  imagePreviewUrl?: string;
+  videoSourceLabel?: string;
+  videoPreviewUrl?: string;
+  mediaFit?: MediaFillFit;
+  mediaTileScale?: number;
+  dropZoneSources?: { id: string; label: string }[];
+  dropZoneSourceId?: string;
+  swatches?: string[];
   onTypeChange?: (value: SlideBackgroundType) => void;
   onColorChange?: (value: string) => void;
   onOpacityChange?: (value: number) => void;
+  onGradientTypeChange?: (value: Extract<FillType, "linear" | "radial" | "angular" | "diamond">) => void;
+  onGradientStopsChange?: (stops: GradientStop[]) => void;
   onFlipGradient?: () => void;
   onRotateGradient?: () => void;
+  onChooseImage?: () => void;
+  onChooseVideo?: () => void;
+  onMediaFitChange?: (fit: MediaFillFit) => void;
+  onMediaTileScaleChange?: (scale: number) => void;
+  onEditCrop?: () => void;
+  onSelectDropZoneSource?: (sourceId: string) => void;
+  onEyedropperActivate?: (gradientStopId?: string) => void;
+  eyedropperActive?: boolean;
+  onDialogOpenChange?: (open: boolean) => void;
   onRotateMedia?: () => void;
   capabilities: Required<InspectorCapabilities>;
 }) {
   const [internalType, setInternalType] = useState<SlideBackgroundType>("solid");
   const [internalColor, setInternalColor] = useState("#1e1e1e");
   const [internalOpacity, setInternalOpacity] = useState(100);
-  const fillType = controlledType ?? internalType;
+  const [pendingType, setPendingType] = useState<SlideBackgroundType | null>(null);
+  useEffect(() => setPendingType(null), [controlledType]);
+  const fillType = pendingType ?? controlledType ?? internalType;
   const color = controlledColor ?? internalColor;
   const opacity = controlledOpacity ?? internalOpacity;
   const [colorOpen, setColorOpen] = useState(false);
@@ -2576,8 +2668,22 @@ function SlideBackgroundSection({
     { value: "solid", icon: <SlideFillTypeIcon type="solid" /> },
     { value: "gradient", icon: <SlideFillTypeIcon type="gradient" /> },
     { value: "image", icon: <SlideFillTypeIcon type="image" /> },
-    { value: "video", icon: <SlideFillTypeIcon type="video" /> },
+    ...(capabilities.videoFill && onChooseVideo ? [{ value: "video", icon: <SlideFillTypeIcon type="video" /> }] : []),
+    ...(capabilities.dropZone && onSelectDropZoneSource ? [{ value: "drop-zone", icon: <SlideFillTypeIcon type="drop-zone" /> }] : []),
   ];
+  const allowedFillModes = fillSegments.map(segment => segment.value === "gradient" ? "gradient" : segment.value) as ("solid" | "gradient" | "image" | "video" | "drop-zone")[];
+  const commitType = (next: SlideBackgroundType) => {
+    setPendingType(next);
+    if (controlledType === undefined) setInternalType(next);
+    onTypeChange?.(next);
+  };
+  const dialogType: FillType = fillType === "gradient" ? gradientType : fillType;
+  const triggerFillType = fillType === "gradient" ? "Gradient" : fillType === "image" ? "Image" : fillType === "video" ? "Video" : "Fill";
+  const triggerLabel = fillType === "gradient" ? `${gradientType[0].toUpperCase()}${gradientType.slice(1)} gradient`
+    : fillType === "image" ? imageSourceLabel ?? "No image selected"
+    : fillType === "video" ? videoSourceLabel ?? "No video selected"
+    : fillType === "drop-zone" ? dropZoneSources?.find(source => source.id === dropZoneSourceId)?.label ?? "No source selected"
+    : undefined;
   return (
     <PanelSection title="Background">
       {/* Fill type — icon-only segmented, matching the Figma reference / ColorDialog's
@@ -2590,118 +2696,77 @@ function SlideBackgroundSection({
             value={fillType}
             onChange={value => {
               const next = value as SlideBackgroundType;
-              if (controlledType === undefined) setInternalType(next);
-              onTypeChange?.(next);
+              commitType(next);
             }}
             className="w-full"
           />
         }
       />
 
-      {/* Control below switches on the selected fill type */}
-      {fillType === "solid" && (
-        <div className="flex items-center px-[16px] h-[32px] gap-[8px]">
-          <div className="flex-1 min-w-0">
-            <ColorDialog
-              capabilities={capabilities}
-              open={colorOpen}
-              onClose={() => setColorOpen(false)}
-              trigger={<ColorInput
-                ariaLabel="Background color"
-                fullWidth
-                color={color}
-                opacity={opacity}
-                onSwatchClick={() => setColorOpen(true)}
-                onColorChange={value => {
-                  if (controlledColor === undefined) setInternalColor(value);
-                  onColorChange?.(value);
-                }}
-                onOpacityChange={value => {
-                  if (controlledOpacity === undefined) setInternalOpacity(value);
-                  onOpacityChange?.(value);
-                }}
-              />}
-              fillType="solid"
-              hex={color.replace(/^#/, "")}
+      <div className="flex items-center px-[16px] h-[32px] gap-[8px]">
+        <div className="flex-1 min-w-0">
+          <ColorDialog
+            capabilities={capabilities}
+            allowedFillModes={allowedFillModes}
+            open={colorOpen}
+            onClose={() => { setColorOpen(false); onDialogOpenChange?.(false); }}
+            trigger={<ColorInput
+              ariaLabel="Background fill"
+              fullWidth
+              fillType={triggerFillType}
+              fillLabel={triggerLabel}
+              color={color}
               opacity={opacity}
-              onHexChange={value => {
-                const next = `#${value.replace(/^#/, "")}`;
-                if (controlledColor === undefined) setInternalColor(next);
-                onColorChange?.(next);
+              gradient={gradientPreview}
+              onSwatchClick={() => { setColorOpen(true); onDialogOpenChange?.(true); }}
+              onColorChange={value => {
+                if (controlledColor === undefined) setInternalColor(value);
+                onColorChange?.(value);
               }}
               onOpacityChange={value => {
                 if (controlledOpacity === undefined) setInternalOpacity(value);
                 onOpacityChange?.(value);
               }}
-            />
-          </div>
-          {/* Reserve the Design-tab trailing-icon column so the Background
-              hex/opacity field aligns with Range/Duration and the Position/
-              Scale/Opacity fields above. */}
-          <div aria-hidden className="shrink-0 flex items-center justify-end min-w-[24px]" />
+            />}
+            fillType={dialogType}
+            onFillTypeChange={next => {
+              if (next === "linear" || next === "radial" || next === "angular" || next === "diamond") {
+                commitType("gradient"); onGradientTypeChange?.(next);
+              } else commitType(next);
+            }}
+            hex={color.replace(/^#/, "")}
+            opacity={opacity}
+            onHexChange={value => {
+              const next = `#${value.replace(/^#/, "")}`;
+              if (controlledColor === undefined) setInternalColor(next);
+              onColorChange?.(next);
+            }}
+            gradientStops={gradientStops}
+            onStopsChange={onGradientStopsChange}
+            onFlipGradient={onFlipGradient}
+            onRotateGradient={onRotateGradient}
+            imageSourceLabel={imageSourceLabel}
+            imagePreviewUrl={imagePreviewUrl}
+            videoSourceLabel={videoSourceLabel}
+            videoPreviewUrl={videoPreviewUrl}
+            onChooseImage={onChooseImage}
+            onChooseVideo={onChooseVideo}
+            mediaFit={mediaFit}
+            onMediaFitChange={onMediaFitChange}
+            mediaTileScale={mediaTileScale}
+            onMediaTileScaleChange={onMediaTileScaleChange}
+            onEditCrop={onEditCrop}
+            onRotateMedia={onRotateMedia}
+            dropZoneSources={dropZoneSources}
+            dropZoneSourceId={dropZoneSourceId}
+            onSelectDropZoneSource={onSelectDropZoneSource}
+            swatches={swatches}
+            onEyedropperActivate={onEyedropperActivate}
+            eyedropperActive={eyedropperActive}
+          />
         </div>
-      )}
-      {fillType === "gradient" && (
-        <div className="flex items-center px-[16px] h-[32px] gap-[8px]">
-          <div className="flex-1 min-w-0">
-            <ColorDialog
-              capabilities={capabilities}
-              open={colorOpen}
-              onClose={() => setColorOpen(false)}
-              trigger={<ColorInput ariaLabel="Background gradient" fullWidth fillType="Gradient" fillLabel={`${gradientType[0].toUpperCase()}${gradientType.slice(1)} gradient`} gradient={gradientPreview} onSwatchClick={() => setColorOpen(true)} />}
-              fillType={gradientType}
-              gradientStops={gradientStops}
-              onFlipGradient={onFlipGradient}
-              onRotateGradient={onRotateGradient}
-              hex={color.replace(/^#/, "")}
-              opacity={opacity}
-              onHexChange={value => {
-                const next = `#${value.replace(/^#/, "")}`;
-                if (controlledColor === undefined) setInternalColor(next);
-                onColorChange?.(next);
-              }}
-              onOpacityChange={value => {
-                if (controlledOpacity === undefined) setInternalOpacity(value);
-                onOpacityChange?.(value);
-              }}
-            />
-          </div>
-          {/* Reserve the Design-tab trailing-icon column so the Background
-              hex/opacity field aligns with Range/Duration and the Position/
-              Scale/Opacity fields above. */}
-          <div aria-hidden className="shrink-0 flex items-center justify-end min-w-[24px]" />
-        </div>
-      )}
-      {(fillType === "image" || fillType === "video") && (
-        <div className="flex items-center px-[16px] h-[32px] gap-[8px]">
-          <div className="flex-1 min-w-0">
-            {/* Same ColorInput row as Solid/Gradient — only the chit + label change */}
-            <ColorDialog
-              capabilities={capabilities}
-              open={colorOpen}
-              onClose={() => setColorOpen(false)}
-              trigger={<ColorInput ariaLabel="Background media" fullWidth fillType="Image" fillLabel={fillType === "video" ? "clip.mp4" : "cover.png"} onSwatchClick={() => setColorOpen(true)} />}
-              fillType="image"
-              onRotateMedia={onRotateMedia}
-              hex={color.replace(/^#/, "")}
-              opacity={opacity}
-              onHexChange={value => {
-                const next = `#${value.replace(/^#/, "")}`;
-                if (controlledColor === undefined) setInternalColor(next);
-                onColorChange?.(next);
-              }}
-              onOpacityChange={value => {
-                if (controlledOpacity === undefined) setInternalOpacity(value);
-                onOpacityChange?.(value);
-              }}
-            />
-          </div>
-          {/* Reserve the Design-tab trailing-icon column so the Background
-              hex/opacity field aligns with Range/Duration and the Position/
-              Scale/Opacity fields above. */}
-          <div aria-hidden className="shrink-0 flex items-center justify-end min-w-[24px]" />
-        </div>
-      )}
+        <div aria-hidden className="shrink-0 flex items-center justify-end min-w-[24px]" />
+      </div>
     </PanelSection>
   );
 }
@@ -2798,8 +2863,9 @@ function ClipTrimSection({
   );
 }
 
-// Playback §Playback — Speed dropdown (default 1x); Volume deferred to V2
-// (disabled row, "Audio coming soon" per spec).
+// Playback §Playback — only modeled actions are shown. Audio clips own the real
+// volume field; a disabled video-volume promise was misleading when the selected
+// video already carried audio.
 const CLIP_SPEEDS: ClipSpeed[] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 4];
 const CLIP_SPEED_LABELS = Object.fromEntries(CLIP_SPEEDS.map(speed => [String(speed), `${speed}×`])) as Record<string, string>;
 
@@ -2808,16 +2874,9 @@ function ClipPlaybackSection({ speed = 1, onSpeedChange, controlled = false }: {
   const renderedSpeed = controlled ? speed : internalSpeed;
   return (
     <PanelSection title="Playback" landmark>
-      <DualField
-        leftLabel="Speed"
-        left={<ChoiceDropdown ariaLabel="Speed" value={String(renderedSpeed)} options={CLIP_SPEEDS.map(String)} labels={CLIP_SPEED_LABELS} onChange={value => { const next = Number(value) as ClipSpeed; if (!controlled) setInternalSpeed(next); onSpeedChange?.(next); }} />}
-        rightLabel="Volume"
-        right={
-          <div className="w-full" title="Audio coming soon">
-            <Dropdown ariaLabel="Volume" value="—" disabled fullWidth />
-          </div>
-        }
-      />
+      <PanelFullRow label="Speed">
+        <ChoiceDropdown ariaLabel="Speed" value={String(renderedSpeed)} options={CLIP_SPEEDS.map(String)} labels={CLIP_SPEED_LABELS} onChange={value => { const next = Number(value) as ClipSpeed; if (!controlled) setInternalSpeed(next); onSpeedChange?.(next); }} />
+      </PanelFullRow>
     </PanelSection>
   );
 }
@@ -2937,7 +2996,7 @@ function ClipColorBody() {
 }
 
 // Chroma key — added with "+"; Key colour swatch + hex, then Threshold %.
-function ChromaKeyBody() {
+function ChromaKeyBody({ swatches }: { swatches?: string[] }) {
   const [color, setColor] = useState("#00FF00");
   const [colorDialogOpen, setColorDialogOpen] = useState(false);
   const [threshold, setThreshold] = useState(50);
@@ -2949,6 +3008,9 @@ function ChromaKeyBody() {
             open={colorDialogOpen}
             onClose={() => setColorDialogOpen(false)}
             trigger={<ColorInput ariaLabel="Key color" fullWidth color={color} opacity={100} onColorChange={setColor} onSwatchClick={() => setColorDialogOpen(true)} />}
+            solidOnly
+            capabilities={{ styles: false, variables: false, libraries: false, videoFill: false, dropZone: false }}
+            swatches={swatches}
             hex={color.replace("#", "")}
             onHexChange={value => setColor(`#${value.replace(/^#/, "")}`)}
           />
@@ -3074,6 +3136,8 @@ function AudioLoudnessSection() {
 export interface PropertyPanelProps {
   /** Host-owned feature availability; UI only hides unsupported entry points. */
   capabilities?: InspectorCapabilities;
+  /** Real unique colors from the active composition; never demo palette data. */
+  pageSwatches?: string[];
   /** Controlled Design/Animate tab seam. A timeline preset can reveal its matching Animate card. */
   activeTab?: "design" | "animate";
   onActiveTabChange?: (tab: "design" | "animate") => void;
@@ -3177,6 +3241,11 @@ export interface PropertyPanelProps {
   onAddFill?: () => void; onUpdateFill?: (id: string, patch: Partial<Omit<ElementFillSetting, "id">>) => void; onToggleFill?: (id: string, visible: boolean) => void; onReorderFill?: (id: string, targetId: string) => void; onRemoveFill?: (id: string) => void;
   /** Detailed Fill/Color dialog seams. Values live on each fill; callbacks remain host-owned. */
   onFillTypeChange?: (id: string, type: FillType) => void;
+  /** Reports the exact element fill whose shared dialog is open, for canvas controls. */
+  onActiveFillDialogChange?: (id: string | null) => void;
+  /** Activates host-owned composition sampling for one exact fill/gradient stop. */
+  onFillEyedropperActivate?: (id: string, gradientStopId?: string) => void;
+  activeFillEyedropperId?: string | null;
   onFillGradientStopsChange?: (id: string, stops: GradientStop[]) => void;
   /** Host-owned gradient transform commands for a specific fill entry. */
   onFlipFillGradient?: (id: string) => void;
@@ -3195,13 +3264,19 @@ export interface PropertyPanelProps {
   /** Locked or inherited-locked selections may inspect Stroke Settings but cannot mutate them. */
   strokeReadOnly?: boolean;
   onAddStroke?: () => void; onUpdateStroke?: (id: string, patch: Partial<Omit<ElementStrokeSetting, "id">>) => void; onToggleStroke?: (id: string, visible: boolean) => void; onReorderStroke?: (id: string, targetId: string) => void; onRemoveStroke?: (id: string) => void;
+  onStrokeEyedropperActivate?: (id: string) => void;
+  activeStrokeEyedropperId?: string | null;
   effects?: ElementEffectSetting[];
   onAddEffect?: () => void; onUpdateEffect?: (id: string, patch: Partial<Omit<ElementEffectSetting, "id">>) => void; onToggleEffect?: (id: string, visible: boolean) => void; onReorderEffect?: (id: string, targetId: string) => void; onRemoveEffect?: (id: string) => void;
+  onEffectEyedropperActivate?: (id: string) => void;
+  activeEffectEyedropperId?: string | null;
   layoutGuides?: ElementLayoutGuideSetting[];
   onAddLayoutGuide?: () => void; onUpdateLayoutGuide?: (id: string, patch: Partial<Omit<ElementLayoutGuideSetting, "id">>) => void; onRemoveLayoutGuide?: (id: string) => void;
   selectionColors?: ElementSelectionColorSetting[];
   onUpdateSelectionColor?: (id: string, patch: Partial<Omit<ElementSelectionColorSetting, "id">>) => void;
   onSelectAllUsingColor?: (id: string) => void;
+  onSelectionColorEyedropperActivate?: (id: string, gradientStopId?: string) => void;
+  activeSelectionColorEyedropperId?: string | null;
   /** Controlled object-animation rows. Pass an empty list for the canonical null state. */
   objectAnimations?: import("./AnimatePanel").ObjectAnimationItem[];
   objectAnimationCallbacks?: import("./AnimatePanel").ObjectAnimationCallbacks;
@@ -3285,9 +3360,30 @@ export interface PropertyPanelProps {
   slideBackgroundGradientPreview?: string;
   slideBackgroundGradientType?: Extract<FillType, "linear" | "radial" | "angular" | "diamond">;
   slideBackgroundGradientStops?: GradientStop[];
+  slideBackgroundImageSourceLabel?: string;
+  slideBackgroundImagePreviewUrl?: string;
+  slideBackgroundVideoSourceLabel?: string;
+  slideBackgroundVideoPreviewUrl?: string;
+  slideBackgroundMediaFit?: MediaFillFit;
+  slideBackgroundMediaTileScale?: number;
+  slideBackgroundDropZoneSources?: { id: string; label: string }[];
+  slideBackgroundDropZoneSourceId?: string;
+  slideBackgroundSwatches?: string[];
   onSlideBackgroundTypeChange?: (value: SlideBackgroundType) => void;
   onSlideBackgroundColorChange?: (value: string) => void;
   onSlideBackgroundOpacityChange?: (value: number) => void;
+  onSlideBackgroundGradientTypeChange?: (value: Extract<FillType, "linear" | "radial" | "angular" | "diamond">) => void;
+  onSlideBackgroundGradientStopsChange?: (stops: GradientStop[]) => void;
+  onChooseSlideBackgroundImage?: () => void;
+  onChooseSlideBackgroundVideo?: () => void;
+  onSlideBackgroundMediaFitChange?: (fit: MediaFillFit) => void;
+  onSlideBackgroundMediaTileScaleChange?: (scale: number) => void;
+  onEditSlideBackgroundCrop?: () => void;
+  onSelectSlideBackgroundDropZoneSource?: (sourceId: string) => void;
+  onSlideBackgroundEyedropperActivate?: (gradientStopId?: string) => void;
+  slideBackgroundEyedropperActive?: boolean;
+  /** Keeps host-owned canvas controls synchronized with the background fill dialog. */
+  onSlideBackgroundFillDialogChange?: (open: boolean) => void;
   onFlipSlideBackgroundGradient?: () => void;
   onRotateSlideBackgroundGradient?: () => void;
   onRotateSlideBackgroundMedia?: () => void;
@@ -3778,9 +3874,29 @@ export function PropertyPanel(props: PropertyPanelProps) {
   slideBackgroundGradientPreview,
   slideBackgroundGradientType,
   slideBackgroundGradientStops,
+  slideBackgroundImageSourceLabel,
+  slideBackgroundImagePreviewUrl,
+  slideBackgroundVideoSourceLabel,
+  slideBackgroundVideoPreviewUrl,
+  slideBackgroundMediaFit,
+  slideBackgroundMediaTileScale,
+  slideBackgroundDropZoneSources,
+  slideBackgroundDropZoneSourceId,
+  slideBackgroundSwatches,
   onSlideBackgroundTypeChange,
   onSlideBackgroundColorChange,
   onSlideBackgroundOpacityChange,
+  onSlideBackgroundGradientTypeChange,
+  onSlideBackgroundGradientStopsChange,
+  onChooseSlideBackgroundImage,
+  onChooseSlideBackgroundVideo,
+  onSlideBackgroundMediaFitChange,
+  onSlideBackgroundMediaTileScaleChange,
+  onEditSlideBackgroundCrop,
+  onSelectSlideBackgroundDropZoneSource,
+  onSlideBackgroundEyedropperActivate,
+  slideBackgroundEyedropperActive,
+  onSlideBackgroundFillDialogChange,
   slideTransitionType,
   slideTransitionDirection,
   slideTransitionDuration,
@@ -3836,6 +3952,11 @@ export function PropertyPanel(props: PropertyPanelProps) {
   };
   const [uncontrolledTab, setUncontrolledTab] = useState<"design" | "animate" | "prototype">("design");
   const [activeStackDialog, setActiveStackDialog] = useState<string | null>(null);
+  const activeFillDialogChangeRef = useRef(props.onActiveFillDialogChange);
+  activeFillDialogChangeRef.current = props.onActiveFillDialogChange;
+  useEffect(() => {
+    activeFillDialogChangeRef.current?.(activeStackDialog?.startsWith("fill-color:") ? activeStackDialog.slice("fill-color:".length) : null);
+  }, [activeStackDialog]);
   const tab = props.activeTab ?? uncontrolledTab;
   const setTab = (next: string) => {
     if (next !== "design" && next !== "animate" && next !== "prototype") return;
@@ -4052,16 +4173,38 @@ export function PropertyPanel(props: PropertyPanelProps) {
             gradientPreview={slideBackgroundGradientPreview}
             gradientType={slideBackgroundGradientType}
             gradientStops={slideBackgroundGradientStops}
+            imageSourceLabel={slideBackgroundImageSourceLabel}
+            imagePreviewUrl={slideBackgroundImagePreviewUrl}
+            videoSourceLabel={slideBackgroundVideoSourceLabel}
+            videoPreviewUrl={slideBackgroundVideoPreviewUrl}
+            mediaFit={slideBackgroundMediaFit}
+            mediaTileScale={slideBackgroundMediaTileScale}
+            dropZoneSources={slideBackgroundDropZoneSources}
+            dropZoneSourceId={slideBackgroundDropZoneSourceId}
+            swatches={slideBackgroundSwatches ?? props.pageSwatches}
             onTypeChange={onSlideBackgroundTypeChange}
             onColorChange={onSlideBackgroundColorChange}
             onOpacityChange={onSlideBackgroundOpacityChange}
+            onGradientTypeChange={onSlideBackgroundGradientTypeChange}
+            onGradientStopsChange={onSlideBackgroundGradientStopsChange}
             onFlipGradient={props.onFlipSlideBackgroundGradient}
             onRotateGradient={props.onRotateSlideBackgroundGradient}
+            onChooseImage={onChooseSlideBackgroundImage}
+            onChooseVideo={onChooseSlideBackgroundVideo}
+            onMediaFitChange={onSlideBackgroundMediaFitChange}
+            onMediaTileScaleChange={onSlideBackgroundMediaTileScaleChange}
+            onEditCrop={onEditSlideBackgroundCrop}
+            onSelectDropZoneSource={onSelectSlideBackgroundDropZoneSource}
+            onEyedropperActivate={onSlideBackgroundEyedropperActivate}
+            eyedropperActive={slideBackgroundEyedropperActive}
+            onDialogOpenChange={onSlideBackgroundFillDialogChange}
             onRotateMedia={props.onRotateSlideBackgroundMedia}
           />
           {capabilities.layoutFidelityTools && <LayoutGuideSection entries={layoutGuides} onAdd={onAddLayoutGuide} onUpdate={onUpdateLayoutGuide} onRemove={onRemoveLayoutGuide} />}
           {/* Selection colors — reuse the existing element-mode section */}
-          <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} capabilities={capabilities} />
+          <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor}
+            onEyedropperActivate={props.onSelectionColorEyedropperActivate} activeEyedropperId={props.activeSelectionColorEyedropperId}
+            swatches={props.pageSwatches} capabilities={capabilities} />
           <ExportSection settings={exportSettings} mode={exportMode} frameRate={projectFrameRate} onModeChange={onExportModeChange} onFrameRateChange={onProjectFrameRateChange} targetName={exportTargetName ?? renderedSlideName}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
           </>}
@@ -4113,12 +4256,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onDurationChange={onClipDurationChange} />
           <ClipTrimSection trimIn={clipTrimIn} trimOut={clipTrimOut} controlled={props.clipTrimIn !== undefined || props.clipTrimOut !== undefined} onTrimInChange={onClipTrimInChange} onTrimOutChange={onClipTrimOutChange} />
           <ClipPlaybackSection speed={clipSpeed} controlled={props.clipSpeed !== undefined} onSpeedChange={onClipSpeedChange} />
-          {/* Effect sections (effects-mental-model.md). Appearance (blend mode)
-              maps to a host field; Color grading + Chroma keying are the later
-              WebGL colour pipeline. */}
+          {/* Only Appearance is modeled today. Color grading and Chroma key stay
+              absent until the engine can persist and render them truthfully. */}
           <ClipBlendSection mode={clipBlendMode} controlled={props.clipBlendMode !== undefined} onModeChange={onClipBlendModeChange} />
-          <ToggleableSection title="Color" addLabel="Add color"><ClipColorBody /></ToggleableSection>
-          <ToggleableSection title="Chroma key" addLabel="Add chroma key"><ChromaKeyBody /></ToggleableSection>
         </ScrollArea>
       )}
 
@@ -4271,16 +4411,22 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onMediaFitChange={props.onFillMediaFitChange}
             onMediaTileScaleChange={props.onFillMediaTileScaleChange}
             onEditCrop={props.onEditFillCrop}
+            onEyedropperActivate={props.onFillEyedropperActivate} activeEyedropperId={props.activeFillEyedropperId}
             dropZoneSources={props.fillDropZoneSources} onSelectDropZoneSource={props.onSelectFillDropZoneSource}
+            swatches={props.pageSwatches}
             capabilities={capabilities}
             activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
-          <StrokeSection entries={strokes} onAdd={onAddStroke} onUpdate={onUpdateStroke} onToggle={onToggleStroke} onReorder={onReorderStroke} onRemove={onRemoveStroke} capabilities={capabilities}
+          <StrokeSection entries={strokes} onAdd={onAddStroke} onUpdate={onUpdateStroke} onToggle={onToggleStroke} onReorder={onReorderStroke} onRemove={onRemoveStroke} swatches={props.pageSwatches} capabilities={capabilities}
+            onEyedropperActivate={props.onStrokeEyedropperActivate} activeEyedropperId={props.activeStrokeEyedropperId}
             readOnly={strokeReadOnly} activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
           <EffectsSection entries={effects} onAdd={onAddEffect} onUpdate={onUpdateEffect} onToggle={onToggleEffect} onReorder={onReorderEffect} onRemove={onRemoveEffect} capabilities={capabilities}
+            onEyedropperActivate={props.onEffectEyedropperActivate} activeEyedropperId={props.activeEffectEyedropperId}
             activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
 
           {/* Selection Colors — multi-select only (§5.8), positioned right after Effects */}
-          {multiSelect && <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor} capabilities={capabilities} />}
+          {multiSelect && <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor}
+            onEyedropperActivate={props.onSelectionColorEyedropperActivate} activeEyedropperId={props.activeSelectionColorEyedropperId}
+            swatches={props.pageSwatches} capabilities={capabilities} />}
 
           <ExportSection settings={exportSettings} mode={exportMode} frameRate={projectFrameRate} onModeChange={onExportModeChange} onFrameRateChange={onProjectFrameRateChange} targetName={exportTargetName ?? elementLabel[elementType]}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
