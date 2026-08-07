@@ -75,15 +75,16 @@ describe("ColorDialog Editor-Study fidelity geometry", () => {
       imageSourceLabel: bound ? "cover.png" : undefined,
       imagePreviewUrl: bound ? "blob:cover" : undefined,
       onImageAdjustmentChange: bound ? () => undefined : undefined,
+      onOpenMediaEffects: bound ? () => undefined : undefined,
     });
     expect(html).toContain(bound ? "data-composa-media-fit-row" : "data-state=\"empty\"");
     expect(html).toContain("size-[208px]");
     expect(html).toContain(`aria-label="${bound ? "Replace" : "Choose"} media…"`);
     expect(html).toContain(bound ? 'aria-label="Rotate image 90 degrees"' : 'data-state="empty"');
     if (bound) {
-      expect(html).toContain("h-[496px]");
-      expect(html.match(/data-composa-image-adjustment-row=/g)).toHaveLength(7);
-      expect(html).toContain("w-[120px]");
+      expect(html).toContain("Image effects");
+      expect(html).not.toContain("data-composa-image-adjustment-row");
+      expect(html).toContain("max-h-[calc(100vh-32px)]");
     } else {
       expect(html).toContain('data-state="empty"');
       expect(html).not.toContain("data-composa-media-fit-row");

@@ -11,6 +11,8 @@ interface CheckboxProps {
   muted?: boolean;
   /** ghost = rendered on a dark canvas surface rather than the light inspector */
   ghost?: boolean;
+  /** Accessible name when the visible label is rendered by the owning row. */
+  ariaLabel?: string;
   label?: string;
   state?: "default" | "focused";
   onChange?: (checked: boolean) => void;
@@ -53,6 +55,7 @@ export function Checkbox({
   disabled = false,
   muted = false,
   ghost = false,
+  ariaLabel,
   label,
   state = "default",
   onChange,
@@ -112,7 +115,7 @@ export function Checkbox({
       role="checkbox"
       aria-checked={isMixed ? "mixed" : isChecked}
       aria-disabled={disabled}
-      aria-label={label}
+      aria-label={ariaLabel ?? label}
       onClick={handleClick}
       className={clsx(
         "inline-flex items-center gap-[8px] py-[4px] outline-none cursor-pointer",
