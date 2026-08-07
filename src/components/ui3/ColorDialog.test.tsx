@@ -211,4 +211,15 @@ describe("ColorDialog anchored inspector contract", () => {
     act(() => pipette.props.onClick());
     expect(onEyedropperActivate).toHaveBeenCalledWith("end");
   });
+
+  it("synchronizes the shared picker when a controlled host switches Solid to Gradient in place", () => {
+    let renderer!: ReactTestRenderer;
+    act(() => { renderer = create(<ColorDialog open onClose={() => undefined} trigger={<button>Color</button>} fillType="solid" hex="171717" />); });
+    act(() => renderer.update(<ColorDialog open onClose={() => undefined} trigger={<button>Color</button>} fillType="linear"
+      gradientStops={[
+        { id: "start", position: 0, color: "123456", opacity: 100 },
+        { id: "end", position: 100, color: "ABCDEF", opacity: 100 },
+      ]} />));
+    expect(renderer.root.findByProps({ "aria-label": "Color hex" }).props.value).toBe("123456");
+  });
 });

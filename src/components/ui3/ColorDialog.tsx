@@ -713,6 +713,20 @@ export function ColorDialog({
   const [bri, setBri] = useState(briProp ?? 100);
   const [dragging, setDragging] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
+  // A controlled host can change Solid → Gradient while this same dialog stays
+  // open. Synchronize the active stop and shared picker to the new authored
+  // ramp; otherwise the picker keeps displaying (and editing) the old solid.
+  useEffect(() => {
+    const nextType = fillTypeProp;
+    const gradient = nextType === "linear" || nextType === "radial" || nextType === "angular" || nextType === "diamond";
+    if (!open || !gradient || !stopsProp?.length) return;
+    const nextStop = stopsProp.find(stop => stop.id === selectedStopId) ?? stopsProp[0];
+    const picker = hexToHsb(nextStop.color);
+    setStops(stopsProp);
+    setSelectedStopId(nextStop.id);
+    setHex(nextStop.color);
+    setHue(picker.hue); setSat(picker.saturation); setBri(picker.brightness);
+  }, [open, fillTypeProp, selectedStopId, stopsProp]);
   const updatePicker = (e: { clientX: number; clientY: number }) => {
     const el = canvasRef.current;
     if (!el) return;
