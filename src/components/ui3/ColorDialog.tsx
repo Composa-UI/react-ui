@@ -1279,7 +1279,10 @@ export function ColorDialog({
               onRotate={onRotateMedia}
               />}
             <MediaFillPreview kind="image" sourceLabel={imageSourceLabel} previewUrl={imagePreviewUrl} fit={mediaFit} tileScale={mediaTileScale}
-              onChoose={onChooseImage} onMakeImage={onMakeImage} onOpenEffects={onOpenMediaEffects} />
+              onChoose={onChooseImage} onMakeImage={onMakeImage} bottomInset={!imageSourceLabel || !onOpenMediaEffects} />
+            {imageSourceLabel && onOpenMediaEffects && <div data-composa-media-effects-action="image" className="px-[16px] pt-[8px] pb-[16px]">
+              <Button variant="Secondary" label="Image effects" ariaLabel="Image effects" className="w-full" onClick={onOpenMediaEffects} />
+            </div>}
           </>
         )}
 

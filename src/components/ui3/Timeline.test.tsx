@@ -973,6 +973,9 @@ describe("video clips carry an audio strip (Composa#661)", () => {
     const html = master({ baseClips: [{ id: "v1", name: "shot", range: [0, 1_000] }] });
     expect(() => tagWithLabel(html, "shot")).not.toThrow();
     expect(html).not.toContain("data-timeline-clip-waveform");
+    expect(html).toContain('data-has-waveform="false"');
+    expect(html).toContain("bottom-0");
+    expect(html).not.toContain("bottom-[14px]");
   });
 });
 

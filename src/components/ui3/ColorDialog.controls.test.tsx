@@ -190,6 +190,8 @@ describe("image fill", () => {
       onOpenMediaEffects: onOpen }, nodeMock());
     expect(host(renderer, instance => instance.type === "input" && instance.props.type === "range")).toHaveLength(0);
     const [effects] = byLabel(renderer, "Image effects");
+    expect(effects.parent?.props["data-composa-media-preview-actions"]).toBeUndefined();
+    expect(renderer.root.findAll(instance => instance.props["data-composa-media-effects-action"] === "image")).toHaveLength(1);
     act(() => effects.props.onClick());
     expect(onOpen).toHaveBeenCalledOnce();
     act(() => renderer.unmount());

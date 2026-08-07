@@ -1788,7 +1788,11 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
               dimmed && MUTED_BAR,
               clip.selected ? "border-c-border-selected-strong bg-c-bg-brand" : "border-c-border bg-c-bg-secondary hover:border-c-border-selected")}
             style={{ left, width }}>
-            <div data-timeline-clip-main className="absolute inset-x-[10px] top-0 bottom-[14px] flex min-w-0 items-center gap-[6px]">
+            <div
+              data-timeline-clip-main
+              data-has-waveform={clip.waveform?.length ? "true" : "false"}
+              className={clsx("absolute inset-x-[10px] top-0 flex min-w-0 items-center gap-[6px]", clip.waveform?.length ? "bottom-[14px]" : "bottom-0")}
+            >
               {clip.thumbnail ? (
                 <img
                   data-timeline-clip-thumbnail
