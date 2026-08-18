@@ -682,10 +682,10 @@ function ChatIntegrationFixture({ mode }: { mode: "light" | "dark" }) {
 // via ?theme=dark). d ∈ team-settings | team-members | team-members-empty |
 // delete | image-adjust.
 const DIALOG_288_MEMBERS: TeamMember[] = [
-  { id: "1", name: "Peace Aghaeze", email: "peace4aghaeze@gmail.com", avatarColor: "blue", initial: "P", role: "can edit" },
-  { id: "2", name: "Precious Aghaeze", email: "aghaeze.precious@philander.edu", avatarColor: "purple", initial: "P", role: "can edit" },
-  { id: "3", name: "Samuel", email: "harlahke@gmail.com", avatarSrc: thumb3, role: "Owner", isYou: true },
-  { id: "4", name: "Sam Davis Omekara", email: "omekara.samdavis@philander.edu", avatarColor: "grey", initial: "S", role: "can edit", pending: true },
+  { id: "1", name: "Ada Nakamura", email: "ada@example.com", avatarColor: "blue", initial: "A", role: "can edit" },
+  { id: "2", name: "Bruno Salas", email: "bruno@example.com", avatarColor: "purple", initial: "B", role: "can edit" },
+  { id: "3", name: "Robin Vega", email: "robin@example.com", avatarSrc: thumb3, role: "Owner", isYou: true },
+  { id: "4", name: "Chidi Okafor", email: "chidi@example.com", avatarColor: "grey", initial: "C", role: "can edit", pending: true },
 ];
 
 function Dialog288Fixture() {
@@ -728,7 +728,7 @@ function Dialog288Fixture() {
           onClose={noop}
           tab="members"
           teamName="Just me"
-          members={[{ id: "me", name: "Samuel", email: "harlahke@gmail.com", avatarSrc: thumb3, role: "Owner", isYou: true }]}
+          members={[{ id: "me", name: "Robin Vega", email: "robin@example.com", avatarSrc: thumb3, role: "Owner", isYou: true }]}
         />
       )}
 

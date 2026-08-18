@@ -109,11 +109,11 @@ describe("ShareModal (Composa#289)", () => {
     expect(labelledButton(root, "Invite").props.disabled).toBe(true);
 
     // Type into the field, then it enables and emits.
-    act(() => { root.findByType("input").props.onChange({ target: { value: "  a@b.com  " } }); });
+    act(() => { root.findByType("input").props.onChange({ target: { value: "  a@example.com  " } }); });
     const invite = labelledButton(root, "Invite");
     expect(invite.props.disabled).toBe(false);
     act(() => { invite.props.onClick(); });
-    expect(onInvite).toHaveBeenCalledWith("a@b.com");
+    expect(onInvite).toHaveBeenCalledWith("a@example.com");
   });
 
   it("fails closed when the host cannot invite and explains why", () => {

@@ -33,9 +33,9 @@ export interface GitHubPermissionCardProps {
 }
 
 const DEFAULT_PARAMS: readonly GitHubPermissionParam[] = [
-  { key: "owner", value: "samuelalake", type: "string" },
+  { key: "owner", value: "octocat", type: "string" },
   { key: "perPage", value: 1, type: "number" },
-  { key: "repo", value: "samuelalake.github.io", type: "string" },
+  { key: "repo", value: "hello-world", type: "string" },
   { key: "state", value: "OPEN", type: "string" },
 ];
 
