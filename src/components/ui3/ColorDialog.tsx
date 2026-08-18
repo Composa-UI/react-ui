@@ -492,7 +492,13 @@ function MediaFillPreview({ kind, sourceLabel, previewUrl, fit, tileScale, onCho
       data-state={previewUrl ? "bound" : "empty"}
       data-fit={fit}
       aria-label={selected ? `${kind} preview: ${sourceLabel}` : `${kind} preview: empty`}
-      className={clsx("group relative mx-[16px] size-[208px] shrink-0 overflow-hidden rounded-c-md bg-c-bg-secondary ring-1 ring-inset ring-c-border", bottomInset && "mb-[16px]")}
+      // `mt-[16px]` matches the horizontal inset. It was missing, so the media panel
+      // sat flush against the tab strip's bottom border while being inset 16px on
+      // every other side — measured on the Image and Video tabs in their empty
+      // state, where the checkerboard makes the asymmetry obvious. `bottomInset`
+      // stays conditional because some hosts follow the panel with their own
+      // controls and supply that spacing themselves.
+      className={clsx("group relative mx-[16px] mt-[16px] size-[208px] shrink-0 overflow-hidden rounded-c-md bg-c-bg-secondary ring-1 ring-inset ring-c-border", bottomInset && "mb-[16px]")}
       style={!previewUrl ? {
         backgroundImage: "repeating-conic-gradient(var(--color-bg-secondary) 0% 25%, var(--color-bg) 0% 50%)",
         backgroundSize: "16px 16px",
