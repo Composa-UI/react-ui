@@ -242,7 +242,7 @@ interface TooltipLinkProps {
 const LINK_META: Record<Exclude<LinkVariant, "URL">, { icon: string; defaultLabel: string; ctas: string[] }> = {
   Link:      { icon: "🔗", defaultLabel: "Open google.com",    ctas: ["Edit"] },
   Phone:     { icon: "📞", defaultLabel: "Call (415) 355-0394", ctas: ["Edit"] },
-  Email:     { icon: "✉️", defaultLabel: "Copy mail@mail.com",  ctas: ["Send mail", "Edit"] },
+  Email:     { icon: "✉️", defaultLabel: "Copy mail@example.com",  ctas: ["Send mail", "Edit"] },
   Page:      { icon: "📄", defaultLabel: "Go to page",          ctas: ["Edit"] },
   Prototype: { icon: "▶",  defaultLabel: "Open prototype",      ctas: ["Edit"] },
   Frame:     { icon: "⊞",  defaultLabel: "Go to frame",         ctas: ["Edit"] },

@@ -1,9 +1,10 @@
 # @composa/ui — Agent Guide
 
-`@composa/ui` is a **Figma-fidelity component kit** (Tailwind v4 + Radix + MUI/Emotion)
+`@composa/ui` is a **Figma-fidelity component kit** (Tailwind v4 + Radix)
 that provides the visual layer for the **Composa editor** (a Figma-Slides-style
 tool for animated graphic overlays on video). Components are a merged set: UI3
-primitives (from a Figma-Make export) plus Composa panel compositions. This
+primitives (originally seeded from a Figma-Make export, whose leftover vendored
+shadcn/ui scaffolding has since been deleted) plus Composa panel compositions. This
 package is the target of an ongoing **visual reskin** of the editor, and is meant
 to be buildable/refinable by design-driven agents (including Figma's).
 
@@ -22,6 +23,11 @@ to be buildable/refinable by design-driven agents (including Figma's).
 - `src/components/ui3/*` — the components; `src/index.ts` is the public API (exports
   from source, **no build step** — consumers import TS directly).
 - `src/lib/*` — pure helpers (e.g. `color.ts` HSB↔hex).
+- `LICENSE` (Apache-2.0), `NOTICE`, `CONTRIBUTING.md` (incl. the CLA requirement) and
+  `docs/third-party-notices.md` are the legal front door. `src/fixtures-privacy.test.ts`
+  enforces the two rules that are easy to break by accident: fixture email addresses
+  must use an RFC 2606 reserved domain, and exported components must not default to a
+  real account.
 - `src/styles/*` — Tailwind v4 entry + tokens: `composa-tokens.css` (`--color-*`
   primitives, light + `[data-composa-mode="dark"]`), `theme.css` (`@theme` maps to
   Tailwind utilities incl. the `c-*` namespace), `fonts.css`, plus
@@ -65,10 +71,10 @@ to be buildable/refinable by design-driven agents (including Figma's).
 
 ## Known state / nits (2026-07-08)
 
-- Local-only repo initially (`git init`); if cloud agents need it, it must be pushed
-  to a remote.
-- `react-day-picker@8` peer-conflicts with React 19 (unused by the dialogs) — installs
-  need `--legacy-peer-deps` until it's upgraded/dropped.
+- `npm ci` exits 0 with no flags. The `react-day-picker@8` / React 19 peer conflict
+  that used to force `--legacy-peer-deps` is gone: the only file importing it was
+  `src/components/ui/calendar.tsx`, part of the unreachable vendored island that has
+  now been deleted along with 41 dependencies that served only it.
 - `ColorDialog` review nits: typing a hex doesn't re-derive the 2D picker reticle;
   the gradient preview bar renders first→last stop colors ignoring positions;
   Libraries/swatches accept injected data (editor feeds document colors + variables)
