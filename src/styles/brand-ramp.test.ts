@@ -6,8 +6,11 @@ import { fileURLToPath } from "node:url";
 // Two things are pinned here because neither is expressible in a component test:
 //   1. the exact token values, so a "harmless" tweak cannot quietly reintroduce
 //      Figma's accent (#0d99ff / #007be5 / #7cc4f8) into the product chrome;
-//   2. the WCAG AA contrast of every brand pair. The blue ramp shipped three
-//      sub-AA pairs; the violet clears AA everywhere and must keep doing so.
+//   2. the WCAG AA contrast of the brand pairs. The blue ramp shipped three
+//      sub-AA pairs and the violet fixes all three. It does NOT clear AA
+//      everywhere: dark `text-brand` on dark `bg-selected` measures 3.7596:1,
+//      short of the 4.5 text floor. That pair is pinned explicitly below rather
+//      than left out of the table.
 
 const CSS = readFileSync(fileURLToPath(new URL("./composa-tokens.css", import.meta.url)), "utf8");
 
@@ -94,6 +97,10 @@ describe("brand ramp meets WCAG AA", () => {
     ["light text-brand on bg-selected", light["--color-text-brand"], light["--color-bg-selected"], AA_TEXT],
     ["dark text-brand on bg", dark["--color-text-brand"], "#2c2c2c", AA_TEXT],
     ["dark text-brand on bg-secondary", dark["--color-text-brand"], "#383838", AA_TEXT],
+    // NOTE: "dark text-brand on dark bg-selected" is the twin of the light row
+    // above and is deliberately NOT in this table -- it does not clear AA. It is
+    // pinned in its own test below. Leaving it out silently is what let the
+    // "clears AA everywhere" claim survive; the row below is the fix.
     ["white text on dark bg-brand", "#ffffff", dark["--color-bg-brand"], AA_TEXT],
     ["white text on dark bg-brand-pressed", "#ffffff", dark["--color-bg-brand-pressed"], AA_TEXT],
     ["white text on dark bg-selected", "#ffffff", dark["--color-bg-selected"], AA_TEXT],
@@ -104,6 +111,26 @@ describe("brand ramp meets WCAG AA", () => {
     ["border-selected on dark chrome", dark["--color-border-selected"], "#2c2c2c", AA_NONTEXT],
   ])("%s", (_label, fg, bg, threshold) => {
     expect(contrast(fg as string, bg as string)).toBeGreaterThanOrEqual(threshold as number);
+  });
+
+  // The one brand pair that does not clear AA, recorded so it cannot be
+  // forgotten, quietly worsened, or claimed away in prose again.
+  //
+  // Dark `text-brand` (#bab5f3) on dark `bg-selected` (#57537a) = 3.7596:1,
+  // below the 4.5 text floor. The blue pair it replaced (#7cc4f8 on #4a5878)
+  // measured 3.7550:1, so the violet is a hair better, not a regression -- but
+  // "better than a failing blue" is not "passes". Closing the gap means moving a
+  // brand value, which is an owner decision, not a token-swap detail. The
+  // light-mode twin (text-brand on bg-selected, 4.9992:1) does clear AA; the
+  // asymmetry is real and this row is where it is written down.
+  it("pins the one dark brand pair that is still below AA text contrast", () => {
+    const measured = contrast(dark["--color-text-brand"], dark["--color-bg-selected"]);
+    expect(measured).toBeCloseTo(3.7596, 3);
+    // Documents the shortfall. If a future change clears AA, this line fails on
+    // purpose: move the pair up into the table above and delete this test.
+    expect(measured).toBeLessThan(AA_TEXT);
+    // ...and it must never fall back below the blue it replaced.
+    expect(measured).toBeGreaterThan(3.755);
   });
 
   it("beats the retired blue on the three pairs the blue failed", () => {

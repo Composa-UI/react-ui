@@ -21,9 +21,17 @@
  *            document content on the canvas, not app chrome, so they stay
  *            mode-invariant exactly as the blue pair did.
  *
- * WCAG AA (measured, sRGB): white on bg-brand 4.63:1 (blue was 2.99, a fail);
- * text-brand on bg 5.73:1 (blue 4.23, a fail); border-selected on a white
- * artboard 4.63:1 (blue 2.99, a fail). Every brand pair now clears AA.
+ * WCAG AA (measured, sRGB): the violet fixes all three pairs the blue failed --
+ * white on bg-brand 4.63:1 (blue was 2.99); text-brand on bg 5.73:1 (blue 4.23);
+ * border-selected on a white artboard 4.63:1 (blue 2.99).
+ *
+ * One pair still does NOT clear AA: dark text-brand (#bab5f3) on dark
+ * bg-selected (#57537a) is 3.76:1, under the 4.5 text floor. The blue pair it
+ * replaced (#7cc4f8 on #4a5878) was 3.76:1 too, so this is carried over rather
+ * than introduced. Closing it means moving a brand value -- an owner decision.
+ * See brand-ramp.test.ts, which pins this pair so it cannot drift or be
+ * forgotten. The light-mode twin (text-brand on bg-selected) is 5.00:1 and
+ * does clear AA.
  */
 
 /* ── Light ─────────────────────────────────────────────────────────────────── */
