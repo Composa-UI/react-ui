@@ -63,8 +63,20 @@ export function Dropdown({
 
   // Only editable (type-to-edit) dropdowns highlight the value text on active —
   // menu-pick dropdowns just open a list, so no text-selection highlight.
+  //
+  // Derived from the selection token, not written as a literal. This used to be
+  // Figma's accent at 40% alpha, written as an rgba() inside a Tailwind arbitrary
+  // background utility, and it survived the violet rebrand for two reasons: the
+  // app's brand-blue guard scans the APP rather than this package, and the value
+  // was an rgba() rather than a hex. It was found by reading the built CSS of a
+  // deployed build, not the source.
+  //
+  // The old class is deliberately NOT quoted anywhere in this file. Tailwind
+  // scans source text for candidate utilities and does not skip comments, so
+  // naming it in prose re-emits the retired rule into the bundle — which is
+  // exactly what a first version of this comment did.
   const valueHighlight = active && !disabled && editable
-    ? "bg-[rgba(13,153,255,0.4)]"
+    ? "bg-[color-mix(in_srgb,var(--color-border-selected)_40%,transparent)]"
     : "";
 
   return (
