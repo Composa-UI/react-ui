@@ -4,7 +4,7 @@
    and `border-accent/NN`). Swap `--color-accent` to grey to de-orange the UI. */
 @theme {
   --color-accent: #ff5c16;          /* animation-card header accent */
-  --color-accent-timeline: #0d99ff; /* playhead / keyframes */
+  --color-accent-timeline: var(--color-border-selected); /* playhead / keyframes — follows the brand */
   --color-accent-component: #9747ff;/* component / instance layers */
   --color-accent-motion: #8638e5;   /* selected timeline track */
 }

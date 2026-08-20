@@ -11,7 +11,8 @@ const MONO = "font-[family-name:var(--font-family-mono)]";
 // spinner + an expandable JSON request panel + Run / Always run / Cancel. After
 // the user decides it collapses to a single summary row.
 //
-// NOTE (flagged for the owner): the export colours JSON strings blue (#007be5)
+// NOTE (flagged for the owner): the export colours JSON strings with the brand
+// accent (--color-text-brand, now Composa violet #6b4fd1)
 // and numbers magenta (#ea10ac). The DS has a brand token for strings but no
 // syntax-number token, so numbers use the token-backed component accent here.
 // Open question in the PR: add a `--color-c-syntax-*` token, or accept this.

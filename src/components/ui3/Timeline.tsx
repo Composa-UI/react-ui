@@ -23,7 +23,8 @@ import { iconForSemantic } from "./IconSemantics";
 //   • mode="master" — full-project strip: seconds-ruler + Compositions, Base video,
 //     and an Audio lane (waveform clips) + transport.
 // Data-driven: tracks/blocks/keyframes/bars are positioned along a shared time→px
-// scale. The active accent (playhead, keyframes, zoom fill) is Figma blue #0d99ff.
+// scale. The active accent (playhead, keyframes, zoom fill) is the brand selection
+// colour (--color-border-selected, Composa violet) — never a raw hex.
 
 const FONT = "font-[family-name:var(--composa-font-family)]";
 export const TIMELINE_TRACK_HEADER_WIDTH = 297;
@@ -56,7 +57,7 @@ const TRANSPORT_GLYPH = 16;   // the Play/Pause glyph centred inside that hit bo
 // 24px hit box. The owner reads the glyphs, not the boxes, so the header matches the
 // glyph's offset instead of the row's (Composa#661).
 const TRACK_HEADER_PAD_L = TRANSPORT_PAD_X + (TRANSPORT_BTN - TRANSPORT_GLYPH) / 2;
-const BLUE = "#0d99ff";
+const BLUE = "var(--color-border-selected)";
 // Playhead treatment (Composa#344): false = the original DISCONNECTED look (pentagon
 // handle in the header, separate body line — Samuel's preference); true = the
 // continuous stroke through the header ruler (#342). Flip this one constant to switch.
@@ -429,10 +430,10 @@ function EasingSegment({
           // inspector) stays in view (Composa#321).
           interactive && !selected && "opacity-0 transition-opacity group-hover/easing:opacity-100 group-focus-visible/easing:opacity-100",
         )}
-        style={{ borderColor: "#0d99ff" }}
+        style={{ borderColor: BLUE }}
       >
         <svg aria-hidden viewBox="0 0 28 10" preserveAspectRatio="xMidYMid meet" className="h-[8px] w-[12px]">
-          <path d={easingSvgPath(easingControlPoints(target.easing))} fill="none" stroke="#0d99ff" strokeWidth="1.5" strokeLinecap="round" />
+          <path d={easingSvgPath(easingControlPoints(target.easing))} fill="none" stroke={BLUE} strokeWidth="1.5" strokeLinecap="round" />
         </svg>
       </span>
   );
@@ -511,7 +512,7 @@ function EasingSegment({
     <>
       <span
         aria-hidden
-        className={clsx("pointer-events-none absolute top-1/2 h-px -translate-y-1/2", lineActive ? "bg-[#0d99ff]" : accent ? "bg-c-bg-brand" : "bg-c-text-secondary")}
+        className={clsx("pointer-events-none absolute top-1/2 h-px -translate-y-1/2", lineActive ? "bg-c-border-selected" : accent ? "bg-c-bg-brand" : "bg-c-text-secondary")}
         style={{ left: `${segmentLeft}%`, width: `${segmentWidth}%` }}
       />
       {control}
@@ -784,9 +785,9 @@ function PresetBar({ trackId, preset, projection, viewport, plotWidth, duration,
     "absolute top-1/2 h-[20px] -translate-y-1/2 border overflow-hidden",
     projection.clippedStart ? "rounded-l-none border-l-0" : "rounded-l-[4px]",
     projection.clippedEnd ? "rounded-r-none border-r-0" : "rounded-r-[4px]",
-    selected ? "border-c-border-selected-strong bg-c-bg-brand" : "border-[#0d99ff] bg-[#0d99ff]/10",
+    selected ? "border-c-border-selected-strong bg-c-bg-brand" : "border-c-border-selected bg-c-border-selected/10",
   );
-  const labelClassName = clsx(FONT, "text-[11px] truncate", selected ? "text-white" : "text-[#0d99ff]");
+  const labelClassName = clsx(FONT, "text-[11px] truncate", selected ? "text-white" : "text-c-border-selected");
   const staticButton = (
     <button type="button" aria-label={`Select ${name}`} aria-pressed={selected} onClick={select}
       className="absolute inset-0 cursor-pointer bg-transparent text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c-focus-ring">
@@ -951,9 +952,9 @@ function Lane({ prop, trackId, propertyId, active = false, height, viewport, plo
           // "animation applied" tint (purple), used when the parent is being animated.
           className={clsx(
             "absolute top-1/2 z-[2] size-[7px] p-0 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] outline-none focus-visible:ring-2 focus-visible:ring-c-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-c-bg",
-            // selected = solid blue fill; parent-active but unselected = blue stroke with
+            // selected = solid brand fill; parent-active but unselected = brand stroke with
             // the highlight-bg inner fill; otherwise = light secondary stroke, lane-bg fill.
-            selected ? "border-0" : active ? "border border-[#0d99ff] bg-c-bg-selected" : "border border-c-text-secondary bg-c-bg",
+            selected ? "border-0" : active ? "border border-c-border-selected bg-c-bg-selected" : "border border-c-text-secondary bg-c-bg",
           )}
           style={{ left: percent(timeMs, viewport), backgroundColor: selected ? (prop.accent ? "#8638e5" : BLUE) : undefined }}
         />
@@ -1593,8 +1594,8 @@ function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onC
                 b.selected
                   ? "bg-c-bg-brand border-c-border-selected-strong"
                   : b.active
-                  ? "bg-[#0d99ff]/20 border-[#0d99ff]"
-                  // Blue hover highlight on rest, matching every other timeline bar (Composa#583).
+                  ? "bg-c-border-selected/20 border-c-border-selected"
+                  // Brand hover highlight on rest, matching every other timeline bar (Composa#583).
                   : "bg-c-bg-secondary border-c-border hover:border-c-border-selected",
               )}
               style={{ left, width }}
