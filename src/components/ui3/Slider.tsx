@@ -63,7 +63,7 @@ interface SliderProps {
   /** CSS gradient string for gradient / alpha track variants */
   trackGradient?: string;
   /**
-   * Where the blue value segment begins. Adjustment sliders use `default`
+   * Where the filled value segment begins. Adjustment sliders use `default`
    * so positive and negative edits grow away from the neutral value instead
    * of reading like an ordinary left-to-right percentage.
    */
@@ -78,7 +78,7 @@ function Handle({
   pct,
   focused,
   variant = "fill",
-  chitColor = "#0d99ff",
+  chitColor = "var(--color-border-selected)",
 }: {
   pct: number;
   focused: boolean;

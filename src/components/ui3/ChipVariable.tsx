@@ -25,15 +25,15 @@ export function ChipVariable({ value, state = "Default", onDetach, className }: 
   const isMuted = state === "SoftDeleted" || state === "ValueNotRendered" || isDisabled;
 
   const bg =
-    state === "Selected"   ? "bg-[#e5f4ff]" :
-    state === "OnSelected" ? "bg-[#bde3ff]" :
+    state === "Selected"   ? "bg-c-bg-selected" :
+    state === "OnSelected" ? "bg-[#dbd8ff]" :
     state === "Hover"      ? "bg-[#e6e6e6]" :
     isMuted                ? "bg-[#f5f5f5]" :
     /* Default */            "bg-white";
 
   const border =
-    state === "Selected"   ? "border-[#0d99ff]" :
-    state === "OnSelected" ? "border-[#bde3ff]" :
+    state === "Selected"   ? "border-c-border-selected" :
+    state === "OnSelected" ? "border-[#dbd8ff]" :
     /* rest */               "border-[#e6e6e6]";
 
   const textColor =
