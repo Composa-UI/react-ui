@@ -6,11 +6,12 @@ import { fileURLToPath } from "node:url";
 // Two things are pinned here because neither is expressible in a component test:
 //   1. the exact token values, so a "harmless" tweak cannot quietly reintroduce
 //      Figma's accent (#0d99ff / #007be5 / #7cc4f8) into the product chrome;
-//   2. the WCAG AA contrast of the brand pairs. The blue ramp shipped three
-//      sub-AA pairs and the violet fixes all three. It does NOT clear AA
-//      everywhere: dark `text-brand` on dark `bg-selected` measures 3.7596:1,
-//      short of the 4.5 text floor. That pair is pinned explicitly below rather
-//      than left out of the table.
+//   2. the WCAG AA contrast of the brand pairs. This file checks 14 pairs: the
+//      13 in the `it.each` table plus one pinned on its own. Of those 14 the
+//      blue ramp failed 8 and the violet fails 1 -- dark `text-brand` on dark
+//      `bg-selected`, 3.7596:1 against the 4.5 text floor, which is the pair
+//      pinned separately. "The violet clears AA everywhere" is NOT true of this
+//      ramp and must not be written down again.
 
 const CSS = readFileSync(fileURLToPath(new URL("./composa-tokens.css", import.meta.url)), "utf8");
 
@@ -133,8 +134,9 @@ describe("brand ramp meets WCAG AA", () => {
     expect(measured).toBeGreaterThan(3.755);
   });
 
-  it("beats the retired blue on the three pairs the blue failed", () => {
-    // Blue measured: 2.99 / 4.23 / 2.99 — all below their AA threshold.
+  it("beats the retired blue on three of the pairs the blue failed", () => {
+    // Blue measured: 2.99 / 4.23 / 2.99 — all below their AA threshold. These are
+    // three of the 8 pairs the blue failed, not the complete set.
     expect(contrast("#ffffff", light["--color-bg-brand"])).toBeGreaterThan(2.99);
     expect(contrast(light["--color-text-brand"], "#ffffff")).toBeGreaterThan(4.23);
     expect(contrast(light["--color-border-selected"], "#ffffff")).toBeGreaterThan(2.99);
