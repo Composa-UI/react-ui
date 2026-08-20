@@ -68,6 +68,7 @@ export * from "./components/ui3/StrokeSettingsDialog";
 export * from "./components/ui3/Timeline";
 export * from "./components/ui3/Switch";
 export * from "./components/ui3/Tabs";
+export * from "./components/ui3/Tag";
 export * from "./components/ui3/TextPair";
 export * from "./components/ui3/ToolbarButton";
 export * from "./components/ui3/Tooltip";

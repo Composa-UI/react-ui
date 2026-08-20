@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "./Button";
+import { Tag } from "./Tag";
 import { LayerTypeIcon, type LayerIconType } from "./LayerTypeIcon";
 import { ModelPicker } from "./ModelPicker";
 import { RatingBar } from "./RatingBar";
@@ -318,12 +319,11 @@ function IconButton({
   );
 }
 
+// The editor's "Beta" flag, now the shared `Tag` at its editor size rather than
+// a private copy of one. Kept as a named local so the two call sites below read
+// the same as they did, and so "what does Beta look like" stays one answer.
 function BetaBadge() {
-  return (
-    <span className={clsx(FONT, "h-[16px] px-[5px] inline-flex items-center rounded-c-sm bg-c-bg-selected text-c-text-brand text-[9px] font-[550] leading-[14px]")}>
-      Beta
-    </span>
-  );
+  return <Tag size="sm" tone="brand">Beta</Tag>;
 }
 
 function PrivateBadge() {
