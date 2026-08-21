@@ -25,16 +25,44 @@ function renderPanel(overrides: Partial<AssetsPanelProps> = {}) {
   return renderer!;
 }
 
-function tabs(root: ReactTestInstance) {
-  return root.findAll(node => node.props.role === "tab");
-}
+const LIBRARY_ID = "composa-assets-library";
+const COMMUNITY_ID = "composa-assets-community";
 
 function libraryBody(root: ReactTestInstance) {
-  return root.findAll(node => node.props.id === "composa-assets-library");
+  return root.findAll(node => node.props.id === LIBRARY_ID);
 }
 
-function textNodes(root: ReactTestInstance, text: string) {
-  return root.findAll(node => node.props.children === text);
+/** Which top-level bodies rendered, in order. Asserting the whole list keeps the
+ *  guard ("Library is there") and the absence ("Community is not") in one place,
+ *  so neither can quietly stop matching without the other noticing. */
+function bodyIds(root: ReactTestInstance) {
+  return root
+    .findAll(node => node.props.id === LIBRARY_ID || node.props.id === COMMUNITY_ID)
+    .map(node => String(node.props.id));
+}
+
+// Every string this subtree actually renders, concatenated in order.
+//
+// The obvious spelling — `root.findAll(node => node.props.children === text)` —
+// is a trap here and produced a VACUOUS test once already: `Tabs` gives each tab
+// button ARRAY children (`[icon, label]`), so an identity check against a single
+// string never matches a tab, and "no node has children === 'Community'" stayed
+// true with the Community tab fully restored. Walk the rendered strings instead.
+function textOf(node: ReactTestInstance): string {
+  return node.children.map(child => (typeof child === "string" ? child : textOf(child))).join("");
+}
+
+/** Host elements whose entire rendered text is exactly `text`. */
+function labelled(root: ReactTestInstance, text: string) {
+  return root.findAll(node => typeof node.type === "string" && textOf(node) === text);
+}
+
+/** Anything that would make this pane a tab control rather than a labelled view. */
+function selectionAffordances(root: ReactTestInstance) {
+  return root
+    .findAll(node => ["tablist", "tab", "tabpanel"].includes(String(node.props.role))
+      || node.props["aria-selected"] !== undefined)
+    .map(node => node.props.role ?? `aria-selected=${String(node.props["aria-selected"])}`);
 }
 
 function card(root: ReactTestInstance, name: string) {
@@ -55,22 +83,42 @@ describe("AssetsPanel — single Library view", () => {
 
     // Guard: the pane rendered its Library body, so the absences below are real.
     expect(libraryBody(renderer.root)).toHaveLength(1);
-    // No tablist, no tab, no tabpanel — not one tab left selected, none at all.
-    expect(renderer.root.findAll(node => node.props.role === "tablist")).toHaveLength(0);
-    expect(tabs(renderer.root)).toHaveLength(0);
-    expect(renderer.root.findAll(node => node.props.role === "tabpanel")).toHaveLength(0);
-    // And nothing carries a selected state to reason about.
-    expect(renderer.root.findAll(node => node.props["aria-selected"] !== undefined)).toHaveLength(0);
-    // The label itself still reads "Library".
-    expect(textNodes(renderer.root, "Library").length).toBeGreaterThan(0);
+    // No tablist, no tab, no tabpanel, and nothing carrying a selected state —
+    // asserted as one list so a failure names every affordance that came back.
+    expect(selectionAffordances(renderer.root)).toEqual([]);
+    // The heading still reads "Library", and it is a label, not a control.
+    const heading = labelled(renderer.root, "Library");
+    expect(heading.length).toBeGreaterThan(0);
+    expect(heading.map(node => node.type)).not.toContain("button");
     act(() => renderer.unmount());
   });
 
   it("removes Community entirely — no tab, no panel, no empty state", () => {
     const renderer = renderPanel();
-    expect(textNodes(renderer.root, "Community")).toHaveLength(0);
-    expect(textNodes(renderer.root, "No community libraries yet")).toHaveLength(0);
-    expect(renderer.root.findAll(node => node.props.id === "composa-assets-community")).toHaveLength(0);
+
+    // Library rendered and Community did not — guard and absence in one list.
+    expect(bodyIds(renderer.root)).toEqual([LIBRARY_ID]);
+    // Over the RENDERED TEXT, not over `props.children` — see `textOf` above.
+    expect(textOf(renderer.root)).not.toContain("Community");
+    expect(textOf(renderer.root)).not.toContain("No community libraries yet");
+    act(() => renderer.unmount());
+  });
+
+  // `tab` / `defaultTab` / `onTabChange` are gone from `AssetsPanelProps`, so the
+  // cast below is the whole point of this test: Community is not merely the
+  // unselected half of a split any more — there is no second view for a stale
+  // host, or a stale bundle, to select. Without this the "no Community" claim
+  // above would still hold on the OLD component, whose default tab was Library.
+  it("cannot be switched back to Community by a host still passing the old tab props", () => {
+    const legacy = { tab: "community", defaultTab: "community", onTabChange: vi.fn() } as unknown as Partial<AssetsPanelProps>;
+    const renderer = renderPanel(legacy);
+
+    expect(bodyIds(renderer.root)).toEqual([LIBRARY_ID]);
+    expect(selectionAffordances(renderer.root)).toEqual([]);
+    expect(textOf(renderer.root)).not.toContain("Community");
+    expect(textOf(renderer.root)).not.toContain("No community libraries yet");
+    // …and the Library body is fully alive, not an empty husk standing in for it.
+    expect(libraryBody(renderer.root)[0].findAll(node => node.props.placeholder === "Search assets")).toHaveLength(1);
     act(() => renderer.unmount());
   });
 

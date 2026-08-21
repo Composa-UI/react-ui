@@ -73,9 +73,10 @@ describe("SlidesPanel slide actions", () => {
     const preventDefault = rightClick(slideRow(renderer.root, 2), { clientX: 96, clientY: 310 });
     expect(preventDefault).toHaveBeenCalledOnce();
 
-    for (const label of ["Rename", "Duplicate", "Delete"]) {
-      expect(menuItem(renderer.root, label), label).toHaveLength(1);
-    }
+    // The whole row list, in order — not three independent presence checks that
+    // would stay green with a fourth row wedged between them.
+    expect(renderer.root.findAll(node => node.props.role === "menuitem").map(textOf))
+      .toEqual(["Rename", "Duplicate", "Delete"]);
     // Anchored at the pointer, like the assets-panel context menu.
     const anchor = renderer.root.find(node => node.type === "div" && node.props.style?.left === 96);
     expect(anchor.props.style).toMatchObject({ left: 96, top: 310 });
@@ -90,10 +91,20 @@ describe("SlidesPanel slide actions", () => {
   });
 
   // Owner feedback #67: publish-to-library is DELETED from this menu, not gated
-  // behind a prop. The menu has no row for it no matter what the host wires, so
-  // the assertion is over the rendered rows, not over a callback.
-  it("offers no publish-to-project-library row at all", () => {
-    const renderer = renderPanel({ slides: SLIDES, onRenameRequest: vi.fn(), onSlideDuplicate: vi.fn(), onSlideDelete: vi.fn() });
+  // behind a prop. The menu has no row for it no matter what the host wires.
+  //
+  // The old menu rendered that row ONLY when `onSlidePublishToLibrary` was
+  // passed, so a test that simply leaves the prop out proves nothing — it passes
+  // against the old component too. `onSlidePublishToLibrary` is gone from the
+  // props type now, which is what the cast records: even a host still wiring the
+  // old callback gets no row. That is the difference between deleted and gated.
+  it("offers no publish-to-project-library row, even to a host still wiring the old callback", () => {
+    const onSlidePublishToLibrary = vi.fn();
+    const legacy = {
+      slides: SLIDES, onRenameRequest: vi.fn(), onSlideDuplicate: vi.fn(), onSlideDelete: vi.fn(),
+      onSlidePublishToLibrary,
+    } as unknown as Parameters<typeof SlidesPanel>[0];
+    const renderer = renderPanel(legacy);
     rightClick(slideRow(renderer.root, 2));
 
     // Guard: the menu did open, so the missing row is a real absence.
@@ -101,6 +112,7 @@ describe("SlidesPanel slide actions", () => {
     expect(menuItem(renderer.root, "Publish to project library…")).toHaveLength(0);
     expect(renderer.root.findAll(node => node.props.role === "menuitem"
       && textOf(node).toLowerCase().includes("librar"))).toHaveLength(0);
+    expect(onSlidePublishToLibrary).not.toHaveBeenCalled();
     act(() => renderer.unmount());
   });
 
