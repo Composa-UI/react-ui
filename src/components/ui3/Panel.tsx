@@ -297,6 +297,12 @@ export function IconButtonRow({
         // participates in the group's single-select `value`. Independent toggles
         // also advertise `aria-pressed`; single-select buttons stay unpressed.
         const isActive = btn.active ?? (value !== undefined && btn.value === value);
+        // "On" for an INDEPENDENT toggle gets a brand glyph as well as a brand
+        // ground. A group `value` row (the inspector's align / rotate / text-align
+        // controls) is a segmented CHOICE rather than a toggle that is on, and the
+        // owner's row is about the timeline track header, so those glyphs stay
+        // `text-c-icon` — see the className below.
+        const isToggledOn = btn.active === true;
 
         const button = (
           <button
@@ -310,8 +316,20 @@ export function IconButtonRow({
             className={clsx(
               "flex items-center justify-center h-[24px]",
               fill ? "flex-1 min-w-0" : "shrink-0",
-              "text-c-icon transition-colors",
+              "transition-colors",
               isActive ? "bg-c-bg-selected" : "bg-c-bg-secondary hover:bg-c-bg-hover",
+              // A toggled-on button gets the de-emphasised brand ground AND a
+              // brand-coloured glyph. The row kept `text-c-icon` (near-black) on the
+              // selected ground, so the timeline lane header's vis/solo/mute/lock
+              // toggles read as "on" from their background alone — owner feedback
+              // row #48, "they have purple deemphasized background when selected,
+              // thats good but the icons themselves need to be the active purple".
+              // `#6b4fd1` is the product violet (`--color-text-brand`), not the
+              // canvas selection blue of DEC-079. It is the same ground/glyph pair
+              // `PanelActionBtn`'s `selected` variant already uses below, so the two
+              // icon-button primitives now describe "on" the same way, and
+              // brand-ramp.test.ts already pins that pair at AA.
+              isToggledOn ? "text-c-text-brand" : "text-c-icon",
               isFirst && !isLast && "rounded-l-c-md",
               isLast  && !isFirst && "rounded-r-c-md",
               !isFirst && !isLast && "rounded-none",
