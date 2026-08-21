@@ -64,9 +64,8 @@ describe("SlidesPanel slide actions", () => {
   it("opens Rename · Duplicate · Delete at the cursor on right-click", () => {
     const onRenameRequest = vi.fn();
     const onSlideDuplicate = vi.fn();
-    const onSlidePublishToLibrary = vi.fn();
     const onSlideDelete = vi.fn();
-    const renderer = renderPanel({ slides: SLIDES, onRenameRequest, onSlideDuplicate, onSlidePublishToLibrary, onSlideDelete });
+    const renderer = renderPanel({ slides: SLIDES, onRenameRequest, onSlideDuplicate, onSlideDelete });
 
     // Closed to begin with, so finding the rows after the right-click is meaningful.
     expect(renderer.root.findAll(node => node.props.role === "menuitem")).toHaveLength(0);
@@ -74,7 +73,7 @@ describe("SlidesPanel slide actions", () => {
     const preventDefault = rightClick(slideRow(renderer.root, 2), { clientX: 96, clientY: 310 });
     expect(preventDefault).toHaveBeenCalledOnce();
 
-    for (const label of ["Rename", "Duplicate", "Publish to project library…", "Delete"]) {
+    for (const label of ["Rename", "Duplicate", "Delete"]) {
       expect(menuItem(renderer.root, label), label).toHaveLength(1);
     }
     // Anchored at the pointer, like the assets-panel context menu.
@@ -87,17 +86,21 @@ describe("SlidesPanel slide actions", () => {
     expect(renderer.root.findAll(node => node.props.role === "menuitem")).toHaveLength(0);
     expect(onRenameRequest).not.toHaveBeenCalled();
     expect(onSlideDuplicate).not.toHaveBeenCalled();
-    expect(onSlidePublishToLibrary).not.toHaveBeenCalled();
     act(() => renderer.unmount());
   });
 
-  it("opens the project-library publisher for the exact right-clicked composition", () => {
-    const onSlidePublishToLibrary = vi.fn();
-    const renderer = renderPanel({ slides: SLIDES, onSlidePublishToLibrary });
+  // Owner feedback #67: publish-to-library is DELETED from this menu, not gated
+  // behind a prop. The menu has no row for it no matter what the host wires, so
+  // the assertion is over the rendered rows, not over a callback.
+  it("offers no publish-to-project-library row at all", () => {
+    const renderer = renderPanel({ slides: SLIDES, onRenameRequest: vi.fn(), onSlideDuplicate: vi.fn(), onSlideDelete: vi.fn() });
     rightClick(slideRow(renderer.root, 2));
-    act(() => menuItem(renderer.root, "Publish to project library…")[0].props.onClick());
-    expect(onSlidePublishToLibrary).toHaveBeenCalledWith(1);
-    expect(renderer.root.findAll(node => node.props.role === "menuitem")).toHaveLength(0);
+
+    // Guard: the menu did open, so the missing row is a real absence.
+    expect(menuItem(renderer.root, "Duplicate")).toHaveLength(1);
+    expect(menuItem(renderer.root, "Publish to project library…")).toHaveLength(0);
+    expect(renderer.root.findAll(node => node.props.role === "menuitem"
+      && textOf(node).toLowerCase().includes("librar"))).toHaveLength(0);
     act(() => renderer.unmount());
   });
 
@@ -119,6 +122,42 @@ describe("SlidesPanel slide actions", () => {
   it("stays inert on right-click when the host wires no slide actions", () => {
     const renderer = renderPanel({ slides: SLIDES });
     expect(slideRow(renderer.root, 1).props.onContextMenu).toBeUndefined();
+    act(() => renderer.unmount());
+  });
+});
+
+// Owner feedback #67: the split "New comp ▾ | +" control becomes one plain
+// button reading "New slide". Both halves of that matter — the label, and the
+// absence of the second segment/chevron that used to reach templates.
+describe("SlidesPanel new-slide button", () => {
+  function panelButtons(root: ReactTestInstance) {
+    // Buttons outside the slide rows and outside the header title combo.
+    return root.findAll(node => node.type === "button" && node.props["aria-label"] === "New slide");
+  }
+
+  it("is a single button labelled New slide", () => {
+    const onNewSlide = vi.fn();
+    const renderer = renderPanel({ slides: SLIDES, onNewSlide });
+
+    const buttons = panelButtons(renderer.root);
+    expect(buttons).toHaveLength(1);
+    expect(textOf(buttons[0])).toContain("New slide");
+
+    act(() => buttons[0].props.onClick());
+    expect(onNewSlide).toHaveBeenCalledTimes(1);
+    act(() => renderer.unmount());
+  });
+
+  it("keeps no segmented half and no dropdown chevron", () => {
+    const renderer = renderPanel({ slides: SLIDES, onNewSlide: vi.fn() });
+
+    // Guard: the button is there, so the missing segments mean something.
+    expect(panelButtons(renderer.root)).toHaveLength(1);
+    for (const gone of ["New comp options", "Add comp"]) {
+      expect(renderer.root.findAll(node => node.props["aria-label"] === gone), gone).toHaveLength(0);
+    }
+    expect(renderer.root.findAll(node => node.type === "button"
+      && textOf(node).includes("New comp"))).toHaveLength(0);
     act(() => renderer.unmount());
   });
 });

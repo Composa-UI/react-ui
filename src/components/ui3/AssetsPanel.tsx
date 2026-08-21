@@ -1,9 +1,9 @@
 import { useEffect, useId, useMemo, useRef, useState, type DragEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { SidePanel } from "./SidePanel";
 import { clsx } from "clsx";
-import { Upload, Search, Image as ImageIcon, Trash2, Plus, Pencil, ChevronRight, Library } from "lucide-react";
+import { Upload, Search, Image as ImageIcon, Trash2, Plus, Pencil, ChevronRight } from "lucide-react";
 import { Dropdown } from "./Dropdown";
-import { Tabs } from "./Tabs";
+import { SingleTab } from "./Tabs";
 import { FieldShell, InputField } from "./Input";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { Modal, ModalBody, ModalFooter, ModalHeader, MODAL_WIDTHS } from "./Dialog";
@@ -30,16 +30,14 @@ const CAPTION = clsx(FONT, "text-[11px] font-[450] leading-[16px] text-c-text-se
 export type AssetKind = "image" | "video" | "audio";
 export type AssetStatus = "ready" | "uploading" | "error";
 export type AssetFilter = "all" | "images" | "videos" | "audio";
-/** Top-level pane: this project's own media, or shared libraries to discover. */
-export type AssetsPanelTab = "library" | "community";
 
-// Tab ids double as the tabpanel ids so `Tabs` can wire real tab/tabpanel a11y.
+// One top-level view: this project's own media. The Community tab that used to
+// sit beside Library was removed with the rest of the templates/sharing entry
+// points (owner feedback #67). With one view left there is no tablist to wire —
+// a two-tab control reduced to one tab is a selection state that distinguishes
+// nothing — so the heading uses the DS `SingleTab`, the same label-only
+// treatment ColorDialog falls back to when its tab set collapses to one.
 const LIBRARY_PANEL_ID = "composa-assets-library";
-const COMMUNITY_PANEL_ID = "composa-assets-community";
-const ASSET_TABS = [
-  { value: "library", label: "Library", panelId: LIBRARY_PANEL_ID },
-  { value: "community", label: "Community", panelId: COMMUNITY_PANEL_ID },
-];
 const VideoMediaIcon = iconForSemantic("media-video");
 const AudioMediaIcon = iconForSemantic("media-audio");
 
@@ -356,25 +354,6 @@ function EmptyState({ onUpload }: { onUpload: () => void }) {
   );
 }
 
-// ─── Community empty state ────────────────────────────────────────────────────
-// Honest placeholder: nothing is shared with this account yet, and the panel has
-// no discovery backend, so there is deliberately NO call to action here — an
-// enabled "Browse community" button would promise a destination that does not
-// exist (Composa#661).
-function CommunityEmptyState() {
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-[8px] px-[24px] text-center">
-      <div className="flex items-center justify-center size-[40px] rounded-c-full bg-c-bg-secondary text-c-icon-secondary">
-        <Library size={20} strokeWidth={1.5} />
-      </div>
-      <span className={LABEL}>No community libraries yet</span>
-      <span className={clsx(FONT, "text-[9px] font-[450] leading-[14px] text-c-text-secondary")}>
-        Libraries shared with you will show up here.
-      </span>
-    </div>
-  );
-}
-
 // ─── Library section header ───────────────────────────────────────────────────
 // Label plus a trailing chevron that opens the full list for that one library.
 // The chevron only renders when the host passes `onOpenLibrary` — a permanently
@@ -450,12 +429,7 @@ export interface AssetsPanelProps {
   onWidthChange?: (width: number) => void;
   assets?: AssetItem[];
   title?: string;
-  /** Active top-level tab (controlled). */
-  tab?: AssetsPanelTab;
-  /** Uncontrolled default. Defaults to the project's own Library. */
-  defaultTab?: AssetsPanelTab;
-  onTabChange?: (tab: AssetsPanelTab) => void;
-  /** Named libraries the Library tab groups assets under, via `AssetItem.libraryId`.
+  /** Named libraries the Library view groups assets under, via `AssetItem.libraryId`.
    *  Omit (the default) to render one flat grid, exactly as before. */
   libraries?: AssetLibrary[];
   /** Open the full list for one library — renders the section-header chevron. */
@@ -486,9 +460,6 @@ export function AssetsPanel({
   onWidthChange,
   assets = DEMO_ASSETS,
   title = "Assets",
-  tab,
-  defaultTab = "library",
-  onTabChange,
   libraries,
   onOpenLibrary,
   filter,
@@ -510,7 +481,6 @@ export function AssetsPanel({
   onRetry,
 }: AssetsPanelProps) {
   // Uncontrolled fallbacks so the panel renders standalone.
-  const [tabInner, setTabInner] = useState<AssetsPanelTab>(defaultTab);
   const [filterInner, setFilterInner] = useState<AssetFilter>("all");
   const [queryInner, setQueryInner] = useState("");
   const [selInner, setSelInner] = useState<string | null>("a1");
@@ -523,11 +493,6 @@ export function AssetsPanel({
   const [deleteAsset, setDeleteAsset] = useState<AssetItem | null>(null);
   const [scrubPreviewId, setScrubPreviewId] = useState<string | null>(null);
 
-  const activeTab = tab ?? tabInner;
-  const setTab = (next: AssetsPanelTab) => {
-    if (tab === undefined) setTabInner(next);
-    onTabChange?.(next);
-  };
   const activeFilter = filter ?? filterInner;
   const activeQuery = query ?? queryInner;
   const activeSel = selectedId !== undefined ? selectedId : selInner;
@@ -646,19 +611,14 @@ export function AssetsPanel({
         <IconButton icon={<Upload size={16} strokeWidth={1.75} />} label="Upload" onClick={onUpload} />
       </div>
 
-      {/* Tabs — this project's own Library vs. Community discovery (Composa#661).
-          Everything below belongs to the active tab, so search/filter/grid never
-          claim to be filtering something they are not. */}
+      {/* Heading — Library is the only view now that Community is gone (owner
+          feedback #67), so this is a label, not a tab: `SingleTab` draws it in
+          the tab's type without a pressed/selected state to choose between. */}
       <div className="shrink-0 flex items-center px-[8px] py-[6px]">
-        <Tabs tabs={ASSET_TABS} value={activeTab} onChange={value => setTab(value as AssetsPanelTab)} />
+        <SingleTab label="Library" />
       </div>
 
-      {activeTab === "community" ? (
-        <div id={COMMUNITY_PANEL_ID} role="tabpanel" aria-labelledby={`${COMMUNITY_PANEL_ID}-tab`} className="flex-1 min-h-0 flex flex-col">
-          <CommunityEmptyState />
-        </div>
-      ) : (
-        <div id={LIBRARY_PANEL_ID} role="tabpanel" aria-labelledby={`${LIBRARY_PANEL_ID}-tab`} className="flex-1 min-h-0 flex flex-col">
+      <div id={LIBRARY_PANEL_ID} className="flex-1 min-h-0 flex flex-col">
         {/* Controls — search + type filter */}
         <div className="shrink-0 flex flex-col gap-[8px] p-[8px] border-t border-b border-c-border">
           <FieldShell focused={searchFocused} size="medium">
@@ -736,8 +696,7 @@ export function AssetsPanel({
             ) : renderGrid(visible)}
           </div>
         )}
-        </div>
-      )}
+      </div>
 
       {/* OS drag-drop overlay */}
       {activeDrop && <DropOverlay />}

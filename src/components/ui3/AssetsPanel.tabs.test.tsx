@@ -4,9 +4,11 @@ import { AssetsPanel, type AssetItem, type AssetLibrary, type AssetsPanelProps }
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-// Composa#661: the Assets pane gains a Library / Community split, and the
-// Library tab can group its cards under per-library section headers whose
-// chevron opens the full list for that library.
+// Owner feedback #67: the Library / Community split (Composa#661) is gone. One
+// view remains, so the pane draws a label — not a tablist with a single tab
+// carrying a selection state that distinguishes nothing. The Library body still
+// groups its cards under per-library section headers whose chevron opens the
+// full list for that library.
 
 const BRAND: AssetLibrary[] = [{ id: "brand", name: "Brand kit" }, { id: "stock", name: "Stock" }];
 
@@ -23,16 +25,16 @@ function renderPanel(overrides: Partial<AssetsPanelProps> = {}) {
   return renderer!;
 }
 
-function tab(root: ReactTestInstance, label: string) {
-  return root.find(node => node.props.role === "tab" && node.props.children?.includes?.(label));
-}
-
 function tabs(root: ReactTestInstance) {
   return root.findAll(node => node.props.role === "tab");
 }
 
-function tabPanel(root: ReactTestInstance, id: string) {
-  return root.findAll(node => node.props.role === "tabpanel" && node.props.id === id);
+function libraryBody(root: ReactTestInstance) {
+  return root.findAll(node => node.props.id === "composa-assets-library");
+}
+
+function textNodes(root: ReactTestInstance, text: string) {
+  return root.findAll(node => node.props.children === text);
 }
 
 function card(root: ReactTestInstance, name: string) {
@@ -47,65 +49,38 @@ function chevron(root: ReactTestInstance, name: string) {
   return root.findAll(node => node.type === "button" && node.props["aria-label"] === `Open ${name}`);
 }
 
-describe("AssetsPanel — Library / Community tabs", () => {
-  it("exposes a real tablist whose Library tab is selected first", () => {
+describe("AssetsPanel — single Library view", () => {
+  it("labels the view instead of drawing a tablist", () => {
     const renderer = renderPanel();
 
-    expect(renderer.root.findAll(node => node.props.role === "tablist")).toHaveLength(1);
-    expect(tabs(renderer.root).map(node => node.props.children)).toHaveLength(2);
-    expect(tab(renderer.root, "Library").props["aria-selected"]).toBe(true);
-    expect(tab(renderer.root, "Community").props["aria-selected"]).toBe(false);
-    expect(tabPanel(renderer.root, "composa-assets-library")).toHaveLength(1);
-    expect(tabPanel(renderer.root, "composa-assets-community")).toHaveLength(0);
+    // Guard: the pane rendered its Library body, so the absences below are real.
+    expect(libraryBody(renderer.root)).toHaveLength(1);
+    // No tablist, no tab, no tabpanel — not one tab left selected, none at all.
+    expect(renderer.root.findAll(node => node.props.role === "tablist")).toHaveLength(0);
+    expect(tabs(renderer.root)).toHaveLength(0);
+    expect(renderer.root.findAll(node => node.props.role === "tabpanel")).toHaveLength(0);
+    // And nothing carries a selected state to reason about.
+    expect(renderer.root.findAll(node => node.props["aria-selected"] !== undefined)).toHaveLength(0);
+    // The label itself still reads "Library".
+    expect(textNodes(renderer.root, "Library").length).toBeGreaterThan(0);
     act(() => renderer.unmount());
   });
 
-  it("keeps today's search, filter and grid on the Library tab", () => {
+  it("removes Community entirely — no tab, no panel, no empty state", () => {
     const renderer = renderPanel();
-    const library = tabPanel(renderer.root, "composa-assets-library")[0];
+    expect(textNodes(renderer.root, "Community")).toHaveLength(0);
+    expect(textNodes(renderer.root, "No community libraries yet")).toHaveLength(0);
+    expect(renderer.root.findAll(node => node.props.id === "composa-assets-community")).toHaveLength(0);
+    act(() => renderer.unmount());
+  });
+
+  it("keeps today's search, filter and grid in the Library body", () => {
+    const renderer = renderPanel();
+    const library = libraryBody(renderer.root)[0];
 
     expect(library.findAll(node => node.props.placeholder === "Search assets")).toHaveLength(1);
     expect(library.findAll(node => node.props["aria-label"] === "Filter by type")).toHaveLength(1);
     expect(card(library, "logo.png")).toHaveLength(1);
-    act(() => renderer.unmount());
-  });
-
-  it("shows an honest, contentless Community tab — no invented libraries, no dead CTA", () => {
-    const renderer = renderPanel();
-    act(() => tab(renderer.root, "Community").props.onClick());
-
-    const community = tabPanel(renderer.root, "composa-assets-community")[0];
-    expect(community).toBeTruthy();
-    // The empty state rendered…
-    expect(community.findAll(node => node.props.children === "No community libraries yet")).toHaveLength(1);
-    // …and it fabricates nothing: no asset cards, and no button at all, so there
-    // is no control promising a destination that does not exist yet.
-    expect(card(community, "logo.png")).toHaveLength(0);
-    expect(community.findAll(node => node.type === "button")).toHaveLength(0);
-    // The Library body is genuinely swapped out, not just hidden behind it.
-    expect(tabPanel(renderer.root, "composa-assets-library")).toHaveLength(0);
-    expect(renderer.root.findAll(node => node.props.placeholder === "Search assets")).toHaveLength(0);
-    act(() => renderer.unmount());
-  });
-
-  it("routes a controlled tab to the host instead of switching itself", () => {
-    const onTabChange = vi.fn();
-    const renderer = renderPanel({ tab: "library", onTabChange });
-
-    act(() => tab(renderer.root, "Community").props.onClick());
-    expect(onTabChange).toHaveBeenCalledWith("community");
-    expect(tab(renderer.root, "Library").props["aria-selected"]).toBe(true);
-    expect(tabPanel(renderer.root, "composa-assets-community")).toHaveLength(0);
-
-    act(() => renderer.update(<AssetsPanel assets={ASSETS} tab="community" onTabChange={onTabChange} />));
-    expect(tabPanel(renderer.root, "composa-assets-community")).toHaveLength(1);
-    act(() => renderer.unmount());
-  });
-
-  it("honours defaultTab for uncontrolled hosts", () => {
-    const renderer = renderPanel({ defaultTab: "community" });
-    expect(tab(renderer.root, "Community").props["aria-selected"]).toBe(true);
-    expect(tabPanel(renderer.root, "composa-assets-community")).toHaveLength(1);
     act(() => renderer.unmount());
   });
 });

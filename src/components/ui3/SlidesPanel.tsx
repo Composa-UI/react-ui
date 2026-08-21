@@ -1,6 +1,6 @@
 import { clsx } from "clsx";
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
-import { ChevronRight, ChevronDown, Plus, Pencil, Copy, Trash2, LayoutTemplate } from "lucide-react";
+import { ChevronRight, ChevronDown, Plus, Pencil, Copy, Trash2 } from "lucide-react";
 import { ScrollArea } from "./Panel";
 import { Menu, MenuRow } from "./Menu";
 
@@ -246,7 +246,7 @@ function EditableProjectTitle({ title, onCommit, onMenu }: {
 }
 
 // ── Panel ─────────────────────────────────────────────────────────────────────
-export function SlidesPanel({ slides, aspectRatio, title = "Product review", subtitle: _subtitle = "", onNewSlide, onNewSlideMenu, onRenameRequest, onTitleChange, onTitleMenu, onSlideDuplicate, onSlidePublishToLibrary, onSlideDelete }: {
+export function SlidesPanel({ slides, aspectRatio, title = "Product review", subtitle: _subtitle = "", onNewSlide, onRenameRequest, onTitleChange, onTitleMenu, onSlideDuplicate, onSlideDelete }: {
   slides: SlideData[];
   /** Project canvas aspect ratio (width / height). Slide thumbnails honor it while
    *  the reserved slot height stays constant. Defaults to the ~16:9 slot ratio. */
@@ -254,8 +254,8 @@ export function SlidesPanel({ slides, aspectRatio, title = "Product review", sub
   title?: string;
   /** @deprecated The fixed 40px DS header no longer renders a subtitle line. */
   subtitle?: string;
+  /** Insert a new slide. The only action on the panel's primary button. */
   onNewSlide?: () => void;
-  onNewSlideMenu?: () => void;
   onRenameRequest?: (index: number) => void;
   /** Commit an inline rename of the project (header title). */
   onTitleChange?: (name: string) => void;
@@ -263,15 +263,13 @@ export function SlidesPanel({ slides, aspectRatio, title = "Product review", sub
   onTitleMenu?: (trigger: HTMLButtonElement) => void;
   /** Slide-item menu actions. Duplicate/Delete semantics are not yet pinned. */
   onSlideDuplicate?: (index: number) => void;
-  /** Publish the selected composition into the app-owned project template catalogue. */
-  onSlidePublishToLibrary?: (index: number) => void;
   onSlideDelete?: (index: number) => void;
 }) {
   const initialFocus = Math.max(0, slides.findIndex(slide => slide.selected));
   const [focusIndex, setFocusIndex] = useState(initialFocus);
   const [menu, setMenu] = useState<{ index: number; x: number; y: number } | null>(null);
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const hasItemMenu = Boolean(onRenameRequest || onSlideDuplicate || onSlidePublishToLibrary || onSlideDelete);
+  const hasItemMenu = Boolean(onRenameRequest || onSlideDuplicate || onSlideDelete);
   const navigate = (index: number, event: KeyboardEvent<HTMLDivElement>) => {
     let next = index;
     if (event.key === "ArrowDown" || event.key === "ArrowRight") next = Math.min(slides.length - 1, index + 1);
@@ -291,17 +289,23 @@ export function SlidesPanel({ slides, aspectRatio, title = "Product review", sub
         <EditableProjectTitle title={title} onCommit={onTitleChange} onMenu={onTitleMenu} />
       </div>
 
-      {/* New composition (split: label + chevron on the left, plus on the right) */}
+      {/* New slide — ONE button, one action.
+          It used to be a split control: a "New comp ▾" segment that opened the
+          template picker, and a plus that inserted. Both the segmentation and
+          the chevron only existed to reach templates, and templates are gated
+          off (owner feedback #67), so the control that survives is a plain
+          full-width button. No chevron with nothing behind it, and no segment
+          boundary implying a choice the user does not have. */}
       <div className="shrink-0 p-[8px] border-t border-b border-c-border">
-        <div className="w-full h-[24px] rounded-[6px] border border-c-border bg-c-bg flex items-stretch overflow-hidden">
-          <button onClick={onNewSlideMenu} aria-label="New comp options" className="relative flex-1 flex items-center justify-center gap-[2px] hover:bg-c-bg-hover">
-            <span className="text-c-text text-[11px] font-[450] leading-[16px] tracking-[0.055px]" style={INTER}>New comp</span>
-            <ChevronDown size={12} className="text-c-text" />
-          </button>
-          <button onClick={onNewSlide} aria-label="Add comp" className="w-[24px] flex items-center justify-center border-l border-c-border hover:bg-c-bg-hover">
-            <Plus size={16} className="text-c-text" />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onNewSlide}
+          aria-label="New slide"
+          className="w-full h-[24px] rounded-[6px] border border-c-border bg-c-bg flex items-center justify-center gap-[4px] hover:bg-c-bg-hover"
+        >
+          <Plus size={14} className="text-c-text" />
+          <span className="text-c-text text-[11px] font-[450] leading-[16px] tracking-[0.055px]" style={INTER}>New slide</span>
+        </button>
       </div>
 
       {/* Slide list — overlay scrollbar (theme-aware thumb) */}
@@ -323,7 +327,9 @@ export function SlidesPanel({ slides, aspectRatio, title = "Product review", sub
             <Menu>
               <MenuRow label="Rename" leading={<Pencil size={14} />} onClick={() => { onRenameRequest?.(menu.index); setMenu(null); }} />
               <MenuRow label="Duplicate" leading={<Copy size={14} />} onClick={() => { onSlideDuplicate?.(menu.index); setMenu(null); }} />
-              {onSlidePublishToLibrary && <MenuRow label="Publish to project library…" leading={<LayoutTemplate size={14} />} onClick={() => { onSlidePublishToLibrary(menu.index); setMenu(null); }} />}
+              {/* "Publish to project library…" is deliberately absent, not hidden.
+                  The owner asked for it deleted from this menu outright rather
+                  than gated (#67); its home is the project header menu. */}
               <MenuRow type="divider" />
               <MenuRow label="Delete" leading={<Trash2 size={14} />} destructive onClick={() => { onSlideDelete?.(menu.index); setMenu(null); }} />
             </Menu>
