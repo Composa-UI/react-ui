@@ -252,3 +252,25 @@ export const ProposedLineHeight = createLucideIcon("ProposedLineHeight", [
   ["path", { d: "m7.5 17 4.039-9.69a.5.5 0 0 1 .923 0L16.5 17", key: "a-stroke" }],
   ["path", { d: "M8.804 14h6.392", key: "a-bar" }],
 ]);
+
+// Composa-local. The owner's proposal lives on HIS FORK of Lucide —
+// https://github.com/samuelalake/lucide/pull/1, "feat(icons): add rotate-cw-diamond"
+// — not on lucide-icons/lucide, so there is no `lucide-react` export to import and
+// no upstream PR number to record. That is why this icon is absent from
+// `proposedLucideMetadata`, whose `sourceUrl` is typed to
+// `https://github.com/lucide-icons/lucide/pull/{number}`; the same reasoning already
+// keeps `ProposedLayoutWrap` out of that registry.
+//
+// Swap plan: if that PR is retargeted to lucide-icons/lucide and merges, add a
+// `rotateCwDiamond` record to `proposedLucideMetadata`, then delete this shim and
+// `import { RotateCwDiamond } from "lucide-react"` instead.
+//
+// Geometry is copied verbatim from the PR's rotate-cw-diamond glyph (24x24 viewBox,
+// fill none, stroke currentColor, width 2, round caps and joins) so that swap is a
+// pure import change: the `rotate-cw` arc and arrowhead above Lucide's own `diamond`
+// body, scaled down to leave a gap under the arrow.
+export const ProposedRotateCwDiamond = createLucideIcon("ProposedRotateCwDiamond", [
+  ["path", { d: "M6 7a7 7 0 0 1 11.5-1.5", key: "arc" }],
+  ["path", { d: "M18 2v4h-4", key: "arrowhead" }],
+  ["path", { d: "M6.699 14.531a1.374 1.374 0 0 0 0 1.944l4.326 4.326a1.374 1.374 0 0 0 1.944 0l4.326 -4.326a1.374 1.374 0 0 0 0 -1.944l-4.326 -4.326a1.374 1.374 0 0 0 -1.944 0Z", key: "diamond" }],
+]);
