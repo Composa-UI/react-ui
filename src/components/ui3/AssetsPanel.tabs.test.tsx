@@ -140,6 +140,11 @@ describe("AssetsPanel — library section headers", () => {
     expect(renderer.root.findAll(node => node.type === "button" && node.props["aria-label"] === "Delete")).toHaveLength(0);
     const thumbnailButton = card(renderer.root, "shared.png")[0];
     act(() => thumbnailButton.props.onContextMenu({ preventDefault: vi.fn(), clientX: 10, clientY: 10 }));
+    // Guard: the context menu actually opened and rendered its rows. Without it
+    // this reads as "no Rename/Delete row" while really only proving no menu —
+    // measured: stub out `setContextAsset` so the menu never opens and the file
+    // still went 10/10 green. The row list below is the absence being claimed.
+    expect(renderer.root.findAll(node => node.props.label === "Insert on slide")).toHaveLength(1);
     expect(renderer.root.findAll(node => node.props.label === "Rename" || node.props.label === "Delete")).toHaveLength(0);
     act(() => renderer.unmount());
   });
