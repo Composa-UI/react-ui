@@ -400,10 +400,17 @@ function PastContentWash({ duration, viewport, left = 0 }: { duration: number; v
       aria-hidden
       data-timeline-past-content
       data-timeline-past-content-start={startPct.toFixed(2)}
-      className="absolute top-0 bottom-0 right-0 z-[1] overflow-hidden pointer-events-none"
+      // `inset-y-0` rather than `top-0 bottom-0`: it renders identically, but the
+      // playhead's body overlay below is `absolute top-0 bottom-0 right-0
+      // overflow-hidden pointer-events-none` — an IDENTICAL class set. Two elements
+      // in the same tree that are indistinguishable by class are a trap for anything
+      // selecting by class (e2e/issue-699-timeline-right-edge picks the playhead
+      // overlay exactly that way and would silently have matched this instead).
+      // `data-timeline-past-content` is the intended handle for this element.
+      className="absolute inset-y-0 right-0 z-[1] overflow-hidden pointer-events-none"
       style={{ left }}
     >
-      <div className="absolute top-0 bottom-0 right-0 bg-c-bg-secondary" style={{ left: `${Math.max(0, startPct)}%` }} />
+      <div className="absolute inset-y-0 right-0 bg-c-bg-secondary" style={{ left: `${Math.max(0, startPct)}%` }} />
     </div>
   );
 }
