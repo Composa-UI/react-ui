@@ -17,16 +17,20 @@ import {
   ProposedLayoutVerticalCenter,
   ProposedLayoutVerticalLeft,
   ProposedLayoutVerticalRight,
+  ProposedLayoutWrap,
   ProposedLetterSpacing,
   ProposedLineHeight,
   ProposedOpacity,
+  ProposedRotateCwDiamond,
   ProposedScanSquare,
   ProposedSquareText,
   ProposedTextMargins,
   proposedLucideMetadata,
 } from "./proposed-lucide";
 
-const icons = [
+// Icons that DO have a lucide-icons/lucide PR behind them, and therefore a
+// `proposedLucideMetadata` record. The registry test counts against this list.
+const upstreamProposedIcons = [
   ProposedLayoutHorizontal,
   ProposedLayoutVertical,
   ProposedLayoutPanelLeftCheck,
@@ -51,6 +55,15 @@ const icons = [
   ProposedDiamondCircle,
 ];
 
+// Composa-local glyphs with no lucide-icons/lucide PR — deliberately absent from
+// `proposedLucideMetadata`. ProposedRotateCwDiamond's proposal is on the owner's
+// fork (samuelalake/lucide#1), which the metadata `sourceUrl` template rejects.
+// They still have to honour the Lucide SVG contract, so the contract test covers
+// both lists.
+const composaLocalIcons = [ProposedLayoutWrap, ProposedRotateCwDiamond];
+
+const icons = [...upstreamProposedIcons, ...composaLocalIcons];
+
 describe("proposed Lucide icon boundary", () => {
   it.each(icons)("keeps the Lucide SVG contract and forwards consumer props", Icon => {
     const html = renderToStaticMarkup(<Icon size={18} strokeWidth={1.5} className="semantic-icon" data-probe="forwarded" />);
@@ -67,7 +80,7 @@ describe("proposed Lucide icon boundary", () => {
 
   it("keeps one searchable upstream replacement record per proposed icon", () => {
     const records = Object.values(proposedLucideMetadata);
-    expect(records).toHaveLength(icons.length);
+    expect(records).toHaveLength(upstreamProposedIcons.length);
     expect(new Set(records.map(record => `${record.pr}:${record.replacementImport}`)).size).toBe(records.length);
     for (const record of records) {
       expect(record.sourceUrl).toBe(`https://github.com/lucide-icons/lucide/pull/${record.pr}`);
@@ -84,6 +97,22 @@ describe("proposed Lucide icon boundary", () => {
       'd="M2.7 10.3a2.41 2.41 0 0 0 0 3.41l7.59 7.59a2.41 2.41 0 0 0 3.41 0l7.59-7.59a2.41 2.41 0 0 0 0-3.41L13.7 2.71a2.41 2.41 0 0 0-3.41 0z"',
     );
     expect(html).toContain('<circle cx="12" cy="12" r="4">');
+  });
+
+  // A rotate-cw arc alone is indistinguishable from lucide-react's own RotateCw, so
+  // pin all three subpaths of samuelalake/lucide#1's rotate-cw-diamond verbatim.
+  // When that proposal lands upstream and this shim is deleted, so is this test.
+  it("vendors samuelalake/lucide#1 rotate-cw-diamond geometry, not a bare RotateCw", () => {
+    const html = renderToStaticMarkup(<ProposedRotateCwDiamond />);
+    expect(html).toContain('d="M6 7a7 7 0 0 1 11.5-1.5"');
+    expect(html).toContain('d="M18 2v4h-4"');
+    expect(html).toContain(
+      'd="M6.699 14.531a1.374 1.374 0 0 0 0 1.944l4.326 4.326a1.374 1.374 0 0 0 1.944 0l4.326 -4.326a1.374 1.374 0 0 0 0 -1.944l-4.326 -4.326a1.374 1.374 0 0 0 -1.944 0Z"',
+    );
+  });
+
+  it("keeps the fork-proposed rotate glyph out of the upstream registry", () => {
+    expect(JSON.stringify(proposedLucideMetadata)).not.toMatch(/rotate.?cw.?diamond/i);
   });
 
   it("keeps Grid out of the proposed-icon registry because official Lucide owns it", () => {

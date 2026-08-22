@@ -150,3 +150,24 @@ test("keyframed image adjustments preserve the 88px slider and deliberate Figma 
   await expect(action).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("status")).toHaveText("exposure keyframe");
 });
+
+// Owner ask: "for rotate icon inside fill dialog, let's use this instead:
+// github.com/samuelalake/lucide/pull/1". Both rotate ACTIONS take it; the arrow
+// alone is indistinguishable from lucide's RotateCw in a screenshot, so assert
+// the class in a real browser, at the size the surrounding dialog icons use.
+for (const [mode, label] of [
+  ["mode=gradient", "Rotate gradient"],
+  ["mode=image&media=bound", "Rotate image 90 degrees"],
+] as const) {
+  test(`${label} paints rotate-cw-diamond at 14px / strokeWidth 1.5`, async ({ page }, testInfo: TestInfo) => {
+    const { dialog } = await openFixture(page, mode);
+    const glyph = dialog.getByRole("button", { name: label }).locator("svg");
+    await expect(glyph).toHaveClass(/lucide-proposed-rotate-cw-diamond/);
+    await expect(glyph).toHaveAttribute("width", "14");
+    await expect(glyph).toHaveAttribute("height", "14");
+    await expect(glyph).toHaveAttribute("stroke-width", "1.5");
+    // Nothing in the dialog still wears the stock clockwise-rotate glyph.
+    await expect(dialog.locator("svg.lucide-rotate-cw")).toHaveCount(0);
+    await glyph.screenshot({ path: testInfo.outputPath("rotate-cw-diamond.png") });
+  });
+}

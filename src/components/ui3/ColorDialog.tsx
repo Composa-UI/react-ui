@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, type ReactElement } from "react";
 import { clsx } from "clsx";
-import { Image, ImagePlus, Pipette, Plus, Minus, RotateCcw, RotateCw, ArrowLeftRight, Disc, Diamond, Search, LayoutGrid, ChevronDown, X, SquarePlay, SquareDashedMousePointer, Play, Pause } from "lucide-react";
+import { Image, ImagePlus, Pipette, Plus, Minus, RotateCcw, ArrowLeftRight, Disc, Diamond, Search, LayoutGrid, ChevronDown, X, SquarePlay, SquareDashedMousePointer, Play, Pause } from "lucide-react";
+import { ProposedRotateCwDiamond } from "../../icons/proposed-lucide";
 import { ModalBody, ModalDivider } from "./Dialog";
 import { InspectorDialog } from "./InspectorDialog";
 import type { AnchoredInspectorOverlayAlign } from "./AnchoredInspectorOverlay";
@@ -467,8 +468,12 @@ function MediaFitControl({ kind, value, onChange, tileScale, tileScaleKeyframe, 
       className="w-[76px] shrink-0"
     />}
     <div className="ml-auto flex items-center gap-[4px]">
+      {/* Owner ask: "for rotate icon inside fill dialog, let's use this instead:
+          github.com/samuelalake/lucide/pull/1". The fill dialog's two rotate
+          ACTIONS — this one and "Rotate gradient" — are the same verb rendered by
+          the same Btn at the same size, so they wear the same glyph. */}
       {onRotate && <Btn label={`Rotate ${kind} 90 degrees`} onClick={onRotate}>
-        <RotateCw size={14} strokeWidth={1.5} />
+        <ProposedRotateCwDiamond size={14} strokeWidth={1.5} />
       </Btn>}
     </div>
   </div>;
@@ -1214,7 +1219,7 @@ export function ColorDialog({
                   <ArrowLeftRight size={14} strokeWidth={1.5} />
                 </Btn>}
                 {onRotateGradient && <Btn label="Rotate gradient" onClick={onRotateGradient}>
-                  <RotateCw size={14} strokeWidth={1.5} />
+                  <ProposedRotateCwDiamond size={14} strokeWidth={1.5} />
                 </Btn>}
               </div>
             </div>

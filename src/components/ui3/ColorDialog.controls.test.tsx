@@ -467,3 +467,52 @@ describe("gradient stops", () => {
     act(() => renderer.unmount());
   });
 });
+
+// ── Owner ask: the fill dialog's rotate glyph ────────────────────────────────
+// "for rotate icon inside fill dialog, let's use this instead:
+//  github.com/samuelalake/lucide/pull/1"
+//
+// The dialog has exactly two rotate ACTIONS — "Rotate gradient" in the gradient
+// type row and "Rotate {image|video} 90 degrees" in the media fit row. Same verb,
+// same `Btn`, same 48px row, so both carry the same glyph; a split would show two
+// different rotate icons depending on which tab is open. The RotateCcw inside
+// `FillTypeIcon`'s `angular` branch is NOT an action and never renders — that
+// helper is only ever called with solid/linear/image/video/drop-zone.
+describe("fill dialog rotate glyph", () => {
+  const rotateGlyph = (renderer: ReactTestRenderer, label: string) => {
+    const [button] = byLabel(renderer, label);
+    expect(button).toBeDefined();
+    const [svg] = button.findAll(instance => instance.type === "svg");
+    expect(svg).toBeDefined();
+    return svg;
+  };
+
+  const cases = [
+    ["Rotate gradient", { fillType: "linear", onRotateGradient: () => undefined }],
+    ["Rotate image 90 degrees", { fillType: "image", imageSourceLabel: "bound.png", onChooseImage: () => undefined, onRotateMedia: () => undefined }],
+  ] as const;
+
+  it.each(cases)("%s wears rotate-cw-diamond, not lucide's RotateCw", (label, props) => {
+    const renderer = render({ ...props });
+    const classes = String(rotateGlyph(renderer, label).props.className).split(/\s+/);
+    expect(classes).toContain("lucide-proposed-rotate-cw-diamond");
+    expect(classes).not.toContain("lucide-rotate-cw");
+    act(() => renderer.unmount());
+  });
+
+  it.each(cases)("%s keeps the surrounding dialog icon size of 14 at strokeWidth 1.5", (label, props) => {
+    const renderer = render({ ...props });
+    const svg = rotateGlyph(renderer, label);
+    expect(svg.props.width).toBe(14);
+    expect(svg.props.height).toBe(14);
+    expect(svg.props.strokeWidth).toBe(1.5);
+    act(() => renderer.unmount());
+  });
+
+  it("still renders the flip action from stock lucide, so only rotate moved", () => {
+    const renderer = render({ fillType: "linear", onFlipGradient: () => undefined });
+    const classes = String(rotateGlyph(renderer, "Flip gradient").props.className).split(/\s+/);
+    expect(classes).toContain("lucide-arrow-left-right");
+    act(() => renderer.unmount());
+  });
+});
