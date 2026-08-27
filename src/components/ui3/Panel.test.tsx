@@ -27,6 +27,45 @@ describe("IconButtonRow tooltips", () => {
     expect(html).toContain("<span>L</span>");
     expect(html).toContain("<span>C</span>");
   });
+
+  // Owner feedback row #48: the selected ground was right, the glyph was not.
+  // Asserted per-button so "the toggled-on one is brand, the rest are not" is what
+  // fails — a blanket `toContain` would pass on a row that painted every glyph.
+  it("paints a toggled-ON button's glyph brand, and only that one", () => {
+    const html = renderToStaticMarkup(
+      <IconButtonRow buttons={btns.map((b, i) => ({ ...b, active: i === 0 }))} />,
+    );
+    const buttons = html.match(/<button[^>]*>/g) ?? [];
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0]).toContain("bg-c-bg-selected");
+    expect(buttons[0]).toContain("text-c-text-brand");
+    expect(buttons[1]).not.toContain("text-c-text-brand");
+    expect(buttons[1]).toContain("text-c-icon");
+  });
+
+  // The blast-radius guard for the row above. The owner's row is about the timeline
+  // TRACK HEADER, whose buttons are independent toggles (`active`). The same
+  // primitive also renders the inspector's align / rotate / text-align controls,
+  // which are a single-select group (`value`) — a segmented CHOICE, not a toggle
+  // that is on. Those keep the selected ground and the neutral glyph, so fixing the
+  // timeline does not silently restyle the inspector.
+  it("leaves a single-select (`value`) row's glyphs neutral, ground only", () => {
+    const html = renderToStaticMarkup(
+      <IconButtonRow
+        buttons={btns.map((b, i) => ({ ...b, value: `v${i}` }))}
+        value="v0"
+        onChange={() => undefined}
+      />,
+    );
+    const buttons = html.match(/<button[^>]*>/g) ?? [];
+    expect(buttons).toHaveLength(2);
+    // The current choice still reads as chosen...
+    expect(buttons[0]).toContain("bg-c-bg-selected");
+    // ...but no glyph in the group turns brand.
+    expect(html).not.toContain("text-c-text-brand");
+    expect(buttons[0]).toContain("text-c-icon");
+    expect(buttons[1]).toContain("text-c-icon");
+  });
 });
 
 describe("PanelSection landmarks", () => {

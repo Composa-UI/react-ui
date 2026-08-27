@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
 import { clsx } from "clsx";
-import { Play, Pause, Square, Diamond, Repeat, PanelBottomClose, PanelBottomOpen, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, Layers, MoreHorizontal } from "lucide-react";
+import { Play, Pause, Square, Diamond, Repeat, PanelBottomClose, PanelBottomOpen, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, Layers } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { collectAggregateKeyframes, createTimelineEdgeDragController, formatMasterRulerTick, normalizeViewport, panViewport, reconcileUncontrolledViewport, revealTimeInViewport, tickTimes, timelineAnchorRatioAtX, timelineDragDeltaMs, timelinePointerPanDelta, timelineScrollbarPan, timelineScrollbarThumb, timelineScrollTop, timelineViewportChanged, timeToX, viewportAtZoomValue, viewportZoomValue, wheelDeltaPixels, wheelPanDelta, xToTime, zoomViewport, type TimelineEdgeDragController, type TimelineViewport } from "./timelineModel";
 import { LayerTypeIcon, type LayerAutoLayoutAlign, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
@@ -68,6 +68,11 @@ const AudioMediaIcon = iconForSemantic("media-audio");
 export type TimelineMode = "master" | "slide";
 export type TimelineFrameRate = 24 | 25 | 30 | 60;
 export type { TimelineViewport } from "./timelineModel";
+// The viewport clamp and its zoom-out headroom are part of the Timeline's public
+// contract, not private detail: a host that persists and re-feeds `viewport` has to
+// clamp it the same way or its copy silently overrides this one. Exported so such a
+// host can be pinned against this implementation instead of guessing at it (#47).
+export { TIMELINE_ZOOM_OUT_HEADROOM, normalizeViewport, timelineViewBoundMs } from "./timelineModel";
 export type TimelineViewportChangeSource = "wheel-zoom" | "wheel-pan" | "pointer-pan" | "zoom-control" | "keyframe-reveal" | "edge-drag" | "playhead-edge-follow";
 export type TimelinePlayheadChangeSource = "pointer" | "keyboard";
 export interface TimelinePlayheadChangeDetail {
@@ -376,6 +381,39 @@ export function timelineTimeAtClientX(clientX: number, left: number, width: numb
 }
 const percent = (timeMs: number, viewport: TimelineViewport) => `${timeToX(timeMs, viewport, 100)}%`;
 const percentWidth = (startMs: number, endMs: number, viewport: TimelineViewport) => `${timeToX(endMs, viewport, 100) - timeToX(startMs, viewport, 100)}%`;
+
+/**
+ * The grey wash over time past the content end.
+ *
+ * Zoom-out now reaches `TIMELINE_ZOOM_OUT_HEADROOM` beyond `duration` (row #47).
+ * That extra room is NOT timeline you can put anything on, so it is painted as
+ * empty rather than left looking like more track. Rendered as a clipped overlay so
+ * a viewport still inside the content contributes nothing.
+ */
+function PastContentWash({ duration, viewport, left = 0 }: { duration: number; viewport: TimelineViewport; left?: number }) {
+  // `percent()` is a fraction of the PLOT, so the wash is nested inside a wrapper
+  // that spans exactly the plot — the same two-level shape the playhead line uses.
+  const startPct = timeToX(duration, viewport, 100);
+  if (!(startPct < 100)) return null;
+  return (
+    <div
+      aria-hidden
+      data-timeline-past-content
+      data-timeline-past-content-start={startPct.toFixed(2)}
+      // `inset-y-0` rather than `top-0 bottom-0`: it renders identically, but the
+      // playhead's body overlay below is `absolute top-0 bottom-0 right-0
+      // overflow-hidden pointer-events-none` — an IDENTICAL class set. Two elements
+      // in the same tree that are indistinguishable by class are a trap for anything
+      // selecting by class (e2e/issue-699-timeline-right-edge picks the playhead
+      // overlay exactly that way and would silently have matched this instead).
+      // `data-timeline-past-content` is the intended handle for this element.
+      className="absolute inset-y-0 right-0 z-[1] overflow-hidden pointer-events-none"
+      style={{ left }}
+    >
+      <div className="absolute inset-y-0 right-0 bg-c-bg-secondary" style={{ left: `${Math.max(0, startPct)}%` }} />
+    </div>
+  );
+}
 
 const TIMELINE_QUICK_EASING_PRESETS = EASING_PRESETS.filter(preset =>
   ["linear", "ease-in", "ease-out", "ease-in-out"].includes(preset.value));
@@ -1805,24 +1843,12 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
               ) : null}
               <span className={clsx(FONT, "relative min-w-0 truncate text-[11px] font-[450]", onSelected ? "text-white" : "text-c-text-secondary")}>{clip.name}</span>
             </div>
-            {hasContextMenu ? <button
-              type="button"
-              aria-label={`More options for ${clip.name}`}
-              aria-haspopup="menu"
-              onPointerDown={event => event.stopPropagation()}
-              onClick={event => {
-                event.preventDefault();
-                event.stopPropagation();
-                const rect = event.currentTarget.getBoundingClientRect();
-                const bar = event.currentTarget.parentElement as HTMLDivElement;
-                onContextMenu!(clip.id, { clientX: rect.left + rect.width / 2, clientY: rect.bottom, currentTarget: bar, source: "pointer" });
-              }}
-              className={clsx(
-                "absolute right-[10px] top-1/2 z-[3] flex size-[20px] -translate-y-1/2 items-center justify-center rounded-c-sm outline-none transition-opacity hover:bg-c-bg-hover focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-c-focus-ring",
-                onSelected ? "text-white" : "text-c-icon-secondary",
-                "opacity-0 group-hover/clip:opacity-100",
-              )}
-            ><MoreHorizontal size={14} strokeWidth={1.5} /></button> : null}
+            {/* No visible "more options" affordance. A video clip used to carry a
+                hover-revealed three-dot button that did exactly what right-click
+                already does — and no other bar in the timeline, on the canvas, or
+                in the layer list has one, so it read as an inconsistency rather
+                than an extra. Right-click (and Shift+F10 / the Menu key, wired on
+                the bar above) remains the single way in. Owner feedback row #45. */}
             {/* Audio strip — video with sound reads at a glance the way the Audio lane
                 does, reusing that lane's renderer rather than a second one. Pinned to
                 the bottom so it never competes with the clip name (Composa#661).
@@ -2495,6 +2521,10 @@ export function Timeline({
             else if (!event.shiftKey && !master && (event.key === "Delete" || event.key === "Backspace") && onDeleteSelectedKeyframes) { claim(); if (!event.repeat) onDeleteSelectedKeyframes(); }
           }}
         >
+          {/* Grey the ruler past the content end too, so the headroom (row #47) reads
+              as one empty region top to bottom rather than as lanes that ran out
+              under a ruler that did not. */}
+          <PastContentWash duration={duration} viewport={viewport} />
           {master ? <SecondRuler viewport={viewport} width={plotWidth} /> : <Ruler viewport={viewport} width={plotWidth} />}
           {/* continuous playhead stroke through the header ruler, joining the body line
               below so the playhead reads unbroken (Composa#342, gated by #344) */}
@@ -2507,26 +2537,36 @@ export function Timeline({
         <div className="absolute z-10 right-0 top-0 bottom-0 flex items-center gap-[8px] px-[12px] border-l border-c-border bg-c-bg">
           {/* Zoom is the one unlabelled non-icon affordance in this chrome — a bare
               track + thumb. It gets the same hover tooltip so it isn't the only
-              control here without one (Composa#628). */}
+              control here without one (Composa#628).
+
+              Track height answers owner feedback row #46 ("too thin ... I wonder if
+              the slider component has a default height, maybe we're overriding it").
+              It isn't an override: this control does not use the DS `Slider` at all,
+              because a native `<input type=range>` is what gives the timeline chrome
+              a keyboard-and-pointer zoom in 20px of vertical space. So it borrows the
+              DS Slider's own compact track height instead of inventing one —
+              `Slider.tsx` `trackPosition` (compact) is `h-[6px]`, and this is 6px
+              with the matching pill radius. The 12px thumb keeps its centre on the
+              track: (12 - 6) / 2 = 3px of negative top margin. */}
           <Tooltip label="Timeline zoom">
           <div data-timeline-zoom-control className="relative w-[91px] h-[20px]">
             <span
               aria-hidden
               data-timeline-zoom-track
-              data-timeline-zoom-track-height="2"
-              data-timeline-zoom-track-radius="1"
-              className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[2px] rounded-[1px] bg-c-bg-secondary overflow-hidden pointer-events-none"
+              data-timeline-zoom-track-height="6"
+              data-timeline-zoom-track-radius="3"
+              className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[6px] rounded-[3px] bg-c-bg-secondary overflow-hidden pointer-events-none"
             >
               <span
                 data-timeline-zoom-fill
-                className="block h-full rounded-[1px] bg-c-bg-brand"
+                className="block h-full rounded-[3px] bg-c-bg-brand"
                 style={{ width: `${zoomPercent}%` }}
               />
             </span>
             <input type="range" aria-label="Timeline zoom" aria-valuetext={`${zoomPercent}%`}
               min={0} max={100} step={1} value={zoomPercent}
               onChange={event => setViewport(viewportAtZoomValue(viewport, Number(event.currentTarget.value) / 100, duration), "zoom-control")}
-              className="relative appearance-none w-full h-[20px] cursor-ew-resize bg-transparent rounded-c-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-c-border-selected-strong [&::-webkit-slider-runnable-track]:h-[2px] [&::-webkit-slider-runnable-track]:rounded-[1px] [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-[12px] [&::-webkit-slider-thumb]:-mt-[5px] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-sm [&::-moz-range-track]:h-[2px] [&::-moz-range-track]:rounded-[1px] [&::-moz-range-track]:bg-transparent [&::-moz-range-progress]:h-[2px] [&::-moz-range-progress]:rounded-[1px] [&::-moz-range-progress]:bg-c-bg-brand [&::-moz-range-thumb]:size-[12px] [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white" />
+              className="relative appearance-none w-full h-[20px] cursor-ew-resize bg-transparent rounded-c-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-c-border-selected-strong [&::-webkit-slider-runnable-track]:h-[6px] [&::-webkit-slider-runnable-track]:rounded-[3px] [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-[12px] [&::-webkit-slider-thumb]:-mt-[3px] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-sm [&::-moz-range-track]:h-[6px] [&::-moz-range-track]:rounded-[3px] [&::-moz-range-track]:bg-transparent [&::-moz-range-progress]:h-[6px] [&::-moz-range-progress]:rounded-[3px] [&::-moz-range-progress]:bg-c-bg-brand [&::-moz-range-thumb]:size-[12px] [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white" />
           </div>
           </Tooltip>
           <Tooltip label={timelineCollapsed ? "Expand timeline" : "Collapse timeline"} disabled={!onTimelineCollapsedChange}>
@@ -2584,6 +2624,10 @@ export function Timeline({
             </div>
           </>
         )}
+        {/* Empty room past the content end — see PastContentWash / row #47. Inside
+            the scroll CONTENT (like the playhead wrapper below) so it spans every
+            lane at any scroll position, and offset past the track-header column. */}
+        <PastContentWash duration={duration} viewport={viewport} left={LEFT_W} />
         <div
           aria-hidden
           data-timeline-track-header-divider
