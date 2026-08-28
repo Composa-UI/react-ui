@@ -597,6 +597,30 @@ describe("Timeline controlled reveal ownership", () => {
   });
 });
 
+// Owner feedback row #47: "...the other empty area just shows up as gray". The
+// headroom is only half the ask — being ABLE to zoom out past the last element is
+// worthless if the extra room looks like more track you could drop a clip onto.
+describe("grey wash past the content end (row #47)", () => {
+  it("paints nothing while the view is still inside the content", () => {
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={20_000}
+      viewport={{ startMs: 0, endMs: 20_000 }} />);
+    expect(html).not.toContain("data-timeline-past-content");
+  });
+
+  it("paints from the content end once the view reaches into the headroom", () => {
+    // 0–24s of view over 20s of content: the content ends 20/24 of the way across.
+    const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={20_000}
+      viewport={{ startMs: 0, endMs: 24_000 }} />);
+    const starts = [...html.matchAll(/data-timeline-past-content-start="([\d.]+)"/g)].map(m => m[1]);
+    // One wash over the ruler, one over the lanes — so the empty region reads as a
+    // single column top to bottom rather than lanes that ran out under a full ruler.
+    expect(starts).toHaveLength(2);
+    // timeToX applies the 2% plot inset: 2 + 98 * (20/24) = 83.67.
+    expect(starts.every(value => value === "83.67")).toBe(true);
+    expect(html).toContain("bg-c-bg-secondary");
+  });
+});
+
 describe("Timeline master seams", () => {
   it("renders the master audio lane and the white-thumb blue-fill zoom contract", () => {
     const html = renderToStaticMarkup(<Timeline mode="master" height={220} duration={20_000}
@@ -609,12 +633,18 @@ describe("Timeline master seams", () => {
     expect(html).toContain("data-timeline-zoom-fill");
     expect(html).toContain("bg-c-bg-brand");
     expect(html).toContain("bg-white");
-    expect(html).toContain('data-timeline-zoom-track-height="2"');
-    expect(html).toContain('data-timeline-zoom-track-radius="1"');
-    expect(html).toContain("h-[2px] rounded-[1px]");
-    expect(html).toContain("[&amp;::-webkit-slider-runnable-track]:h-[2px]");
-    expect(html).toContain("[&amp;::-webkit-slider-runnable-track]:rounded-[1px]");
-    expect(html).toContain("[&amp;::-webkit-slider-thumb]:-mt-[5px]");
+    // Track height matches the DS Slider's own compact track (Slider.tsx
+    // `trackPosition`, compact → `h-[6px]`) rather than the 2px hairline the owner
+    // called too thin (row #46). The 12px thumb stays centred on it: -(12-6)/2.
+    expect(html).toContain('data-timeline-zoom-track-height="6"');
+    expect(html).toContain('data-timeline-zoom-track-radius="3"');
+    expect(html).toContain("h-[6px] rounded-[3px]");
+    expect(html).toContain("[&amp;::-webkit-slider-runnable-track]:h-[6px]");
+    expect(html).toContain("[&amp;::-webkit-slider-runnable-track]:rounded-[3px]");
+    expect(html).toContain("[&amp;::-webkit-slider-thumb]:-mt-[3px]");
+    expect(html).toContain("[&amp;::-moz-range-track]:h-[6px]");
+    expect(html).toContain("[&amp;::-moz-range-progress]:h-[6px]");
+    expect(html).not.toContain('data-timeline-zoom-track-height="2"');
   });
 
   it("renders audio clips on the Audio lane with a waveform and selected state", () => {
@@ -1172,15 +1202,24 @@ describe("video clips raise a context menu (Composa#661)", () => {
   it("advertises the menu on the bar once a host handler is wired", () => {
     const html = master({ ...clip, onClipContextMenu: () => undefined });
     expect(tagWithLabel(html, "shot")).toContain('aria-haspopup="menu"');
-    expect(html).toContain('aria-label="More options for shot"');
-    expect(html).toContain("group-hover/clip:opacity-100");
   });
 
   it("promises nothing when no host handler is wired", () => {
     // The bar must still be there — otherwise the missing attribute means nothing.
     const html = master(clip);
     expect(tagWithLabel(html, "shot")).not.toContain("aria-haspopup");
+  });
+
+  // Owner feedback row #45: a video clip was the only bar in the product carrying a
+  // visible three-dot button, and it did exactly what right-click already does.
+  it("carries no visible three-dot button — right-click is the only entry point", () => {
+    const html = master({ ...clip, onClipContextMenu: () => undefined });
+    // The bar itself is present and menu-capable...
+    expect(tagWithLabel(html, "shot")).toContain('aria-haspopup="menu"');
+    // ...but nothing inside it is a separate menu trigger.
     expect(html).not.toContain('aria-label="More options for shot"');
+    expect(html).not.toContain("group-hover/clip:opacity-100");
+    expect(html).not.toContain("lucide-ellipsis");
   });
 });
 

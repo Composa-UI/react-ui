@@ -22,17 +22,43 @@ export const EDGE_AUTO_SCROLL_ZONE_PX = 32;
 export const EDGE_AUTO_SCROLL_MAX_PX_PER_SECOND = 720;
 export const EDGE_AUTO_SCROLL_MAX_FRAME_MS = 32;
 
+/**
+ * Empty room past the content end that the timeline may still scroll and zoom
+ * into, as a fraction of the content duration.
+ *
+ * Zoom-out used to stop dead at the last element: `normalizeViewport` clamped both
+ * the span and the start against `durationMs`, so the widest possible view was
+ * exactly the content and the final clip always ended flush against the right
+ * edge. That leaves nowhere to drop a clip after the last one and no breathing
+ * room to read the end of the composition — owner feedback row #47, "a track can
+ * only zoom out as far as it longest element goes, we should allow it to zoom out
+ * 20% more, the other empty area just shows up as gray".
+ *
+ * The headroom is time the document does not occupy, so everything that means
+ * "the content" — the playhead range, End, clip clamping, the ruler's
+ * `aria-valuemax` — still uses `durationMs`. Only the VIEW may reach past it, and
+ * `Timeline` paints the part past `durationMs` with a grey wash so it reads as
+ * empty rather than as timeline you could put something on.
+ */
+export const TIMELINE_ZOOM_OUT_HEADROOM = 0.2;
+
+/** Widest span the view may show: the content plus its grey headroom. */
+export function timelineViewBoundMs(durationMs: number): number {
+  const duration = Math.max(1, Number.isFinite(durationMs) ? durationMs : MIN_VIEWPORT_MS);
+  return duration * (1 + TIMELINE_ZOOM_OUT_HEADROOM);
+}
+
 export function minimumViewportSpan(durationMs: number): number {
   return Math.min(MIN_VIEWPORT_MS, Math.max(1, durationMs));
 }
 
 export function normalizeViewport(viewport: TimelineViewport, durationMs: number): TimelineViewport {
-  const duration = Math.max(1, Number.isFinite(durationMs) ? durationMs : MIN_VIEWPORT_MS);
-  const minimumSpan = minimumViewportSpan(duration);
+  const bound = timelineViewBoundMs(durationMs);
+  const minimumSpan = minimumViewportSpan(Math.max(1, Number.isFinite(durationMs) ? durationMs : MIN_VIEWPORT_MS));
   const rawStart = Number.isFinite(viewport.startMs) ? viewport.startMs : 0;
-  const rawEnd = Number.isFinite(viewport.endMs) ? viewport.endMs : duration;
-  const span = Math.min(duration, Math.max(minimumSpan, rawEnd - rawStart));
-  const startMs = Math.max(0, Math.min(duration - span, rawStart));
+  const rawEnd = Number.isFinite(viewport.endMs) ? viewport.endMs : bound;
+  const span = Math.min(bound, Math.max(minimumSpan, rawEnd - rawStart));
+  const startMs = Math.max(0, Math.min(bound - span, rawStart));
   return { startMs, endMs: startMs + span };
 }
 
@@ -257,25 +283,34 @@ export function timelineViewportChanged(previous: TimelineViewport, next: Timeli
   return previous.startMs !== next.startMs || previous.endMs !== next.endMs;
 }
 
+// The zoom slider's 0% is "as far out as the timeline goes", which is now the
+// headroom bound rather than the content end (row #47) — otherwise the extra 20%
+// would exist but be unreachable by the one control whose whole job is zoom.
 export function viewportZoomValue(viewport: TimelineViewport, durationMs: number): number {
   const current = normalizeViewport(viewport, durationMs);
-  const duration = Math.max(1, durationMs);
-  const minimum = minimumViewportSpan(duration);
-  if (duration === minimum) return 0;
-  return Math.max(0, Math.min(1, Math.log(duration / (current.endMs - current.startMs)) / Math.log(duration / minimum)));
+  const bound = timelineViewBoundMs(durationMs);
+  const minimum = minimumViewportSpan(Math.max(1, durationMs));
+  if (bound <= minimum) return 0;
+  return Math.max(0, Math.min(1, Math.log(bound / (current.endMs - current.startMs)) / Math.log(bound / minimum)));
 }
 
 export function viewportAtZoomValue(viewport: TimelineViewport, value: number, durationMs: number): TimelineViewport {
   const current = normalizeViewport(viewport, durationMs);
-  const duration = Math.max(1, durationMs);
-  const minimum = minimumViewportSpan(duration);
+  const bound = timelineViewBoundMs(durationMs);
+  const minimum = minimumViewportSpan(Math.max(1, durationMs));
   const normalized = Math.max(0, Math.min(1, value));
-  const targetSpan = duration * (minimum / duration) ** normalized;
-  return zoomViewport(current, .5, targetSpan / (current.endMs - current.startMs), duration);
+  const targetSpan = bound * (minimum / bound) ** normalized;
+  return zoomViewport(current, .5, targetSpan / (current.endMs - current.startMs), durationMs);
 }
 
 export function reconcileUncontrolledViewport(viewport: TimelineViewport, durationMs: number, pristineFullRange: boolean): TimelineViewport {
-  return pristineFullRange ? normalizeViewport({ startMs: 0, endMs: durationMs }, durationMs) : normalizeViewport(viewport, durationMs);
+  // Pristine still frames the CONTENT, not the bound: the owner asked to be ABLE
+  // to zoom out 20% further (row #47), not to have every project open with a
+  // fifth of the strip already empty. The headroom is one zoom step away, and the
+  // grey only appears once you go looking for it.
+  return pristineFullRange
+    ? normalizeViewport({ startMs: 0, endMs: durationMs }, durationMs)
+    : normalizeViewport(viewport, durationMs);
 }
 
 export function tickTimes(viewport: TimelineViewport, widthPx: number): number[] {
@@ -329,13 +364,16 @@ export function timelineScrollbarThumb(
   minThumbPx = TIMELINE_SCROLLBAR_MIN_THUMB_PX,
 ): { leftPx: number; widthPx: number; scrollable: boolean } {
   const track = Math.max(0, trackWidthPx);
-  const duration = Math.max(1, durationMs);
-  const span = Math.min(duration, Math.max(0, viewport.endMs - viewport.startMs));
-  const rawWidth = (span / duration) * track;
+  // The scrollable extent is what the VIEW can reach, which includes the grey
+  // headroom past the content (row #47) — otherwise the thumb would report the
+  // window as unscrollable while the viewport still had 20% left to travel.
+  const extent = timelineViewBoundMs(durationMs);
+  const span = Math.min(extent, Math.max(0, viewport.endMs - viewport.startMs));
+  const rawWidth = (span / extent) * track;
   const widthPx = Math.max(Math.min(minThumbPx, track), Math.min(track, rawWidth));
   const maxLeft = Math.max(0, track - widthPx);
-  const scrollable = duration - span > 0.5;
-  const startFraction = scrollable ? viewport.startMs / (duration - span) : 0;
+  const scrollable = extent - span > 0.5;
+  const startFraction = scrollable ? viewport.startMs / (extent - span) : 0;
   const leftPx = Math.max(0, Math.min(maxLeft, startFraction * maxLeft));
   return { leftPx, widthPx, scrollable };
 }
@@ -348,14 +386,14 @@ export function timelineScrollbarPan(
   trackWidthPx: number,
   minThumbPx = TIMELINE_SCROLLBAR_MIN_THUMB_PX,
 ): TimelineViewport {
-  const duration = Math.max(1, durationMs);
-  const current = normalizeViewport(viewport, duration);
+  const extent = timelineViewBoundMs(durationMs);
+  const current = normalizeViewport(viewport, durationMs);
   const span = current.endMs - current.startMs;
-  if (duration - span <= 0.5 || !Number.isFinite(deltaPx)) return current;
-  const { widthPx } = timelineScrollbarThumb(current, duration, trackWidthPx, minThumbPx);
+  if (extent - span <= 0.5 || !Number.isFinite(deltaPx)) return current;
+  const { widthPx } = timelineScrollbarThumb(current, durationMs, trackWidthPx, minThumbPx);
   const maxLeft = Math.max(1, Math.max(0, trackWidthPx) - widthPx);
-  const deltaStartMs = (deltaPx / maxLeft) * (duration - span);
-  return normalizeViewport({ startMs: current.startMs + deltaStartMs, endMs: current.endMs + deltaStartMs }, duration);
+  const deltaStartMs = (deltaPx / maxLeft) * (extent - span);
+  return normalizeViewport({ startMs: current.startMs + deltaStartMs, endMs: current.endMs + deltaStartMs }, durationMs);
 }
 
 export function collectAggregateKeyframes(keys: AggregateKeyInput[], propertyCount: number): AggregateKeyframe[] {

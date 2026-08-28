@@ -64,7 +64,7 @@ export function Avatar({
 
   // Overflow badge variant
   if (overflow !== undefined) {
-    const bg = overflowRead ? "#b3b3b3" : "#007be5";
+    const bg = overflowRead ? "#b3b3b3" : "var(--color-bg-brand-pressed)";
     return (
       <div
         className={clsx(base, className)}
