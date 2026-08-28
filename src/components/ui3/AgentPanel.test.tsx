@@ -76,6 +76,26 @@ function renderAgent(panelProps: AgentPanelProps) {
   return create(<TooltipProvider><AgentPanel {...panelProps} /></TooltipProvider>);
 }
 
+describe("the Beta flag", () => {
+  it("is the shared `Tag`, not a second private copy of one", () => {
+    // The point of exporting `Tag` from @composa/ui was to have ONE tag in the
+    // system: the app was hand-rolling its own because none was exported. If
+    // AgentPanel keeps a private badge alongside it, the export solved nothing.
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = renderAgent(props({ activeConversation })); });
+    const tags = renderer!.root.findAll(node => typeof node.props?.["data-composa-tag"] === "string");
+    expect(tags.length).toBeGreaterThan(0);
+    for (const tag of tags) {
+      // Unchanged from the private BetaBadge it replaced: 16px, brand tone.
+      expect(tag.props["data-composa-tag"]).toBe("brand");
+      expect(tag.props["data-composa-tag-size"]).toBe("sm");
+      expect(tag.props.className).toContain("h-[16px]");
+      expect(tag.props.className).toContain("text-[9px]");
+    }
+    act(() => renderer!.unmount());
+  });
+});
+
 describe("AgentPanel controlled contracts", () => {
   it("renders media contexts with the canonical timeline glyph semantics (#749)", () => {
     let renderer: ReturnType<typeof create>;
