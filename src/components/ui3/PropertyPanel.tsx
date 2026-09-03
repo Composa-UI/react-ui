@@ -4325,9 +4325,13 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onDurationChange={onClipDurationChange} />
           <ClipTrimSection trimIn={clipTrimIn} trimOut={clipTrimOut} controlled={props.clipTrimIn !== undefined || props.clipTrimOut !== undefined} onTrimInChange={onClipTrimInChange} onTrimOutChange={onClipTrimOutChange} />
           <ClipPlaybackSection speed={clipSpeed} controlled={props.clipSpeed !== undefined} onSpeedChange={onClipSpeedChange} />
-          {/* Only Appearance is modeled today. Color grading and Chroma key stay
-              absent until the engine can persist and render them truthfully. */}
+          {/* Appearance is modeled today. Color grading and Chroma key are now
+              surfaced ahead of the engine effect-stack — cosmetic/not-yet-persisted
+              for the dev showcase (owner call) until the engine can persist and
+              render them truthfully. */}
           <ClipBlendSection mode={clipBlendMode} controlled={props.clipBlendMode !== undefined} onModeChange={onClipBlendModeChange} />
+          <PanelSection title="Color" landmark><ClipColorBody /></PanelSection>
+          <PanelSection title="Chroma key" landmark><ChromaKeyBody /></PanelSection>
         </ScrollArea>
       )}
 
