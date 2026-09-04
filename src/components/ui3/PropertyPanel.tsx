@@ -2989,7 +2989,21 @@ const ADJUSTMENT_GROUPS: { group: ColorAdjustmentGroup; label: string }[] = [
   { group: "creative", label: "Creative adjustments" },
 ];
 
-function ClipColorBody() {
+// The Light and Color adjustment groups each back a subset of the 7 engine keys
+// (exposure/contrast/saturation/temperature/tint/highlights/shadows). Those
+// sliders become controlled when the clip's persisted grade is supplied; every
+// other slider (brightness/whites/blacks/vibrance/hue) and the Wheels/Creative
+// groups stay uncontrolled/cosmetic for Phase 2. Slider keys match engine keys
+// 1:1, so no renaming is needed.
+const CLIP_GROUP_ENGINE_KEYS: Partial<Record<ColorAdjustmentGroup, readonly string[]>> = {
+  light: ["exposure", "contrast", "highlights", "shadows"],
+  color: ["temperature", "tint", "saturation"],
+};
+
+function ClipColorBody({ adjustments, onAdjustmentChange }: {
+  adjustments?: Partial<Record<string, number>>;
+  onAdjustmentChange?: (key: string, value: number) => void;
+}) {
   const [conversion, setConversion] = useState<string>("Apple Log");
   const [look, setLook] = useState<string>("Analog Indie");
   const [openGroup, setOpenGroup] = useState<ColorAdjustmentGroup | null>(null);
@@ -3000,6 +3014,19 @@ function ClipColorBody() {
   const setGroupModified = (group: ColorAdjustmentGroup) => (modified: boolean) =>
     setModifiedGroups(state => (state[group] === modified ? state : { ...state, [group]: modified }));
   const lutLabels = (opts: readonly string[]) => Object.fromEntries(opts.map(o => [o, o])) as Record<string, string>;
+  // Seed the controlled sliders for a group from the clip's persisted grade
+  // (keys absent from `adjustments` fall through to the dialog's neutral
+  // default). Groups without engine keys stay fully uncontrolled.
+  const groupValues = (group: ColorAdjustmentGroup): Record<string, number> | undefined => {
+    const keys = CLIP_GROUP_ENGINE_KEYS[group];
+    if (!keys) return undefined;
+    const seeded: Record<string, number> = {};
+    for (const key of keys) {
+      const value = adjustments?.[key];
+      if (value !== undefined) seeded[key] = value;
+    }
+    return seeded;
+  };
   return (
     <>
       <PanelFieldRow label="Conversion LUT"
@@ -3008,9 +3035,13 @@ function ClipColorBody() {
         left={<ChoiceDropdown ariaLabel="Look LUT" value={look} options={LOOK_LUTS} labels={lutLabels(LOOK_LUTS)} onChange={setLook} />} />
       {ADJUSTMENT_GROUPS.map(({ group, label }) => {
         const stateLabel = modifiedGroups[group] ? "Modified" : "Default";
+        const controlledKeys = CLIP_GROUP_ENGINE_KEYS[group];
         return (
           <PanelFieldRow key={group} label={label}
             left={<ColorAdjustmentsDialog group={group} enabled open={openGroup === group} onClose={() => setOpenGroup(null)}
+              values={groupValues(group)}
+              controlledKeys={controlledKeys}
+              onValueChange={onAdjustmentChange ? (key, value) => onAdjustmentChange(key, value) : undefined}
               onModifiedChange={setGroupModified(group)}
               trigger={<Dropdown ariaLabel={`${label}: ${stateLabel}`} value={stateLabel} fullWidth onClick={() => setOpenGroup(group)} />} />} />
         );
@@ -3483,6 +3514,16 @@ export interface PropertyPanelProps {
   /** Video Clip · Blend — composite mode. Controlled when the callback is set. */
   clipBlendMode?: ClipBlendMode;
   onClipBlendModeChange?: (value: ClipBlendMode) => void;
+  /**
+   * Video Clip · Color — the 7 engine-backed basic grade adjustments
+   * (exposure/contrast/saturation/temperature/tint/highlights/shadows). When
+   * provided, ClipColorBody's Light (exposure/contrast/highlights/shadows) and
+   * Color (temperature/tint/saturation) dialog sliders for these keys are
+   * controlled; every other Color control (LUTs, Color-Wheels, Creative, Chroma,
+   * and brightness/whites/blacks/vibrance/hue) stays cosmetic until Phase 2.
+   */
+  clipAdjustments?: Partial<Record<string, number>>;
+  onClipAdjustmentChange?: (key: string, value: number) => void;
   /** Audio Clip mode — clip name + Volume are the only host-wired controls; the
    *  remaining effect sections are structural (unwired) until the audio DSP lands. */
   audioClipName?: string;
@@ -3991,6 +4032,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onDeleteClip,
   clipBlendMode = "Normal",
   onClipBlendModeChange,
+  clipAdjustments,
+  onClipAdjustmentChange,
   audioClipName = "voiceover",
   onAudioClipNameChange,
   audioVolume = 100,
@@ -4330,7 +4373,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
               for the dev showcase (owner call) until the engine can persist and
               render them truthfully. */}
           <ClipBlendSection mode={clipBlendMode} controlled={props.clipBlendMode !== undefined} onModeChange={onClipBlendModeChange} />
-          <PanelSection title="Color" landmark><ClipColorBody /></PanelSection>
+          <PanelSection title="Color" landmark><ClipColorBody adjustments={clipAdjustments} onAdjustmentChange={onClipAdjustmentChange} /></PanelSection>
           <PanelSection title="Chroma key" landmark><ChromaKeyBody /></PanelSection>
         </ScrollArea>
       )}
