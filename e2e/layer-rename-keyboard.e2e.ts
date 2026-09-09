@@ -18,6 +18,7 @@ test("inline rename owns text keys and IME while row navigation remains availabl
   await expect(input).toBeFocused();
   await input.press("Escape");
   await expect(row).toHaveAttribute("aria-label", original!);
+  await expect(row).toBeFocused();
   await row.press("Enter");
   await input.fill("");
   await input.pressSequentially("Launch video");
