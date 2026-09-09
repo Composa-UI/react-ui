@@ -288,8 +288,12 @@ function LayerRow({ row, hasChildren, open, focused, renaming, renameDraft, onRe
           onChange={event => onRenameDraftChange(event.target.value)}
           onBlur={onRenameCommit}
           onKeyDown={event => {
+            // Text editing owns its keys; do not let the enclosing tree row
+            // consume Space or move focus when the user moves the caret.
+            event.stopPropagation();
+            if (event.nativeEvent.isComposing || event.keyCode === 229) return;
             if (event.key !== "Enter" && event.key !== "Escape") return;
-            event.preventDefault(); event.stopPropagation();
+            event.preventDefault();
             event.key === "Enter" ? onRenameCommit() : onRenameCancel();
           }}
           className={clsx(FONT, "relative flex-1 min-w-0 h-[22px] rounded-c-sm border border-c-border-selected bg-c-bg px-[4px] text-[11px] font-[450] leading-[16px] text-c-text outline-none")}
