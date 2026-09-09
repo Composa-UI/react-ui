@@ -904,7 +904,7 @@ function PositionSection({
           rightAction={onPositionPresentationChange
             ? <PanelActionBtn
                 icon={<Link2Off size={16} strokeWidth={1.5} />}
-                label="Separate dimensions"
+                label="Combine position dimensions"
                 tooltip="Separate dimensions"
                 selected
                 onClick={() => onPositionPresentationChange("separate")}
@@ -927,7 +927,7 @@ function PositionSection({
           rightAction={onPositionPresentationChange
             ? <PanelActionBtn
                 icon={<Link2 size={16} strokeWidth={1.5} />}
-                label="Combine dimensions"
+                label="Combine position dimensions"
                 tooltip="Combine dimensions"
                 selected={false}
                 onClick={() => onPositionPresentationChange("combined")}

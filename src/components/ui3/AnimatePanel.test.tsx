@@ -459,52 +459,27 @@ describe("AnimatePanel — connected rank and plus-space drag targets (issue #30
     expect(html).not.toContain("data-animation-sequence-drop-indicator=");
   });
 
-  it("connects distinct ranks with a compact timing affordance", () => {
-    const html = renderToStaticMarkup(
-      <AnimatePanel
-        selectionType="element"
-        anims={[
-          { ...ANIMS[0], n: 1, startMs: 0 },
-          { ...ANIMS[1], n: 2, startMs: 600 },
-        ]}
-        objectAnimationCallbacks={{ onDelayBetweenChange: () => undefined }}
-      />,
-    );
-    expect(html).toContain('data-animation-sequence-connector-between="1-2"');
-    expect(html).toContain('aria-label="Delay between sequence 1 and 2"');
-    expect(html).toContain("After");
-    expect(html).toContain("lucide-clock");
+  it("offers start offsets only within combined groups", () => {
+    const render = (sameRank: boolean) => renderToStaticMarkup(<AnimatePanel selectionType="element"
+      anims={[{ ...ANIMS[0], n: 1, startMs: 0 }, { ...ANIMS[1], n: sameRank ? 1 : 2, startMs: 100 }]}
+      objectAnimationCallbacks={{ onStartOffsetChange: () => undefined }} />);
+    expect(render(true)).toContain("Start after");
+    expect(render(true)).toContain('value="100"');
+    expect(render(false)).not.toContain("Start after");
+    expect(render(false)).not.toContain("data-animation-sequence-connector-between");
   });
 
-  it("breaks the connector when a timeline drag leaves a temporal gap or rank gap", () => {
-    const separatedInTime = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={[
-      { ...ANIMS[0], n: 1, startMs: 0 }, { ...ANIMS[1], n: 2, startMs: 900 },
-    ]} objectAnimationCallbacks={{ onDelayBetweenChange: () => undefined }} />);
-    const separatedInRank = renderToStaticMarkup(<AnimatePanel selectionType="element" anims={[
-      { ...ANIMS[0], n: 1, startMs: 0 }, { ...ANIMS[1], n: 3, startMs: 600 },
-    ]} objectAnimationCallbacks={{ onDelayBetweenChange: () => undefined }} />);
-    expect(separatedInTime).not.toContain("data-animation-sequence-connector-between");
-    expect(separatedInTime).not.toContain("Delay between sequence");
-    expect(separatedInRank).not.toContain("data-animation-sequence-connector-between");
-  });
-
-  it("keeps the zero-delay plus expandable into an editable timing value", () => {
-    const onDelayBetweenChange = vi.fn();
+  it("commits an offset relative to the first action without changing siblings", () => {
+    const onStartOffsetChange = vi.fn();
     let renderer: ReturnType<typeof create>;
-    act(() => { renderer = create(
-      <AnimatePanel
-        selectionType="element"
-        anims={[{ ...ANIMS[0], n: 1, startMs: 0 }, { ...ANIMS[1], n: 2, startMs: 600 }]}
-        objectAnimationCallbacks={{ onDelayBetweenChange }}
-      />,
-    ); });
-    const input = renderer!.root.findByProps({ "aria-label": "Delay between sequence 1 and 2" });
-    expect(input.props.value).toBe("0");
-    act(() => input.props.onChange({ target: { value: "240" } }));
-    act(() => renderer!.root.findByProps({ "aria-label": "Delay between sequence 1 and 2" }).props.onBlur());
-    expect(onDelayBetweenChange).toHaveBeenCalledWith(ANIMS[0].id, ANIMS[1].id, 240);
-    const connector = renderer!.root.findByProps({ "data-animation-sequence-connector-between": "1-2" });
-    expect(connector.props.className).toContain("group/sequence-gap");
+    act(() => { renderer = create(<AnimatePanel selectionType="element"
+      anims={ANIMS.map((item, index) => ({ ...item, n: 1, startMs: index * 100 }))}
+      objectAnimationCallbacks={{ onStartOffsetChange }} />); });
+    const controls = renderer!.root.findAllByType("input").filter(input => input.props["aria-label"]?.startsWith("Start "));
+    expect(controls).toHaveLength(ANIMS.length - 1);
+    act(() => controls[0].props.onChange({ target: { value: "240" } }));
+    act(() => renderer!.root.findAllByType("input").filter(input => input.props["aria-label"]?.startsWith("Start "))[0].props.onBlur());
+    expect(onStartOffsetChange).toHaveBeenCalledWith(ANIMS[0].id, ANIMS[1].id, 240);
     act(() => renderer!.unmount());
   });
 
