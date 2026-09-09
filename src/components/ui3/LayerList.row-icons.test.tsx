@@ -69,6 +69,13 @@ describe("LayerList trailing controls use the primary icon colour", () => {
 });
 
 describe("LayerList draws each primitive with its own glyph", () => {
+  it("uses the canonical video dialog glyph for video layers", () => {
+    const renderer = renderLayers([{ id: "v", name: "Video", type: "video" }, { id: "i", name: "Image", type: "image" }]);
+    expect(rowIcon(renderer.root, "Video").props["data-icon-semantic"]).toBe("media-video");
+    expect(String(rowIcon(renderer.root, "Video").props.className)).toContain("lucide-square-play");
+    expect(rowIcon(renderer.root, "Image").props["data-icon-semantic"]).toBe("image");
+    act(() => renderer.unmount());
+  });
   it("gives line, ellipse and rectangle three different semantics", () => {
     const renderer = renderLayers(PRIMITIVES);
 
