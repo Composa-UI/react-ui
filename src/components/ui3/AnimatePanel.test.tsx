@@ -483,6 +483,15 @@ describe("AnimatePanel — connected rank and plus-space drag targets (issue #30
     act(() => renderer!.unmount());
   });
 
+  it("uses the earliest-starting action as the visible group reference", () => {
+    const html = renderToStaticMarkup(<AnimatePanel selectionType="element"
+      anims={[{ ...ANIMS[0], n: 1, startMs: 300 }, { ...ANIMS[1], n: 1, startMs: 0 }]}
+      objectAnimationCallbacks={{ onStartOffsetChange: () => undefined }} />);
+    expect(html.indexOf(`data-animation-card-id="${ANIMS[1].id}"`)).toBeLessThan(html.indexOf(`data-animation-card-id="${ANIMS[0].id}"`));
+    expect(html).toContain('value="300"');
+    expect(html).toContain(`data-animation-start-offset="${ANIMS[0].id}"`);
+  });
+
   it("does not offer With back into the dragged card's current shared rank", () => {
     const shared = [
       { ...ANIMS[0], n: 1 },

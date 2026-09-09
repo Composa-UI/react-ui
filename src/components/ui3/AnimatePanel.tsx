@@ -404,7 +404,9 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
               if (group) group.rows.push(row);
               else groups.push({ rank: animation.n, rows: [row] });
               return groups;
-            }, []).sort((left, right) => left.rank - right.rank);
+            }, []).map(group => ({ ...group, rows: group.rows.sort((left, right) =>
+              (left.animation.startMs ?? 0) - (right.animation.startMs ?? 0) || left.index - right.index),
+            })).sort((left, right) => left.rank - right.rank);
 
             const finishDrop = (targetId: string, placement: "before" | "after" | "with") => {
               if (!dragged || dragged === targetId) return;
