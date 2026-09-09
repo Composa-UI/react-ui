@@ -2128,7 +2128,9 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
 
 // ─── Section: Export ──────────────────────────────────────────────────────────
 
-function ExportSection({ settings, targetName = "selection", mode = "static", animatedAvailable = true, frameRate, onModeChange, onFrameRateChange, onAdd, onRemove, onUpdate, onExport }: {
+function ExportSection({ animatedFormats, exporting, settings, targetName = "selection", mode = "static", animatedAvailable = true, frameRate, onModeChange, onFrameRateChange, onAdd, onRemove, onUpdate, onExport }: {
+  animatedFormats?: Record<string, "MP4" | "WebM" | "Detecting…" | "Unavailable">;
+  exporting?: boolean;
   settings?: InspectorExportSetting[];
   targetName?: string;
   mode?: InspectorExportMode;
@@ -2189,9 +2191,11 @@ function ExportSection({ settings, targetName = "selection", mode = "static", an
                 feature exists. Format takes the freed width. */}
             <div className="min-w-0">
               <div className={SUBLABEL}>Format</div>
-              <ChoiceDropdown ariaLabel="Export format" value={exp.format} options={["PNG", "JPG"]} labels={{ PNG: "PNG", JPG: "JPG" }} onChange={format => update(exp.id, { format })} />
+              {mode === "frame" && animatedFormats
+                ? <ChoiceDropdown ariaLabel="Export video format" value={animatedFormats[exp.id] ?? "Detecting…"} options={[animatedFormats[exp.id] ?? "Detecting…"]} labels={{ MP4: "MP4", WebM: "WebM", "Detecting…": "Detecting…", Unavailable: "Unavailable" }} disabled />
+                : <ChoiceDropdown ariaLabel="Export format" value={exp.format} options={["PNG", "JPG"]} labels={{ PNG: "PNG", JPG: "JPG" }} onChange={format => update(exp.id, { format })} />}
             </div>
-            {exp.format === "JPG" && <div className="min-w-0">
+            {exp.format === "JPG" && !(mode === "frame" && animatedFormats) && <div className="min-w-0">
               <div className={SUBLABEL}>Quality</div>
               <NumericInput ariaLabel="Export quality" value={exp.quality ?? 90} min={1} max={100} step={1} suffix="%" onChange={quality => update(exp.id, { quality })} />
             </div>}
@@ -2211,7 +2215,8 @@ function ExportSection({ settings, targetName = "selection", mode = "static", an
         </div>
       ))}
       {exports.length > 0 && <PanelFullRow height={40}>
-        <Button label={mode === "frame" ? "Export frame" : `Export ${targetName}`} variant="Secondary" size="wide" onClick={onExport} />
+        <Button label={exporting ? "Exporting…" : mode === "frame" ? animatedFormats ? "Export video" : "Export frame" : `Export ${targetName}`} variant="Secondary" size="wide" onClick={onExport}
+          disabled={exporting || (mode === "frame" && !!animatedFormats && exports.some(exp => !["MP4", "WebM"].includes(animatedFormats[exp.id] ?? "")))} />
       </PanelFullRow>}
     </PanelSection>
   );
@@ -3430,6 +3435,9 @@ export interface PropertyPanelProps {
   exportMode?: InspectorExportMode;
   /** Show the Animated export choice only when the selected target has authored motion. */
   animatedExportAvailable?: boolean;
+  /** Per-row negotiated video formats. Supplying this enables real Animated video presentation. */
+  animatedExportFormats?: Record<string, "MP4" | "WebM" | "Detecting…" | "Unavailable">;
+  exportInProgress?: boolean;
   exportTargetName?: string;
   onExportModeChange?: (mode: InspectorExportMode) => void;
   onAddExportSetting?: () => void;
@@ -4314,7 +4322,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor}
             onEyedropperActivate={props.onSelectionColorEyedropperActivate} activeEyedropperId={props.activeSelectionColorEyedropperId}
             swatches={props.pageSwatches} capabilities={capabilities} />
-          <ExportSection settings={exportSettings} mode={exportMode} animatedAvailable={props.animatedExportAvailable} frameRate={projectFrameRate} onModeChange={onExportModeChange} onFrameRateChange={onProjectFrameRateChange} targetName={exportTargetName ?? renderedSlideName}
+          <ExportSection animatedFormats={props.animatedExportFormats} exporting={props.exportInProgress} settings={exportSettings} mode={exportMode} animatedAvailable={props.animatedExportAvailable} frameRate={projectFrameRate} onModeChange={onExportModeChange} onFrameRateChange={onProjectFrameRateChange} targetName={exportTargetName ?? renderedSlideName}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
           </>}
           </ScrollArea></div>}
@@ -4549,7 +4557,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onEyedropperActivate={props.onSelectionColorEyedropperActivate} activeEyedropperId={props.activeSelectionColorEyedropperId}
             swatches={props.pageSwatches} capabilities={capabilities} />}
 
-          <ExportSection settings={exportSettings} mode={exportMode} animatedAvailable={props.animatedExportAvailable} frameRate={projectFrameRate} onModeChange={onExportModeChange} onFrameRateChange={onProjectFrameRateChange} targetName={exportTargetName ?? elementLabel[elementType]}
+          <ExportSection animatedFormats={props.animatedExportFormats} exporting={props.exportInProgress} settings={exportSettings} mode={exportMode} animatedAvailable={props.animatedExportAvailable} frameRate={projectFrameRate} onModeChange={onExportModeChange} onFrameRateChange={onProjectFrameRateChange} targetName={exportTargetName ?? elementLabel[elementType]}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
           {easing && <EasingInspectorSection key={easing.interactionKey} value={easing} applyScope={easingApplyScope} applyToLabel={easingApplyToLabel}
             onChange={onEasingChange} onApplyScopeChange={onEasingApplyScopeChange}
