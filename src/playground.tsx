@@ -1464,6 +1464,17 @@ export default function Playground() {
     </div>;
   }
 
+  if (view === "timeline-property-columns") {
+    const dark = new URLSearchParams(window.location.search).get("theme") === "dark";
+    return <div data-composa-mode={dark ? "dark" : "light"} style={{ height: "100vh", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+      <Timeline height={260} duration={2000} tracks={[{ id: "column-proof", name: "Ellipse", type: "frame", expanded: true, props: [
+        { id: "rotation", name: "Rotation", value: 45, keyframes: [0] },
+        { id: "position", name: "Position", keyframes: [500] },
+        { id: "color", name: "Color", value: "#6633ff", keyframes: [1000] },
+      ] }]} />
+    </div>;
+  }
+
   if (view === "timeline-duration-contract") {
     return <div data-composa-mode="dark" style={{ height: "100vh", width: "100vw", display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "#2c2c2c" }}>
       <Timeline height={220} duration={6_000} tracks={durationBarTracks}

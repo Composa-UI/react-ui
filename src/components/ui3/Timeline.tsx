@@ -1218,8 +1218,9 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
               <ChevronRight size={14} strokeWidth={1.5} className="text-c-icon-secondary" />
             </button>
             {/* Inline value at the playhead stays visible beside keyframe state, matching the canonical row anatomy. */}
+            <div data-timeline-property-value-slot className="w-[80px] shrink-0">
             {p.value !== undefined && (
-              <div data-timeline-property-value className={clsx("shrink-0 select-text", typeof p.value === "string" ? "w-[80px]" : "w-[56px]")}>
+              <div data-timeline-property-value className={clsx("select-text", typeof p.value === "string" ? "w-[80px]" : "w-[56px]")}>
                 {typeof p.value === "string"
                   ? <ColorInput ariaLabel={`${p.name} value`} color={p.value} size="small" fullWidth showOpacity={false} disabled={p.valueEditable === false}
                       onColorChange={value => onPropertyValueChange?.(trackId, propertyId, value)} />
@@ -1227,6 +1228,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
                       onChange={value => onPropertyValueChange?.(trackId, propertyId, value)} />}
               </div>
             )}
+            </div>
             <button type="button" aria-label={p.hidden ? `Show ${p.name}` : `Hide ${p.name}`} aria-pressed={p.hidden}
               onClick={() => onPropertyToggleHidden?.(trackId, propertyId)}
               className={clsx("shrink-0 flex items-center justify-center", !p.hidden && "opacity-0 group-hover/prop:opacity-100")}>

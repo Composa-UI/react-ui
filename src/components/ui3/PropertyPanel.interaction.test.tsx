@@ -144,7 +144,7 @@ describe("Position alignment actions", () => {
       positionPresentation="combined"
       onPositionPresentationChange={value => presentations.push(value)}
     />); });
-    const separate = renderer!.root.findAllByType("button").find(button => button.props["aria-label"] === "Separate dimensions")!;
+    const separate = renderer!.root.findAllByType("button").find(button => button.props["aria-label"] === "Combine position dimensions")!;
     act(() => separate.props.onClick());
     expect(presentations).toEqual(["separate"]);
     act(() => renderer!.unmount());

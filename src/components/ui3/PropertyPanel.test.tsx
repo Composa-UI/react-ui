@@ -325,16 +325,16 @@ describe("Inspector context projections", () => {
     const separate = renderToStaticMarkup(<PropertyPanel elementType="shape" />);
     expect(separate).toContain('aria-label="Position X"');
     expect(separate).toContain('aria-label="Position Y"');
-    expect(separate).not.toContain('aria-label="Separate dimensions"');
+    expect(separate).not.toContain('aria-label="Combine position dimensions"');
 
     const inertCombined = renderToStaticMarkup(<PropertyPanel elementType="shape" positionPresentation="combined" />);
-    expect(inertCombined).not.toContain('aria-label="Separate dimensions"');
+    expect(inertCombined).not.toContain('aria-label="Combine position dimensions"');
 
     const authorableCombined = renderToStaticMarkup(<PropertyPanel elementType="shape"
       positionPresentation="combined"
       onPositionPresentationChange={() => undefined}
     />);
-    expect(authorableCombined).toContain('aria-label="Separate dimensions"');
+    expect(authorableCombined).toContain('aria-label="Combine position dimensions"');
   });
 
   it("projects text resizing and the project-global canvas size beside the tabs", () => {
