@@ -147,6 +147,7 @@ describe("separated X/Y can be re-attached (iteration-3)", () => {
     const combined = render({ elementType: "shape", positionPresentation: "combined", onPositionPresentationChange });
     const separateAction = actionButton(combined, "Separate dimensions");
     expect(iconTypeOf(separateAction)).toBe(Link2Off);
+    expect(separateAction.props["aria-pressed"]).toBe(true);
     act(() => separateAction.props.onClick());
     expect(onPositionPresentationChange).toHaveBeenLastCalledWith("separate");
     expect(combined.root.findAll(n => n.type === "button" && n.props?.["aria-label"] === "Combine dimensions")).toHaveLength(0);
@@ -155,6 +156,7 @@ describe("separated X/Y can be re-attached (iteration-3)", () => {
     const separate = render({ elementType: "shape", positionPresentation: "separate", onPositionPresentationChange });
     const combineAction = actionButton(separate, "Combine dimensions");
     expect(iconTypeOf(combineAction)).toBe(Link2);
+    expect(combineAction.props["aria-pressed"]).toBe(false);
     act(() => combineAction.props.onClick());
     expect(onPositionPresentationChange).toHaveBeenLastCalledWith("combined");
     act(() => separate.unmount());

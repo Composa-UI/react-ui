@@ -906,6 +906,7 @@ function PositionSection({
                 icon={<Link2Off size={16} strokeWidth={1.5} />}
                 label="Separate dimensions"
                 tooltip="Separate dimensions"
+                selected
                 onClick={() => onPositionPresentationChange("separate")}
               />
             : undefined}
@@ -928,6 +929,7 @@ function PositionSection({
                 icon={<Link2 size={16} strokeWidth={1.5} />}
                 label="Combine dimensions"
                 tooltip="Combine dimensions"
+                selected={false}
                 onClick={() => onPositionPresentationChange("combined")}
               />
             : undefined}
