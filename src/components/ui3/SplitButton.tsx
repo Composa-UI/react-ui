@@ -39,10 +39,10 @@ export function SplitButton({ icon, accentColor, size = "default", actionLabel, 
     aria-expanded={hasMenuSemantics ? menuOpen : undefined}
     onClick={onChevronClick}
     className={clsx(
-      "flex items-center justify-center self-stretch rounded-r-c-md transition-colors duration-100 outline-none text-c-icon hover:bg-c-bg-hover active:bg-c-bg-secondary",
+      "flex items-center justify-center self-stretch rounded-r-c-md transition-colors duration-100 outline-none text-c-icon hover:!bg-c-bg-hover active:!bg-c-bg-secondary",
       menuBackground === "secondary" ? "bg-c-bg-secondary" : "bg-c-bg",
       large ? "w-[20px]" : "py-[4px] w-[16px]",
-      menuOpen && "bg-c-bg-hover",
+      menuOpen && "!bg-c-bg-hover",
     )}
   >
     <svg width="6" height="4" viewBox="0 0 6 4" fill="none">
