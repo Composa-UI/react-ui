@@ -1041,9 +1041,10 @@ function TimelineChildConnector({ index, count, depth }: { index: number; count:
   );
 }
 
-function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onVisibilityChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onPropertyValueChange, onPropertyToggleHidden, onPresetToggleHidden, onPresetSelect, onPresetBarChange, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
+function TrackRows({ track, trackIndex, focusable, playhead, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onVisibilityChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onPropertyValueChange, onPropertyToggleHidden, onPresetToggleHidden, onPresetSelect, onPresetBarChange, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
   track: Track; trackIndex: number;
   focusable: boolean;
+  playhead: number;
   viewport: TimelineViewport; plotWidth: number; duration: number;
   edgeDrag: TimelineEdgeDragController;
   onTrackSelect?: (trackId: string, modifiers: TimelineTrackSelectionModifiers) => void;
@@ -1197,6 +1198,9 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
       {expanded && track.props.map((p, i) => {
         const propSelected = p.keyframes.some(keyframe => typeof keyframe !== "number" && (keyframe.selected || keyframe.easingSelected));
         const propertyId = p.id ?? `property-${i}`;
+        // Match the host navigation tolerance; a key at the playhead is not a neighbor.
+        const canStepPrevious = Boolean(onPropertyStepKeyframe) && p.keyframes.some(key => keyframeTime(key) < playhead - 0.5);
+        const canStepNext = Boolean(onPropertyStepKeyframe) && p.keyframes.some(key => keyframeTime(key) > playhead + 0.5);
         const rowGraySelected = !propSelected && selectedTimelineRowId === propertyId;
         const trackActive = track.props.some(property => property.keyframes.some(keyframe => typeof keyframe !== "number" && keyframe.selected));
         return (
@@ -1208,13 +1212,13 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
             <TimelineChildConnector index={presetCount + i} count={childCount} depth={depth} />
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate", p.accent ? "text-[#8638e5]" : "text-c-text-secondary")}>{p.name}</span>
             {/* keyframe stepper: ◀ prev-keyframe · ◇ toggle-at-playhead · ▶ next-keyframe */}
-            <button type="button" aria-label={`Previous ${p.name} keyframe`} onClick={() => onPropertyStepKeyframe?.(trackId, p.id ?? `property-${i}`, "prev")} className="shrink-0 flex items-center justify-center opacity-0 group-hover/prop:opacity-100 disabled:opacity-0" disabled={!onPropertyStepKeyframe}>
+            <button type="button" aria-label={`Previous ${p.name} keyframe`} onClick={() => onPropertyStepKeyframe?.(trackId, p.id ?? `property-${i}`, "prev")} className="shrink-0 flex items-center justify-center opacity-0 group-hover/prop:opacity-100 focus-visible:opacity-100" style={{ visibility: canStepPrevious ? undefined : "hidden" }} disabled={!canStepPrevious}>
               <ChevronLeft size={14} strokeWidth={1.5} className="text-c-icon-secondary" />
             </button>
             <button type="button" aria-label={`Add ${p.name} keyframe`} onClick={() => onPropertyAddKeyframe?.(trackId, p.id ?? `property-${i}`)} className="shrink-0 flex items-center justify-center">
               <Diamond size={12} strokeWidth={1.5} className="text-c-icon-secondary" />
             </button>
-            <button type="button" aria-label={`Next ${p.name} keyframe`} onClick={() => onPropertyStepKeyframe?.(trackId, p.id ?? `property-${i}`, "next")} className="shrink-0 flex items-center justify-center opacity-0 group-hover/prop:opacity-100 disabled:opacity-0" disabled={!onPropertyStepKeyframe}>
+            <button type="button" aria-label={`Next ${p.name} keyframe`} onClick={() => onPropertyStepKeyframe?.(trackId, p.id ?? `property-${i}`, "next")} className="shrink-0 flex items-center justify-center opacity-0 group-hover/prop:opacity-100 focus-visible:opacity-100" style={{ visibility: canStepNext ? undefined : "hidden" }} disabled={!canStepNext}>
               <ChevronRight size={14} strokeWidth={1.5} className="text-c-icon-secondary" />
             </button>
             {/* Inline value at the playhead stays visible beside keyframe state, matching the canonical row anatomy. */}
@@ -2612,7 +2616,7 @@ export function Timeline({
               </button>
             </div>
             <div role={onTrackSelect ? "listbox" : undefined} aria-label={onTrackSelect ? "Timeline layers" : undefined} aria-multiselectable={onTrackSelect ? true : undefined}>
-            {tracks.map((t, i) => <TrackRows key={t.id ?? i} track={t} trackIndex={i} focusable={i === Math.max(0, tracks.findIndex(track => (track.selectionState ?? (track.selected ? "selected" : "none")) === "selected"))} viewport={viewport} plotWidth={plotWidth} duration={duration} edgeDrag={edgeDrag} onTrackSelect={onTrackSelect}
+            {tracks.map((t, i) => <TrackRows key={t.id ?? i} track={t} trackIndex={i} playhead={playhead} focusable={i === Math.max(0, tracks.findIndex(track => (track.selectionState ?? (track.selected ? "selected" : "none")) === "selected"))} viewport={viewport} plotWidth={plotWidth} duration={duration} edgeDrag={edgeDrag} onTrackSelect={onTrackSelect}
               onExpandedChange={onTrackExpandedChange} onVisibilityChange={onTrackVisibilityChange} onAggregateKeyframeSelect={onAggregateKeyframeSelect}
               onKeyframeSelect={(target, additive) => { revealTime(target.timeMs); onKeyframeSelect?.(target, additive); }} onKeyframeMove={onKeyframeMove} onKeyframeDelete={onKeyframeDelete}
               onEasingSegmentSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange}
