@@ -268,6 +268,7 @@ const ResizeToFitIcon = iconForSemantic("resize-to-fit");
 // icon-semantics map (blend-mode → Droplet); the trigger + collapsed row share it.
 const BlendModeIcon = iconForSemantic("blend-mode");
 const AbsolutePositionIcon = iconForSemantic("absolute-position");
+const AutomaticPositionIcon = iconForSemantic("automatic-positioning");
 const RotationIcon = iconForSemantic("rotation");
 const OpacityIcon = iconForSemantic("opacity");
 const LineHeightIcon = iconForSemantic("line-height");
@@ -1321,7 +1322,7 @@ function LayoutAutoSection({
           )}
           {renderedFlow === "grid" && grid && (
             <PanelActionBtn
-              icon={<AbsolutePositionIcon data-icon-semantic="absolute-position" size={16} strokeWidth={1.5} />}
+              icon={<AutomaticPositionIcon data-icon-semantic="automatic-positioning" size={16} strokeWidth={1.5} />}
               label="Toggle automatic positioning"
               selected={grid.automaticPositioning === true}
               disabled={!onGridAutomaticPositioningChange}

@@ -29,7 +29,16 @@ export const proposedLucideMetadata = {
   squareText: { pr: 4609, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4609", replacementImport: "SquareText" },
   textMargins: { pr: 4610, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4610", replacementImport: "TextMargins" },
   diamondCircle: { pr: 4615, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4615", replacementImport: "DiamondCircle" },
+  routeArrowRight: { pr: 4729, sourceUrl: "https://github.com/lucide-icons/lucide/pull/4729", replacementImport: "RouteArrowRight" },
 } as const satisfies Record<string, ProposedLucideMetadata>;
+
+// TODO(lucide-pr-4729): replace with lucide-react RouteArrowRight after upstream merge.
+// The owner selected this directional route for Grid automatic positioning so
+// it cannot be confused with the scan-square used for absolute positioning.
+export const ProposedRouteArrowRight = createLucideIcon("ProposedRouteArrowRight", [
+  ["path", { d: "M3 5H17.5a3.5 3.5 0 0 1 0 7H6.5a3.5 3.5 0 0 0 0 7H21", key: "route" }],
+  ["path", { d: "m18 16 3 3-3 3", key: "arrow" }],
+]);
 
 // TODO(lucide-pr-4541): replace with lucide-react LayoutHorizontal after upstream merge.
 export const ProposedLayoutHorizontal = createLucideIcon("ProposedLayoutHorizontal", [

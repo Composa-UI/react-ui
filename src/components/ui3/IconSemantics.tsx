@@ -56,6 +56,7 @@ import {
   ProposedOpacity,
   ProposedPanelLeftRightDashed,
   ProposedPanelTopBottomDashed,
+  ProposedRouteArrowRight,
   ProposedScanSquare,
 } from "../../icons/proposed-lucide";
 
@@ -101,6 +102,7 @@ export type ComposaIconSemantic =
   | "line-height"
   | "resize-to-fit"
   | "absolute-position"
+  | "automatic-positioning"
   | "rotation"
   | "opacity"
   | "effect-blur"
@@ -175,6 +177,7 @@ export const composaIconSemantics = {
   "line-height": ProposedLineHeight,
   "resize-to-fit": Shrink,
   "absolute-position": ProposedScanSquare,
+  "automatic-positioning": ProposedRouteArrowRight,
   rotation: ProposedAngle,
   opacity: ProposedOpacity,
   // Effect blur/spread were shipped as literal text glyphs (⊞ / ☼) rather than
