@@ -1051,6 +1051,31 @@ export function ColorInput({
   // chit type mapping
   const chitType = fillType === "Variable" || fillType === "Drop zone" ? "Fill" : fillType as ChitType;
 
+  // A color action belongs before opacity, not beside opacity's action.
+  const separateOpacity = !isVariable && showOpacity && Boolean(colorKeyframe);
+  const opacityField = !isVariable && showOpacity ? (
+    <div className={clsx("flex items-center shrink-0 self-stretch w-[53px]", !separateOpacity && "border-l border-c-bg")}>
+      <input
+        aria-label={`${ariaLabel ?? label ?? "Color"} opacity`}
+        type="number"
+        value={opacity}
+        min={0}
+        max={100}
+        disabled={disabled}
+        onChange={e => onOpacityChange?.(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+        onFocus={() => setFocusedOpacity(true)}
+        onBlur={() => setFocusedOpacity(false)}
+        className={clsx(
+          "flex-1 min-w-0 h-full bg-transparent outline-none pl-[6px]",
+          FONT, T[size], "text-c-text",
+          "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+          disabled && "cursor-not-allowed",
+        )}
+      />
+      <span className={clsx("pr-[6px] shrink-0 text-c-text-secondary", T[size], FONT)}>%</span>
+    </div>
+  ) : null;
+
   const midText = isVariable
     ? variableValue ?? "bg-assistive"
     : isTextLabel
@@ -1067,7 +1092,7 @@ export function ColorInput({
 
       <SeparatedFieldActions className={clsx(isVariable || fullWidth ? "w-full" : "w-[144px]")}>
         <FieldShell
-          focused={focused}
+          focused={separateOpacity ? focusedHex : focused}
           disabled={disabled}
           size={size}
           joined={!isVariable && Boolean(colorKeyframe || keyframe || showOpacity && opacityKeyframe)}
@@ -1138,32 +1163,14 @@ export function ColorInput({
           )}
         </div>
 
-        {/* opacity section — hidden for Variable fill */}
-        {!isVariable && showOpacity && (
-          <div className="flex items-center shrink-0 self-stretch border-l border-c-bg w-[53px]">
-            <input
-              aria-label={`${ariaLabel ?? label ?? "Color"} opacity`}
-              type="number"
-              value={opacity}
-              min={0}
-              max={100}
-              disabled={disabled}
-              onChange={e => onOpacityChange?.(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
-              onFocus={() => setFocusedOpacity(true)}
-              onBlur={() => setFocusedOpacity(false)}
-              className={clsx(
-                "flex-1 min-w-0 h-full bg-transparent outline-none pl-[6px]",
-                FONT, T[size], "text-c-text",
-                "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                disabled && "cursor-not-allowed",
-              )}
-            />
-            <span className={clsx("pr-[6px] shrink-0 text-c-text-secondary", T[size], FONT)}>%</span>
-          </div>
-        )}
+        {!separateOpacity && opacityField}
         </FieldShell>
         {colorKeyframe && !isVariable && <ColorKeyframeButton label={`${ariaLabel ?? label ?? "Color"} color`} control={colorKeyframe} disabled={disabled} />}
         {keyframe && <ColorKeyframeButton label={ariaLabel ?? label ?? "Color"} control={keyframe} disabled={disabled} />}
+        {separateOpacity && <FieldShell focused={focusedOpacity} disabled={disabled} size={size}
+          joined={Boolean(opacityKeyframe)} className="!w-[53px] shrink-0 !rounded-l-none">
+          {opacityField}
+        </FieldShell>}
         {opacityKeyframe && !isVariable && showOpacity && <ColorKeyframeButton label={`${ariaLabel ?? label ?? "Color"} opacity`} control={opacityKeyframe} disabled={disabled} />}
       </SeparatedFieldActions>
     </div>
