@@ -158,7 +158,7 @@ export interface ElementSelectionColorSetting {
   gradientStops?: GradientStop[];
   gradientPreview?: string;
 }
-export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; dropZone?: boolean; animationDelay?: boolean; layoutFidelityTools?: boolean; }
+export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; dropZone?: boolean; animationDelay?: boolean; layoutFidelityTools?: boolean; pathTrim?: boolean; }
 export interface ElementTypographySettings {
   fontFamily: string; fontWeight: string; fontSize: number; lineHeight: number; letterSpacing: number;
   align: "left" | "center" | "right" | "justify"; verticalAlign: "top" | "middle" | "bottom"; styleName?: string;
@@ -2080,7 +2080,7 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
               </span>
             </Tooltip>)}
           </div>}
-          <div className="px-[16px] pb-[6px]">
+          {capabilities.pathTrim && <div className="px-[16px] pb-[6px]">
             <div className={subLabel}>Path trim</div>
             <div data-composa-path-trim-row className="flex items-center gap-[8px]">
               <Tooltip label="Start position along the path (0% is the path origin)" direction="Left" delayDuration={300}>
@@ -2094,7 +2094,7 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
               <span aria-hidden data-composa-trailing-control-slot className="size-[24px] shrink-0" />
               <span aria-hidden data-composa-trailing-control-slot className="size-[24px] shrink-0" />
             </div>
-          </div>
+          </div>}
         </PanelReorderableEntry>
       ))}
     </PanelSection>
@@ -2352,7 +2352,7 @@ const DEMO_SELECTION_COLORS: ElementSelectionColorSetting[] = [
   { id: "demo-selection-6", color: "#9747FF", opacity: 100 },
 ];
 
-function SelectionColorsSection({ colors, onUpdate, onSelectAll, onEyedropperActivate, activeEyedropperId, swatches, capabilities = { templates: true, styles: true, variables: true, libraries: true, videoFill: false, dropZone: false, animationDelay: false, layoutFidelityTools: false } }: {
+function SelectionColorsSection({ colors, onUpdate, onSelectAll, onEyedropperActivate, activeEyedropperId, swatches, capabilities = { templates: true, styles: true, variables: true, libraries: true, videoFill: false, dropZone: false, animationDelay: false, layoutFidelityTools: false, pathTrim: false } }: {
   colors?: ElementSelectionColorSetting[];
   onUpdate?: (id: string, patch: Partial<Omit<ElementSelectionColorSetting, "id">>) => void;
   onSelectAll?: (id: string) => void;
@@ -4098,6 +4098,10 @@ export function PropertyPanel(props: PropertyPanelProps) {
     // Fidelity authoring tools such as guides and future slide rulers stay out
     // of the default product until their canvas behavior reaches release fidelity.
     layoutFidelityTools: capabilityOverrides?.layoutFidelityTools ?? false,
+    // Path trim/start is intentionally gated until its animation model and
+    // rendering behavior are ready for the product. Existing authored data is
+    // preserved by the engine; this only removes the unreliable authoring UI.
+    pathTrim: capabilityOverrides?.pathTrim ?? false,
   };
   const [uncontrolledTab, setUncontrolledTab] = useState<"design" | "animate" | "prototype">("design");
   const [activeStackDialog, setActiveStackDialog] = useState<string | null>(null);
