@@ -61,6 +61,9 @@ describe("CreationToolbar family memory", () => {
 
     const line = rememberCreationToolbarTool(hand, "line");
     expect(line).toEqual({ move: "hand", frame: "frame", shape: "line" });
+
+    const scale = rememberCreationToolbarTool(line, "scale");
+    expect(scale).toEqual({ move: "scale", frame: "frame", shape: "line" });
   });
 
   it("does not erase a remembered creation choice when the active tool returns to Move", () => {

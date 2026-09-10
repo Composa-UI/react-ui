@@ -3234,6 +3234,8 @@ export interface PropertyPanelProps {
   mode?: PanelMode;
   elementType?: ElementType;
   multiSelect?: boolean;
+  /** Host-owned scale controls inserted after Layout while the Scale tool is active. */
+  scaleToolSection?: ReactNode;
   x?: number; y?: number; rotation?: number;
   /** Per-field Mixed state for a multi-selection with differing values. The field
    *  renders the Figma-style "Mixed" placeholder; editing still commits to all. */
@@ -4518,6 +4520,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
               {/* Corner radius moved to Appearance */}
             </PanelSection>
           )}
+
+          {props.scaleToolSection}
 
           {/* Appearance — always present */}
           <AppearanceSection opacity={opacity} blendMode={blendMode} supportedBlendModes={supportedBlendModes} cornerRadius={cornerRadius} opacityMixed={opacityMixed} cornerRadiusMixed={cornerRadiusMixed} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} cornerRadiusKeyframe={keyframeControls?.cornerRadius}

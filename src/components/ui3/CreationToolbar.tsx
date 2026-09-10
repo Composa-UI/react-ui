@@ -1,7 +1,7 @@
 import { useState, useEffect, type ReactNode } from "react";
 import { clsx } from "clsx";
 import {
-  MousePointer2, Hand, Frame, Square, Circle, Minus,
+  MousePointer2, Hand, Scaling, Frame, Square, Circle, Minus,
   Type,
 } from "lucide-react";
 import { Menu, MenuRow } from "./Menu";
@@ -14,13 +14,13 @@ import { Menu, MenuRow } from "./Menu";
 // active. Presentational: controlled `activeTool` + `onToolChange`.
 
 export type ToolId =
-  | "move" | "hand"
+  | "move" | "hand" | "scale"
   | "frame"
   | "rectangle" | "ellipse" | "line"
   | "text";
 
 export interface CreationToolbarMemory {
-  move: Extract<ToolId, "move" | "hand">;
+  move: Extract<ToolId, "move" | "hand" | "scale">;
   frame: Extract<ToolId, "frame">;
   shape: Extract<ToolId, "rectangle" | "ellipse" | "line">;
 }
@@ -41,7 +41,7 @@ export function rememberCreationToolbarTool(
   memory: CreationToolbarMemory,
   tool: ToolId,
 ): CreationToolbarMemory {
-  if (tool === "move" || tool === "hand") {
+  if (tool === "move" || tool === "hand" || tool === "scale") {
     return memory.move === tool ? memory : { ...memory, move: tool };
   }
   if (tool === "frame") {
@@ -65,6 +65,7 @@ interface Tool {
 const TOOLS: Record<ToolId, Tool> = {
   move:      { id: "move",      icon: <MousePointer2 size={16} strokeWidth={1.5} />, label: "Move",      shortcut: "V" },
   hand:      { id: "hand",      icon: <Hand          size={16} strokeWidth={1.5} />, label: "Hand",      shortcut: "H" },
+  scale:     { id: "scale",     icon: <Scaling       size={16} strokeWidth={1.5} />, label: "Scale",     shortcut: "K" },
   frame:     { id: "frame",     icon: <Frame         size={16} strokeWidth={1.5} />, label: "Frame",     shortcut: "F" },
   rectangle: { id: "rectangle", icon: <Square        size={16} strokeWidth={1.5} />, label: "Rectangle", shortcut: "R" },
   ellipse:   { id: "ellipse",   icon: <Circle        size={16} strokeWidth={1.5} />, label: "Ellipse",   shortcut: "O" },
@@ -74,7 +75,7 @@ const TOOLS: Record<ToolId, Tool> = {
 
 // Keyboard shortcut → tool. (Spec: Keyboard shortcuts.)
 const SHORTCUTS: Record<string, ToolId> = {
-  v: "move", h: "hand", f: "frame",
+  v: "move", h: "hand", k: "scale", f: "frame",
   r: "rectangle", o: "ellipse", l: "line", t: "text",
 };
 
@@ -313,7 +314,7 @@ export function CreationToolbar({
   }, [activeTool, onToolChange, shortcutPolicy]);
 
   // Group active state — true when any of the group's tools is active.
-  const moveActive  = isActive("move") || isActive("hand");
+  const moveActive  = isActive("move") || isActive("hand") || isActive("scale");
   const shapeActive = isActive("rectangle") || isActive("ellipse") || isActive("line");
 
   // Group button icon follows the last-used tool in the group.
@@ -332,13 +333,15 @@ export function CreationToolbar({
         className,
       )}
     >
-      {/* Move ▾ — Move / Hand */}
+      {/* Move ▾ — Move / Hand / Scale. K temporarily makes Scale the visible
+          first-slot tool, matching Figma's transform-tool mental model. */}
       <ToolGroupButton
         tool={moveTool}
         active={moveActive}
         menu={[
           { tool: "move", active: lastUsed.move === "move" },
           { tool: "hand", active: lastUsed.move === "hand" },
+          { tool: "scale", active: lastUsed.move === "scale" },
         ]}
         onSelect={selectTool}
       />
