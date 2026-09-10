@@ -1355,6 +1355,14 @@ export default function Playground() {
     );
   }
 
+  if (view === "assets-empty-contract") {
+    return <div style={{ height: "100vh", display: "flex" }}>
+      <AssetsPanel assets={[]} filter={assetFilter} onFilterChange={setAssetFilter}
+        query={assetQuery} onQueryChange={setAssetQuery}
+        onUpload={() => console.info("Upload", assetFilter)} />
+    </div>;
+  }
+
   if (view === "assets-contract") {
     return <div style={{ height: "100vh", width: "100vw", display: "flex", background: "#e6e6e6" }}>
       <AssetsPanel assets={contractAssets} query={assetQuery} onQueryChange={setAssetQuery} filter={assetFilter} onFilterChange={setAssetFilter}

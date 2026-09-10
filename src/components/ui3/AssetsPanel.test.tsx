@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, create } from "react-test-renderer";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AssetsPanel, type AssetItem, type AssetFilter } from "./AssetsPanel";
+import { Button } from "./Button";
 import { PopoverMenu } from "./Menu";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -101,5 +102,41 @@ describe("AssetsPanel — filtering", () => {
     expect(html).toContain("score.mp3");
     expect(html).not.toContain("hero-cover.png");
     expect(html).not.toContain("intro-clip.mp4");
+  });
+});
+
+
+describe("AssetsPanel — filtered empty imports (owner ledger row45)", () => {
+  it.each([
+    ["all", "No assets yet", "Upload media"],
+    ["images", "No images yet", "Upload images"],
+    ["videos", "No videos yet", "Upload video"],
+    ["audio", "No audio yet", "Upload audio"],
+  ] as const)("offers an import action for empty %s", (filter, message, label) => {
+    for (const assets of [[], ASSETS.filter(asset => filter === "audio" ? asset.kind !== "audio" : filter === "videos" ? asset.kind !== "video" : filter === "images" ? asset.kind !== "image" : false)]) {
+      const onUpload = vi.fn();
+      let renderer: ReturnType<typeof create>;
+      act(() => { renderer = create(<AssetsPanel assets={assets} filter={filter} onUpload={onUpload} />); });
+      const html = renderToStaticMarkup(<AssetsPanel assets={assets} filter={filter} onUpload={onUpload} />);
+      expect(html).toContain(message);
+      const button = renderer!.root.findAllByType(Button).find(node => node.props.label === label);
+      expect(button).toBeTruthy();
+      act(() => button!.props.onClick());
+      expect(onUpload).toHaveBeenCalledTimes(1);
+      act(() => renderer!.unmount());
+    }
+  });
+
+  it("distinguishes a failed name search from an empty type", () => {
+    const html = renderToStaticMarkup(<AssetsPanel assets={ASSETS} filter="audio" query="absent" onUpload={() => {}} />);
+    expect(html).toContain("No matching assets");
+    expect(html).not.toContain("No audio yet");
+    expect(html).not.toContain("Upload audio");
+  });
+
+  it("does not offer a dead empty-state action without an upload capability", () => {
+    const html = renderToStaticMarkup(<AssetsPanel assets={[]} filter="audio" />);
+    expect(html).toContain("No audio yet");
+    expect(html).not.toContain("Upload audio");
   });
 });
