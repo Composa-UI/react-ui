@@ -1,3 +1,4 @@
+import { useSlideReorder } from "./useSlideReorder";
 import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
 import { clsx } from "clsx";
 import { Play, Pause, Square, Diamond, Repeat, PanelBottomClose, PanelBottomOpen, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, Layers } from "lucide-react";
@@ -1535,8 +1536,9 @@ function MasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onS
 }
 
 // ── master track rows: "Slides" block track + "Video"/"Audio" lanes ──────────────
-function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onContextMenu, onMove, onTrim, onGestureStart, onGestureEnd }: {
+function BlockTrack({ blocks, header, onReorder, viewport, plotWidth, onSelect, onOpen, onContextMenu, onMove, onTrim, onGestureStart, onGestureEnd }: {
   blocks: SlideBlock[];
+  onReorder?: (ids: string[], targetIndex: number) => void;
   header: MasterLaneHeaderProps;
   viewport: TimelineViewport; plotWidth: number;
   onSelect?: (id: string) => void;
@@ -1578,12 +1580,16 @@ function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onC
   // audio strip at all, so mute has nothing to dim here. See `MUTED_BAR`.
   const dimmed = laneIsDisabled(header);
   const locked = laneIsLocked(header);
+  const laneRef = useRef<HTMLDivElement>(null);
+  const canReorder = !!onReorder && blocks.every(block => !!block.id);
+  const reorder = useSlideReorder(blocks.map((block,index) => ({id: slideBlockId(block,index), selected: block.selected ?? block.active})), canReorder ? onReorder : undefined, locked);
   return (
     <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK }}>
       {/* left header — [icon][label][+] + [vis][solo][mute][lock] */}
       <MasterLaneHeader {...header} />
       {/* block lane */}
-      <div data-timeline-pan-surface className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }}>
+      <div ref={laneRef} data-timeline-pan-surface className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} onClickCapture={reorder.clickCapture}>
+        {reorder.preview && <div data-slide-reorder-indicator aria-hidden className="fixed pointer-events-none w-[2px] bg-c-border-selected z-50" style={{ left: reorder.preview.position, top: laneRef.current?.getBoundingClientRect().top, height: ROW_BLOCK }} />}
         {blocks.map((b, i) => {
           const id = slideBlockId(b, i);
           const stableId = b.id;
@@ -1594,7 +1600,7 @@ function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onC
             <div
               key={id}
               role="button" tabIndex={0} aria-label={b.name} aria-pressed={b.selected ?? b.active}
-              aria-haspopup={hasContextMenu ? "menu" : undefined} data-timeline-block-id={stableId}
+              aria-haspopup={hasContextMenu ? "menu" : undefined} data-timeline-block-id={stableId} data-slide-dragging={reorder.preview?.ids.includes(id) || undefined}
               onClick={() => onSelect?.(id)}
               onDoubleClick={() => onOpen?.(id)}
               onContextMenu={event => {
@@ -1603,7 +1609,10 @@ function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onC
                 onContextMenu(stableId, { clientX: event.clientX, clientY: event.clientY, currentTarget: event.currentTarget, source: "pointer" });
               }}
               onKeyDown={event => {
-                if (event.key === "Enter") { event.preventDefault(); onOpen?.(id); }
+                if (canReorder && event.target === event.currentTarget && event.altKey && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+                  event.preventDefault(); event.stopPropagation(); reorder.step(id, event.key === "ArrowLeft" ? -1 : 1);
+                }
+                else if (event.key === "Enter") { event.preventDefault(); onOpen?.(id); }
                 else if (event.key === " ") { event.preventDefault(); onSelect?.(id); }
                 else if (hasContextMenu && (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10"))) {
                   event.preventDefault(); event.stopPropagation();
@@ -1615,7 +1624,9 @@ function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onC
                 }
               }}
               {...(locked ? {} : {
-                onPointerDown: (event: React.PointerEvent) => begin(event, b, "move"),
+                onPointerDown: (event: React.PointerEvent) => canReorder
+                  ? reorder.begin(event, id, Array.from(laneRef.current?.querySelectorAll<HTMLElement>("[data-timeline-block-id]") ?? []), "x")
+                  : begin(event, b, "move"),
                 onPointerMove: (event: React.PointerEvent) => update(event, b),
                 onPointerUp: () => finish(false),
                 onPointerCancel: () => finish(true),
@@ -2119,6 +2130,7 @@ export function Timeline({
   onBlockSelect,
   onBlockOpen,
   onBlockContextMenu,
+  onBlockReorder,
   onBlockMove,
   onBlockTrim,
   onClipSelect,
@@ -2203,6 +2215,7 @@ export function Timeline({
   onBlockSelect?: (id: string) => void;
   onBlockOpen?: (id: string) => void;
   onBlockContextMenu?: (id: string, detail: TimelineBlockContextMenuDetail) => void;
+  onBlockReorder?: (ids: string[], targetIndex: number) => void;
   onBlockMove?: (id: string, startMs: number) => void;
   onBlockTrim?: (id: string, edge: "start" | "end", timeMs: number) => void;
   onClipSelect?: (id: string) => void;
@@ -2596,7 +2609,7 @@ export function Timeline({
       <ScrollArea className="relative" contentClassName="relative" viewportRef={scrollViewportRef}>
         {master ? (
           <>
-            <BlockTrack header={laneHeaderProps("slides", <Layers size={16} strokeWidth={1.5} />, "Compositions")} blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <BlockTrack onReorder={onBlockReorder} header={laneHeaderProps("slides", <Layers size={16} strokeWidth={1.5} />, "Compositions")} blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
             <BaseVideoTrack header={laneHeaderProps("video", <VideoMediaIcon data-icon-semantic="media-video" size={16} strokeWidth={1.5} />, "Video")} clips={baseClips} viewport={viewport} plotWidth={plotWidth} accept={VIDEO_LANE_DROP_ACCEPT} dropHint="Drop image or video here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("video", files) : undefined} onSelect={onClipSelect} onOpen={onClipOpen} onContextMenu={onClipContextMenu} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
             <AudioTrack header={laneHeaderProps("audio", <AudioMediaIcon data-icon-semantic="media-audio" size={16} strokeWidth={1.5} />, "Audio")} clips={audioClips} viewport={viewport} plotWidth={plotWidth} accept={AUDIO_LANE_DROP_ACCEPT} dropHint="Drop audio here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("audio", files) : undefined} onSelect={onAudioClipSelect} onOpen={onAudioClipOpen} onContextMenu={onAudioClipContextMenu} onMove={onAudioClipMove} onTrim={onAudioClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
           </>

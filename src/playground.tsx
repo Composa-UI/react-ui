@@ -921,6 +921,7 @@ export default function Playground() {
   ]);
   const [contractX, setContractX] = useState(270);
   const [assetQuery, setAssetQuery] = useState("");
+  const [reorderDemo, setReorderDemo] = useState(["Intro", "Story", "End"]);
   const [assetFilter, setAssetFilter] = useState<AssetFilter>("all");
   const [assetSelection, setAssetSelection] = useState<string | null>("asset-image");
   const [selectionColors, setSelectionColors] = useState<ElementSelectionColorSetting[]>([
@@ -1353,6 +1354,19 @@ export default function Playground() {
           onStop={() => setContractPlayhead(0)} onAddKeyframe={timeMs => console.info("Add keyframe", timeMs)} />
       </div>
     );
+  }
+
+  if (view === "slide-reorder-contract") {
+    return <div style={{height:"100vh"}}><SlidesPanel slides={reorderDemo.map((id,index) => ({id,n:index+1,tint:["#ddd","#aaa","#777"][index]}))}
+      onReorder={(ids,index) => setReorderDemo(current => { const moving = current.filter(id => ids.includes(id)); const rest = current.filter(id => !ids.includes(id)); return [...rest.slice(0,index),...moving,...rest.slice(index)]; })} /></div>;
+  }
+
+  if (view === "assets-empty-contract") {
+    return <div style={{ height: "100vh", display: "flex" }}>
+      <AssetsPanel assets={[]} filter={assetFilter} onFilterChange={setAssetFilter}
+        query={assetQuery} onQueryChange={setAssetQuery}
+        onUpload={() => console.info("Upload", assetFilter)} />
+    </div>;
   }
 
   if (view === "assets-contract") {
