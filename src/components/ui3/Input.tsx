@@ -1168,7 +1168,7 @@ export function ColorInput({
         {colorKeyframe && !isVariable && <ColorKeyframeButton label={`${ariaLabel ?? label ?? "Color"} color`} control={colorKeyframe} disabled={disabled} />}
         {keyframe && <ColorKeyframeButton label={ariaLabel ?? label ?? "Color"} control={keyframe} disabled={disabled} />}
         {separateOpacity && <FieldShell focused={focusedOpacity} disabled={disabled} size={size}
-          joined={Boolean(opacityKeyframe)} className="w-[53px] shrink-0 !rounded-l-none">
+          joined={Boolean(opacityKeyframe)} className="!w-[53px] shrink-0 !rounded-l-none">
           {opacityField}
         </FieldShell>}
         {opacityKeyframe && !isVariable && showOpacity && <ColorKeyframeButton label={`${ariaLabel ?? label ?? "Color"} opacity`} control={opacityKeyframe} disabled={disabled} />}
