@@ -1581,7 +1581,8 @@ function BlockTrack({ blocks, header, onReorder, viewport, plotWidth, onSelect, 
   const dimmed = laneIsDisabled(header);
   const locked = laneIsLocked(header);
   const laneRef = useRef<HTMLDivElement>(null);
-  const reorder = useSlideReorder(blocks.map((block,index) => ({id: slideBlockId(block,index), selected: block.selected ?? block.active})), onReorder, locked);
+  const canReorder = !!onReorder && blocks.every(block => !!block.id);
+  const reorder = useSlideReorder(blocks.map((block,index) => ({id: slideBlockId(block,index), selected: block.selected ?? block.active})), canReorder ? onReorder : undefined, locked);
   return (
     <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK }}>
       {/* left header — [icon][label][+] + [vis][solo][mute][lock] */}
@@ -1608,7 +1609,7 @@ function BlockTrack({ blocks, header, onReorder, viewport, plotWidth, onSelect, 
                 onContextMenu(stableId, { clientX: event.clientX, clientY: event.clientY, currentTarget: event.currentTarget, source: "pointer" });
               }}
               onKeyDown={event => {
-                if (onReorder && event.altKey && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+                if (canReorder && event.target === event.currentTarget && event.altKey && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
                   event.preventDefault(); event.stopPropagation(); reorder.step(id, event.key === "ArrowLeft" ? -1 : 1);
                 }
                 else if (event.key === "Enter") { event.preventDefault(); onOpen?.(id); }
@@ -1623,7 +1624,7 @@ function BlockTrack({ blocks, header, onReorder, viewport, plotWidth, onSelect, 
                 }
               }}
               {...(locked ? {} : {
-                onPointerDown: (event: React.PointerEvent) => onReorder
+                onPointerDown: (event: React.PointerEvent) => canReorder
                   ? reorder.begin(event, id, Array.from(laneRef.current?.querySelectorAll<HTMLElement>("[data-timeline-block-id]") ?? []), "x")
                   : begin(event, b, "move"),
                 onPointerMove: (event: React.PointerEvent) => update(event, b),
