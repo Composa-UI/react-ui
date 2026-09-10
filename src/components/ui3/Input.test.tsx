@@ -162,6 +162,16 @@ describe("joined combo field/action anatomy", () => {
     expect(leadingNumericShell(html)).toContain("!rounded-r-none");
   });
 
+  it("places each color/opacity keyframe action immediately after its value", () => {
+    const html = renderToStaticMarkup(<ColorInput ariaLabel="Fill color" fullWidth color="#336699"
+      colorKeyframe={{ active: false, onToggle: () => undefined }}
+      opacityKeyframe={{ active: false, onToggle: () => undefined }} />);
+    const labels = ["Fill color hex", "Fill color color keyframe", "Fill color opacity", "Fill color opacity keyframe"];
+    const indices = labels.map(label => html.indexOf(`aria-label="${label}"`));
+    expect(indices.every(index => index >= 0)).toBe(true);
+    expect(indices).toEqual([...indices].sort((a, b) => a - b));
+  });
+
   it("gives color and opacity actions the same separate active, disabled, and pressed semantics", () => {
     const onColorToggle = vi.fn();
     const onOpacityToggle = vi.fn();
