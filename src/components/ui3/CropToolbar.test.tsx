@@ -23,6 +23,7 @@ describe("CropToolbar", () => {
     expect(renderer.root.findByProps({ ariaLabel: "Done" }).props.className).toContain("size-[24px]");
 
     const proportions = renderer.root.findByType(SplitButton);
+    expect(proportions.props.menuBackground).toBe("secondary");
     act(() => proportions.props.onIconClick());
     expect(calls).toEqual(["zoom:1.5", "fill", "cancel", "done", "free"]);
     const overlay = proportions.props.menuTrigger(<button />);

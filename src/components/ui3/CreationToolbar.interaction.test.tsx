@@ -16,6 +16,16 @@ function menuButton(renderer: ReactTestRenderer, label: string) {
 }
 
 describe("CreationToolbar remembered family choices", () => {
+  it("shows Scale in the first tool slot when K activates scale", () => {
+    let renderer!: ReactTestRenderer;
+    act(() => {
+      renderer = create(<CreationToolbar activeTool="scale" shortcutPolicy="host" />);
+    });
+
+    expect(primaryButton(renderer, "Scale").props["aria-pressed"]).toBe(true);
+    expect(() => primaryButton(renderer, "Move")).toThrow();
+  });
+
   it("keeps the controlled last-used shape after a one-shot return to Move", () => {
     const changes: ToolId[] = [];
     let renderer!: ReactTestRenderer;

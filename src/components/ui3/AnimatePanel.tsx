@@ -56,6 +56,8 @@ export interface ObjectAnimationCallbacks {
   onDeliveryChange?: (id: string, delivery: "all-at-once" | "by-object" | "by-word" | "by-character") => void;
   onIntensityChange?: (id: string, intensity: "small" | "medium" | "large") => void;
   onReorder?: (id: string, targetId: string, placement: "before" | "after" | "with") => void;
+  /** Start-to-start offset within a shared sequence rank; only the target changes. */
+  onStartOffsetChange?: (referenceId: string, targetId: string, offsetMs: number) => void;
   onDelayBetweenChange?: (precedingId: string, followingId: string, delayMs: number) => void;
   /** A house easing preset picked on the card. Every preset card offers this, not only the
    *  bounce-style actions (iteration-2 RP-10).
@@ -301,13 +303,6 @@ function EasingChoice({ id, value, callbacks }: { id: string; value: EasingPrese
 // means simultaneous, while the explicit
 // plus-spaces between ranks create standalone sequential ranks.
 
-function durationMs(animation: ObjectAnimationItem) {
-  const source = animation.buildDuration ?? animation.duration;
-  const value = Number.parseFloat(source);
-  if (!Number.isFinite(value)) return null;
-  return source.includes("ms") ? value : value * 1000;
-}
-
 /** The block's ordinal. Small muted label sitting on top of the card, outside the card's
  *  own `group` box so it never shifts the flush-left card or the hover-revealed drag
  *  handle. `pl-[2px]` keeps it aligned to the card's left edge. */
@@ -409,7 +404,9 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
               if (group) group.rows.push(row);
               else groups.push({ rank: animation.n, rows: [row] });
               return groups;
-            }, []).sort((left, right) => left.rank - right.rank);
+            }, []).map(group => ({ ...group, rows: group.rows.sort((left, right) =>
+              (left.animation.startMs ?? 0) - (right.animation.startMs ?? 0) || left.index - right.index),
+            })).sort((left, right) => left.rank - right.rank);
 
             const finishDrop = (targetId: string, placement: "before" | "after" | "with") => {
               if (!dragged || dragged === targetId) return;
@@ -570,19 +567,6 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                   : nextTargetId ?? group.rows.find(row => row.id !== dragged)?.id;
                 const afterPlacement = next ? "before" as const : "after" as const;
                 const withActive = !!withTargetId && dropTarget?.targetId === withTargetId && dropTarget.placement === "with";
-                const following = next?.rows[0];
-                const groupStart = Math.min(...group.rows.map(row => row.animation.startMs ?? 0));
-                const followingStart = following ? Math.min(...next.rows.map(row => row.animation.startMs ?? 0)) : 0;
-                const groupEnd = Math.max(...group.rows.map(row => {
-                  const start = row.animation.startMs;
-                  const duration = durationMs(row.animation);
-                  return start != null && duration != null ? start + duration : Number.NaN;
-                }));
-                const delayBetween = following && Number.isFinite(groupEnd) ? Math.max(0, followingStart - groupEnd) : 0;
-                // A connector communicates temporal continuity, not merely adjacent
-                // render order. A timeline drag that leaves a gap must visibly break it.
-                const connectedToNext = !dragged && !!following && !!next && next.rank === group.rank + 1 &&
-                  Number.isFinite(groupEnd) && Math.abs(followingStart - groupEnd) < 1;
                 return (
                   <div
                     key={group.rank}
@@ -614,7 +598,18 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                           {withActive && <span aria-hidden data-animation-sequence-drop-indicator="with" className="pointer-events-none absolute inset-[2px] rounded-c-xs border border-c-border-selected" />}
                         </div>
                       )}
-                      {group.rows.map(row => renderActionRow(row.animation, row.index))}
+                      {group.rows.map((row, rowIndex) => <div key={row.id}>
+                        {rowIndex > 0 && !dragged && callbacks?.onStartOffsetChange && (
+                          <div data-animation-start-offset={row.id} className="flex items-center gap-[8px] py-[6px]">
+                            <span className={clsx(FONT, "text-[11px] text-c-text-secondary shrink-0")}>Start after</span>
+                            <NumericInput ariaLabel={`Start ${row.animation.name} (${rowIndex + 1}) after ${group.rows[0].animation.name} (1) starts`}
+                              value={Math.max(0, (row.animation.startMs ?? 0) - (group.rows[0].animation.startMs ?? 0))}
+                              min={0} suffix="ms" commitOnBlur className="min-w-0 flex-1"
+                              onChange={offset => callbacks.onStartOffsetChange?.(group.rows[0].id, row.id, offset)} />
+                          </div>
+                        )}
+                        {renderActionRow(row.animation, row.index)}
+                      </div>)}
                     </div>
                     {afterTargetId && insertionSpace(
                       `after-${group.rank}`,
@@ -622,19 +617,7 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                       afterPlacement,
                       next ? `Insert animation between sequence ${group.rank} and ${next.rank}` : `Insert animation after sequence ${group.rank}`,
                     )}
-                    {connectedToNext && <div data-animation-sequence-connector-between={`${group.rank}-${next!.rank}`} className="group/sequence-gap relative flex h-[40px] items-center justify-center">
-                      <span aria-hidden className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-c-border" />
-                      <div className="relative flex h-[28px] max-w-[28px] items-center rounded-c-md bg-c-bg-secondary px-[7px] text-[11px] text-c-text transition-[max-width] group-hover/sequence-gap:max-w-[168px] group-focus-within/sequence-gap:max-w-[168px]">
-                        <span aria-hidden className="relative size-[14px] shrink-0">
-                          <Plus size={14} className={clsx("absolute inset-0 transition-opacity", delayBetween > 0 && "opacity-0", "group-hover/sequence-gap:opacity-0 group-focus-within/sequence-gap:opacity-0")} />
-                          <Clock size={14} strokeWidth={1.5} className={clsx("absolute inset-0 transition-opacity", delayBetween <= 0 && "opacity-0", "group-hover/sequence-gap:opacity-100 group-focus-within/sequence-gap:opacity-100")} />
-                        </span>
-                        <span className="ml-[6px] mr-[6px] shrink-0 pointer-events-none opacity-0 transition-opacity group-hover/sequence-gap:pointer-events-auto group-hover/sequence-gap:opacity-100 group-focus-within/sequence-gap:pointer-events-auto group-focus-within/sequence-gap:opacity-100">After</span>
-                        <NumericInput ariaLabel={`Delay between sequence ${group.rank} and ${next!.rank}`} value={delayBetween} min={0} suffix="ms" commitOnBlur
-                          className="w-[88px] shrink-0 pointer-events-none opacity-0 transition-opacity group-hover/sequence-gap:pointer-events-auto group-hover/sequence-gap:opacity-100 group-focus-within/sequence-gap:pointer-events-auto group-focus-within/sequence-gap:opacity-100"
-                          onChange={value => callbacks?.onDelayBetweenChange?.(group.rows[0].id, following.id, value)} />
-                      </div>
-                    </div>}
+
                   </div>
                 );
               })}

@@ -1,7 +1,7 @@
 import { clsx } from "clsx";
 import { iconForSemantic, type ComposaIconSemantic } from "./IconSemantics";
 
-export type LayerIconType = "frame" | "group" | "text" | "component" | "instance" | "image" | "shape" | "line" | "ellipse";
+export type LayerIconType = "frame" | "group" | "text" | "component" | "instance" | "image" | "video" | "shape" | "line" | "ellipse";
 export type LayerAutoLayoutMode = "none" | "horizontal" | "vertical" | "grid";
 /**
  * Counter-axis alignment of an auto-layout frame, in the engine's own vocabulary
@@ -43,6 +43,7 @@ export function LayerTypeIcon({ type, autoLayoutMode = "none", autoLayoutAlign =
     : type === "text" ? "text"
     : type === "component" || type === "instance" ? "component"
     : type === "image" ? "image"
+    : type === "video" ? "media-video"
     : type === "line" ? "line"
     : type === "ellipse" ? "ellipse"
     : "shape";

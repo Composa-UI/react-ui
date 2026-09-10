@@ -82,6 +82,8 @@ describe("Grid is one Auto-layout mode", () => {
     expect(flow.findAll(node => node.type === "button" && node.props["aria-label"] === "Wrap")).toHaveLength(0);
     const action = flow.findAllByType(PanelActionBtn).find(node => node.props.label === "Toggle automatic positioning")!;
     expect(action.props.selected).toBe(true);
+    expect(action.props.icon.props["data-icon-semantic"]).toBe("automatic-positioning");
+    expect(action.props.icon.props["data-icon-semantic"]).not.toBe("absolute-position");
     act(() => action.props.onClick());
     expect(onGridAutomaticPositioningChange).toHaveBeenCalledWith(false);
     act(() => renderer.unmount());

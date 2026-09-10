@@ -160,10 +160,11 @@ describe("FontPickerDialog — installed-fonts access", () => {
   it("opens the 306-4 access explainer and, on Continue, merges granted installed fonts", async () => {
     const installed: FontEntry[] = [{ name: "Departure Mono", stack: "'Departure Mono', monospace" }];
     const queryInstalledFonts = vi.fn().mockResolvedValue(installed);
+    const onAvailableFontsChange = vi.fn();
     let renderer!: ReactTestRenderer;
     act(() => {
       renderer = create(
-        <FontPickerDialog open onClose={vi.fn()} trigger={trigger} onSelect={vi.fn()} installedSupported queryInstalledFonts={queryInstalledFonts} />,
+        <FontPickerDialog open onClose={vi.fn()} trigger={trigger} onSelect={vi.fn()} installedSupported queryInstalledFonts={queryInstalledFonts} onAvailableFontsChange={onAvailableFontsChange} />,
       );
     });
 
@@ -174,6 +175,7 @@ describe("FontPickerDialog — installed-fonts access", () => {
     // Continue → request local fonts → back to the list with the granted font merged.
     await act(async () => { buttonWithText(renderer, "Continue").props.onClick(); });
     expect(queryInstalledFonts).toHaveBeenCalledOnce();
+    expect(onAvailableFontsChange).toHaveBeenCalledWith(installed);
     expect(fontRowNames(renderer)).toContain("Departure Mono");
     expect(renderer.root.findAll(n => n.children?.[0] === "1 installed font added").length).toBe(1);
     act(() => renderer.unmount());

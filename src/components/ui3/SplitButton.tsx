@@ -18,6 +18,9 @@ interface SplitButtonProps {
    * open state visually — matching the creation toolbar's split-button chevron.
    */
   menuOpen?: boolean;
+  /** Resting surface for the chevron segment. Dense floating controls can keep
+   * the chevron on the same secondary surface as their connected container. */
+  menuBackground?: "default" | "secondary";
   /** Wrap only the chevron segment in a collision-aware menu trigger. This
    * keeps the primary action independent while allowing portalled menus. */
   menuTrigger?: (trigger: ReactElement) => ReactNode;
@@ -26,7 +29,7 @@ interface SplitButtonProps {
   className?: string;
 }
 
-export function SplitButton({ icon, accentColor, size = "default", actionLabel, menuLabel, selected, disabled, menuOpen, menuTrigger, onIconClick, onChevronClick, className }: SplitButtonProps) {
+export function SplitButton({ icon, accentColor, size = "default", actionLabel, menuLabel, selected, disabled, menuOpen, menuBackground = "default", menuTrigger, onIconClick, onChevronClick, className }: SplitButtonProps) {
   const large = size === "large";
   const hasMenuSemantics = menuOpen !== undefined;
   const menuButton = <button
@@ -36,9 +39,10 @@ export function SplitButton({ icon, accentColor, size = "default", actionLabel, 
     aria-expanded={hasMenuSemantics ? menuOpen : undefined}
     onClick={onChevronClick}
     className={clsx(
-      "flex items-center justify-center self-stretch rounded-r-c-md transition-colors duration-100 outline-none text-c-icon bg-c-bg hover:bg-c-bg-hover active:bg-c-bg-secondary",
+      "flex items-center justify-center self-stretch rounded-r-c-md transition-colors duration-100 outline-none text-c-icon hover:!bg-c-bg-hover active:!bg-c-bg-secondary",
+      menuBackground === "secondary" ? "bg-c-bg-secondary" : "bg-c-bg",
       large ? "w-[20px]" : "py-[4px] w-[16px]",
-      menuOpen && "bg-c-bg-hover",
+      menuOpen && "!bg-c-bg-hover",
     )}
   >
     <svg width="6" height="4" viewBox="0 0 6 4" fill="none">

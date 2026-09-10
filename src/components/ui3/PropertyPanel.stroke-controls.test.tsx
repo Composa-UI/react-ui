@@ -23,7 +23,7 @@ const customStroke: ElementStrokeSetting = {
   keyframes: { weight: keyframe(), pathTrimStart: keyframe(), pathTrimEnd: keyframe() },
 };
 
-function renderStroke(onUpdateStroke = vi.fn()) {
+function renderStroke(onUpdateStroke = vi.fn(), pathTrim = true) {
   let renderer: ReactTestRenderer;
   act(() => {
     renderer = create(<PropertyPanel
@@ -32,12 +32,24 @@ function renderStroke(onUpdateStroke = vi.fn()) {
       onUpdateStroke={onUpdateStroke}
       onToggleStroke={() => undefined}
       onRemoveStroke={() => undefined}
+      capabilities={{ pathTrim }}
     />);
   });
   return renderer!;
 }
 
 describe("Iteration 4 stroke controls", () => {
+  it("gates Path trim out of the default product inspector", () => {
+    const renderer = renderStroke(vi.fn(), false);
+    const labels = renderer.root.findAllByType(NumericInput).map(input => input.props.ariaLabel);
+
+    expect(labels).toContain("Stroke weight");
+    expect(labels).not.toContain("Path trim start");
+    expect(labels).not.toContain("Path trim end");
+    expect(renderer.root.findAllByProps({ "data-composa-path-trim-row": true })).toHaveLength(0);
+    act(() => renderer.unmount());
+  });
+
   it("exposes the Figma side selector, four Custom weights, and the two Path trim values", () => {
     const renderer = renderStroke();
     const inputs = renderer.root.findAllByType(NumericInput);

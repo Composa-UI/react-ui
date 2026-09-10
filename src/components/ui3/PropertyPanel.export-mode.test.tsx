@@ -57,6 +57,17 @@ describe("Export mode (owner feedback Row 63)", () => {
     act(() => renderer.unmount());
   });
 
+  it("shows negotiated video formats and suppresses JPEG controls for real animated export", () => {
+    const renderer = render({ exportMode: "frame", exportSettings: [{ ...settings[0], format: "JPG", quality: 80 }], animatedExportFormats: { "export-1": "MP4" } });
+    expect(renderer.root.findAll(node => node.props?.ariaLabel === "Export quality")).toHaveLength(0);
+    expect(renderer.root.findAll(node => node.props?.ariaLabel === "Export format")).toHaveLength(0);
+    expect(renderer.root.findAll(node => node.props?.ariaLabel === "Export video format")[0].props.value).toBe("MP4");
+    expect(renderer.root.findAllByType(Button).find(node => node.props.label === "Export video")?.props.disabled).toBe(false);
+    act(() => renderer.update(<PropertyPanel elementType="shape" exportSettings={settings} exportMode="frame" animatedExportFormats={{}} />));
+    expect(renderer.root.findAllByType(Button).find(node => node.props.label === "Export video")?.props.disabled).toBe(true);
+    act(() => renderer.unmount());
+  });
+
   it("shows JPEG quality only for the encoder path that consumes it", () => {
     const renderer = render({ exportSettings: [{ ...settings[0], format: "JPG", quality: 80 }] });
     expect(renderer.root.findAll(node => node.props?.ariaLabel === "Export quality")).toHaveLength(1);

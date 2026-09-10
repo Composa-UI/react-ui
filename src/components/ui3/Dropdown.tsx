@@ -19,6 +19,7 @@ interface DropdownProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "v
   fullWidth?: boolean;        // fill the container instead of the fixed 117px
   hug?: boolean;              // size to content (with ellipsis truncation) instead of the fixed 117px or full width
   leadingIcon?: ReactNode;    // optional icon slot (large size only)
+  trailingIcon?: ReactNode;   // optional status icon before the chevron
   onClick?: MouseEventHandler<HTMLButtonElement>;
   className?: string;
 }
@@ -38,6 +39,7 @@ export function Dropdown({
   fullWidth = false,
   hug = false,
   leadingIcon,
+  trailingIcon,
   onClick,
   onBlur,
   className,
@@ -131,6 +133,15 @@ export function Dropdown({
           {mixed ? "Mixed" : (value ?? placeholder)}
         </span>
       </span>
+
+      {trailingIcon && (
+        <span className={clsx(
+          "shrink-0 flex items-center justify-center size-[20px]",
+          disabled && "opacity-50",
+        )}>
+          {trailingIcon}
+        </span>
+      )}
 
       {/* Chevron */}
       <span className={clsx(

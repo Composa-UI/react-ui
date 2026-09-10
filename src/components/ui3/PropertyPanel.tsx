@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, Fragment, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, Fragment, type ReactNode } from "react";
 import { clsx } from "clsx";
 import {
   RotateCw, FlipHorizontal2, FlipVertical2,
@@ -50,7 +50,8 @@ import type { EasingApplyScope, EasingPreset } from "./easing";
 import { iconForSemantic } from "./IconSemantics";
 import { AutoLayoutSpacingIcon } from "./AutoLayoutSpacingIcon";
 import { TypeSettingsDialog } from "./TypeSettingsDialog";
-import { DEFAULT_FONT_WEIGHTS, FontPickerDialog, type FontEntry, type FontWeightOption } from "./FontPickerDialog";
+import { BUNDLED_FONTS, DEFAULT_FONT_WEIGHTS, FontPickerDialog, type FontEntry, type FontWeightOption } from "./FontPickerDialog";
+import { googleFontEntries } from "./googleFonts";
 import { COMPOSA_NON_SELECTABLE_CHROME_CLASS } from "./AnchoredInspectorOverlay";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -157,7 +158,7 @@ export interface ElementSelectionColorSetting {
   gradientStops?: GradientStop[];
   gradientPreview?: string;
 }
-export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; dropZone?: boolean; animationDelay?: boolean; layoutFidelityTools?: boolean; }
+export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; dropZone?: boolean; animationDelay?: boolean; layoutFidelityTools?: boolean; pathTrim?: boolean; }
 export interface ElementTypographySettings {
   fontFamily: string; fontWeight: string; fontSize: number; lineHeight: number; letterSpacing: number;
   align: "left" | "center" | "right" | "justify"; verticalAlign: "top" | "middle" | "bottom"; styleName?: string;
@@ -268,6 +269,7 @@ const ResizeToFitIcon = iconForSemantic("resize-to-fit");
 // icon-semantics map (blend-mode → Droplet); the trigger + collapsed row share it.
 const BlendModeIcon = iconForSemantic("blend-mode");
 const AbsolutePositionIcon = iconForSemantic("absolute-position");
+const AutomaticPositionIcon = iconForSemantic("automatic-positioning");
 const RotationIcon = iconForSemantic("rotation");
 const OpacityIcon = iconForSemantic("opacity");
 const LineHeightIcon = iconForSemantic("line-height");
@@ -904,8 +906,9 @@ function PositionSection({
           rightAction={onPositionPresentationChange
             ? <PanelActionBtn
                 icon={<Link2Off size={16} strokeWidth={1.5} />}
-                label="Separate dimensions"
+                label="Combine position dimensions"
                 tooltip="Separate dimensions"
+                selected
                 onClick={() => onPositionPresentationChange("separate")}
               />
             : undefined}
@@ -926,8 +929,9 @@ function PositionSection({
           rightAction={onPositionPresentationChange
             ? <PanelActionBtn
                 icon={<Link2 size={16} strokeWidth={1.5} />}
-                label="Combine dimensions"
+                label="Combine position dimensions"
                 tooltip="Combine dimensions"
+                selected={false}
                 onClick={() => onPositionPresentationChange("combined")}
               />
             : undefined}
@@ -1319,7 +1323,7 @@ function LayoutAutoSection({
           )}
           {renderedFlow === "grid" && grid && (
             <PanelActionBtn
-              icon={<AbsolutePositionIcon data-icon-semantic="absolute-position" size={16} strokeWidth={1.5} />}
+              icon={<AutomaticPositionIcon data-icon-semantic="automatic-positioning" size={16} strokeWidth={1.5} />}
               label="Toggle automatic positioning"
               selected={grid.automaticPositioning === true}
               disabled={!onGridAutomaticPositioningChange}
@@ -1618,7 +1622,7 @@ function weightsForFamily(
   return entry?.weights ?? hostWeights ?? DEFAULT_FONT_WEIGHTS;
 }
 
-function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes = DEFAULT_FONT_SIZES, fontWeights, keyframes }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean; fonts?: ReadonlyArray<FontEntry>; fontSizes?: ReadonlyArray<number>; fontWeights?: ReadonlyArray<FontWeightOption>; keyframes?: Pick<InspectorKeyframeControls, "fontWeight" | "fontSize" | "lineHeight" | "letterSpacing"> }) {
+function TypographySection({ value, onChange, stylesAvailable, fonts, availableLocalFonts, onAvailableLocalFontsChange, fontSizes = DEFAULT_FONT_SIZES, fontWeights, keyframes }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean; fonts?: ReadonlyArray<FontEntry>; availableLocalFonts: ReadonlyArray<FontEntry>; onAvailableLocalFontsChange: (fonts: ReadonlyArray<FontEntry>) => void; fontSizes?: ReadonlyArray<number>; fontWeights?: ReadonlyArray<FontWeightOption>; keyframes?: Pick<InspectorKeyframeControls, "fontWeight" | "fontSize" | "lineHeight" | "letterSpacing"> }) {
   const [internal, setInternal] = useState<ElementTypographySettings>({ fontFamily: "Inter", fontWeight: "Medium", fontSize: 11, lineHeight: 16, letterSpacing: 0, align: "left", verticalAlign: "top", decoration: "none", textCase: "none", weight: 500, styleName: "Title · 96/120" });
   const settings = value ?? internal;
   const update = (patch: Partial<ElementTypographySettings>) => { if (!value) setInternal(current => ({ ...current, ...patch })); onChange?.(patch); };
@@ -1637,6 +1641,15 @@ function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes 
     { icon: <TextAlignBottomIcon data-icon-semantic="text-align-bottom" size={S} strokeWidth={1.5} />, label: "Bottom", tooltip: "Align bottom", onClick: () => update({ verticalAlign: "bottom" }) },
   ];
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
+  // "Missing" means absent from Composa's built-in/Google catalog and the local
+  // fonts the browser has granted this inspector session. A transient webfont
+  // fetch failure does not change the authored family's availability status.
+  const availableFontNames = useMemo(() => new Set([
+    ...(fonts ?? BUNDLED_FONTS),
+    ...googleFontEntries(),
+    ...availableLocalFonts,
+  ].map(font => font.name)), [availableLocalFonts, fonts]);
+  const fontMissing = !availableFontNames.has(settings.fontFamily);
   const [typeSettingsOpen, setTypeSettingsOpen] = useState(false);
   const typeSettingsTrigger = (
     <PanelActionBtn
@@ -1673,13 +1686,15 @@ function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes 
                 fonts={fonts}
                 value={settings.fontFamily}
                 onSelect={fontFamily => { update({ fontFamily }); setFontPickerOpen(false); }}
+                onAvailableFontsChange={onAvailableLocalFontsChange}
                 trigger={
                   <Dropdown
                     aria-haspopup="dialog"
-                    ariaLabel={`Font: ${settings.fontFamily}`}
+                    ariaLabel={`Font: ${settings.fontFamily}${fontMissing ? " (missing)" : ""}`}
                     value={settings.fontFamily}
                     fullWidth
                     state={fontPickerOpen ? "active" : "default"}
+                    trailingIcon={fontMissing ? <MissingFontIcon /> : undefined}
                     onClick={() => setFontPickerOpen(true)}
                   />
                 }
@@ -1748,6 +1763,24 @@ function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes 
         }
       />
     </PanelSection>
+  );
+}
+
+/** Figma's missing-font status mark: a compact warning tile with an A and ?. */
+function MissingFontIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      data-icon-semantic="missing-font"
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      className="text-c-icon-onwarning"
+    >
+      <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="var(--color-bg-warning, #ffcd29)" stroke="currentColor" />
+      <path d="M4 10.5 6 5.5h1l2 5M4.75 8.75h3.5M10 6.75c.08-.78.58-1.25 1.4-1.25.86 0 1.45.5 1.45 1.25 0 .62-.32.94-.9 1.3-.52.32-.7.56-.7 1.05M11.25 10.65v.1" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -2047,7 +2080,7 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
               </span>
             </Tooltip>)}
           </div>}
-          <div className="px-[16px] pb-[6px]">
+          {capabilities.pathTrim && <div className="px-[16px] pb-[6px]">
             <div className={subLabel}>Path trim</div>
             <div data-composa-path-trim-row className="flex items-center gap-[8px]">
               <Tooltip label="Start position along the path (0% is the path origin)" direction="Left" delayDuration={300}>
@@ -2061,7 +2094,7 @@ function StrokeSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemove
               <span aria-hidden data-composa-trailing-control-slot className="size-[24px] shrink-0" />
               <span aria-hidden data-composa-trailing-control-slot className="size-[24px] shrink-0" />
             </div>
-          </div>
+          </div>}
         </PanelReorderableEntry>
       ))}
     </PanelSection>
@@ -2126,7 +2159,9 @@ function EffectsSection({ entries, onAdd, onUpdate, onToggle, onReorder, onRemov
 
 // ─── Section: Export ──────────────────────────────────────────────────────────
 
-function ExportSection({ settings, targetName = "selection", mode = "static", animatedAvailable = true, frameRate, onModeChange, onFrameRateChange, onAdd, onRemove, onUpdate, onExport }: {
+function ExportSection({ animatedFormats, exporting, settings, targetName = "selection", mode = "static", animatedAvailable = true, frameRate, onModeChange, onFrameRateChange, onAdd, onRemove, onUpdate, onExport }: {
+  animatedFormats?: Record<string, "MP4" | "WebM" | "Detecting…" | "Unavailable">;
+  exporting?: boolean;
   settings?: InspectorExportSetting[];
   targetName?: string;
   mode?: InspectorExportMode;
@@ -2187,9 +2222,11 @@ function ExportSection({ settings, targetName = "selection", mode = "static", an
                 feature exists. Format takes the freed width. */}
             <div className="min-w-0">
               <div className={SUBLABEL}>Format</div>
-              <ChoiceDropdown ariaLabel="Export format" value={exp.format} options={["PNG", "JPG"]} labels={{ PNG: "PNG", JPG: "JPG" }} onChange={format => update(exp.id, { format })} />
+              {mode === "frame" && animatedFormats
+                ? <ChoiceDropdown ariaLabel="Export video format" value={animatedFormats[exp.id] ?? "Detecting…"} options={[animatedFormats[exp.id] ?? "Detecting…"]} labels={{ MP4: "MP4", WebM: "WebM", "Detecting…": "Detecting…", Unavailable: "Unavailable" }} disabled />
+                : <ChoiceDropdown ariaLabel="Export format" value={exp.format} options={["PNG", "JPG"]} labels={{ PNG: "PNG", JPG: "JPG" }} onChange={format => update(exp.id, { format })} />}
             </div>
-            {exp.format === "JPG" && <div className="min-w-0">
+            {exp.format === "JPG" && !(mode === "frame" && animatedFormats) && <div className="min-w-0">
               <div className={SUBLABEL}>Quality</div>
               <NumericInput ariaLabel="Export quality" value={exp.quality ?? 90} min={1} max={100} step={1} suffix="%" onChange={quality => update(exp.id, { quality })} />
             </div>}
@@ -2209,7 +2246,8 @@ function ExportSection({ settings, targetName = "selection", mode = "static", an
         </div>
       ))}
       {exports.length > 0 && <PanelFullRow height={40}>
-        <Button label={mode === "frame" ? "Export frame" : `Export ${targetName}`} variant="Secondary" size="wide" onClick={onExport} />
+        <Button label={exporting ? "Exporting…" : mode === "frame" ? animatedFormats ? "Export video" : "Export frame" : `Export ${targetName}`} variant="Secondary" size="wide" onClick={onExport}
+          disabled={exporting || (mode === "frame" && !!animatedFormats && exports.some(exp => !["MP4", "WebM"].includes(animatedFormats[exp.id] ?? "")))} />
       </PanelFullRow>}
     </PanelSection>
   );
@@ -2314,7 +2352,7 @@ const DEMO_SELECTION_COLORS: ElementSelectionColorSetting[] = [
   { id: "demo-selection-6", color: "#9747FF", opacity: 100 },
 ];
 
-function SelectionColorsSection({ colors, onUpdate, onSelectAll, onEyedropperActivate, activeEyedropperId, swatches, capabilities = { templates: true, styles: true, variables: true, libraries: true, videoFill: false, dropZone: false, animationDelay: false, layoutFidelityTools: false } }: {
+function SelectionColorsSection({ colors, onUpdate, onSelectAll, onEyedropperActivate, activeEyedropperId, swatches, capabilities = { templates: true, styles: true, variables: true, libraries: true, videoFill: false, dropZone: false, animationDelay: false, layoutFidelityTools: false, pathTrim: false } }: {
   colors?: ElementSelectionColorSetting[];
   onUpdate?: (id: string, patch: Partial<Omit<ElementSelectionColorSetting, "id">>) => void;
   onSelectAll?: (id: string) => void;
@@ -2989,7 +3027,21 @@ const ADJUSTMENT_GROUPS: { group: ColorAdjustmentGroup; label: string }[] = [
   { group: "creative", label: "Creative adjustments" },
 ];
 
-function ClipColorBody() {
+// The Light and Color adjustment groups each back a subset of the 7 engine keys
+// (exposure/contrast/saturation/temperature/tint/highlights/shadows). Those
+// sliders become controlled when the clip's persisted grade is supplied; every
+// other slider (brightness/whites/blacks/vibrance/hue) and the Wheels/Creative
+// groups stay uncontrolled/cosmetic for Phase 2. Slider keys match engine keys
+// 1:1, so no renaming is needed.
+const CLIP_GROUP_ENGINE_KEYS: Partial<Record<ColorAdjustmentGroup, readonly string[]>> = {
+  light: ["exposure", "contrast", "highlights", "shadows"],
+  color: ["temperature", "tint", "saturation"],
+};
+
+function ClipColorBody({ adjustments, onAdjustmentChange }: {
+  adjustments?: Partial<Record<string, number>>;
+  onAdjustmentChange?: (key: string, value: number) => void;
+}) {
   const [conversion, setConversion] = useState<string>("Apple Log");
   const [look, setLook] = useState<string>("Analog Indie");
   const [openGroup, setOpenGroup] = useState<ColorAdjustmentGroup | null>(null);
@@ -3000,6 +3052,19 @@ function ClipColorBody() {
   const setGroupModified = (group: ColorAdjustmentGroup) => (modified: boolean) =>
     setModifiedGroups(state => (state[group] === modified ? state : { ...state, [group]: modified }));
   const lutLabels = (opts: readonly string[]) => Object.fromEntries(opts.map(o => [o, o])) as Record<string, string>;
+  // Seed the controlled sliders for a group from the clip's persisted grade
+  // (keys absent from `adjustments` fall through to the dialog's neutral
+  // default). Groups without engine keys stay fully uncontrolled.
+  const groupValues = (group: ColorAdjustmentGroup): Record<string, number> | undefined => {
+    const keys = CLIP_GROUP_ENGINE_KEYS[group];
+    if (!keys) return undefined;
+    const seeded: Record<string, number> = {};
+    for (const key of keys) {
+      const value = adjustments?.[key];
+      if (value !== undefined) seeded[key] = value;
+    }
+    return seeded;
+  };
   return (
     <>
       <PanelFieldRow label="Conversion LUT"
@@ -3008,9 +3073,13 @@ function ClipColorBody() {
         left={<ChoiceDropdown ariaLabel="Look LUT" value={look} options={LOOK_LUTS} labels={lutLabels(LOOK_LUTS)} onChange={setLook} />} />
       {ADJUSTMENT_GROUPS.map(({ group, label }) => {
         const stateLabel = modifiedGroups[group] ? "Modified" : "Default";
+        const controlledKeys = CLIP_GROUP_ENGINE_KEYS[group];
         return (
           <PanelFieldRow key={group} label={label}
             left={<ColorAdjustmentsDialog group={group} enabled open={openGroup === group} onClose={() => setOpenGroup(null)}
+              values={groupValues(group)}
+              controlledKeys={controlledKeys}
+              onValueChange={onAdjustmentChange ? (key, value) => onAdjustmentChange(key, value) : undefined}
               onModifiedChange={setGroupModified(group)}
               trigger={<Dropdown ariaLabel={`${label}: ${stateLabel}`} value={stateLabel} fullWidth onClick={() => setOpenGroup(group)} />} />} />
         );
@@ -3196,6 +3265,8 @@ export interface PropertyPanelProps {
   mode?: PanelMode;
   elementType?: ElementType;
   multiSelect?: boolean;
+  /** Host-owned scale controls inserted after Layout while the Scale tool is active. */
+  scaleToolSection?: ReactNode;
   x?: number; y?: number; rotation?: number;
   /** Per-field Mixed state for a multi-selection with differing values. The field
    *  renders the Figma-style "Mixed" placeholder; editing still commits to all. */
@@ -3397,6 +3468,9 @@ export interface PropertyPanelProps {
   exportMode?: InspectorExportMode;
   /** Show the Animated export choice only when the selected target has authored motion. */
   animatedExportAvailable?: boolean;
+  /** Per-row negotiated video formats. Supplying this enables real Animated video presentation. */
+  animatedExportFormats?: Record<string, "MP4" | "WebM" | "Detecting…" | "Unavailable">;
+  exportInProgress?: boolean;
   exportTargetName?: string;
   onExportModeChange?: (mode: InspectorExportMode) => void;
   onAddExportSetting?: () => void;
@@ -3483,6 +3557,16 @@ export interface PropertyPanelProps {
   /** Video Clip · Blend — composite mode. Controlled when the callback is set. */
   clipBlendMode?: ClipBlendMode;
   onClipBlendModeChange?: (value: ClipBlendMode) => void;
+  /**
+   * Video Clip · Color — the 7 engine-backed basic grade adjustments
+   * (exposure/contrast/saturation/temperature/tint/highlights/shadows). When
+   * provided, ClipColorBody's Light (exposure/contrast/highlights/shadows) and
+   * Color (temperature/tint/saturation) dialog sliders for these keys are
+   * controlled; every other Color control (LUTs, Color-Wheels, Creative, Chroma,
+   * and brightness/whites/blacks/vibrance/hue) stays cosmetic until Phase 2.
+   */
+  clipAdjustments?: Partial<Record<string, number>>;
+  onClipAdjustmentChange?: (key: string, value: number) => void;
   /** Audio Clip mode — clip name + Volume are the only host-wired controls; the
    *  remaining effect sections are structural (unwired) until the audio DSP lands. */
   audioClipName?: string;
@@ -3991,6 +4075,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onDeleteClip,
   clipBlendMode = "Normal",
   onClipBlendModeChange,
+  clipAdjustments,
+  onClipAdjustmentChange,
   audioClipName = "voiceover",
   onAudioClipNameChange,
   audioVolume = 100,
@@ -4012,9 +4098,16 @@ export function PropertyPanel(props: PropertyPanelProps) {
     // Fidelity authoring tools such as guides and future slide rulers stay out
     // of the default product until their canvas behavior reaches release fidelity.
     layoutFidelityTools: capabilityOverrides?.layoutFidelityTools ?? false,
+    // Path trim/start is intentionally gated until its animation model and
+    // rendering behavior are ready for the product. Existing authored data is
+    // preserved by the engine; this only removes the unreliable authoring UI.
+    pathTrim: capabilityOverrides?.pathTrim ?? false,
   };
   const [uncontrolledTab, setUncontrolledTab] = useState<"design" | "animate" | "prototype">("design");
   const [activeStackDialog, setActiveStackDialog] = useState<string | null>(null);
+  // PropertyPanel outlives individual selection sections, so granted local-font
+  // availability survives text → non-text → text selection changes.
+  const [availableLocalFonts, setAvailableLocalFonts] = useState<ReadonlyArray<FontEntry>>([]);
   const activeFillDialogChangeRef = useRef(props.onActiveFillDialogChange);
   activeFillDialogChangeRef.current = props.onActiveFillDialogChange;
   const activeFillDialogId = activeGradientFillDialogId(activeStackDialog, fills);
@@ -4269,7 +4362,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor}
             onEyedropperActivate={props.onSelectionColorEyedropperActivate} activeEyedropperId={props.activeSelectionColorEyedropperId}
             swatches={props.pageSwatches} capabilities={capabilities} />
-          <ExportSection settings={exportSettings} mode={exportMode} animatedAvailable={props.animatedExportAvailable} frameRate={projectFrameRate} onModeChange={onExportModeChange} onFrameRateChange={onProjectFrameRateChange} targetName={exportTargetName ?? renderedSlideName}
+          <ExportSection animatedFormats={props.animatedExportFormats} exporting={props.exportInProgress} settings={exportSettings} mode={exportMode} animatedAvailable={props.animatedExportAvailable} frameRate={projectFrameRate} onModeChange={onExportModeChange} onFrameRateChange={onProjectFrameRateChange} targetName={exportTargetName ?? renderedSlideName}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
           </>}
           </ScrollArea></div>}
@@ -4325,9 +4418,13 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onDurationChange={onClipDurationChange} />
           <ClipTrimSection trimIn={clipTrimIn} trimOut={clipTrimOut} controlled={props.clipTrimIn !== undefined || props.clipTrimOut !== undefined} onTrimInChange={onClipTrimInChange} onTrimOutChange={onClipTrimOutChange} />
           <ClipPlaybackSection speed={clipSpeed} controlled={props.clipSpeed !== undefined} onSpeedChange={onClipSpeedChange} />
-          {/* Only Appearance is modeled today. Color grading and Chroma key stay
-              absent until the engine can persist and render them truthfully. */}
+          {/* Appearance is modeled today. Color grading and Chroma key are now
+              surfaced ahead of the engine effect-stack — cosmetic/not-yet-persisted
+              for the dev showcase (owner call) until the engine can persist and
+              render them truthfully. */}
           <ClipBlendSection mode={clipBlendMode} controlled={props.clipBlendMode !== undefined} onModeChange={onClipBlendModeChange} />
+          <PanelSection title="Color" landmark><ClipColorBody adjustments={clipAdjustments} onAdjustmentChange={onClipAdjustmentChange} /></PanelSection>
+          <PanelSection title="Chroma key" landmark><ChromaKeyBody /></PanelSection>
         </ScrollArea>
       )}
 
@@ -4462,12 +4559,14 @@ export function PropertyPanel(props: PropertyPanelProps) {
             </PanelSection>
           )}
 
+          {props.scaleToolSection}
+
           {/* Appearance — always present */}
           <AppearanceSection opacity={opacity} blendMode={blendMode} supportedBlendModes={supportedBlendModes} cornerRadius={cornerRadius} opacityMixed={opacityMixed} cornerRadiusMixed={cornerRadiusMixed} blendControlled={props.blendMode !== undefined} cornerControlled={props.cornerRadius !== undefined} onOpacityChange={onOpacityChange} onBlendModeChange={onBlendModeChange} onCornerRadiusChange={onCornerRadiusChange} opacityKeyframe={keyframeControls?.opacity} cornerRadiusKeyframe={keyframeControls?.cornerRadius}
             cornerRadiusKeyframes={{ topLeft: keyframeControls?.cornerRadiusTopLeft, topRight: keyframeControls?.cornerRadiusTopRight, bottomRight: keyframeControls?.cornerRadiusBottomRight, bottomLeft: keyframeControls?.cornerRadiusBottomLeft }} />
 
           {/* Typography — text only */}
-          {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} fonts={fonts} fontSizes={fontSizes} fontWeights={fontWeights} keyframes={keyframeControls} />}
+          {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} fonts={fonts} availableLocalFonts={availableLocalFonts} onAvailableLocalFontsChange={setAvailableLocalFonts} fontSizes={fontSizes} fontWeights={fontWeights} keyframes={keyframeControls} />}
 
           {/* Stackable sections */}
           <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill}
@@ -4500,7 +4599,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onEyedropperActivate={props.onSelectionColorEyedropperActivate} activeEyedropperId={props.activeSelectionColorEyedropperId}
             swatches={props.pageSwatches} capabilities={capabilities} />}
 
-          <ExportSection settings={exportSettings} mode={exportMode} animatedAvailable={props.animatedExportAvailable} frameRate={projectFrameRate} onModeChange={onExportModeChange} onFrameRateChange={onProjectFrameRateChange} targetName={exportTargetName ?? elementLabel[elementType]}
+          <ExportSection animatedFormats={props.animatedExportFormats} exporting={props.exportInProgress} settings={exportSettings} mode={exportMode} animatedAvailable={props.animatedExportAvailable} frameRate={projectFrameRate} onModeChange={onExportModeChange} onFrameRateChange={onProjectFrameRateChange} targetName={exportTargetName ?? elementLabel[elementType]}
             onAdd={onAddExportSetting} onRemove={onRemoveExportSetting} onUpdate={onUpdateExportSetting} onExport={onExport} />
           {easing && <EasingInspectorSection key={easing.interactionKey} value={easing} applyScope={easingApplyScope} applyToLabel={easingApplyToLabel}
             onChange={onEasingChange} onApplyScopeChange={onEasingApplyScopeChange}

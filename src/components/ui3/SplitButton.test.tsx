@@ -3,6 +3,11 @@ import { describe, expect, it } from "vitest";
 import { SplitButton } from "./SplitButton";
 
 describe("SplitButton semantics", () => {
+  it("can keep the chevron on the connected secondary surface at rest", () => {
+    const html = renderToStaticMarkup(<SplitButton icon={<span>icon</span>} actionLabel="Aspect" menuLabel="Aspect options" menuBackground="secondary" />);
+    expect(html).toMatch(/aria-label="Aspect options"[^>]*bg-c-bg-secondary/);
+  });
+
   it("puts controlled action and menu names on the existing button anatomy", () => {
     const html = renderToStaticMarkup(<SplitButton icon={<span>icon</span>} actionLabel="Pause preview" menuLabel="Preview options" />);
 

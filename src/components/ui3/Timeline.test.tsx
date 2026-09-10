@@ -12,6 +12,27 @@ const numericTrack: Track = { id: "hero", name: "Hero", type: "frame", props: [
 ] };
 
 describe("Timeline DOM contracts", () => {
+  it.each([
+    { time: 0, keys: [500, 900], prev: false, next: true },
+    { time: 500, keys: [500, 900], prev: false, next: true },
+    { time: 700, keys: [500, 900], prev: true, next: true },
+    { time: 900, keys: [500, 900], prev: true, next: false },
+    { time: 1000, keys: [500, 900], prev: true, next: false },
+    { time: 500, keys: [500], prev: false, next: false },
+    { time: 500, keys: [], prev: false, next: false },
+    { time: 500, keys: [499.5, 500.5], prev: false, next: false },
+  ])("only exposes available neighboring keys at $time with $keys", ({ time, keys, prev, next }) => {
+    const html = renderToStaticMarkup(<Timeline height={220} playhead={time} tracks={[{
+      id: "hero", name: "Hero", type: "frame", props: [{ id: "opacity", name: "Opacity", keyframes: keys }],
+    }]} onPropertyStepKeyframe={() => undefined} />);
+    for (const [label, enabled] of [["Previous", prev], ["Next", next]] as const) {
+      const button = html.match(new RegExp(`<button[^>]*aria-label="${label} Opacity keyframe"[^>]*>`))![0];
+      expect(button.includes('disabled=""')).toBe(!enabled);
+      expect(button.includes("visibility:hidden")).toBe(!enabled);
+      expect(button).toContain("focus-visible:opacity-100");
+    }
+  });
+
   it("marks the canonical master media header glyph semantics (#749)", () => {
     const html = renderToStaticMarkup(<Timeline mode="master" height={260} duration={2_000} />);
     expect(html).toContain('data-icon-semantic="media-video"');
@@ -1251,4 +1272,19 @@ describe("the slide-local null state keeps the composition playhead (Iteration 6
     expect(html).toContain(HANDLE);
     expect(html).toContain(BODY_LINE);
   });
+});
+
+it("requires real stable IDs on every block before enabling reorder", () => {
+  for (const complete of [false,true]) {
+    const onReorder = vi.fn();
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<Timeline mode="master" height={220} duration={2000}
+      blocks={[{id:"a",name:"A",range:[0,1000]}, {id:complete?"b":undefined,name:"B",range:[1000,2000]}]}
+      onBlockReorder={onReorder} />); });
+    const block = renderer!.root.findAll(node => node.type === "div" && node.props["data-timeline-block-id"] === "a")[0];
+    const target = {};
+    act(() => block.props.onKeyDown({key:"ArrowRight",altKey:true,target,currentTarget:target,preventDefault(){},stopPropagation(){}}));
+    expect(onReorder).toHaveBeenCalledTimes(complete?1:0);
+    act(() => renderer!.unmount());
+  }
 });

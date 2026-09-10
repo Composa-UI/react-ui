@@ -15,7 +15,7 @@ import { DimensionSizingFields, PropertyPanel, type ElementSizingAxis, type Elem
 //     Dimensions and Scale — because they were written out separately.
 //
 //  2. Detaching X/Y was one-way: the 'separate' Position row rendered no
-//     rightAction at all, so pressing "Separate dimensions" destroyed the only
+//     rightAction at all, so pressing "Combine position dimensions" destroyed the only
 //     control that could undo it.
 //
 // Every assertion is scoped to a named control, and each negative is preceded by
@@ -131,10 +131,9 @@ describe("separated X/Y can be re-attached (iteration-3)", () => {
     // trailing control — two independent X and Y fields, not one paired field.
     expect(renderer.root.findAll(n => n.type === "input" && n.props?.["aria-label"] === "Position X")).toHaveLength(1);
     expect(renderer.root.findAll(n => n.type === "input" && n.props?.["aria-label"] === "Position Y")).toHaveLength(1);
-    // The separate-only affordance must be gone; the combine one present.
-    expect(renderer.root.findAll(n => n.type === "button" && n.props?.["aria-label"] === "Separate dimensions")).toHaveLength(0);
+    // The toggle keeps a stable accessible name across both states.
 
-    const combine = actionButton(renderer, "Combine dimensions");
+    const combine = actionButton(renderer, "Combine position dimensions");
     act(() => combine.props.onClick());
     expect(onPositionPresentationChange).toHaveBeenCalledTimes(1);
     expect(onPositionPresentationChange).toHaveBeenCalledWith("combined");
@@ -145,16 +144,18 @@ describe("separated X/Y can be re-attached (iteration-3)", () => {
   it("round-trips: combined offers separate, separate offers combine", () => {
     const onPositionPresentationChange = vi.fn();
     const combined = render({ elementType: "shape", positionPresentation: "combined", onPositionPresentationChange });
-    const separateAction = actionButton(combined, "Separate dimensions");
+    const separateAction = actionButton(combined, "Combine position dimensions");
     expect(iconTypeOf(separateAction)).toBe(Link2Off);
+    expect(separateAction.props["aria-pressed"]).toBe(true);
     act(() => separateAction.props.onClick());
     expect(onPositionPresentationChange).toHaveBeenLastCalledWith("separate");
-    expect(combined.root.findAll(n => n.type === "button" && n.props?.["aria-label"] === "Combine dimensions")).toHaveLength(0);
+
     act(() => combined.unmount());
 
     const separate = render({ elementType: "shape", positionPresentation: "separate", onPositionPresentationChange });
-    const combineAction = actionButton(separate, "Combine dimensions");
+    const combineAction = actionButton(separate, "Combine position dimensions");
     expect(iconTypeOf(combineAction)).toBe(Link2);
+    expect(combineAction.props["aria-pressed"]).toBe(false);
     act(() => combineAction.props.onClick());
     expect(onPositionPresentationChange).toHaveBeenLastCalledWith("combined");
     act(() => separate.unmount());
@@ -165,7 +166,7 @@ describe("separated X/Y can be re-attached (iteration-3)", () => {
     // A combine button there would promise a change the host cannot honour.
     const renderer = render({ elementType: "shape", positionPresentation: "separate" });
     expect(renderer.root.findAll(n => n.type === "input" && n.props?.["aria-label"] === "Position X")).toHaveLength(1);
-    expect(renderer.root.findAll(n => n.type === "button" && n.props?.["aria-label"] === "Combine dimensions")).toHaveLength(0);
+    expect(renderer.root.findAll(n => n.type === "button" && n.props?.["aria-label"] === "Combine position dimensions")).toHaveLength(0);
     act(() => renderer.unmount());
   });
 });

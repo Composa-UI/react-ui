@@ -150,6 +150,7 @@
   --color-c-icon-secondary:      var(--color-icon-secondary);
   --color-c-icon-tertiary:       var(--color-icon-tertiary);
   --color-c-icon-onbrand:        var(--color-icon-onbrand);
+  --color-c-icon-onwarning:      var(--color-icon-onwarning);
   /* alias */
   --color-c-icon-on-brand:       var(--color-icon-onbrand);
   --color-c-component:           var(--color-bg-figjam);

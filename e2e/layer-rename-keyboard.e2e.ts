@@ -1,0 +1,32 @@
+import { expect, test } from "@playwright/test";
+
+test("inline rename owns text keys and IME while row navigation remains available", async ({ page }) => {
+  await page.goto("/?view=layers-contract");
+  const row = page.getByRole("treeitem").first();
+  const original = await row.getAttribute("aria-label");
+  await row.focus();
+  await row.press("Enter");
+  const input = page.getByRole("textbox", { name: `Rename ${original}`, exact: true });
+  await input.fill("");
+  await input.pressSequentially("Launch video");
+  await expect(input).toHaveValue("Launch video");
+  await input.press("ArrowLeft");
+  await input.press("Shift+ArrowLeft");
+  await expect(input).toBeFocused();
+  expect(await input.evaluate(element => ({ start: (element as HTMLInputElement).selectionStart, end: (element as HTMLInputElement).selectionEnd }))).toEqual({ start: 10, end: 11 });
+  await input.dispatchEvent("keydown", { key: "Enter", isComposing: true, bubbles: true });
+  await expect(input).toBeFocused();
+  await input.press("Escape");
+  await expect(row).toHaveAttribute("aria-label", original!);
+  await expect(row).toBeFocused();
+  await row.press("Enter");
+  await input.fill("");
+  await input.pressSequentially("Launch video");
+  await input.press("Enter");
+  const renamed = page.getByRole("treeitem", { name: "Launch video", exact: true });
+  await expect(renamed).toBeFocused();
+  await renamed.press("Space");
+  await expect(renamed).toHaveAttribute("aria-selected", "true");
+  await renamed.press("ArrowDown");
+  await expect(renamed).not.toBeFocused();
+});

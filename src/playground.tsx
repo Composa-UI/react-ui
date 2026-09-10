@@ -921,6 +921,7 @@ export default function Playground() {
   ]);
   const [contractX, setContractX] = useState(270);
   const [assetQuery, setAssetQuery] = useState("");
+  const [reorderDemo, setReorderDemo] = useState(["Intro", "Story", "End"]);
   const [assetFilter, setAssetFilter] = useState<AssetFilter>("all");
   const [assetSelection, setAssetSelection] = useState<string | null>("asset-image");
   const [selectionColors, setSelectionColors] = useState<ElementSelectionColorSetting[]>([
@@ -1355,6 +1356,19 @@ export default function Playground() {
     );
   }
 
+  if (view === "slide-reorder-contract") {
+    return <div style={{height:"100vh"}}><SlidesPanel slides={reorderDemo.map((id,index) => ({id,n:index+1,tint:["#ddd","#aaa","#777"][index]}))}
+      onReorder={(ids,index) => setReorderDemo(current => { const moving = current.filter(id => ids.includes(id)); const rest = current.filter(id => !ids.includes(id)); return [...rest.slice(0,index),...moving,...rest.slice(index)]; })} /></div>;
+  }
+
+  if (view === "assets-empty-contract") {
+    return <div style={{ height: "100vh", display: "flex" }}>
+      <AssetsPanel assets={[]} filter={assetFilter} onFilterChange={setAssetFilter}
+        query={assetQuery} onQueryChange={setAssetQuery}
+        onUpload={() => console.info("Upload", assetFilter)} />
+    </div>;
+  }
+
   if (view === "assets-contract") {
     return <div style={{ height: "100vh", width: "100vw", display: "flex", background: "#e6e6e6" }}>
       <AssetsPanel assets={contractAssets} query={assetQuery} onQueryChange={setAssetQuery} filter={assetFilter} onFilterChange={setAssetFilter}
@@ -1461,6 +1475,17 @@ export default function Playground() {
         onReorder={(sourceId, targetId, position) => console.info("Reorder", sourceId, targetId, position)}
         onReparent={(sourceId, parentId) => console.info("Reparent", sourceId, parentId)} />
       <div style={{ flex: 1 }} />
+    </div>;
+  }
+
+  if (view === "timeline-property-columns") {
+    const dark = new URLSearchParams(window.location.search).get("theme") === "dark";
+    return <div data-composa-mode={dark ? "dark" : "light"} style={{ height: "100vh", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+      <Timeline height={260} duration={2000} tracks={[{ id: "column-proof", name: "Ellipse", type: "frame", expanded: true, props: [
+        { id: "rotation", name: "Rotation", value: 45, keyframes: [0] },
+        { id: "position", name: "Position", keyframes: [500] },
+        { id: "color", name: "Color", value: "#6633ff", keyframes: [1000] },
+      ] }]} />
     </div>;
   }
 

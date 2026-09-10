@@ -162,6 +162,9 @@ export interface FontPickerDialogProps {
    * Lets tests/stories force the unsupported (graceful-fallback) branch.
    */
   installedSupported?: boolean;
+  /** Reports local fonts after the browser grants access so host status UI can
+   * stop describing a newly available family as missing. */
+  onAvailableFontsChange?: (fonts: ReadonlyArray<FontEntry>) => void;
 }
 
 type AccessState = "idle" | "loading" | "granted" | "denied";
@@ -262,6 +265,7 @@ export function FontPickerDialog({
   enableInstalledFonts = true,
   queryInstalledFonts = defaultQueryInstalledFonts,
   installedSupported,
+  onAvailableFontsChange,
 }: FontPickerDialogProps) {
   const [query, setQuery] = useState("");
   const [screen, setScreen] = useState<"list" | "access">("list");
@@ -317,15 +321,17 @@ export function FontPickerDialog({
     try {
       const next = await queryInstalledFonts();
       setInstalled(next);
+      onAvailableFontsChange?.(next);
       setAccessState(next.length > 0 ? "granted" : "denied");
     } catch {
       // Permission denied or the API threw — keep the bundled list, stay honest.
       setInstalled([]);
+      onAvailableFontsChange?.([]);
       setAccessState("denied");
     } finally {
       setScreen("list");
     }
-  }, [queryInstalledFonts]);
+  }, [onAvailableFontsChange, queryInstalledFonts]);
 
   return (
     <InspectorDialog

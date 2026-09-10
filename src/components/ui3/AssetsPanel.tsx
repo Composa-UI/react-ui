@@ -331,25 +331,22 @@ function AssetCard({
 }
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
-function EmptyState({ onUpload }: { onUpload: () => void }) {
+function EmptyState({ filter, onUpload }: { filter: AssetFilter; onUpload?: () => void }) {
+  const VideoIcon = iconForSemantic("media-video");
+  const AudioIcon = iconForSemantic("media-audio");
+  const content = {
+    all: { message: "No assets yet", action: "Upload media", icon: <ImageIcon size={20} strokeWidth={1.5} /> },
+    images: { message: "No images yet", action: "Upload images", icon: <ImageIcon size={20} strokeWidth={1.5} /> },
+    videos: { message: "No videos yet", action: "Upload video", icon: <VideoIcon size={20} strokeWidth={1.5} /> },
+    audio: { message: "No audio yet", action: "Upload audio", icon: <AudioIcon size={20} strokeWidth={1.5} /> },
+  }[filter];
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-[12px] px-[24px] text-center">
       <div className="flex items-center justify-center size-[40px] rounded-c-full bg-c-bg-secondary text-c-icon-secondary">
-        <ImageIcon size={20} strokeWidth={1.5} />
+        {content.icon}
       </div>
-      <span className={CAPTION}>No assets yet</span>
-      <button
-        type="button"
-        onClick={onUpload}
-        className={clsx(
-          "flex items-center gap-[6px] h-[28px] px-[12px] rounded-c-md",
-          "bg-c-bg-brand text-c-text-on-brand hover:bg-c-bg-brand-pressed transition-colors",
-          FONT, "text-[11px] font-[550]",
-        )}
-      >
-        <Upload size={14} strokeWidth={2} />
-        Upload media
-      </button>
+      <span className={CAPTION}>{content.message}</span>
+      {onUpload && <Button label={content.action} icon={<Upload size={14} strokeWidth={2} />} onClick={onUpload} />}
     </div>
   );
 }
@@ -555,7 +552,6 @@ export function AssetsPanel({
     };
   }, [libraries, visible]);
 
-  const hasAny = assets.length > 0;
   const insertAsset = (item: AssetItem) => {
     if (item.kind === "video" || item.kind === "audio") onAddToTimeline?.(item.id);
     else onInsert?.(item.id);
@@ -675,8 +671,8 @@ export function AssetsPanel({
         </div>
 
         {/* Body — sectioned grid / flat grid / empty */}
-        {!hasAny ? (
-          <EmptyState onUpload={() => onUpload?.()} />
+        {visible.length === 0 && !activeQuery ? (
+          <EmptyState filter={activeFilter} onUpload={onUpload} />
         ) : visible.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center px-[24px] text-center">
             <span className={CAPTION}>No matching assets</span>

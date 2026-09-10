@@ -36,6 +36,7 @@ function CropAspectControl({ aspect, onAspectChange }: Pick<CropToolbarProps, "a
       actionLabel="Unlock crop proportions"
       menuLabel={`Crop aspect ratio: ${LABELS[aspect]}`}
       selected={aspect !== "free"}
+      menuBackground="secondary"
       onIconClick={() => onAspectChange("free")}
       menuTrigger={trigger => <PopoverMenu directTrigger align="left" trigger={trigger}>
         {close => <Menu>{aspects.map(value => <MenuRow

@@ -22,6 +22,7 @@ import {
   ProposedLineHeight,
   ProposedOpacity,
   ProposedRotateCwDiamond,
+  ProposedRouteArrowRight,
   ProposedScanSquare,
   ProposedSquareText,
   ProposedTextMargins,
@@ -53,6 +54,7 @@ const upstreamProposedIcons = [
   ProposedSquareText,
   ProposedTextMargins,
   ProposedDiamondCircle,
+  ProposedRouteArrowRight,
 ];
 
 // Composa-local glyphs with no lucide-icons/lucide PR — deliberately absent from
@@ -97,6 +99,12 @@ describe("proposed Lucide icon boundary", () => {
       'd="M2.7 10.3a2.41 2.41 0 0 0 0 3.41l7.59 7.59a2.41 2.41 0 0 0 3.41 0l7.59-7.59a2.41 2.41 0 0 0 0-3.41L13.7 2.71a2.41 2.41 0 0 0-3.41 0z"',
     );
     expect(html).toContain('<circle cx="12" cy="12" r="4">');
+  });
+
+  it("vendors lucide#4729 route-arrow-right geometry for automatic positioning", () => {
+    const html = renderToStaticMarkup(<ProposedRouteArrowRight />);
+    expect(html).toContain('d="M3 5H17.5a3.5 3.5 0 0 1 0 7H6.5a3.5 3.5 0 0 0 0 7H21"');
+    expect(html).toContain('d="m18 16 3 3-3 3"');
   });
 
   // A rotate-cw arc alone is indistinguishable from lucide-react's own RotateCw, so
