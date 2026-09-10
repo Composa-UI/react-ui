@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, create, type ReactTestInstance } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
-import { DEFAULT_FONT_WEIGHTS, type FontEntry } from "./FontPickerDialog";
+import { DEFAULT_FONT_WEIGHTS, FontPickerDialog, type FontEntry } from "./FontPickerDialog";
 import { ComboInput, NumericInput } from "./Input";
 import { PopoverMenu } from "./Menu";
 import { DEFAULT_FONT_SIZES, PropertyPanel, type ElementTypographySettings } from "./PropertyPanel";
@@ -186,6 +186,54 @@ describe("Typography — font weight roster follows the family (Composa#661)", (
     const trigger = fontWeightPopover(renderer!.root).props.trigger as { props: { ariaLabel: string; value: string } };
     expect(trigger.props.value).toBe("Semibold");
     expect(trigger.props.ariaLabel).toBe("Font weight: Semibold");
+    act(() => renderer!.unmount());
+  });
+});
+
+describe("Typography — missing imported fonts", () => {
+  const inter: FontEntry = { name: "Inter", stack: "'Inter', sans-serif", source: "google" };
+
+  it("keeps the authored family visible and marks it missing when it is unavailable", () => {
+    const markup = renderToStaticMarkup(
+      <PropertyPanel elementType="text" typography={typography({ fontFamily: "Feather" })} fonts={[inter]} />,
+    );
+
+    expect(markup).toContain('aria-label="Font: Feather (missing)"');
+    expect(markup).toContain('data-icon-semantic="missing-font"');
+    expect(markup).toContain("Feather");
+  });
+
+  it("does not show the warning for an available family", () => {
+    const markup = renderToStaticMarkup(
+      <PropertyPanel elementType="text" typography={typography({ fontFamily: "Inter" })} fonts={[inter]} />,
+    );
+
+    expect(markup).toContain('aria-label="Font: Inter"');
+    expect(markup).not.toContain('data-icon-semantic="missing-font"');
+  });
+
+  it("keeps granted local-font availability across selection changes", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(
+        <PropertyPanel elementType="text" typography={typography({ fontFamily: "Departure Mono" })} fonts={[inter]} />,
+      );
+    });
+
+    const fontTriggerLabel = () => (renderer!.root.findByType(FontPickerDialog).props.trigger as { props: { ariaLabel: string } }).props.ariaLabel;
+    expect(fontTriggerLabel()).toBe("Font: Departure Mono (missing)");
+
+    act(() => renderer!.root.findByType(FontPickerDialog).props.onAvailableFontsChange([
+      { name: "Departure Mono", stack: "'Departure Mono', monospace", source: "local" },
+    ]));
+    expect(fontTriggerLabel()).toBe("Font: Departure Mono");
+
+    act(() => renderer!.update(<PropertyPanel elementType="shape" />));
+    expect(renderer!.root.findAllByType(FontPickerDialog)).toHaveLength(0);
+    act(() => renderer!.update(
+      <PropertyPanel elementType="text" typography={typography({ fontFamily: "Departure Mono" })} fonts={[inter]} />,
+    ));
+    expect(fontTriggerLabel()).toBe("Font: Departure Mono");
     act(() => renderer!.unmount());
   });
 });

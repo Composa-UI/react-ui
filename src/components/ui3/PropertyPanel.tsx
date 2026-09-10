@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, Fragment, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, Fragment, type ReactNode } from "react";
 import { clsx } from "clsx";
 import {
   RotateCw, FlipHorizontal2, FlipVertical2,
@@ -50,7 +50,8 @@ import type { EasingApplyScope, EasingPreset } from "./easing";
 import { iconForSemantic } from "./IconSemantics";
 import { AutoLayoutSpacingIcon } from "./AutoLayoutSpacingIcon";
 import { TypeSettingsDialog } from "./TypeSettingsDialog";
-import { DEFAULT_FONT_WEIGHTS, FontPickerDialog, type FontEntry, type FontWeightOption } from "./FontPickerDialog";
+import { BUNDLED_FONTS, DEFAULT_FONT_WEIGHTS, FontPickerDialog, type FontEntry, type FontWeightOption } from "./FontPickerDialog";
+import { googleFontEntries } from "./googleFonts";
 import { COMPOSA_NON_SELECTABLE_CHROME_CLASS } from "./AnchoredInspectorOverlay";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1621,7 +1622,7 @@ function weightsForFamily(
   return entry?.weights ?? hostWeights ?? DEFAULT_FONT_WEIGHTS;
 }
 
-function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes = DEFAULT_FONT_SIZES, fontWeights, keyframes }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean; fonts?: ReadonlyArray<FontEntry>; fontSizes?: ReadonlyArray<number>; fontWeights?: ReadonlyArray<FontWeightOption>; keyframes?: Pick<InspectorKeyframeControls, "fontWeight" | "fontSize" | "lineHeight" | "letterSpacing"> }) {
+function TypographySection({ value, onChange, stylesAvailable, fonts, availableLocalFonts, onAvailableLocalFontsChange, fontSizes = DEFAULT_FONT_SIZES, fontWeights, keyframes }: { value?: ElementTypographySettings; onChange?: (patch: Partial<ElementTypographySettings>) => void; stylesAvailable: boolean; fonts?: ReadonlyArray<FontEntry>; availableLocalFonts: ReadonlyArray<FontEntry>; onAvailableLocalFontsChange: (fonts: ReadonlyArray<FontEntry>) => void; fontSizes?: ReadonlyArray<number>; fontWeights?: ReadonlyArray<FontWeightOption>; keyframes?: Pick<InspectorKeyframeControls, "fontWeight" | "fontSize" | "lineHeight" | "letterSpacing"> }) {
   const [internal, setInternal] = useState<ElementTypographySettings>({ fontFamily: "Inter", fontWeight: "Medium", fontSize: 11, lineHeight: 16, letterSpacing: 0, align: "left", verticalAlign: "top", decoration: "none", textCase: "none", weight: 500, styleName: "Title · 96/120" });
   const settings = value ?? internal;
   const update = (patch: Partial<ElementTypographySettings>) => { if (!value) setInternal(current => ({ ...current, ...patch })); onChange?.(patch); };
@@ -1640,6 +1641,15 @@ function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes 
     { icon: <TextAlignBottomIcon data-icon-semantic="text-align-bottom" size={S} strokeWidth={1.5} />, label: "Bottom", tooltip: "Align bottom", onClick: () => update({ verticalAlign: "bottom" }) },
   ];
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
+  // "Missing" means absent from Composa's built-in/Google catalog and the local
+  // fonts the browser has granted this inspector session. A transient webfont
+  // fetch failure does not change the authored family's availability status.
+  const availableFontNames = useMemo(() => new Set([
+    ...(fonts ?? BUNDLED_FONTS),
+    ...googleFontEntries(),
+    ...availableLocalFonts,
+  ].map(font => font.name)), [availableLocalFonts, fonts]);
+  const fontMissing = !availableFontNames.has(settings.fontFamily);
   const [typeSettingsOpen, setTypeSettingsOpen] = useState(false);
   const typeSettingsTrigger = (
     <PanelActionBtn
@@ -1676,13 +1686,15 @@ function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes 
                 fonts={fonts}
                 value={settings.fontFamily}
                 onSelect={fontFamily => { update({ fontFamily }); setFontPickerOpen(false); }}
+                onAvailableFontsChange={onAvailableLocalFontsChange}
                 trigger={
                   <Dropdown
                     aria-haspopup="dialog"
-                    ariaLabel={`Font: ${settings.fontFamily}`}
+                    ariaLabel={`Font: ${settings.fontFamily}${fontMissing ? " (missing)" : ""}`}
                     value={settings.fontFamily}
                     fullWidth
                     state={fontPickerOpen ? "active" : "default"}
+                    trailingIcon={fontMissing ? <MissingFontIcon /> : undefined}
                     onClick={() => setFontPickerOpen(true)}
                   />
                 }
@@ -1751,6 +1763,24 @@ function TypographySection({ value, onChange, stylesAvailable, fonts, fontSizes 
         }
       />
     </PanelSection>
+  );
+}
+
+/** Figma's missing-font status mark: a compact warning tile with an A and ?. */
+function MissingFontIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      data-icon-semantic="missing-font"
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      className="text-c-icon-onwarning"
+    >
+      <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="var(--color-bg-warning, #ffcd29)" stroke="currentColor" />
+      <path d="M4 10.5 6 5.5h1l2 5M4.75 8.75h3.5M10 6.75c.08-.78.58-1.25 1.4-1.25.86 0 1.45.5 1.45 1.25 0 .62-.32.94-.9 1.3-.52.32-.7.56-.7 1.05M11.25 10.65v.1" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -4071,6 +4101,9 @@ export function PropertyPanel(props: PropertyPanelProps) {
   };
   const [uncontrolledTab, setUncontrolledTab] = useState<"design" | "animate" | "prototype">("design");
   const [activeStackDialog, setActiveStackDialog] = useState<string | null>(null);
+  // PropertyPanel outlives individual selection sections, so granted local-font
+  // availability survives text → non-text → text selection changes.
+  const [availableLocalFonts, setAvailableLocalFonts] = useState<ReadonlyArray<FontEntry>>([]);
   const activeFillDialogChangeRef = useRef(props.onActiveFillDialogChange);
   activeFillDialogChangeRef.current = props.onActiveFillDialogChange;
   const activeFillDialogId = activeGradientFillDialogId(activeStackDialog, fills);
@@ -4529,7 +4562,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             cornerRadiusKeyframes={{ topLeft: keyframeControls?.cornerRadiusTopLeft, topRight: keyframeControls?.cornerRadiusTopRight, bottomRight: keyframeControls?.cornerRadiusBottomRight, bottomLeft: keyframeControls?.cornerRadiusBottomLeft }} />
 
           {/* Typography — text only */}
-          {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} fonts={fonts} fontSizes={fontSizes} fontWeights={fontWeights} keyframes={keyframeControls} />}
+          {isText && <TypographySection value={typography} onChange={onTypographyChange} stylesAvailable={capabilities.styles} fonts={fonts} availableLocalFonts={availableLocalFonts} onAvailableLocalFontsChange={setAvailableLocalFonts} fontSizes={fontSizes} fontWeights={fontWeights} keyframes={keyframeControls} />}
 
           {/* Stackable sections */}
           <FillSection entries={fills} onAdd={onAddFill} onUpdate={onUpdateFill} onToggle={onToggleFill} onReorder={onReorderFill} onRemove={onRemoveFill}
