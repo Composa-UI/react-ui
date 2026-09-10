@@ -38,6 +38,7 @@ export interface CompositionPanelProps {
   onLayerContextMenu?: LayerListProps["onContextMenu"];
   onLayerReorder?: LayerListProps["onReorder"];
   onLayerReparent?: LayerListProps["onReparent"];
+  onSlideReorder?: (ids: string[], targetIndex: number) => void;
   onNewSlide?: () => void;
   onSlideRenameRequest?: (index: number) => void;
   onSlideDuplicate?: (index: number) => void;
@@ -85,6 +86,7 @@ export function CompositionPanel({
   onLayerContextMenu,
   onLayerReorder,
   onLayerReparent,
+  onSlideReorder,
   onNewSlide,
   onSlideRenameRequest,
   onSlideDuplicate,
@@ -163,7 +165,7 @@ export function CompositionPanel({
       {/* Top — Slides (min 80px). `[&>*]:!w-full` stretches the child to the column
           width; `[&>*]:!border-r-0` drops its own right border (the container owns it). */}
       <div className="min-h-[80px] overflow-hidden [&>*]:!w-full [&>*]:!border-r-0" style={{ flexBasis: `calc(${split} * 100%)`, flexGrow: 0, flexShrink: 1 }}>
-        <SlidesPanel slides={slides} aspectRatio={slideAspectRatio} title={slidesTitle} subtitle={slidesSubtitle} onNewSlide={onNewSlide} onRenameRequest={onSlideRenameRequest} onSlideDuplicate={onSlideDuplicate} onSlideDelete={onSlideDelete} onTitleChange={onCompRename} onTitleMenu={onCompMenu} />
+        <SlidesPanel onReorder={onSlideReorder} slides={slides} aspectRatio={slideAspectRatio} title={slidesTitle} subtitle={slidesSubtitle} onNewSlide={onNewSlide} onRenameRequest={onSlideRenameRequest} onSlideDuplicate={onSlideDuplicate} onSlideDelete={onSlideDelete} onTitleChange={onCompRename} onTitleMenu={onCompMenu} />
       </div>
 
       {/* Bottom — Layers (min 80px, fills the rest). Same stretch/border overrides. */}

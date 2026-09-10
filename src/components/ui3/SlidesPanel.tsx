@@ -1,6 +1,7 @@
 import { clsx } from "clsx";
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { ChevronRight, ChevronDown, Plus, Pencil, Copy, Trash2 } from "lucide-react";
+import { useSlideReorder } from "./useSlideReorder";
 import { ScrollArea } from "./Panel";
 import { Menu, MenuRow } from "./Menu";
 
@@ -19,6 +20,8 @@ const ANIMATE_GLYPH =
 const INTER = { fontFamily: "Inter, sans-serif" } as const;
 
 export interface SlideData {
+  /** Stable identity required for reordering. */
+  id?: string;
   n: number | string;          // number label
   thumb?: string;              // thumbnail image src
   /** Evaluated thumbnail supplied by the app while the composition is being
@@ -99,7 +102,7 @@ function SlideThumb({ item, aspectRatio = SLOT_RATIO }: { item: SlideData; aspec
 }
 
 // ── One slide row ─────────────────────────────────────────────────────────────
-export function SlideListItem({ item, aspectRatio, tabIndex = 0, onNavigate, onRenameRequest, onMenuRequest, onFocus, itemRef }: { item: SlideData; aspectRatio?: number; tabIndex?: number; onNavigate?: (event: KeyboardEvent<HTMLDivElement>) => void; onRenameRequest?: () => void; onMenuRequest?: (event: { clientX: number; clientY: number }) => void; onFocus?: () => void; itemRef?: (node: HTMLDivElement | null) => void }) {
+export function SlideListItem({ item, dragging, aspectRatio, tabIndex = 0, onNavigate, onRenameRequest, onMenuRequest, onFocus, itemRef }: { item: SlideData; dragging?: boolean; aspectRatio?: number; tabIndex?: number; onNavigate?: (event: KeyboardEvent<HTMLDivElement>) => void; onRenameRequest?: () => void; onMenuRequest?: (event: { clientX: number; clientY: number }) => void; onFocus?: () => void; itemRef?: (node: HTMLDivElement | null) => void }) {
   const numLeft = item.sub ? "left-[36px]" : "left-[12px]";
   const previewIntent = useRef({ hover: false, focus: false, active: false });
   const setPreviewIntent = (source: "hover" | "focus", value: boolean) => {
@@ -117,7 +120,7 @@ export function SlideListItem({ item, aspectRatio, tabIndex = 0, onNavigate, onR
   const spacerLeft = item.sub ? 68 : 44;
   const spacerBottom = item.stacked ? 20 : 8; // 8, plus 12 for the stacked cards
   return (
-    <div className="group/slide relative w-full shrink-0 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-c-border-selected"
+    <div data-slide-dragging={dragging || undefined} className={clsx("group/slide relative w-full shrink-0 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-c-border-selected", dragging && "opacity-60 shadow-md scale-[1.01]")}
       ref={itemRef} role="option" tabIndex={tabIndex} aria-selected={item.selected} data-in-view={item.inView || undefined} aria-label={`Composition ${item.n}`}
       onFocus={onFocus}
       onFocusCapture={() => setPreviewIntent("focus", true)}
@@ -246,8 +249,9 @@ function EditableProjectTitle({ title, onCommit, onMenu }: {
 }
 
 // ── Panel ─────────────────────────────────────────────────────────────────────
-export function SlidesPanel({ slides, aspectRatio, title = "Product review", subtitle: _subtitle = "", onNewSlide, onRenameRequest, onTitleChange, onTitleMenu, onSlideDuplicate, onSlideDelete }: {
+export function SlidesPanel({ slides, aspectRatio, title = "Product review", subtitle: _subtitle = "", onNewSlide, onRenameRequest, onTitleChange, onTitleMenu, onSlideDuplicate, onSlideDelete, onReorder }: {
   slides: SlideData[];
+  onReorder?: (ids: string[], targetIndex: number) => void;
   /** Project canvas aspect ratio (width / height). Slide thumbnails honor it while
    *  the reserved slot height stays constant. Defaults to the ~16:9 slot ratio. */
   aspectRatio?: number;
@@ -267,10 +271,17 @@ export function SlidesPanel({ slides, aspectRatio, title = "Product review", sub
 }) {
   const initialFocus = Math.max(0, slides.findIndex(slide => slide.selected));
   const [focusIndex, setFocusIndex] = useState(initialFocus);
+  const focusedId = useRef(slides[initialFocus]?.id);
+  useEffect(() => { const index = slides.findIndex(slide => slide.id && slide.id === focusedId.current); if(index >= 0) setFocusIndex(index); }, [slides.map(slide => slide.id).join("\0")]);
   const [menu, setMenu] = useState<{ index: number; x: number; y: number } | null>(null);
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const listRef = useRef<HTMLDivElement>(null);
+  const reorder = useSlideReorder(slides.map((slide,index) => ({ id: slide.id ?? `legacy-${index}`, selected: slide.selected })), slides.every(slide => slide.id) ? onReorder : undefined);
   const hasItemMenu = Boolean(onRenameRequest || onSlideDuplicate || onSlideDelete);
   const navigate = (index: number, event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.altKey && (event.key === "ArrowUp" || event.key === "ArrowDown") && slides[index].id && onReorder) {
+      event.preventDefault(); event.stopPropagation(); reorder.step(slides[index].id!, event.key === "ArrowUp" ? -1 : 1); return;
+    }
     let next = index;
     if (event.key === "ArrowDown" || event.key === "ArrowRight") next = Math.min(slides.length - 1, index + 1);
     else if (event.key === "ArrowUp" || event.key === "ArrowLeft") next = Math.max(0, index - 1);
@@ -310,9 +321,15 @@ export function SlidesPanel({ slides, aspectRatio, title = "Product review", sub
 
       {/* Slide list — overlay scrollbar (theme-aware thumb) */}
       <ScrollArea>
-        <div className="flex flex-col py-[4px]" role="listbox" aria-label="Compositions">
-          {slides.map((s, i) => <SlideListItem key={i} item={s} aspectRatio={aspectRatio} tabIndex={i === focusIndex ? 0 : -1}
-            itemRef={node => { itemRefs.current[i] = node; }} onFocus={() => setFocusIndex(i)} onNavigate={event => navigate(i, event)}
+        <div ref={listRef} className="flex flex-col py-[4px]" role="listbox" aria-label="Compositions" onDragStart={event => event.preventDefault()} onClickCapture={reorder.clickCapture}
+          onPointerDownCapture={event => {
+            if ((event.target as HTMLElement).closest("button,input")) return;
+            const index = itemRefs.current.findIndex(element => element?.contains(event.target as Node));
+            if (index >= 0 && slides[index].id) reorder.begin(event, slides[index].id!, itemRefs.current.filter((el): el is HTMLDivElement => !!el), "y");
+          }}>
+          {reorder.preview && <div data-slide-reorder-indicator aria-hidden className="fixed pointer-events-none h-[2px] bg-c-border-selected z-50" style={{ top: reorder.preview.position, left: listRef.current?.getBoundingClientRect().left, width: listRef.current?.getBoundingClientRect().width }} />}
+          {slides.map((s, i) => <SlideListItem key={s.id ?? i} dragging={!!s.id && !!reorder.preview?.ids.includes(s.id)} item={s} aspectRatio={aspectRatio} tabIndex={i === focusIndex ? 0 : -1}
+            itemRef={node => { itemRefs.current[i] = node; }} onFocus={() => { focusedId.current = s.id; setFocusIndex(i); }} onNavigate={event => navigate(i, event)}
             onRenameRequest={() => onRenameRequest?.(i)}
             onMenuRequest={hasItemMenu ? event => setMenu({ index: i, x: event.clientX, y: event.clientY }) : undefined} />)}
         </div>
