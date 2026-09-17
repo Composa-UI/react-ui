@@ -30,6 +30,7 @@ import { AlignmentControl, type AlignmentValue } from "./components/ui3/Alignmen
 import { LayerTypeIcon, type LayerAutoLayoutMode, type LayerIconType } from "./components/ui3/LayerTypeIcon";
 import { AnchoredInspectorOverlay } from "./components/ui3/AnchoredInspectorOverlay";
 import { InspectorDialog } from "./components/ui3/InspectorDialog";
+import type { GeneratedControlSetting, GeneratedControlsValue } from "./components/ui3/GeneratedControlsDialog";
 import { ExportDialog, type ExportSettingsValue } from "./components/ui3/ExportDialog";
 import { FontPickerDialog, type FontEntry } from "./components/ui3/FontPickerDialog";
 import { Menu, MenuRow, PopoverMenu } from "./components/ui3/Menu";
@@ -972,6 +973,20 @@ export default function Playground() {
     strokes: [{ id: "stroke-1", color: "#0d99ff", opacity: 100, visible: true, weight: 1, align: "inside", style: "solid", join: "miter", cap: "none" }],
     effects: [{ id: "effect-1", type: "Drop shadow", visible: true }],
   });
+  const [generatedControls, setGeneratedControls] = useState<GeneratedControlsValue>({
+    id: "hero-controls",
+    title: "Hero controls",
+    controls: [
+      { id: "distance", label: "Distance", kind: "number", value: 120, min: 0, max: 500, unit: "px" },
+      { id: "accent", label: "Accent", kind: "color", value: "#ff24bd" },
+      { id: "headline", label: "Headline", kind: "text", value: "Compose the moment" },
+      { id: "enabled", label: "Visible", kind: "boolean", value: true },
+      { id: "alignment", label: "Alignment", kind: "enum", value: "center", options: [
+        { value: "left", label: "Left" }, { value: "center", label: "Center" }, { value: "right", label: "Right" },
+      ] },
+      { id: "artwork", label: "Artwork", kind: "asset", value: "asset-image", displayValue: "cover.png" },
+    ],
+  });
   const [contractAssets, setContractAssets] = useState<AssetItem[]>([
     { id: "asset-image", name: "cover.png", kind: "image", tint: "linear-gradient(135deg,#7c5cff,#ff6ac1)", inUseCount: 3 },
     { id: "asset-video", name: "intro.mp4", kind: "video", tint: "linear-gradient(135deg,#111827,#374151)", duration: "0:24" },
@@ -1470,6 +1485,20 @@ export default function Playground() {
         onDurationBarChange={({ trackId, startMs, endMs }) => setDurationBarTracks(current => current.map(track =>
           track.id === trackId ? { ...track, bar: [startMs, endMs] } : track))}
       />
+    </div>;
+  }
+
+  if (view === "generated-controls") {
+    return <div data-composa-overlay-boundary style={{ height: "100vh", width: "100vw", display: "flex", background: "#e6e6e6" }}>
+      <div style={{ flex: 1, minWidth: 0 }} />
+      <PropertyPanel className="composa-inspector" elementType="text"
+        typography={elementContract.typography}
+        fills={elementContract.fills}
+        generatedControls={generatedControls}
+        onGeneratedControlChange={(id, value) => setGeneratedControls(current => ({ ...current,
+          controls: current.controls.map(control => control.id === id ? { ...control, value } as GeneratedControlSetting : control),
+        }))}
+        onGeneratedControlAssetRequest={id => console.info("Choose asset", id)} />
     </div>;
   }
 

@@ -37,6 +37,7 @@ export * from "./components/ui3/ExportDialog";
 export * from "./components/ui3/FontPickerDialog";
 export * from "./components/ui3/GridSettingsDialog";
 export * from "./components/ui3/GridDimensionsPicker";
+export * from "./components/ui3/GeneratedControlsDialog";
 export * from "./components/ui3/AutoLayoutSettingsDialog";
 export * from "./components/ui3/Input";
 export * from "./components/ui3/IconSemantics";

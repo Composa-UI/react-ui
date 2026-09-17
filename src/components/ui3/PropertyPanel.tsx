@@ -36,6 +36,7 @@ import { Tooltip } from "./Tooltip";
 import { EffectDetailsDialog, type EffectDetailsValue } from "./EffectDetailsDialog";
 import { AutoLayoutSettingsDialog } from "./AutoLayoutSettingsDialog";
 import { GridDimensionsPicker } from "./GridDimensionsPicker";
+import { GeneratedControlsSection, type GeneratedControlsValue } from "./GeneratedControlsDialog";
 import {
   StrokeSettingsDialog,
   type StrokeCap,
@@ -3362,6 +3363,11 @@ export interface PropertyPanelProps {
   onAddEffect?: () => void; onUpdateEffect?: (id: string, patch: Partial<Omit<ElementEffectSetting, "id">>) => void; onToggleEffect?: (id: string, visible: boolean) => void; onReorderEffect?: (id: string, targetId: string) => void; onRemoveEffect?: (id: string) => void;
   onEffectEyedropperActivate?: (id: string) => void;
   activeEffectEyedropperId?: string | null;
+  /** Declarative, host-owned properties for an agent-created object or effect. */
+  generatedControls?: GeneratedControlsValue;
+  generatedControlsReadOnly?: boolean;
+  onGeneratedControlChange?: (controlId: string, value: number | string | boolean) => void;
+  onGeneratedControlAssetRequest?: (controlId: string) => void;
   layoutGuides?: ElementLayoutGuideSetting[];
   onAddLayoutGuide?: () => void; onUpdateLayoutGuide?: (id: string, patch: Partial<Omit<ElementLayoutGuideSetting, "id">>) => void; onRemoveLayoutGuide?: (id: string) => void;
   selectionColors?: ElementSelectionColorSetting[];
@@ -4058,6 +4064,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
   };
   const [uncontrolledTab, setUncontrolledTab] = useState<"design" | "animate" | "prototype">("design");
   const [activeStackDialog, setActiveStackDialog] = useState<string | null>(null);
+  const [generatedControlsOpen, setGeneratedControlsOpen] = useState(false);
+  useEffect(() => setGeneratedControlsOpen(false), [props.generatedControls?.id]);
   const activeFillDialogChangeRef = useRef(props.onActiveFillDialogChange);
   activeFillDialogChangeRef.current = props.onActiveFillDialogChange;
   const activeFillDialogId = activeGradientFillDialogId(activeStackDialog, fills);
@@ -4541,6 +4549,10 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <EffectsSection entries={effects} onAdd={onAddEffect} onUpdate={onUpdateEffect} onToggle={onToggleEffect} onReorder={onReorderEffect} onRemove={onRemoveEffect} capabilities={capabilities}
             onEyedropperActivate={props.onEffectEyedropperActivate} activeEyedropperId={props.activeEffectEyedropperId}
             activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
+
+          {props.generatedControls && <GeneratedControlsSection value={props.generatedControls} open={generatedControlsOpen}
+            readOnly={props.generatedControlsReadOnly} onOpenChange={setGeneratedControlsOpen}
+            onChange={props.onGeneratedControlChange} onChooseAsset={props.onGeneratedControlAssetRequest} />}
 
           {/* Selection Colors — multi-select only (§5.8), positioned right after Effects */}
           {multiSelect && <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor}
