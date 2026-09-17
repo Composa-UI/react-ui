@@ -3384,6 +3384,8 @@ export interface PropertyPanelProps {
   objectAnimationCallbacks?: import("./AnimatePanel").ObjectAnimationCallbacks;
   objectAnimationSettings?: import("./AnimatePanel").ObjectAnimationSequenceSettings;
   addableAnimationPhases?: import("./AnimatePanel").ObjectAnimationPhase[];
+  directKeyframeCount?: number;
+  onShowDirectKeyframes?: () => void;
   /** Project mode keeps the name a static label in V1. */
   projectName?: string;
   projectWidth?: number;
@@ -3935,7 +3937,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   strokes, strokeReadOnly = false, onAddStroke, onUpdateStroke, onToggleStroke, onReorderStroke, onRemoveStroke,
   effects, onAddEffect, onUpdateEffect, onToggleEffect, onReorderEffect, onRemoveEffect,
   layoutGuides, onAddLayoutGuide, onUpdateLayoutGuide, onRemoveLayoutGuide,
-  selectionColors, onUpdateSelectionColor, onSelectAllUsingColor, objectAnimations, objectAnimationCallbacks, objectAnimationSettings, addableAnimationPhases,
+  selectionColors, onUpdateSelectionColor, onSelectAllUsingColor, objectAnimations, objectAnimationCallbacks, objectAnimationSettings, addableAnimationPhases, directKeyframeCount, onShowDirectKeyframes,
   projectName = "Project",
   projectWidth = 1920,
   projectHeight = 1080,
@@ -4332,6 +4334,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             selectionType="slide"
             animationDelay={capabilities.animationDelay}
             objectAnimationCallbacks={objectAnimationCallbacks} objectAnimationSettings={objectAnimationSettings} addablePhases={addableAnimationPhases}
+            directKeyframeCount={directKeyframeCount} onShowDirectKeyframes={onShowDirectKeyframes}
             compTransition={{ style: renderedTransitionType, direction: renderedTransitionDirection, durationMs: renderedTransitionDuration, easing: renderedTransitionEasing }}
             compTransitionCallbacks={{
               onStyleChange: value => { if (slideTransitionType === undefined) setDemoTransitionType(value); onSlideTransitionTypeChange?.(value); },
@@ -4588,6 +4591,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
         selectionType="element"
         animationDelay={capabilities.animationDelay}
         objectAnimationCallbacks={objectAnimationCallbacks} objectAnimationSettings={objectAnimationSettings} addablePhases={addableAnimationPhases}
+        directKeyframeCount={directKeyframeCount} onShowDirectKeyframes={onShowDirectKeyframes}
         compTransition={{ style: renderedTransitionType, direction: renderedTransitionDirection, durationMs: renderedTransitionDuration, easing: renderedTransitionEasing }}
         compTransitionCallbacks={{
           onStyleChange: value => { if (slideTransitionType === undefined) setDemoTransitionType(value); onSlideTransitionTypeChange?.(value); },

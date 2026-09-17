@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ArrowDown, ArrowRight } from "lucide-react";
 import { ACTION_STYLE_OPTIONS, AnimatePanel, type ObjectAnimationItem } from "./AnimatePanel";
 import { PopoverMenu } from "./Menu";
+import { Button } from "./Button";
 import { AnimationStylesDialog } from "./AnimationStylesDialog";
 import { EASING_PRESETS } from "./easing";
 
@@ -587,6 +588,24 @@ describe("AnimatePanel — stable topmost Add Action authoring", () => {
     expect(html).toContain("Custom keyframes stay editable in the timeline");
     expect(html).not.toContain("Select an object on the slide");
     expect(addActionButton(html)).not.toContain("disabled");
+  });
+
+  it("acknowledges direct timeline animation without presenting it as a preset", () => {
+    const show = vi.fn();
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(
+        <AnimatePanel selectionType="element" anims={[]} addablePhases={["action"]}
+          directKeyframeCount={2} onShowDirectKeyframes={show} />,
+      );
+    });
+    expect(renderer!.root.findByType("p").children.join("")).toBe("This object has 2 keyframed properties on the timeline.");
+    const button = renderer!.root.findAllByType(Button).find(item => item.props.label === "Show in timeline");
+    expect(button).toBeDefined();
+    act(() => button!.props.onClick());
+    expect(show).toHaveBeenCalledOnce();
+    expect(renderer!.root.findAllByProps({ "data-animation-card": true })).toHaveLength(0);
+    act(() => renderer!.unmount());
   });
 
   it("routes the Action menu item to the unchanged shared phase callback", () => {

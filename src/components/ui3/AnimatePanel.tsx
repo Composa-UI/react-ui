@@ -317,8 +317,8 @@ function BlockNumberLabel({ n }: { n: number }) {
   );
 }
 
-function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-click", delayMs: 0 }, addablePhases = ["build-in", "action", "build-out"], contextKey, selectionType, animationDelay = false }: {
-  anims: ObjectAnimationItem[]; callbacks?: ObjectAnimationCallbacks; settings?: ObjectAnimationSequenceSettings; addablePhases?: ObjectAnimationPhase[]; contextKey?: string; selectionType?: "slide" | "element"; animationDelay?: boolean;
+function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-click", delayMs: 0 }, addablePhases = ["build-in", "action", "build-out"], contextKey, selectionType, directKeyframeCount = 0, onShowDirectKeyframes, animationDelay = false }: {
+  anims: ObjectAnimationItem[]; callbacks?: ObjectAnimationCallbacks; settings?: ObjectAnimationSequenceSettings; addablePhases?: ObjectAnimationPhase[]; contextKey?: string; selectionType?: "slide" | "element"; directKeyframeCount?: number; onShowDirectKeyframes?: () => void; animationDelay?: boolean;
 }) {
   // Object selection is deliberately broader than Animate-unit focus. Every card
   // belonging to the selected object receives the selected tint, but selection
@@ -392,11 +392,18 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
         </PopoverMenu>
       </div>
       {anims.length === 0 ? (
-        <p className={clsx(FONT, "px-[16px] pb-[8px] text-[11px] leading-[16px] text-c-text-secondary")}>
-          {addablePhases.length > 0
-            ? "No preset actions yet. Add Build in, Action, or Build out above. Custom keyframes stay editable in the timeline."
-            : "Select an object on the slide, then click the add button to animate it."}
-        </p>
+        <div className="px-[16px] pb-[8px]">
+          <p className={clsx(FONT, "text-[11px] leading-[16px] text-c-text-secondary")}>
+            {directKeyframeCount > 0
+              ? `This object has ${directKeyframeCount} keyframed ${directKeyframeCount === 1 ? "property" : "properties"} on the timeline.`
+              : selectionType === "element"
+                ? "No preset actions yet. Add Build in, Action, or Build out above. Custom keyframes stay editable in the timeline."
+                : "Select an object on the slide, then click the add button to animate it."}
+          </p>
+          {directKeyframeCount > 0 && onShowDirectKeyframes && (
+            <Button label="Show in timeline" variant="Link" size="small" onClick={onShowDirectKeyframes} className="mt-[4px] -ml-[8px]" />
+          )}
+        </div>
       ) : (
         <div className="px-[16px] pb-[8px] flex flex-col gap-[8px]">
           {(() => {
@@ -657,9 +664,14 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
   );
 }
 
-export function AnimatePanel({ anims = DEMO_ANIMS, compTransition, compTransitionCallbacks, contextKey, selectionType, objectAnimationCallbacks, objectAnimationSettings, addablePhases, animationDelay = false }: {
+export function AnimatePanel({ anims = DEMO_ANIMS, compTransition, compTransitionCallbacks, contextKey, selectionType, objectAnimationCallbacks, objectAnimationSettings, addablePhases, directKeyframeCount, onShowDirectKeyframes, animationDelay = false }: {
   anims?: ObjectAnimationItem[]; compTransition?: CompTransitionSettings; compTransitionCallbacks?: CompTransitionCallbacks; contextKey?: string; selectionType?: "slide" | "element";
   objectAnimationCallbacks?: ObjectAnimationCallbacks; objectAnimationSettings?: ObjectAnimationSequenceSettings; addablePhases?: ObjectAnimationPhase[];
+  /** Direct property animation stays timeline-owned. This summary prevents an
+   *  imported keyframed object from looking unanimated merely because it has no
+   *  Animate preset cards. */
+  directKeyframeCount?: number;
+  onShowDirectKeyframes?: () => void;
   /** #222: host-owned capability gating the animation "starts automatically" + delay
    *  authoring (and its settings icon). Default OFF — the delay is removed from the
    *  default path and recoverable by flipping this flag on. */
@@ -668,7 +680,7 @@ export function AnimatePanel({ anims = DEMO_ANIMS, compTransition, compTransitio
   return (
     <ScrollArea>
       <CompTransitionSection value={compTransition} callbacks={compTransitionCallbacks} contextKey={contextKey} selectionType={selectionType} animationDelay={animationDelay} />
-      <ObjectAnimationsSection anims={anims} callbacks={objectAnimationCallbacks} settings={objectAnimationSettings} addablePhases={addablePhases} contextKey={contextKey} selectionType={selectionType} animationDelay={animationDelay} />
+      <ObjectAnimationsSection anims={anims} callbacks={objectAnimationCallbacks} settings={objectAnimationSettings} addablePhases={addablePhases} contextKey={contextKey} selectionType={selectionType} directKeyframeCount={directKeyframeCount} onShowDirectKeyframes={onShowDirectKeyframes} animationDelay={animationDelay} />
     </ScrollArea>
   );
 }
