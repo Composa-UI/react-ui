@@ -40,6 +40,13 @@ function rowIcon(root: ReactTestInstance, name: string) {
 }
 
 describe("LayerList trailing controls use the primary icon colour", () => {
+  it("marks a native mask source without changing its editable layer name", () => {
+    const html = renderToStaticMarkup(<LayerList layers={[{ id: "a", name: "Portrait crop", type: "ellipse", maskSource: true }]} selectedIds={[]} />);
+    expect(html).toContain("Portrait crop");
+    expect(html).toContain("data-composa-mask-source");
+    expect(html).toContain(">Mask<");
+  });
+
   it("paints lock and visibility with text-c-icon, not the secondary tone", () => {
     const html = renderToStaticMarkup(<LayerList layers={[{ id: "a", name: "Motto", type: "text" }]} selectedIds={[]} />);
 

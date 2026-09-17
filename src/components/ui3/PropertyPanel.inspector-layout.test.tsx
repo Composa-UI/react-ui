@@ -67,3 +67,13 @@ describe("slide/composition inspector — trailing-slot + Duration column", () =
     expect(duration.props.right).toBeTruthy();
   });
 });
+
+describe("element mask inspector", () => {
+  it("shows the native mask source and exposes one remove action", () => {
+    const renderer = render({ mode: "element", elementType: "frame", mask: { sourceName: "Portrait crop", mode: "shape" }, onRemoveMask: () => undefined });
+    expect(renderer.root.findAll(node => node.props.title === "Mask")).toHaveLength(1);
+    expect(rowByLabel(renderer, "Source")).toBeTruthy();
+    expect(rowByLabel(renderer, "Mode")).toBeTruthy();
+    expect(renderer.root.findAllByProps({ "aria-label": "Remove mask" })).toHaveLength(1);
+  });
+});
