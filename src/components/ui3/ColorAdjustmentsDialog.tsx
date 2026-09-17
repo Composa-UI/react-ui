@@ -165,6 +165,21 @@ export interface ColorAdjustmentsDialogProps {
   /** When false the controls render disabled (Color section not added). */
   enabled?: boolean;
   /**
+   * Controlled values for the engine-backed slider keys, keyed by control key
+   * (e.g. `{ exposure: 20 }`). Seeds those sliders and takes precedence over the
+   * dialog's internal state. Keys NOT listed in `controlledKeys` stay
+   * uncontrolled/cosmetic even if present here.
+   */
+  values?: Record<string, number>;
+  /**
+   * The slider keys that are controlled. Edits to these keys are emitted via
+   * `onValueChange` (never stored internally); every other key keeps its own
+   * internal state. Omit for a fully uncontrolled dialog.
+   */
+  controlledKeys?: readonly string[];
+  /** Fires when a controlled key (one listed in `controlledKeys`) is edited. */
+  onValueChange?: (key: string, value: number) => void;
+  /**
    * Reports whether the group deviates from its neutral defaults, so the
    * collapsed inspector row can show a real "Modified" state instead of a
    * constant "Default". Fires on every change to the group's controls.
@@ -238,16 +253,26 @@ export function ColorAdjustmentsDialog({
   trigger,
   onClose,
   enabled = true,
+  values: controlledValues,
+  controlledKeys,
+  onValueChange,
   onModifiedChange,
 }: ColorAdjustmentsDialogProps) {
   const disabled = !enabled;
   const title = GROUP_TITLES[group];
 
-  // Value state lives here (the wrapper is always mounted; the anchored body is
-  // not) so the collapsed inspector row reflects real edits across open/close.
-  const [values, setValues] = useState<Record<string, number>>({});
+  // Internal value state for the UNCONTROLLED (cosmetic) keys — the wrapper is
+  // always mounted (the anchored body is not), so the collapsed inspector row
+  // reflects real edits across open/close. Controlled keys are overlaid from
+  // props and never stored here.
+  const [internalValues, setInternalValues] = useState<Record<string, number>>({});
   const [noise, setNoise] = useState("off");
-  const setValue = (key: string, value: number) => setValues(state => ({ ...state, [key]: value }));
+  const controlled = controlledKeys ? new Set(controlledKeys) : null;
+  const values = { ...internalValues, ...(controlledValues ?? {}) };
+  const setValue = (key: string, value: number) => {
+    if (controlled?.has(key)) { onValueChange?.(key, value); return; }
+    setInternalValues(state => ({ ...state, [key]: value }));
+  };
 
   const modified = colorAdjustmentGroupModified(group, values, noise);
   const onModifiedChangeRef = useRef(onModifiedChange);

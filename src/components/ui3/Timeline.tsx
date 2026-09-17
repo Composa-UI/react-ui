@@ -1217,9 +1217,16 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
             <button type="button" aria-label={`Next ${p.name} keyframe`} onClick={() => onPropertyStepKeyframe?.(trackId, p.id ?? `property-${i}`, "next")} className="shrink-0 flex items-center justify-center opacity-0 group-hover/prop:opacity-100 disabled:opacity-0" disabled={!onPropertyStepKeyframe}>
               <ChevronRight size={14} strokeWidth={1.5} className="text-c-icon-secondary" />
             </button>
-            {/* Inline value at the playhead stays visible beside keyframe state, matching the canonical row anatomy. */}
+            {/* Figma Motion keeps the value field visually quiet until its
+                property row is the current editing target. Hover/focus still
+                reveals it so the control remains discoverable by pointer and
+                keyboard without filling every imported track with gray boxes. */}
             {p.value !== undefined && (
-              <div data-timeline-property-value className={clsx("shrink-0 select-text", typeof p.value === "string" ? "w-[80px]" : "w-[56px]")}>
+              <div data-timeline-property-value className={clsx(
+                "shrink-0 select-text transition-opacity [&_[data-composa-numeric-input]]:!bg-transparent",
+                propSelected || rowGraySelected ? "opacity-100" : "opacity-0 group-hover/prop:opacity-100 focus-within:opacity-100",
+                typeof p.value === "string" ? "w-[80px]" : "w-[56px]",
+              )}>
                 {typeof p.value === "string"
                   ? <ColorInput ariaLabel={`${p.name} value`} color={p.value} size="small" fullWidth showOpacity={false} disabled={p.valueEditable === false}
                       onColorChange={value => onPropertyValueChange?.(trackId, propertyId, value)} />

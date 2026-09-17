@@ -36,6 +36,7 @@ import { Tooltip } from "./Tooltip";
 import { EffectDetailsDialog, type EffectDetailsValue } from "./EffectDetailsDialog";
 import { AutoLayoutSettingsDialog } from "./AutoLayoutSettingsDialog";
 import { GridDimensionsPicker } from "./GridDimensionsPicker";
+import { GeneratedControlsSection, type GeneratedControlsValue } from "./GeneratedControlsDialog";
 import {
   StrokeSettingsDialog,
   type StrokeCap,
@@ -2989,7 +2990,21 @@ const ADJUSTMENT_GROUPS: { group: ColorAdjustmentGroup; label: string }[] = [
   { group: "creative", label: "Creative adjustments" },
 ];
 
-function ClipColorBody() {
+// The Light and Color adjustment groups each back a subset of the 7 engine keys
+// (exposure/contrast/saturation/temperature/tint/highlights/shadows). Those
+// sliders become controlled when the clip's persisted grade is supplied; every
+// other slider (brightness/whites/blacks/vibrance/hue) and the Wheels/Creative
+// groups stay uncontrolled/cosmetic for Phase 2. Slider keys match engine keys
+// 1:1, so no renaming is needed.
+const CLIP_GROUP_ENGINE_KEYS: Partial<Record<ColorAdjustmentGroup, readonly string[]>> = {
+  light: ["exposure", "contrast", "highlights", "shadows"],
+  color: ["temperature", "tint", "saturation"],
+};
+
+function ClipColorBody({ adjustments, onAdjustmentChange }: {
+  adjustments?: Partial<Record<string, number>>;
+  onAdjustmentChange?: (key: string, value: number) => void;
+}) {
   const [conversion, setConversion] = useState<string>("Apple Log");
   const [look, setLook] = useState<string>("Analog Indie");
   const [openGroup, setOpenGroup] = useState<ColorAdjustmentGroup | null>(null);
@@ -3000,6 +3015,19 @@ function ClipColorBody() {
   const setGroupModified = (group: ColorAdjustmentGroup) => (modified: boolean) =>
     setModifiedGroups(state => (state[group] === modified ? state : { ...state, [group]: modified }));
   const lutLabels = (opts: readonly string[]) => Object.fromEntries(opts.map(o => [o, o])) as Record<string, string>;
+  // Seed the controlled sliders for a group from the clip's persisted grade
+  // (keys absent from `adjustments` fall through to the dialog's neutral
+  // default). Groups without engine keys stay fully uncontrolled.
+  const groupValues = (group: ColorAdjustmentGroup): Record<string, number> | undefined => {
+    const keys = CLIP_GROUP_ENGINE_KEYS[group];
+    if (!keys) return undefined;
+    const seeded: Record<string, number> = {};
+    for (const key of keys) {
+      const value = adjustments?.[key];
+      if (value !== undefined) seeded[key] = value;
+    }
+    return seeded;
+  };
   return (
     <>
       <PanelFieldRow label="Conversion LUT"
@@ -3008,9 +3036,13 @@ function ClipColorBody() {
         left={<ChoiceDropdown ariaLabel="Look LUT" value={look} options={LOOK_LUTS} labels={lutLabels(LOOK_LUTS)} onChange={setLook} />} />
       {ADJUSTMENT_GROUPS.map(({ group, label }) => {
         const stateLabel = modifiedGroups[group] ? "Modified" : "Default";
+        const controlledKeys = CLIP_GROUP_ENGINE_KEYS[group];
         return (
           <PanelFieldRow key={group} label={label}
             left={<ColorAdjustmentsDialog group={group} enabled open={openGroup === group} onClose={() => setOpenGroup(null)}
+              values={groupValues(group)}
+              controlledKeys={controlledKeys}
+              onValueChange={onAdjustmentChange ? (key, value) => onAdjustmentChange(key, value) : undefined}
               onModifiedChange={setGroupModified(group)}
               trigger={<Dropdown ariaLabel={`${label}: ${stateLabel}`} value={stateLabel} fullWidth onClick={() => setOpenGroup(group)} />} />} />
         );
@@ -3331,6 +3363,11 @@ export interface PropertyPanelProps {
   onAddEffect?: () => void; onUpdateEffect?: (id: string, patch: Partial<Omit<ElementEffectSetting, "id">>) => void; onToggleEffect?: (id: string, visible: boolean) => void; onReorderEffect?: (id: string, targetId: string) => void; onRemoveEffect?: (id: string) => void;
   onEffectEyedropperActivate?: (id: string) => void;
   activeEffectEyedropperId?: string | null;
+  /** Declarative, host-owned properties for an agent-created object or effect. */
+  generatedControls?: GeneratedControlsValue;
+  generatedControlsReadOnly?: boolean;
+  onGeneratedControlChange?: (controlId: string, value: number | string | boolean) => void;
+  onGeneratedControlAssetRequest?: (controlId: string) => void;
   layoutGuides?: ElementLayoutGuideSetting[];
   onAddLayoutGuide?: () => void; onUpdateLayoutGuide?: (id: string, patch: Partial<Omit<ElementLayoutGuideSetting, "id">>) => void; onRemoveLayoutGuide?: (id: string) => void;
   selectionColors?: ElementSelectionColorSetting[];
@@ -3343,6 +3380,8 @@ export interface PropertyPanelProps {
   objectAnimationCallbacks?: import("./AnimatePanel").ObjectAnimationCallbacks;
   objectAnimationSettings?: import("./AnimatePanel").ObjectAnimationSequenceSettings;
   addableAnimationPhases?: import("./AnimatePanel").ObjectAnimationPhase[];
+  directKeyframeCount?: number;
+  onShowDirectKeyframes?: () => void;
   /** Project mode keeps the name a static label in V1. */
   projectName?: string;
   projectWidth?: number;
@@ -3483,6 +3522,16 @@ export interface PropertyPanelProps {
   /** Video Clip · Blend — composite mode. Controlled when the callback is set. */
   clipBlendMode?: ClipBlendMode;
   onClipBlendModeChange?: (value: ClipBlendMode) => void;
+  /**
+   * Video Clip · Color — the 7 engine-backed basic grade adjustments
+   * (exposure/contrast/saturation/temperature/tint/highlights/shadows). When
+   * provided, ClipColorBody's Light (exposure/contrast/highlights/shadows) and
+   * Color (temperature/tint/saturation) dialog sliders for these keys are
+   * controlled; every other Color control (LUTs, Color-Wheels, Creative, Chroma,
+   * and brightness/whites/blacks/vibrance/hue) stays cosmetic until Phase 2.
+   */
+  clipAdjustments?: Partial<Record<string, number>>;
+  onClipAdjustmentChange?: (key: string, value: number) => void;
   /** Audio Clip mode — clip name + Volume are the only host-wired controls; the
    *  remaining effect sections are structural (unwired) until the audio DSP lands. */
   audioClipName?: string;
@@ -3884,7 +3933,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
   strokes, strokeReadOnly = false, onAddStroke, onUpdateStroke, onToggleStroke, onReorderStroke, onRemoveStroke,
   effects, onAddEffect, onUpdateEffect, onToggleEffect, onReorderEffect, onRemoveEffect,
   layoutGuides, onAddLayoutGuide, onUpdateLayoutGuide, onRemoveLayoutGuide,
-  selectionColors, onUpdateSelectionColor, onSelectAllUsingColor, objectAnimations, objectAnimationCallbacks, objectAnimationSettings, addableAnimationPhases,
+  selectionColors, onUpdateSelectionColor, onSelectAllUsingColor, objectAnimations, objectAnimationCallbacks, objectAnimationSettings, addableAnimationPhases, directKeyframeCount, onShowDirectKeyframes,
   projectName = "Project",
   projectWidth = 1920,
   projectHeight = 1080,
@@ -3991,6 +4040,8 @@ export function PropertyPanel(props: PropertyPanelProps) {
   onDeleteClip,
   clipBlendMode = "Normal",
   onClipBlendModeChange,
+  clipAdjustments,
+  onClipAdjustmentChange,
   audioClipName = "voiceover",
   onAudioClipNameChange,
   audioVolume = 100,
@@ -4279,6 +4330,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
             selectionType="slide"
             animationDelay={capabilities.animationDelay}
             objectAnimationCallbacks={objectAnimationCallbacks} objectAnimationSettings={objectAnimationSettings} addablePhases={addableAnimationPhases}
+            directKeyframeCount={directKeyframeCount} onShowDirectKeyframes={onShowDirectKeyframes}
             compTransition={{ style: renderedTransitionType, direction: renderedTransitionDirection, durationMs: renderedTransitionDuration, easing: renderedTransitionEasing }}
             compTransitionCallbacks={{
               onStyleChange: value => { if (slideTransitionType === undefined) setDemoTransitionType(value); onSlideTransitionTypeChange?.(value); },
@@ -4325,9 +4377,13 @@ export function PropertyPanel(props: PropertyPanelProps) {
             onDurationChange={onClipDurationChange} />
           <ClipTrimSection trimIn={clipTrimIn} trimOut={clipTrimOut} controlled={props.clipTrimIn !== undefined || props.clipTrimOut !== undefined} onTrimInChange={onClipTrimInChange} onTrimOutChange={onClipTrimOutChange} />
           <ClipPlaybackSection speed={clipSpeed} controlled={props.clipSpeed !== undefined} onSpeedChange={onClipSpeedChange} />
-          {/* Only Appearance is modeled today. Color grading and Chroma key stay
-              absent until the engine can persist and render them truthfully. */}
+          {/* Appearance is modeled today. Color grading and Chroma key are now
+              surfaced ahead of the engine effect-stack — cosmetic/not-yet-persisted
+              for the dev showcase (owner call) until the engine can persist and
+              render them truthfully. */}
           <ClipBlendSection mode={clipBlendMode} controlled={props.clipBlendMode !== undefined} onModeChange={onClipBlendModeChange} />
+          <PanelSection title="Color" landmark><ClipColorBody adjustments={clipAdjustments} onAdjustmentChange={onClipAdjustmentChange} /></PanelSection>
+          <PanelSection title="Chroma key" landmark><ChromaKeyBody /></PanelSection>
         </ScrollArea>
       )}
 
@@ -4390,6 +4446,11 @@ export function PropertyPanel(props: PropertyPanelProps) {
               {elementLabel[elementType]}
             </span>
           </div>
+
+          {/* Declared generated/component properties are the first editable section. */}
+          {props.generatedControls && <GeneratedControlsSection value={props.generatedControls}
+            readOnly={props.generatedControlsReadOnly}
+            onChange={props.onGeneratedControlChange} onChooseAsset={props.onGeneratedControlAssetRequest} />}
 
           {/* Component Properties — instances only (§5.1), at the very top */}
           {isInstance && <ComponentPropertiesSection />}
@@ -4519,6 +4580,7 @@ export function PropertyPanel(props: PropertyPanelProps) {
         selectionType="element"
         animationDelay={capabilities.animationDelay}
         objectAnimationCallbacks={objectAnimationCallbacks} objectAnimationSettings={objectAnimationSettings} addablePhases={addableAnimationPhases}
+        directKeyframeCount={directKeyframeCount} onShowDirectKeyframes={onShowDirectKeyframes}
         compTransition={{ style: renderedTransitionType, direction: renderedTransitionDirection, durationMs: renderedTransitionDuration, easing: renderedTransitionEasing }}
         compTransitionCallbacks={{
           onStyleChange: value => { if (slideTransitionType === undefined) setDemoTransitionType(value); onSlideTransitionTypeChange?.(value); },
