@@ -579,6 +579,16 @@ describe("AnimatePanel — stable topmost Add Action authoring", () => {
     expect(addActionButton(html)).toContain("disabled");
   });
 
+  it("distinguishes an empty preset stack from no object selection", () => {
+    const html = renderToStaticMarkup(
+      <AnimatePanel selectionType="element" anims={[]} addablePhases={["build-in", "action", "build-out"]} />,
+    );
+    expect(html).toContain("No preset actions yet");
+    expect(html).toContain("Custom keyframes stay editable in the timeline");
+    expect(html).not.toContain("Select an object on the slide");
+    expect(addActionButton(html)).not.toContain("disabled");
+  });
+
   it("routes the Action menu item to the unchanged shared phase callback", () => {
     const phases: string[] = [];
     let renderer: ReturnType<typeof create>;

@@ -393,7 +393,9 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
       </div>
       {anims.length === 0 ? (
         <p className={clsx(FONT, "px-[16px] pb-[8px] text-[11px] leading-[16px] text-c-text-secondary")}>
-          Select an object on the slide, then click the add button to animate it.
+          {addablePhases.length > 0
+            ? "No preset actions yet. Add Build in, Action, or Build out above. Custom keyframes stay editable in the timeline."
+            : "Select an object on the slide, then click the add button to animate it."}
         </p>
       ) : (
         <div className="px-[16px] pb-[8px] flex flex-col gap-[8px]">
