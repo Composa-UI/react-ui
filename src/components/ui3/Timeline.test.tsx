@@ -130,10 +130,22 @@ describe("Timeline DOM contracts", () => {
     expect(visible).toContain('aria-label="Height value"');
     expect(visible).toContain('value="274"');
     expect(visible).toContain("data-timeline-property-value");
-    expect(visible).not.toMatch(/data-timeline-property-value[^>]*opacity-0/);
+    expect(visible).toMatch(/data-timeline-property-value[^>]*opacity-0/);
+    expect(visible).toContain("group-hover/prop:opacity-100");
     expect(hidden).toContain('aria-label="Show Hero"');
     expect(hidden).toContain('aria-pressed="true"');
     expect(hidden).toContain("opacity-40");
+  });
+
+  it("shows the ghost value field when its property row is selected", () => {
+    const html = renderToStaticMarkup(<Timeline height={220} tracks={[{
+      id: "hero", name: "Hero", type: "frame", props: [
+        { id: "height", name: "Height", value: 274, keyframes: [] },
+      ],
+    }]} selectedTimelineRowId="height" onPropertyRowSelect={() => undefined} onPropertyValueChange={() => undefined} />);
+    expect(html).toMatch(/data-timeline-property-value[^>]*opacity-100/);
+    expect(html).toContain("data-composa-numeric-input");
+    expect(html).toContain("!bg-transparent");
   });
 
   it("projects an editable color value through the controlled timeline callback", () => {
