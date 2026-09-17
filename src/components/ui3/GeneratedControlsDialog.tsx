@@ -1,4 +1,4 @@
-import { ChevronRight, X } from "lucide-react";
+import { X } from "lucide-react";
 import { type ReactElement } from "react";
 import { Button } from "./Button";
 import { Dropdown } from "./Dropdown";
@@ -109,21 +109,22 @@ export function GeneratedControlsDialog({ value, open, readOnly = false, trigger
   </InspectorDialog>;
 }
 
-export function GeneratedControlsSection({ value, open, readOnly = false, onOpenChange, onChange, onChooseAsset }: {
+/**
+ * Component properties belong in the inspector itself. The dialog above stays
+ * exported for focused hosts that explicitly need a temporary surface, but the
+ * PropertyPanel uses this inline section so ordinary generated properties are
+ * visible, searchable, and editable without opening a second workflow.
+ */
+export function GeneratedControlsSection({ value, readOnly = false, onChange, onChooseAsset }: {
   value: GeneratedControlsValue;
-  open: boolean;
   readOnly?: boolean;
-  onOpenChange: (open: boolean) => void;
   onChange?: GeneratedControlsDialogProps["onChange"];
   onChooseAsset?: GeneratedControlsDialogProps["onChooseAsset"];
 }) {
-  const trigger = <button type="button" aria-label={`Open ${value.title}`} onClick={() => onOpenChange(true)}
-    className="flex h-[32px] w-full items-center gap-[8px] px-[16px] text-left text-[11px] font-[450] text-c-text outline-none hover:bg-c-bg-hover focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-c-focus-ring">
-    <span className="min-w-0 flex-1 truncate">{value.title}</span>
-    <span className="text-c-icon-secondary"><ChevronRight size={14} strokeWidth={1.5} /></span>
-  </button>;
-  return <PanelSection title="Properties" landmark>
-    <GeneratedControlsDialog value={value} open={open} readOnly={readOnly} trigger={trigger}
-      onChange={onChange} onChooseAsset={onChooseAsset} onClose={() => onOpenChange(false)} />
+  return <PanelSection title={value.title} landmark>
+    <div data-composa-generated-controls={value.id} className="flex flex-col px-[16px] pb-[8px]">
+      {value.controls.map(control => <ControlRow key={control.id} control={control} readOnly={readOnly}
+        onChange={onChange} onChooseAsset={onChooseAsset} />)}
+    </div>
   </PanelSection>;
 }

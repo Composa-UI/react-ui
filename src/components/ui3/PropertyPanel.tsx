@@ -4064,8 +4064,6 @@ export function PropertyPanel(props: PropertyPanelProps) {
   };
   const [uncontrolledTab, setUncontrolledTab] = useState<"design" | "animate" | "prototype">("design");
   const [activeStackDialog, setActiveStackDialog] = useState<string | null>(null);
-  const [generatedControlsOpen, setGeneratedControlsOpen] = useState(false);
-  useEffect(() => setGeneratedControlsOpen(false), [props.generatedControls?.id]);
   const activeFillDialogChangeRef = useRef(props.onActiveFillDialogChange);
   activeFillDialogChangeRef.current = props.onActiveFillDialogChange;
   const activeFillDialogId = activeGradientFillDialogId(activeStackDialog, fills);
@@ -4446,6 +4444,11 @@ export function PropertyPanel(props: PropertyPanelProps) {
             </span>
           </div>
 
+          {/* Declared generated/component properties are the first editable section. */}
+          {props.generatedControls && <GeneratedControlsSection value={props.generatedControls}
+            readOnly={props.generatedControlsReadOnly}
+            onChange={props.onGeneratedControlChange} onChooseAsset={props.onGeneratedControlAssetRequest} />}
+
           {/* Component Properties — instances only (§5.1), at the very top */}
           {isInstance && <ComponentPropertiesSection />}
 
@@ -4549,10 +4552,6 @@ export function PropertyPanel(props: PropertyPanelProps) {
           <EffectsSection entries={effects} onAdd={onAddEffect} onUpdate={onUpdateEffect} onToggle={onToggleEffect} onReorder={onReorderEffect} onRemove={onRemoveEffect} capabilities={capabilities}
             onEyedropperActivate={props.onEffectEyedropperActivate} activeEyedropperId={props.activeEffectEyedropperId}
             activeStackDialog={activeStackDialog} onActiveStackDialogChange={setActiveStackDialog} />
-
-          {props.generatedControls && <GeneratedControlsSection value={props.generatedControls} open={generatedControlsOpen}
-            readOnly={props.generatedControlsReadOnly} onOpenChange={setGeneratedControlsOpen}
-            onChange={props.onGeneratedControlChange} onChooseAsset={props.onGeneratedControlAssetRequest} />}
 
           {/* Selection Colors — multi-select only (§5.8), positioned right after Effects */}
           {multiSelect && <SelectionColorsSection colors={selectionColors} onUpdate={onUpdateSelectionColor} onSelectAll={onSelectAllUsingColor}

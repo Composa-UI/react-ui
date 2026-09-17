@@ -55,12 +55,16 @@ describe("GeneratedControlsDialog", () => {
     expect(onChooseAsset).toHaveBeenCalledWith("artwork");
   });
 
-  it("renders the compact summary row and opens through the controlled seam", () => {
-    const onOpenChange = vi.fn();
+  it("renders component properties inline in their named inspector section", () => {
     let renderer: ReactTestRenderer;
-    act(() => { renderer = create(<GeneratedControlsSection value={value} open={false} onOpenChange={onOpenChange} />); });
-    const trigger = renderer!.root.findByProps({ "aria-label": "Open Hero controls" });
-    act(() => trigger.props.onClick());
-    expect(onOpenChange).toHaveBeenCalledWith(true);
+    act(() => { renderer = create(<GeneratedControlsSection value={value} />); });
+    expect(renderer!.root.findByProps({ "data-composa-generated-controls": "hero-controls" })).toBeTruthy();
+    expect(renderer!.root.findAllByType(NumericInput)).toHaveLength(1);
+    expect(renderer!.root.findAllByType(ColorInput)).toHaveLength(1);
+    expect(renderer!.root.findAllByType(InputField)).toHaveLength(1);
+    expect(renderer!.root.findAllByType(Switch)).toHaveLength(1);
+    expect(renderer!.root.findAllByType(Dropdown)).toHaveLength(1);
+    expect(renderer!.root.findAllByType(Button).filter(node => node.props.label === "cover.png")).toHaveLength(1);
+    expect(renderer!.root.findAllByProps({ "aria-label": "Open Hero controls" })).toHaveLength(0);
   });
 });
