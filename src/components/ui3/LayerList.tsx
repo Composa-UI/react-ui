@@ -33,6 +33,8 @@ export interface LayerNode {
   inheritedLocked?: boolean;
   autoLayoutMode?: LayerAutoLayoutMode;
   autoLayoutAlign?: LayerAutoLayoutAlign;
+  /** This layer supplies the editable silhouette for its parent mask group. */
+  maskSource?: boolean;
 }
 
 const DEMO_LAYERS: LayerNode[] = [
@@ -297,6 +299,7 @@ function LayerRow({ row, hasChildren, open, focused, renaming, renameDraft, onRe
       ) : (
         <span className={clsx(FONT, "relative flex-1 min-w-0 text-[11px] leading-[16px] truncate", selectionState === "selected" ? "font-[550]" : "font-[450]", isComponent ? "text-accent-component" : "text-c-text")}>{node.name}</span>
       )}
+      {node.maskSource && <span data-composa-mask-source className={clsx(FONT, "relative shrink-0 rounded-c-sm border border-c-border px-[4px] text-[9px] leading-[14px] text-c-text-secondary")}>Mask</span>}
       {/* trailing: lock first (open padlock on hover; closed padlock persistent when locked), then visibility.
           Both carry the PRIMARY icon colour (Composa#661): they are actionable
           row controls, not de-emphasised metadata, and `text-c-icon-secondary`

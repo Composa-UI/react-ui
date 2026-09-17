@@ -397,7 +397,7 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
             {directKeyframeCount > 0
               ? `This object has ${directKeyframeCount} keyframed ${directKeyframeCount === 1 ? "property" : "properties"} on the timeline.`
               : selectionType === "element"
-                ? "Add a preset action here, or animate a property on the timeline."
+                ? "No preset actions yet. Add Build in, Action, or Build out above. Custom keyframes stay editable in the timeline."
                 : "Select an object on the slide, then click the add button to animate it."}
           </p>
           {directKeyframeCount > 0 && onShowDirectKeyframes && (

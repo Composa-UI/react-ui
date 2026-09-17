@@ -3368,6 +3368,10 @@ export interface PropertyPanelProps {
   generatedControlsReadOnly?: boolean;
   onGeneratedControlChange?: (controlId: string, value: number | string | boolean) => void;
   onGeneratedControlAssetRequest?: (controlId: string) => void;
+  /** Native editable mask owned by the selected frame. */
+  mask?: { sourceName: string; mode: "shape" };
+  maskReadOnly?: boolean;
+  onRemoveMask?: () => void;
   layoutGuides?: ElementLayoutGuideSetting[];
   onAddLayoutGuide?: () => void; onUpdateLayoutGuide?: (id: string, patch: Partial<Omit<ElementLayoutGuideSetting, "id">>) => void; onRemoveLayoutGuide?: (id: string) => void;
   selectionColors?: ElementSelectionColorSetting[];
@@ -4451,6 +4455,13 @@ export function PropertyPanel(props: PropertyPanelProps) {
           {props.generatedControls && <GeneratedControlsSection value={props.generatedControls}
             readOnly={props.generatedControlsReadOnly}
             onChange={props.onGeneratedControlChange} onChooseAsset={props.onGeneratedControlAssetRequest} />}
+
+          {props.mask && <PanelSection title="Mask" landmark rightActions={
+            <PanelActionBtn icon={<Minus size={16} strokeWidth={1.5} />} label="Remove mask" disabled={props.maskReadOnly} onClick={props.onRemoveMask} />
+          }>
+            <PanelFieldRow label="Source" left={<InputField value={props.mask.sourceName} disabled />} />
+            <PanelFieldRow label="Mode" left={<Dropdown value="Shape" fullWidth disabled />} />
+          </PanelSection>}
 
           {/* Component Properties — instances only (§5.1), at the very top */}
           {isInstance && <ComponentPropertiesSection />}
