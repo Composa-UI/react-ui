@@ -1,5 +1,6 @@
 export type CubicBezier = [number, number, number, number];
 export type EasingPreset =
+  | "hold"
   | "linear"
   | "ease-in"
   | "ease-out"
@@ -19,6 +20,7 @@ export interface EasingPresetDefinition {
 }
 
 export const EASING_PRESETS: readonly EasingPresetDefinition[] = Object.freeze([
+  { value: "hold", label: "Hold", controlPoints: [0, 0, 1, 1] },
   { value: "linear", label: "Linear", controlPoints: [0, 0, 1, 1] },
   { value: "ease-in", label: "Ease in", controlPoints: [0.42, 0, 1, 1] },
   { value: "ease-out", label: "Ease out", controlPoints: [0, 0, 0.58, 1] },

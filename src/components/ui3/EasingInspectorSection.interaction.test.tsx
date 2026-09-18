@@ -47,4 +47,14 @@ describe("EasingInspectorSection interactions", () => {
     expect(changes).toEqual([{ preset: "custom", controlPoints: [0.2, -0.1, 0.75, 1.15] }]);
     expect(lifecycle).toEqual(["start", "cancel"]);
   });
+
+  it("converts Hold to an editable custom curve from the preview", () => {
+    const changes: unknown[] = [];
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<EasingInspectorSection value={{ preset: "hold", editable: true }} onChange={value => changes.push(value)} />); });
+    const convert = renderer!.root.findByProps({ "aria-label": "Change Hold easing to custom curve" });
+    act(() => convert.props.onClick());
+    expect(changes).toEqual([{ preset: "custom", controlPoints: [0, 0, 1, 1] }]);
+    act(() => renderer!.unmount());
+  });
 });
