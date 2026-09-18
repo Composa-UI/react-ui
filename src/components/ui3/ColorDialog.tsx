@@ -4,7 +4,7 @@ import { Image, ImagePlus, Pipette, Plus, Minus, RotateCcw, ArrowLeftRight, Disc
 import { ProposedRotateCwDiamond } from "../../icons/proposed-lucide";
 import { ModalBody, ModalDivider } from "./Dialog";
 import { InspectorDialog } from "./InspectorDialog";
-import type { AnchoredInspectorOverlayAlign } from "./AnchoredInspectorOverlay";
+import { COMPOSA_OVERLAY_BOUNDARY_SELECTOR, type AnchoredInspectorOverlayAlign } from "./AnchoredInspectorOverlay";
 import { hexToHsb, hsbToHex } from "../../lib/color";
 import { SingleTab, Tabs } from "./Tabs";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
@@ -1014,6 +1014,7 @@ export function ColorDialog({
       sideOffset={sideOffset}
       align={align}
       elevation={400}
+      boundarySelector={COMPOSA_OVERLAY_BOUNDARY_SELECTOR}
       className="flex max-h-[calc(100vh-32px)] flex-col overflow-hidden"
     >
 
