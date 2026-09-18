@@ -225,6 +225,34 @@ describe("NumericInput — editing precision", () => {
     act(() => renderer!.unmount());
   });
 
+  it("keeps a pair edit open across controlled provider rerenders and cancels only on unmount", () => {
+    const onEditStart = vi.fn();
+    const onEditCommit = vi.fn();
+    const firstCancel = vi.fn();
+    const latestCancel = vi.fn();
+    const renderPair = (x: number, onEditCancel: () => void) => (
+      <NumericEditSessionProvider onEditStart={onEditStart} onEditCommit={onEditCommit} onEditCancel={onEditCancel}>
+        <NumericPairInput
+          a={{ ariaLabel: "Position X", iconLead: "X", value: x }}
+          b={{ ariaLabel: "Position Y", iconLead: "Y", value: 20 }}
+        />
+      </NumericEditSessionProvider>
+    );
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(renderPair(10, firstCancel)); });
+    focus(renderer!.root.findByProps({ "aria-label": "Position X" }));
+    expect(onEditStart).toHaveBeenCalledTimes(1);
+
+    act(() => renderer!.update(renderPair(11, latestCancel)));
+    expect(firstCancel).not.toHaveBeenCalled();
+    expect(latestCancel).not.toHaveBeenCalled();
+
+    act(() => renderer!.unmount());
+    expect(firstCancel).not.toHaveBeenCalled();
+    expect(latestCancel).toHaveBeenCalledTimes(1);
+    expect(onEditCommit).not.toHaveBeenCalled();
+  });
+
   it("steps from the displayed value rather than the raw float", () => {
     const onChange = vi.fn();
     let renderer: ReturnType<typeof create>;
