@@ -16,6 +16,7 @@ vi.mock("./InspectorDialog", () => ({
     sideOffset,
     align,
     elevation,
+    boundarySelector,
     className,
     trigger,
     children,
@@ -25,6 +26,7 @@ vi.mock("./InspectorDialog", () => ({
     sideOffset?: number;
     align?: string;
     elevation?: number;
+    boundarySelector?: string;
     className?: string;
     trigger: ReactElement;
     children: ReactNode;
@@ -35,6 +37,7 @@ vi.mock("./InspectorDialog", () => ({
       data-side-offset={sideOffset}
       data-align={align}
       data-elevation={elevation}
+      data-boundary-selector={boundarySelector}
       data-class-name={className}
     >
       {trigger}
@@ -60,6 +63,7 @@ describe("ColorDialog anchored inspector contract", () => {
     expect(html).toContain('data-side-offset="24"');
     expect(html).toContain('data-align="start"');
     expect(html).toContain('data-elevation="400"');
+    expect(html).toContain('data-boundary-selector="[data-composa-overlay-boundary]"');
     expect(html).toContain('data-class-name="flex max-h-[calc(100vh-32px)] flex-col overflow-hidden"');
     expect(html).toContain(">Open color</button>");
   });

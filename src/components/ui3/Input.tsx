@@ -672,9 +672,20 @@ function PairSegment({ seg, size, isLast, disabled = false, onFocusChange }: {
   const scrubStart = useRef<{ x: number; value: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const sessionOpen = useRef(false);
+  const cancelSessionRef = useRef(session.onEditCancel);
+  cancelSessionRef.current = session.onEditCancel;
 
   useEffect(() => { if (!focused && !scrubbing) setDraft(formatNumericDisplay(current)); }, [current, focused, scrubbing]);
-  useEffect(() => () => { if (sessionOpen.current) { sessionOpen.current = false; session.onEditCancel?.(); } }, [session]);
+  // Provider callbacks are commonly recreated when the controlled value changes.
+  // That rerender is part of the active edit, not an unmount: depending on the
+  // context object cancelled the host transaction immediately after every pair
+  // segment change. Keep the latest cancel callback in a ref and reserve cleanup
+  // for a real unmount, matching NumericInput's single-field lease contract.
+  useEffect(() => () => {
+    if (!sessionOpen.current) return;
+    sessionOpen.current = false;
+    cancelSessionRef.current?.();
+  }, []);
 
   const clampVal = (n: number) => {
     let v = n;
