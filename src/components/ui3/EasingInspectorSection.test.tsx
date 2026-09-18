@@ -6,6 +6,7 @@ import { EASING_PRESETS, easingControlPoints, easingPresetLabel, easingSvgPath }
 describe("EasingInspectorSection contracts", () => {
   it("keeps every named preset and cubic value aligned with the timeline spec", () => {
     expect(EASING_PRESETS.map(preset => [preset.label, preset.controlPoints])).toEqual([
+      ["Hold", [0, 0, 1, 1]],
       ["Linear", [0, 0, 1, 1]],
       ["Ease in", [0.42, 0, 1, 1]],
       ["Ease out", [0, 0, 0.58, 1]],
@@ -46,10 +47,10 @@ describe("EasingInspectorSection contracts", () => {
   });
 
   it("maps pointer coordinates through the same inset plot as the rendered handles", () => {
-    const rect = { left: 20, top: 40, width: 400, height: 224 };
+    const rect = { left: 20, top: 40, width: 400, height: 320 };
     const client = (x: number, y: number) => [
-      rect.left + (12 + x * 176) / 200 * rect.width,
-      rect.top + (100 - y * 88) / 112 * rect.height,
+      rect.left + (16 + x * 168) / 200 * rect.width,
+      rect.top + (144 - (y + 0.25) / 1.5 * 128) / 160 * rect.height,
     ] as const;
     const custom = easingPointAtClient(rect, ...client(0.2, -0.1));
     expect(custom[0]).toBeCloseTo(0.2, 10);
@@ -67,7 +68,7 @@ describe("EasingInspectorSection contracts", () => {
     expect(html).toContain('aria-label="Easing X1"');
   });
 
-  it("adds the Curve/Spring tabs and a copyable cubic readout (export parity)", () => {
+  it("adds Curve/Spring tabs and keeps the copy action on the control-points row", () => {
     const html = renderToStaticMarkup(<EasingInspectorSection
       value={{ preset: "linear", editable: true }}
       onChange={() => undefined}
@@ -75,15 +76,21 @@ describe("EasingInspectorSection contracts", () => {
     expect(html).toContain('aria-label="Easing type"');
     expect(html).toContain(">Curve<");
     expect(html).toContain(">Spring<");
-    expect(html).toContain("data-easing-cubic-readout");
-    expect(html).toContain(">0, 0, 1, 1<");
-    expect(html).toContain('aria-label="Copy cubic bézier"');
+    expect(html).not.toContain("data-easing-cubic-readout");
+    expect(html).toContain('aria-label="Copy control points"');
   });
 
   it("marks the Spring tab pressed when the spring preset is active", () => {
     const html = renderToStaticMarkup(<EasingInspectorSection value={{ preset: "spring", editable: true }} onChange={() => undefined} />);
-    // The segmented Spring item is pressed; its cubic readout reflects the spring curve.
-    expect(html).toContain(">0.175, 0.885, 0.32, 1.275<");
+    expect(html).toContain('data-easing-inspector-preset="spring"');
+  });
+
+  it("shows Hold as a step curve with an explicit route into custom editing", () => {
+    const html = renderToStaticMarkup(<EasingInspectorSection value={{ preset: "hold", editable: true }} onChange={() => undefined} />);
+    expect(html).toContain('data-easing-inspector-preset="hold"');
+    expect(html).toContain('aria-label="Change Hold easing to custom curve"');
+    expect(html).toContain("Hold easing");
+    expect(html).toContain("Click to change to curve");
   });
 
   it("renders locked easing as disabled presentation", () => {

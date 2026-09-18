@@ -55,7 +55,7 @@ describe("GeneratedControlsDialog", () => {
     expect(onChooseAsset).toHaveBeenCalledWith("artwork");
   });
 
-  it("renders component properties inline in their named inspector section", () => {
+  it("renders component properties inline under a stable Properties heading and layer-name subtext", () => {
     let renderer: ReactTestRenderer;
     act(() => { renderer = create(<GeneratedControlsSection value={value} />); });
     expect(renderer!.root.findByProps({ "data-composa-generated-controls": "hero-controls" })).toBeTruthy();
@@ -65,6 +65,8 @@ describe("GeneratedControlsDialog", () => {
     expect(renderer!.root.findAllByType(Switch)).toHaveLength(1);
     expect(renderer!.root.findAllByType(Dropdown)).toHaveLength(1);
     expect(renderer!.root.findAllByType(Button).filter(node => node.props.label === "cover.png")).toHaveLength(1);
+    expect(renderer!.root.findAll(node => node.type === "span" && node.children.join("") === "Properties")).toHaveLength(1);
+    expect(renderer!.root.findAll(node => node.type === "span" && node.children.join("") === "Hero controls")).toHaveLength(1);
     expect(renderer!.root.findAllByProps({ "aria-label": "Open Hero controls" })).toHaveLength(0);
   });
 });

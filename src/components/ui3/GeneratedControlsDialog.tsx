@@ -121,8 +121,9 @@ export function GeneratedControlsSection({ value, readOnly = false, onChange, on
   onChange?: GeneratedControlsDialogProps["onChange"];
   onChooseAsset?: GeneratedControlsDialogProps["onChooseAsset"];
 }) {
-  return <PanelSection title={value.title} landmark>
+  return <PanelSection title="Properties" landmark>
     <div data-composa-generated-controls={value.id} className="flex flex-col px-[16px] pb-[8px]">
+      <span className="mb-[4px] font-[family-name:var(--composa-font-family)] text-[11px] font-[550] leading-[16px] text-c-text">{value.title}</span>
       {value.controls.map(control => <ControlRow key={control.id} control={control} readOnly={readOnly}
         onChange={onChange} onChooseAsset={onChooseAsset} />)}
     </div>

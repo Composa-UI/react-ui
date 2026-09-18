@@ -10,7 +10,7 @@ test("easing inspector authors presets, custom points, scopes, and fixed-size ac
   const preset = light.getByRole("button", { name: "Easing preset" });
   await preset.click();
   const presetMenu = page.getByRole("menu").filter({ has: page.getByRole("menuitemradio", { name: "Spring" }) });
-  await expect(presetMenu.getByRole("menuitemradio")).toHaveCount(9);
+  await expect(presetMenu.getByRole("menuitemradio")).toHaveCount(10);
   await presetMenu.getByRole("menuitemradio", { name: "Ease in-out (strong)" }).click();
   await expect(lightState).toHaveAttribute("data-easing-inspector-preset", "ease-in-out-strong");
   await expect(light.getByRole("slider", { name: "Easing control point 1" })).toHaveCount(0);
@@ -38,6 +38,6 @@ test("easing inspector authors presets, custom points, scopes, and fixed-size ac
     const box = node.getBoundingClientRect();
     return { width: box.width, height: box.height };
   });
-  expect(geometry.width).toBeCloseTo(18, 0);
-  expect(geometry.height).toBeCloseTo(18, 0);
+  expect(geometry.width).toBeCloseTo(12, 0);
+  expect(geometry.height).toBeCloseTo(12, 0);
 });
