@@ -1,0 +1,39 @@
+{
+  "component": "PanelSection",
+  "category": "Panels / Layout",
+  "intent": "One inspector section: a 40px header (title + right-actions) over its content. The composable unit you stack inside Inspector; UI3 sections do not collapse — they appear and disappear by content presence.",
+  "use_when": [
+    "Composing an inspector from titled groups of fields.",
+    "A section that should opt into a named region landmark."
+  ],
+  "dont_use_when": [
+    "You need the whole rail — use Inspector.",
+    "A collapsible disclosure tree — this section has no chevron by design."
+  ],
+  "variants": {
+    "landmark": ["off (plain titled group)", "on (region + aria-labelledby)"],
+    "header": ["static title", "clickable (onHeaderClick)"]
+  },
+  "slots": {
+    "children": "The section body — field rows, controls, stacks.",
+    "rightActions": "Header right-hand slot (buttons, menus)."
+  },
+  "states": ["default", "muted (empty / greyed)", "landmark (region)"],
+  "tokens": {
+    "divider": "border/default (border-bottom)",
+    "muted": "text/secondary",
+    "header": { "height": "40px", "inset": "16px" }
+  },
+  "a11y": {
+    "role": "region + aria-labelledby when landmark; otherwise a plain titled group.",
+    "header": "40px; the title labels the section (and becomes a button when onHeaderClick is set)."
+  },
+  "enforce": {
+    "role": "region",
+    "ariaRole": false
+  },
+  "code": {
+    "import": "import { Inspector, PanelSection } from '@composa/ui'",
+    "example": "<Inspector>\n  <PanelSection title=\"Position\" rightActions={<IconButton … />}>\n    …field rows…\n  </PanelSection>\n</Inspector>"
+  }
+}

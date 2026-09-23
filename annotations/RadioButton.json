@@ -1,0 +1,36 @@
+{
+  "component": "RadioButton",
+  "category": "Inputs / Controls",
+  "intent": "A single radio option, as a classic circular control or a pill-shaped toggle button.",
+  "use_when": [
+    "One option within a mutually-exclusive set.",
+    "A pill-style single choice (variant=\"button\")."
+  ],
+  "dont_use_when": [
+    "Independent on/off — use a checkbox / switch.",
+    "A connected row of options — use SegmentedControl."
+  ],
+  "variants": {
+    "variant": ["input (circular radio)", "button (pill toggle)"]
+  },
+  "slots": {},
+  "states": ["default", "active", "focused", "disabled"],
+  "tokens": {
+    "selected": { "bg": "bg/selected", "text": "text/default" },
+    "idle": { "text": "text/secondary" },
+    "note": "the button variant's focus ring is a hardcoded value, not yet a token — tracked, not tokensOnly."
+  },
+  "a11y": {
+    "role": "radio",
+    "state": "aria-checked reflects selection; aria-disabled when disabled.",
+    "grouping": "the host wraps peers in a radiogroup and owns arrow-key selection."
+  },
+  "enforce": {
+    "role": "radio",
+    "ariaRole": true
+  },
+  "code": {
+    "import": "import { RadioButton } from '@composa/ui'",
+    "example": "<RadioButton variant=\"button\" label=\"Fill\" checked={mode === 'fill'} onChange={() => setMode('fill')} />"
+  }
+}

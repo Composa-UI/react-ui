@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 import type { ReactElement } from "react";
 import { Inspector } from "./components/ui3/Inspector";
 import { EditorShell } from "./components/ui3/EditorShell";
+import { SegmentedControl } from "./components/ui3/SegmentedControl";
+import { RadioButton } from "./components/ui3/RadioButton";
 
 // Annotation contract v1 enforcement (design-system-slots DoD: "a component is
 // 'done' only when annotated"). Three layers, zero extra deps:
@@ -35,12 +37,24 @@ const annotations = files.map(readJson) as Array<Record<string, unknown>>;
 
 // Components the DS considers contract-complete: adding one without a valid,
 // truthful annotation must fail here.
-const REQUIRED = ["Button", "Tabs", "Inspector", "EditorShell", "Dropdown", "MenuRow", "NavRail"];
+const REQUIRED = [
+  "Button", "Tabs", "Inspector", "EditorShell", "Dropdown", "MenuRow", "NavRail",
+  "PanelSection", "SegmentedControl", "RadioButton",
+];
 
 // Components this test can render trivially to verify an ARIA-role claim.
 const RENDERABLE: Record<string, () => ReactElement> = {
   Inspector: () => <Inspector aria-label="contract" />,
   EditorShell: () => <EditorShell aria-label="contract" canvas={<div />} />,
+  SegmentedControl: () => (
+    <SegmentedControl
+      ariaLabel="contract"
+      value="a"
+      onChange={() => {}}
+      segments={[{ value: "a", label: "A" }, { value: "b", label: "B" }]}
+    />
+  ),
+  RadioButton: () => <RadioButton label="Option" />,
 };
 
 type Spec = { type?: string; required?: string[]; properties?: Record<string, Spec> };
