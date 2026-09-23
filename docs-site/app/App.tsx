@@ -58,9 +58,6 @@ function Sidebar({ route }: { route: Route }) {
 
   return (
     <nav className="side" aria-label="Component navigation">
-      <a className="side-brand" href="#/">
-        <b>Composa</b> UI
-      </a>
       <div className="nav-group">Overview</div>
       {link("#/", "Home")}
       {link("#/foundations", "Foundations")}
@@ -116,22 +113,29 @@ export default function App() {
   }, [theme]);
 
   return (
-    <div className="app" data-composa-mode={theme === "dark" ? "dark" : undefined}>
-      <Sidebar route={route} />
-      <main>
-        <div className="topbar">
-          <div className="crumbs">Composa UI · Design system</div>
+    <div className="app-shell" data-composa-mode={theme === "dark" ? "dark" : undefined}>
+      {/* Carbon UI Shell header — the black global bar. */}
+      <header className="uishell">
+        <a className="uishell-brand" href="#/">
+          <b>Composa</b>&nbsp;UI
+        </a>
+        <div className="uishell-actions">
           <button
             type="button"
-            className="theme-toggle"
+            className="uishell-btn"
             aria-pressed={theme === "dark"}
             onClick={() => setTheme(t => (t === "dark" ? "light" : "dark"))}
           >
             {theme === "dark" ? "☀ Light" : "☾ Dark"}
           </button>
         </div>
-        <Page route={route} theme={theme} />
-      </main>
+      </header>
+      <div className="app">
+        <Sidebar route={route} />
+        <main>
+          <Page route={route} theme={theme} />
+        </main>
+      </div>
     </div>
   );
 }
