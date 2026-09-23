@@ -32,7 +32,7 @@ describe("settings icon semantics", () => {
       weight: 1,
       align: "inside",
     }]} />);
-    const slide = renderToStaticMarkup(<PropertyPanel mode="slide" capabilities={{ templates: true }} />);
+    const slide = renderToStaticMarkup(<PropertyPanel mode="slide" slideTemplate={{}} />);
 
     // Auto-layout settings joined this list in Composa#661: it used the Freeform
     // *layout* glyph, so the settings entry point read as a fourth flow option

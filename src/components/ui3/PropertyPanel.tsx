@@ -158,7 +158,13 @@ export interface ElementSelectionColorSetting {
   gradientStops?: GradientStop[];
   gradientPreview?: string;
 }
-export interface InspectorCapabilities { templates?: boolean; styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; dropZone?: boolean; animationDelay?: boolean; layoutFidelityTools?: boolean; }
+export interface InspectorCapabilities { styles?: boolean; variables?: boolean; libraries?: boolean; videoFill?: boolean; dropZone?: boolean; animationDelay?: boolean; layoutFidelityTools?: boolean; }
+
+// Slide-template style, composition-driven (DEC-097). The slide Template style
+// section is present iff this data is provided — it is no longer gated by a
+// `capabilities.templates` flag. An empty object renders the section with its
+// default preview; supply `name`/`fonts` to reflect the active template.
+export interface SlideTemplateStyle { name?: string; fonts?: string; }
 export interface ElementTypographySettings {
   fontFamily: string; fontWeight: string; fontSize: number; lineHeight: number; letterSpacing: number;
   align: "left" | "center" | "right" | "justify"; verticalAlign: "top" | "middle" | "bottom"; styleName?: string;
@@ -2315,7 +2321,7 @@ const DEMO_SELECTION_COLORS: ElementSelectionColorSetting[] = [
   { id: "demo-selection-6", color: "#9747FF", opacity: 100 },
 ];
 
-function SelectionColorsSection({ colors, onUpdate, onSelectAll, onEyedropperActivate, activeEyedropperId, swatches, capabilities = { templates: true, styles: true, variables: true, libraries: true, videoFill: false, dropZone: false, animationDelay: false, layoutFidelityTools: false } }: {
+function SelectionColorsSection({ colors, onUpdate, onSelectAll, onEyedropperActivate, activeEyedropperId, swatches, capabilities = { styles: true, variables: true, libraries: true, videoFill: false, dropZone: false, animationDelay: false, layoutFidelityTools: false } }: {
   colors?: ElementSelectionColorSetting[];
   onUpdate?: (id: string, patch: Partial<Omit<ElementSelectionColorSetting, "id">>) => void;
   onSelectAll?: (id: string) => void;
@@ -3448,6 +3454,10 @@ export interface PropertyPanelProps {
   onExport?: () => void;
   /** Slide mode — controlled when provided; demo fallback remains editable. */
   slideId?: string;
+  /** Slide template style. Composition-driven (DEC-097): the Slide template
+   *  section renders iff this is provided — there is no `capabilities.templates`
+   *  flag. Pass an empty object to show the section with its default preview. */
+  slideTemplate?: SlideTemplateStyle;
   slideName?: string;
   onSlideNameChange?: (value: string) => void;
   slideStart?: number;
@@ -4055,7 +4065,6 @@ export function PropertyPanel(props: PropertyPanelProps) {
   className,
   } = props;
   const capabilities: Required<InspectorCapabilities> = {
-    templates: capabilityOverrides?.templates ?? true,
     styles: capabilityOverrides?.styles ?? true,
     variables: capabilityOverrides?.variables ?? true,
     libraries: capabilityOverrides?.libraries ?? true,
@@ -4271,8 +4280,10 @@ export function PropertyPanel(props: PropertyPanelProps) {
             </PopoverMenu>
           </div>
 
-          {/* Slide template first, ahead of Timing (user's preferred order). */}
-          {capabilities.templates && <TemplateStyleSection />}
+          {/* Slide template first, ahead of Timing (user's preferred order).
+              Composition-driven (DEC-097): present iff `slideTemplate` data is
+              provided, no longer gated by a `capabilities.templates` flag. */}
+          {props.slideTemplate && <TemplateStyleSection name={props.slideTemplate.name} fonts={props.slideTemplate.fonts} />}
           <SlideTimingSection
             reserveTrailingSlot
             start={slideStart}

@@ -1273,6 +1273,7 @@ export default function Playground() {
       <div style={{ height: "100vh", width: "100vw", display: "flex", justifyContent: "flex-end", background: "#e6e6e6" }}>
         <PropertyPanel
           mode="slide"
+          slideTemplate={{}}
           slideName={slideContract.name}
           onSlideNameChange={name => setSlideContract(value => ({ ...value, name }))}
           slideStart={slideContract.start}
@@ -1322,6 +1323,7 @@ export default function Playground() {
           <div style={{ font: "12px system-ui", marginBottom: 8 }}>Slide selected (transition = push)</div>
           <PropertyPanel
             mode="slide"
+            slideTemplate={{}}
             slideName="Opening title"
             slideId="slide-1"
             slideTransitionType="push"
@@ -1495,7 +1497,7 @@ export default function Playground() {
 
   if (view === "export-contract") {
     return <div style={{ height: "100vh", width: "100vw", display: "flex", justifyContent: "flex-end", background: "#e6e6e6" }}>
-      <PropertyPanel mode="slide" slideName="Opening title" exportSettings={exportContract} exportMode={exportContractMode}
+      <PropertyPanel mode="slide" slideTemplate={{}} slideName="Opening title" exportSettings={exportContract} exportMode={exportContractMode}
         projectFrameRate={30} exportTargetName="Opening title"
         onAddExportSetting={() => setExportContract(value => [...value, { id: `export-${value.length + 1}`, scale: 1, suffix: "", format: "PNG" }])}
         onRemoveExportSetting={id => setExportContract(value => value.filter(setting => setting.id !== id))}
@@ -1774,7 +1776,7 @@ export default function Playground() {
         </div>
         <div style={{ height: "96%", flex: "0 0 auto" }}>
           <div style={{ font: "600 11px system-ui", marginBottom: 6, color: "#555" }}>mode=slide</div>
-          <PropertyPanel mode="slide" />
+          <PropertyPanel mode="slide" slideTemplate={{}} />
         </div>
         <div style={{ height: "96%", flex: "0 0 auto" }}>
           <div style={{ font: "600 11px system-ui", marginBottom: 6, color: "#555" }}>mode=video-clip</div>
