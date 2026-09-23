@@ -30,7 +30,8 @@
   },
   "enforce": {
     "role": "region",
-    "ariaRole": false
+    "ariaRole": false,
+    "tokensOnly": true
   },
   "code": {
     "import": "import { Inspector, PanelSection } from '@composa/ui'",

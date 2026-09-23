@@ -28,7 +28,8 @@
   },
   "enforce": {
     "role": "tablist",
-    "ariaRole": false
+    "ariaRole": false,
+    "tokensOnly": true
   },
   "code": {
     "import": "import { Tabs, TabPanel } from '@composa/ui'",

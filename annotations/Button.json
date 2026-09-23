@@ -31,7 +31,8 @@
   },
   "enforce": {
     "role": "button",
-    "ariaRole": false
+    "ariaRole": false,
+    "tokensOnly": true
   },
   "code": {
     "import": "import { Button } from '@composa/ui'",

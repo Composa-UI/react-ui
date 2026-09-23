@@ -33,7 +33,8 @@
   },
   "enforce": {
     "role": "menuitem",
-    "ariaRole": false
+    "ariaRole": false,
+    "tokensOnly": true
   },
   "code": {
     "import": "import { Menu, MenuRow } from '@composa/ui'",

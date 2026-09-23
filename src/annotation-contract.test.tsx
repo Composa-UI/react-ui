@@ -56,6 +56,8 @@ const REQUIRED = [
 // resolve the file the tokensOnly source-scan reads.
 const SOURCE_FILE: Record<string, string> = {
   Modal: "Dialog",
+  MenuRow: "Menu",
+  PanelSection: "Panel",
 };
 
 // Components this test can render trivially to verify an ARIA-role claim.

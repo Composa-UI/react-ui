@@ -24,7 +24,8 @@
     "surface": { "bg": "bg/default", "ring": "border/default", "ring-editable-active": "border/selected" },
     "text": { "value": "text/default", "muted": "text/tertiary (disabled or mixed)" },
     "chevron": "icon/secondary",
-    "shape": { "radius": "radius/medium" }
+    "shape": { "radius": "radius/medium" },
+    "note": "The editable-active value highlight uses a hardcoded rgba(13,153,255,0.4) (brand blue at 40%), not a token — so not tokensOnly."
   },
   "a11y": {
     "role": "button (native <button type=button>)",
