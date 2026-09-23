@@ -53,6 +53,7 @@ export function Notification({ message, actions = [{ label: "Action" }], icon, c
 
   return (
     <div
+      role="status"
       className={clsx(
         "flex items-stretch rounded-[5px] pl-[8px]",
         SHADOW,
