@@ -20,7 +20,10 @@
     "tokens:build": "node tools/tokens/build-json.mjs",
     "tokens:figma": "node tools/tokens/build-figma-vars.mjs",
     "tokens:check": "node tools/tokens/verify-parity.mjs",
-    "docs": "vite build --config docs-site/vite.docs.config.ts",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "docs:app": "vite build --config docs-site/vite.docs.config.ts",
+    "docs": "npm run docs:app && npm run build-storybook && node docs-site/assemble-storybook.mjs",
     "check": "npm run tokens:check && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
@@ -37,6 +40,9 @@
   },
   "devDependencies": {
     "@playwright/test": "1.61.1",
+    "@storybook/addon-a11y": "^10.6.0",
+    "@storybook/addon-docs": "^10.6.0",
+    "@storybook/react-vite": "^10.6.0",
     "@tailwindcss/vite": "4.1.12",
     "@types/node": "^22.20.1",
     "@types/react": "^19.2.0",
@@ -44,6 +50,7 @@
     "@types/react-test-renderer": "^19.1.0",
     "@vitejs/plugin-react": "4.7.0",
     "react-test-renderer": "^19.2.0",
+    "storybook": "^10.6.0",
     "tailwindcss": "4.1.12",
     "typescript": "5.6.3",
     "vite": "6.3.5",

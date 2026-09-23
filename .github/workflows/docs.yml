@@ -1,9 +1,14 @@
 name: Deploy docs to GitHub Pages
 
-# Builds the design-system docs — a Vite + React app (docs-site/app) that keeps
-# the Carbon-style foundations / token-compliance / per-component tabs AND adds a
-# live, interactive preview of every real component — and publishes docs-site/dist
-# to GitHub Pages.
+# Builds the design-system docs and publishes docs-site/dist to GitHub Pages.
+# `npm run docs` assembles ONE site into docs-site/dist:
+#   - the Vite + React docs app (docs-site/app) at the root — Carbon-style
+#     per-component pages (hash routing) with a live preview of every component;
+#   - a real Storybook (storybook build) copied to docs-site/dist/storybook.
+# The site is a PROJECT page at https://composa-ui.github.io/react-ui/ , so the
+# docs app builds with base /react-ui/ and Storybook is served at
+# /react-ui/storybook/ (relative asset paths). The build command and uploaded
+# directory are unchanged: `npm run docs` → docs-site/dist.
 #
 # One-time setup by a repo admin: Settings -> Pages -> Build and deployment ->
 # Source: "GitHub Actions". After that this workflow deploys on every push that
@@ -16,6 +21,7 @@ on:
       - claude/composa-design-system-slots-l5k7of
     paths:
       - "docs-site/**"
+      - ".storybook/**"
       - "annotations/**"
       - "tokens/composa.tokens.json"
       - ".github/workflows/docs.yml"
