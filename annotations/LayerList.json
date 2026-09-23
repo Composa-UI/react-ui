@@ -1,6 +1,6 @@
 {
   "component": "LayerList",
-  "category": "Editor / Panels",
+  "category": "Lists",
   "intent": "A Figma-style layers tree: data-driven LayerNode[] with nesting. Each row is a chevron (if a group) + type icon + name + visibility/lock. Component/instance rows use the brand accent.",
   "use_when": [
     "Showing and selecting the document's layer hierarchy."
@@ -10,12 +10,22 @@
     "Slides / compositions — use SlidesPanel / CompositionPanel."
   ],
   "variants": {
-    "selection": ["single", "parent (emphasized row + de-emphasized visible descendants)"]
+    "selection": [
+      "single",
+      "parent (emphasized row + de-emphasized visible descendants)"
+    ]
   },
   "slots": {
     "nodes": "LayerNode[] (id, name, type, children, hidden, locked, autoLayout, maskSource)."
   },
-  "states": ["default", "selected", "parent-selected", "hidden", "locked", "drag-reorder"],
+  "states": [
+    "default",
+    "selected",
+    "parent-selected",
+    "hidden",
+    "locked",
+    "drag-reorder"
+  ],
   "tokens": {
     "note": "Light theme, c-* tokens only; no hardcoded hex — verified.",
     "accent": "component / instance rows use text/brand"

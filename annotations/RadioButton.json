@@ -1,6 +1,6 @@
 {
   "component": "RadioButton",
-  "category": "Inputs / Controls",
+  "category": "Inputs",
   "intent": "A single radio option, as a classic circular control or a pill-shaped toggle button.",
   "use_when": [
     "One option within a mutually-exclusive set.",
@@ -11,13 +11,26 @@
     "A connected row of options — use SegmentedControl."
   ],
   "variants": {
-    "variant": ["input (circular radio)", "button (pill toggle)"]
+    "variant": [
+      "input (circular radio)",
+      "button (pill toggle)"
+    ]
   },
   "slots": {},
-  "states": ["default", "active", "focused", "disabled"],
+  "states": [
+    "default",
+    "active",
+    "focused",
+    "disabled"
+  ],
   "tokens": {
-    "selected": { "bg": "bg/selected", "text": "text/default" },
-    "idle": { "text": "text/secondary" },
+    "selected": {
+      "bg": "bg/selected",
+      "text": "text/default"
+    },
+    "idle": {
+      "text": "text/secondary"
+    },
     "note": "the button variant's focus ring is a hardcoded value, not yet a token — tracked, not tokensOnly."
   },
   "a11y": {

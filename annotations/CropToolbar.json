@@ -1,6 +1,6 @@
 {
   "component": "CropToolbar",
-  "category": "Editor / Toolbars",
+  "category": "Toolbars",
   "intent": "The crop-mode toolbar: an aspect-ratio split button, resize-to-fill, a zoom slider, and cancel / done. The host owns the document mutation and canvas geometry.",
   "use_when": [
     "Editing an image or media crop."
@@ -9,10 +9,20 @@
     "General canvas tools — use CreationToolbar."
   ],
   "variants": {
-    "aspect": ["free", "original", "1:1", "4:3", "16:9"]
+    "aspect": [
+      "free",
+      "original",
+      "1:1",
+      "4:3",
+      "16:9"
+    ]
   },
   "slots": {},
-  "states": ["default", "aspect locked", "zooming"],
+  "states": [
+    "default",
+    "aspect locked",
+    "zooming"
+  ],
   "tokens": {
     "note": "DS tokens only; no hardcoded hex — verified."
   },

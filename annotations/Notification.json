@@ -1,6 +1,6 @@
 {
   "component": "Notification",
-  "category": "Feedback / Toasts",
+  "category": "Overlays",
   "intent": "A toast: a dark pill with a leading icon + message and one or two stacked action buttons. Announced politely to assistive tech.",
   "use_when": [
     "A transient, non-blocking message with optional actions (undo, view, retry)."
@@ -10,12 +10,19 @@
     "A persistent inline status — use inline text."
   ],
   "variants": {
-    "actions": ["one CTA", "two stacked CTAs"]
+    "actions": [
+      "one CTA",
+      "two stacked CTAs"
+    ]
   },
   "slots": {
     "icon": "Leading glyph (defaults to the component diamond); pass a contextual icon to match how the subject is shown elsewhere."
   },
-  "states": ["default", "one action", "two actions"],
+  "states": [
+    "default",
+    "one action",
+    "two actions"
+  ],
   "tokens": {
     "note": "Deliberately a dark pill: its background (#1e1e1e), separators (#383838), and white text are hardcoded to read on any surface — tracked, so NOT tokensOnly."
   },

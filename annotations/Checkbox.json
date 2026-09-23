@@ -1,6 +1,6 @@
 {
   "component": "Checkbox",
-  "category": "Inputs / Controls",
+  "category": "Inputs",
   "intent": "A checkbox with checked / unchecked / mixed states; renders on the light inspector or a dark canvas surface (ghost).",
   "use_when": [
     "A toggleable option in a form or list.",
@@ -11,11 +11,24 @@
     "Mutually exclusive options — use RadioButton."
   ],
   "variants": {
-    "surface": ["default (light inspector)", "ghost (dark canvas)"],
-    "emphasis": ["default", "muted"]
+    "surface": [
+      "default (light inspector)",
+      "ghost (dark canvas)"
+    ],
+    "emphasis": [
+      "default",
+      "muted"
+    ]
   },
   "slots": {},
-  "states": ["unchecked", "checked", "mixed", "disabled", "muted", "focused"],
+  "states": [
+    "unchecked",
+    "checked",
+    "mixed",
+    "disabled",
+    "muted",
+    "focused"
+  ],
   "tokens": {
     "note": "Checked fill and border bind to DS tokens; the checkmark glyph stroke and one dark-surface background are currently hardcoded values — tracked, so this component is NOT tokensOnly yet."
   },

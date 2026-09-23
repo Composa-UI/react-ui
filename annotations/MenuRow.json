@@ -1,6 +1,6 @@
 {
   "component": "MenuRow",
-  "category": "Navigation / Menus",
+  "category": "Menus",
   "intent": "One row of a menu or menu-toolbar. Type-driven anatomy: a reserved checkmark slot and a leading-icon slot, plus heading / divider / toolbar / footer shapes.",
   "use_when": [
     "Composing a menu's contents (inside Menu / a popover surface).",
@@ -11,18 +11,46 @@
     "A standalone action outside a menu — use Button."
   ],
   "variants": {
-    "type": ["simple", "checkmark", "toggle", "expand", "complex", "heading", "divider", "toolbar", "footer"],
-    "selectionRole": ["radio", "checkbox"]
+    "type": [
+      "simple",
+      "checkmark",
+      "toggle",
+      "expand",
+      "complex",
+      "heading",
+      "divider",
+      "toolbar",
+      "footer"
+    ],
+    "selectionRole": [
+      "radio",
+      "checkbox"
+    ]
   },
   "slots": {
     "leading": "Leading slot (check / switch / icon). Reserved even when empty so labels align.",
     "trailing": "Trailing slot (shortcut text, submenu chevron).",
     "children": "toolbar / footer content (inline buttons or actions)."
   },
-  "states": ["default", "hover", "checked", "mixed", "disabled", "destructive", "submenu-expanded"],
+  "states": [
+    "default",
+    "hover",
+    "checked",
+    "mixed",
+    "disabled",
+    "destructive",
+    "submenu-expanded"
+  ],
   "tokens": {
-    "text": { "label": "text/default", "shortcut": "text/secondary", "heading": "text/secondary" },
-    "hover": { "bg": "bg/brand", "text": "text/on-brand" },
+    "text": {
+      "label": "text/default",
+      "shortcut": "text/secondary",
+      "heading": "text/secondary"
+    },
+    "hover": {
+      "bg": "bg/brand",
+      "text": "text/on-brand"
+    },
     "divider": "border/menu",
     "destructive": "text/danger"
   },

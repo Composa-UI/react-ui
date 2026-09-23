@@ -1,6 +1,6 @@
 {
   "component": "InspectorRailSwitcher",
-  "category": "Editor / Organisms",
+  "category": "Panels",
   "intent": "The right-rail access seam: a fixed-width aside with an Inspector / Agent tab header. The host controls which view is visible; each child owns its internal navigation.",
   "use_when": [
     "Switching the right rail between the inspector and an agent view.",
@@ -11,16 +11,28 @@
     "A left-rail destination switch — use NavRail."
   ],
   "variants": {
-    "active": ["inspector", "agent"]
+    "active": [
+      "inspector",
+      "agent"
+    ]
   },
   "slots": {
     "inspector": "The inspector view.",
     "agent": "The agent view."
   },
-  "states": ["inspector active", "agent active"],
+  "states": [
+    "inspector active",
+    "agent active"
+  ],
   "tokens": {
-    "surface": { "bg": "bg/default", "ring": "border/translucent" },
-    "header": { "height": "36px", "border": "border/default" },
+    "surface": {
+      "bg": "bg/default",
+      "ring": "border/translucent"
+    },
+    "header": {
+      "height": "36px",
+      "border": "border/default"
+    },
     "width": "PANEL_W"
   },
   "a11y": {

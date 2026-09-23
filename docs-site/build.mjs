@@ -9,9 +9,14 @@ const root = new URL("../", import.meta.url);
 const tokens = JSON.parse(await readFile(new URL("tokens/composa.tokens.json", root), "utf8")).tokens;
 const dataDir = new URL("annotations/", root);
 const files = (await readdir(dataDir)).filter(f => f.endsWith(".json") && f !== "annotation.schema.json");
-const order = ["Button", "Tabs", "Inspector", "EditorShell", "NavRail", "Dropdown", "MenuRow", "SegmentedControl", "RadioButton", "Switch", "Checkbox", "Dial", "AlignmentControl", "CreationToolbar", "CropToolbar", "LayerList", "Notification", "Slider", "ListCell", "Tooltip", "SplitButton", "Menu", "NumericInput", "Modal", "InputField", "InspectorRailSwitcher", "SidePanel", "ColorWheel", "ColorInput", "PanelSection"];
+// Sidebar groups, in order. Each component's `category` is exactly one of these.
+const GROUP_ORDER = ["Actions", "Inputs", "Navigation", "Menus", "Overlays", "Lists", "Panels", "Toolbars", "Templates"];
+// Within-group order (falls back to alphabetical for anything unlisted).
+const order = ["Button", "SplitButton", "Dropdown", "InputField", "NumericInput", "Checkbox", "RadioButton", "Switch", "SegmentedControl", "AlignmentControl", "Slider", "Dial", "ColorInput", "ColorWheel", "NavRail", "Tabs", "Menu", "MenuRow", "Modal", "Tooltip", "Notification", "ListCell", "LayerList", "Inspector", "PanelSection", "SidePanel", "InspectorRailSwitcher", "CreationToolbar", "CropToolbar", "EditorShell"];
+const gi = c => { const i = GROUP_ORDER.indexOf(c.category); return i < 0 ? 99 : i; };
+const oi = c => { const i = order.indexOf(c.component); return i < 0 ? 99 : i; };
 const components = (await Promise.all(files.map(async f => JSON.parse(await readFile(new URL(f, dataDir), "utf8")))))
-  .sort((a, b) => (order.indexOf(a.component) + 1 || 99) - (order.indexOf(b.component) + 1 || 99));
+  .sort((a, b) => gi(a) - gi(b) || oi(a) - oi(b) || a.component.localeCompare(b.component));
 
 const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, "-");
@@ -97,7 +102,12 @@ function componentSection(c) {
     </div></section>`;
 }
 
-const nav = [`<a href="#foundations">Foundations</a>`, `<a href="#token-compliance">Token compliance</a>`, ...components.map(c => `<a href="#${slug(c.component)}">${esc(c.component)}</a>`)].join("");
+const navGroups = GROUP_ORDER.map(g => {
+  const items = components.filter(c => c.category === g);
+  if (!items.length) return "";
+  return `<div class="nav-group">${esc(g)}</div>` + items.map(c => `<a href="#${slug(c.component)}">${esc(c.component)}</a>`).join("");
+}).join("");
+const nav = `<div class="nav-group">Overview</div><a href="#foundations">Foundations</a><a href="#token-compliance">Token compliance</a>${navGroups}`;
 
 const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Composa UI — Design System</title>
@@ -107,8 +117,9 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta n
   .app{display:flex;min-height:100vh}
   .side{width:230px;flex:0 0 230px;border-right:1px solid var(--line);padding:28px 20px;position:sticky;top:0;height:100vh;overflow:auto}
   .side .mark{font-weight:600;font-size:14px;margin-bottom:20px}.side .mark b{color:var(--brand)}
-  .side a{display:block;color:var(--muted);text-decoration:none;font-size:13.5px;padding:6px 8px;border-radius:6px}
+  .side a{display:block;color:var(--muted);text-decoration:none;font-size:13.5px;padding:5px 8px;border-radius:6px}
   .side a:hover{background:var(--code);color:var(--ink)}
+  .side .nav-group{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;margin:18px 8px 5px;opacity:.7}.side .nav-group:first-child{margin-top:4px}
   main{flex:1;min-width:0;padding:44px 56px;max-width:860px}
   section{padding-bottom:56px;border-bottom:1px solid var(--line);margin-bottom:56px}
   h1{font-size:30px;font-weight:600;margin:0}h2{font-size:16px;margin:32px 0 12px}h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 8px}

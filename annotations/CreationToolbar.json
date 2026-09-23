@@ -1,6 +1,6 @@
 {
   "component": "CreationToolbar",
-  "category": "Editor / Toolbars",
+  "category": "Toolbars",
   "intent": "The floating creation toolbar: tool groups (Move/Hand, Frame, Shape, Type) as a pill; each group's button reflects its last-used tool and shows an active state when any of its tools is selected.",
   "use_when": [
     "The canvas-level tool switcher for an editor."
@@ -10,10 +10,19 @@
     "Crop mode — use CropToolbar."
   ],
   "variants": {
-    "groups": ["Move / Hand", "Frame", "Shape (Rectangle / Ellipse / Line)", "Type"]
+    "groups": [
+      "Move / Hand",
+      "Frame",
+      "Shape (Rectangle / Ellipse / Line)",
+      "Type"
+    ]
   },
   "slots": {},
-  "states": ["idle", "active group", "group menu open"],
+  "states": [
+    "idle",
+    "active group",
+    "group menu open"
+  ],
   "tokens": {
     "note": "DS tokens only; no hardcoded hex — verified.",
     "active": "brand / selected accent"

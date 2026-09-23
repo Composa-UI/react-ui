@@ -1,6 +1,6 @@
 {
   "component": "Modal",
-  "category": "Overlays / Dialogs",
+  "category": "Overlays",
   "intent": "A modal dialog on Radix Dialog: focus trap, Escape, aria-modal, portal. Width presets (compact / dialog / standard / tall / medium); the backdrop is optional for floating inspector dialogs.",
   "use_when": [
     "A blocking task (share, settings, confirm).",
@@ -11,15 +11,31 @@
     "A menu — use Menu."
   ],
   "variants": {
-    "width": ["compact (240)", "dialog (320)", "standard (480)", "tall (70vh)", "medium (50vh)"],
-    "backdrop": ["scrim (blocks background)", "none (floating)"]
+    "width": [
+      "compact (240)",
+      "dialog (320)",
+      "standard (480)",
+      "tall (70vh)",
+      "medium (50vh)"
+    ],
+    "backdrop": [
+      "scrim (blocks background)",
+      "none (floating)"
+    ]
   },
   "slots": {
     "children": "ModalHeader / ModalBody / ModalFooter."
   },
-  "states": ["open", "closed"],
+  "states": [
+    "open",
+    "closed"
+  ],
   "tokens": {
-    "surface": { "bg": "bg/default", "radius": "radius/lg", "shadow": "elevation/500" },
+    "surface": {
+      "bg": "bg/default",
+      "radius": "radius/lg",
+      "shadow": "elevation/500"
+    },
     "backdrop": "modal-backdrop = rgba(0,0,0,0.4) (mode-invariant)"
   },
   "a11y": {

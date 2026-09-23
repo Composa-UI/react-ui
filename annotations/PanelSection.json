@@ -1,6 +1,6 @@
 {
   "component": "PanelSection",
-  "category": "Panels / Layout",
+  "category": "Panels",
   "intent": "One inspector section: a 40px header (title + right-actions) over its content. The composable unit you stack inside Inspector; UI3 sections do not collapse — they appear and disappear by content presence.",
   "use_when": [
     "Composing an inspector from titled groups of fields.",
@@ -11,18 +11,31 @@
     "A collapsible disclosure tree — this section has no chevron by design."
   ],
   "variants": {
-    "landmark": ["off (plain titled group)", "on (region + aria-labelledby)"],
-    "header": ["static title", "clickable (onHeaderClick)"]
+    "landmark": [
+      "off (plain titled group)",
+      "on (region + aria-labelledby)"
+    ],
+    "header": [
+      "static title",
+      "clickable (onHeaderClick)"
+    ]
   },
   "slots": {
     "children": "The section body — field rows, controls, stacks.",
     "rightActions": "Header right-hand slot (buttons, menus)."
   },
-  "states": ["default", "muted (empty / greyed)", "landmark (region)"],
+  "states": [
+    "default",
+    "muted (empty / greyed)",
+    "landmark (region)"
+  ],
   "tokens": {
     "divider": "border/default (border-bottom)",
     "muted": "text/secondary",
-    "header": { "height": "40px", "inset": "16px" }
+    "header": {
+      "height": "40px",
+      "inset": "16px"
+    }
   },
   "a11y": {
     "role": "region + aria-labelledby when landmark; otherwise a plain titled group.",

@@ -1,6 +1,6 @@
 {
   "component": "Dropdown",
-  "category": "Inputs / Controls",
+  "category": "Inputs",
   "intent": "The dropdown trigger control only: value text + chevron, with an optional leading-icon slot. The menu/list it opens is a separate concern (Menu).",
   "use_when": [
     "An inspector field that opens a value list or menu.",
@@ -11,20 +11,50 @@
     "A free-text field — use InputField (Dropdown is a trigger, editable is combo-style only)."
   ],
   "variants": {
-    "size": ["default (24px)", "large (32px)"],
-    "state": ["default", "focused", "active"],
-    "width": ["fixed 117px", "fullWidth", "hug"],
-    "flags": ["stroke (border)", "editable (combo)", "mixed (multi-select)"]
+    "size": [
+      "default (24px)",
+      "large (32px)"
+    ],
+    "state": [
+      "default",
+      "focused",
+      "active"
+    ],
+    "width": [
+      "fixed 117px",
+      "fullWidth",
+      "hug"
+    ],
+    "flags": [
+      "stroke (border)",
+      "editable (combo)",
+      "mixed (multi-select)"
+    ]
   },
   "slots": {
     "leadingIcon": "Optional leading icon (rendered in a reserved box; large size gets a secondary-bg chip)."
   },
-  "states": ["default", "focused", "active", "disabled", "mixed"],
+  "states": [
+    "default",
+    "focused",
+    "active",
+    "disabled",
+    "mixed"
+  ],
   "tokens": {
-    "surface": { "bg": "bg/default", "ring": "border/default", "ring-editable-active": "border/selected" },
-    "text": { "value": "text/default", "muted": "text/tertiary (disabled or mixed)" },
+    "surface": {
+      "bg": "bg/default",
+      "ring": "border/default",
+      "ring-editable-active": "border/selected"
+    },
+    "text": {
+      "value": "text/default",
+      "muted": "text/tertiary (disabled or mixed)"
+    },
     "chevron": "icon/secondary",
-    "shape": { "radius": "radius/medium" },
+    "shape": {
+      "radius": "radius/medium"
+    },
     "note": "The editable-active value highlight uses a hardcoded rgba(13,153,255,0.4) (brand blue at 40%), not a token — so not tokensOnly."
   },
   "a11y": {

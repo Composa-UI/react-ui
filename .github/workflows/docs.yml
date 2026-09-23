@@ -1,0 +1,49 @@
+name: Deploy docs to GitHub Pages
+
+# Builds the Carbon-style design-system docs (docs-site/build.mjs, zero-dependency)
+# and publishes docs-site/dist to GitHub Pages.
+#
+# One-time setup by a repo admin: Settings -> Pages -> Build and deployment ->
+# Source: "GitHub Actions". After that this workflow deploys on every push that
+# touches the docs, the annotations, or the token source.
+
+on:
+  push:
+    branches:
+      - main
+      - claude/composa-design-system-slots-l5k7of
+    paths:
+      - "docs-site/**"
+      - "annotations/**"
+      - "tokens/composa.tokens.json"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build docs site
+        run: node docs-site/build.mjs
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs-site/dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,6 +1,6 @@
 {
   "component": "ColorWheel",
-  "category": "Inputs / Controls",
+  "category": "Inputs",
   "intent": "A circular hue/saturation color well for grade controls (Shadows / Midtones / Highlights): hue around the disc, saturation from the neutral center to the edge, with a draggable center handle.",
   "use_when": [
     "A tonal-grade push (a hue and an amount) — the video color-wheels UI."
@@ -11,13 +11,24 @@
   ],
   "variants": {},
   "slots": {},
-  "states": ["neutral (center)", "pushed", "dragging", "focused", "disabled"],
+  "states": [
+    "neutral (center)",
+    "pushed",
+    "dragging",
+    "focused",
+    "disabled"
+  ],
   "tokens": {
     "note": "DS CSS-variable theming for the chrome; the hue disc is an intrinsic generated color gradient (a rainbow), not tokenizable."
   },
   "a11y": {
     "role": "slider (the disc is focusable)",
-    "keyboard": ["Arrow left/right = hue", "Arrow up/down = saturation", "Shift = x5 step", "Home = neutral center"],
+    "keyboard": [
+      "Arrow left/right = hue",
+      "Arrow up/down = saturation",
+      "Shift = x5 step",
+      "Home = neutral center"
+    ],
     "value": "hue (0-360) + saturation (0-1); center = neutral."
   },
   "enforce": {

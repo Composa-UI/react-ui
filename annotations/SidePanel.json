@@ -1,6 +1,6 @@
 {
   "component": "SidePanel",
-  "category": "Panels / Layout",
+  "category": "Panels",
   "intent": "The resizable shell shared by every left-rail panel (Composition, Assets, Agent). Owns the width and a drag-resize separator so the panels can't drift and a host-controlled width survives switching tabs.",
   "use_when": [
     "A left-rail panel that must be resizable and share width with its siblings."
@@ -10,12 +10,18 @@
     "The inspector rail — use InspectorRailSwitcher / Inspector."
   ],
   "variants": {
-    "width": ["controlled (width + onWidthChange)", "uncontrolled (defaultWidth)"]
+    "width": [
+      "controlled (width + onWidthChange)",
+      "uncontrolled (defaultWidth)"
+    ]
   },
   "slots": {
     "children": "The panel content."
   },
-  "states": ["default", "resizing"],
+  "states": [
+    "default",
+    "resizing"
+  ],
   "tokens": {
     "note": "Layout-only; width clamped to [200, 360], default 240; no hardcoded hex — verified."
   },

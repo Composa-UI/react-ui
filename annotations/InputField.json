@@ -1,6 +1,6 @@
 {
   "component": "InputField",
-  "category": "Inputs / Controls",
+  "category": "Inputs",
   "intent": "A single- or multi-line text field with leading/trailing slots, an inline label or dropdown, a hint line, and validation variants.",
   "use_when": [
     "Free-text entry (name, URL, search).",
@@ -11,8 +11,16 @@
     "A choice — use Dropdown / SegmentedControl."
   ],
   "variants": {
-    "variant": ["default", "error", "success", "warning"],
-    "shape": ["single-line", "multiline (textarea)"]
+    "variant": [
+      "default",
+      "error",
+      "success",
+      "warning"
+    ],
+    "shape": [
+      "single-line",
+      "multiline (textarea)"
+    ]
   },
   "slots": {
     "leadingIcon": "leading glyph",
@@ -21,7 +29,15 @@
     "inlineDropdown": "an inline Dropdown (e.g. unit picker)",
     "hint": "helper / validation text below the field"
   },
-  "states": ["default", "focused", "error", "success", "warning", "disabled", "readOnly"],
+  "states": [
+    "default",
+    "focused",
+    "error",
+    "success",
+    "warning",
+    "disabled",
+    "readOnly"
+  ],
   "tokens": {
     "text": "text/default; placeholder text/tertiary",
     "hint": "text/tertiary (danger / success / warning by variant)",

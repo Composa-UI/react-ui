@@ -1,6 +1,6 @@
 {
   "component": "NumericInput",
-  "category": "Inputs / Controls",
+  "category": "Inputs",
   "intent": "The inspector's number-entry primitive: a numeric field with drag-scrub, keyboard step, a mixed (multi-select) state, and an optional keyframe affordance.",
   "use_when": [
     "Entering or nudging a number in the inspector (x, y, w, h, opacity, rotation).",
@@ -11,11 +11,23 @@
     "A bounded value with a track — use Slider or Dial."
   ],
   "variants": {
-    "mixed": ["single value", "mixed (multi-select differing values)"],
-    "keyframe": ["off", "keyframe toggle shown"]
+    "mixed": [
+      "single value",
+      "mixed (multi-select differing values)"
+    ],
+    "keyframe": [
+      "off",
+      "keyframe toggle shown"
+    ]
   },
   "slots": {},
-  "states": ["default", "focused", "mixed", "disabled", "keyframed"],
+  "states": [
+    "default",
+    "focused",
+    "mixed",
+    "disabled",
+    "keyframed"
+  ],
   "tokens": {
     "note": "Binds to DS tokens; Input.tsx carries a hardcoded default color elsewhere in the file, so this is not claimed tokensOnly."
   },

@@ -1,6 +1,6 @@
 {
   "component": "NavRail",
-  "category": "Editor / Navigation",
+  "category": "Navigation",
   "intent": "The editor's left navigation rail: icon destinations with a label below each, an active accent, and an optional brand button that opens a back-to-files menu.",
   "use_when": [
     "The far-left destination switcher of an editor screen (the EditorShell navRail slot).",
@@ -11,18 +11,38 @@
     "In-canvas tools — use CreationToolbar."
   ],
   "variants": {
-    "selection": ["controlled (active + onSelect)", "uncontrolled (defaultActive)"],
-    "brand": ["inert brand mark", "back-to-files menu (onBackToFiles)"]
+    "selection": [
+      "controlled (active + onSelect)",
+      "uncontrolled (defaultActive)"
+    ],
+    "brand": [
+      "inert brand mark",
+      "back-to-files menu (onBackToFiles)"
+    ]
   },
   "slots": {
     "items": "NavItem[] destinations (id, icon, label) — override the default Comp / Agent / Assets set.",
     "brand": "Top brand button; becomes a menu trigger when onBackToFiles is provided."
   },
-  "states": ["default", "active", "hover"],
+  "states": [
+    "default",
+    "active",
+    "hover"
+  ],
   "tokens": {
-    "surface": { "bg": "bg/default", "border": "border/default" },
-    "active": { "bg": "bg/selected", "icon+label": "text/brand" },
-    "inactive": { "icon": "icon/default", "label": "text/secondary", "hover": "bg/hover" }
+    "surface": {
+      "bg": "bg/default",
+      "border": "border/default"
+    },
+    "active": {
+      "bg": "bg/selected",
+      "icon+label": "text/brand"
+    },
+    "inactive": {
+      "icon": "icon/default",
+      "label": "text/secondary",
+      "hover": "bg/hover"
+    }
   },
   "a11y": {
     "role": "navigation (native <nav aria-label>)",

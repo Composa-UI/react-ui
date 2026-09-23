@@ -1,6 +1,6 @@
 {
   "component": "AlignmentControl",
-  "category": "Inputs / Controls",
+  "category": "Inputs",
   "intent": "A 3x3 alignment picker (nine anchor positions) as one radiogroup; its face changes with the frame flow — a single dot (stack) or table cells (grid).",
   "use_when": [
     "Picking one of nine alignment / anchor positions in the inspector."
@@ -10,10 +10,18 @@
     "A non-positional single-select — use SegmentedControl."
   ],
   "variants": {
-    "variant": ["stack (single-dot face)", "grid (table face)"]
+    "variant": [
+      "stack (single-dot face)",
+      "grid (table face)"
+    ]
   },
   "slots": {},
-  "states": ["default", "selected", "disabled", "focused"],
+  "states": [
+    "default",
+    "selected",
+    "disabled",
+    "focused"
+  ],
   "tokens": {
     "note": "Binds to DS tokens; no hardcoded hex — verified.",
     "surface": "shares the SegmentedControl enclosure (bg/secondary + border ring)"

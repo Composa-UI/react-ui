@@ -1,6 +1,6 @@
 {
   "component": "Slider",
-  "category": "Inputs / Controls",
+  "category": "Inputs",
   "intent": "A horizontal slider on a native range input: a pill track with a fill and a circular handle. Track and handle variants cover gradient, alpha, and gradient-stop use.",
   "use_when": [
     "A bounded value with a draggable track (opacity, zoom, a gradient stop)."
@@ -10,14 +10,33 @@
     "A precise typed number — use NumericInput."
   ],
   "variants": {
-    "handle": ["fill", "stroke (modified value)", "chit (gradient-stop swatch)"],
-    "track": ["default", "gradient", "alpha (checkerboard)"],
-    "size": ["default", "compact"]
+    "handle": [
+      "fill",
+      "stroke (modified value)",
+      "chit (gradient-stop swatch)"
+    ],
+    "track": [
+      "default",
+      "gradient",
+      "alpha (checkerboard)"
+    ],
+    "size": [
+      "default",
+      "compact"
+    ]
   },
   "slots": {},
-  "states": ["default", "focused", "disabled", "modified (delta indicator)"],
+  "states": [
+    "default",
+    "focused",
+    "disabled",
+    "modified (delta indicator)"
+  ],
   "tokens": {
-    "track": { "bg": "bg/secondary", "border": "border/default" },
+    "track": {
+      "bg": "bg/secondary",
+      "border": "border/default"
+    },
     "fill": "bg/brand",
     "handle": "bg/default (white circle) + shadow",
     "focus": "border/selected",
