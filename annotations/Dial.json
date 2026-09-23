@@ -1,0 +1,35 @@
+{
+  "component": "Dial",
+  "category": "Inputs / Controls",
+  "intent": "A rotary knob for a bounded numeric value (audio inspector): a 270° arc that fills to the value, with a typed value field (NumericInput) below.",
+  "use_when": [
+    "A bounded numeric parameter where a knob is the idiom (frequency, depth, reverb).",
+    "You want drag + keyboard + typed entry on one control."
+  ],
+  "dont_use_when": [
+    "A plain number field — use NumericInput.",
+    "An unbounded value — a dial implies a min/max."
+  ],
+  "variants": {},
+  "slots": {},
+  "states": ["rest", "dragging", "fine (shift-drag)", "focused", "disabled"],
+  "tokens": {
+    "note": "DS CSS variables only (light + dark); no hardcoded hex — verified.",
+    "arc": "brand / selected fill",
+    "track": "border token"
+  },
+  "a11y": {
+    "role": "slider (the knob is focusable)",
+    "keyboard": ["Arrow = ±step", "Shift+Arrow = ×10", "Home / End = min / max"],
+    "typed": "the NumericInput value row mirrors the knob for typed edits, and is a horizontal drag-scrub surface."
+  },
+  "enforce": {
+    "role": "slider",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { Dial } from '@composa/ui'",
+    "example": "<Dial label=\"Reverb\" value={reverb} min={0} max={100} onChange={setReverb} />"
+  }
+}

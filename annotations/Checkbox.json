@@ -1,0 +1,35 @@
+{
+  "component": "Checkbox",
+  "category": "Inputs / Controls",
+  "intent": "A checkbox with checked / unchecked / mixed states; renders on the light inspector or a dark canvas surface (ghost).",
+  "use_when": [
+    "A toggleable option in a form or list.",
+    "You need an indeterminate (mixed) parent state."
+  ],
+  "dont_use_when": [
+    "A single prominent on/off setting — a Switch reads better.",
+    "Mutually exclusive options — use RadioButton."
+  ],
+  "variants": {
+    "surface": ["default (light inspector)", "ghost (dark canvas)"],
+    "emphasis": ["default", "muted"]
+  },
+  "slots": {},
+  "states": ["unchecked", "checked", "mixed", "disabled", "muted", "focused"],
+  "tokens": {
+    "note": "Checked fill and border bind to DS tokens; the checkmark glyph stroke and one dark-surface background are currently hardcoded values — tracked, so this component is NOT tokensOnly yet."
+  },
+  "a11y": {
+    "role": "checkbox",
+    "state": "aria-checked = true / false / mixed",
+    "label": "ariaLabel when the visible label is rendered by the owning row."
+  },
+  "enforce": {
+    "role": "checkbox",
+    "ariaRole": true
+  },
+  "code": {
+    "import": "import { Checkbox } from '@composa/ui'",
+    "example": "<Checkbox ariaLabel=\"Lock aspect ratio\" checked={locked} onChange={setLocked} />"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "component": "AlignmentControl",
+  "category": "Inputs / Controls",
+  "intent": "A 3x3 alignment picker (nine anchor positions) as one radiogroup; its face changes with the frame flow — a single dot (stack) or table cells (grid).",
+  "use_when": [
+    "Picking one of nine alignment / anchor positions in the inspector."
+  ],
+  "dont_use_when": [
+    "Freeform numeric position — use NumericInput pairs.",
+    "A non-positional single-select — use SegmentedControl."
+  ],
+  "variants": {
+    "variant": ["stack (single-dot face)", "grid (table face)"]
+  },
+  "slots": {},
+  "states": ["default", "selected", "disabled", "focused"],
+  "tokens": {
+    "note": "Binds to DS tokens; no hardcoded hex — verified.",
+    "surface": "shares the SegmentedControl enclosure (bg/secondary + border ring)"
+  },
+  "a11y": {
+    "role": "radiogroup + radio (nine cells)",
+    "labels": "each cell carries an aria-label (Top left ... Bottom right); arrow-key single selection."
+  },
+  "enforce": {
+    "role": "radiogroup",
+    "ariaRole": true,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { AlignmentControl } from '@composa/ui'",
+    "example": "<AlignmentControl value={align} onChange={setAlign} />"
+  }
+}
