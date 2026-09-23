@@ -35,7 +35,7 @@ const annotations = files.map(readJson) as Array<Record<string, unknown>>;
 
 // Components the DS considers contract-complete: adding one without a valid,
 // truthful annotation must fail here.
-const REQUIRED = ["Button", "Tabs", "Inspector", "EditorShell"];
+const REQUIRED = ["Button", "Tabs", "Inspector", "EditorShell", "Dropdown", "MenuRow"];
 
 // Components this test can render trivially to verify an ARIA-role claim.
 const RENDERABLE: Record<string, () => ReactElement> = {

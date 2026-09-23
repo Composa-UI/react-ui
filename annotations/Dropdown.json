@@ -1,0 +1,42 @@
+{
+  "component": "Dropdown",
+  "category": "Inputs / Controls",
+  "intent": "The dropdown trigger control only: value text + chevron, with an optional leading-icon slot. The menu/list it opens is a separate concern (Menu).",
+  "use_when": [
+    "An inspector field that opens a value list or menu.",
+    "You need the canonical trigger anatomy (value, chevron, active ring) rather than a bespoke button."
+  ],
+  "dont_use_when": [
+    "You need the option list itself — compose Menu / MenuRow inside the opened surface.",
+    "A free-text field — use InputField (Dropdown is a trigger, editable is combo-style only)."
+  ],
+  "variants": {
+    "size": ["default (24px)", "large (32px)"],
+    "state": ["default", "focused", "active"],
+    "width": ["fixed 117px", "fullWidth", "hug"],
+    "flags": ["stroke (border)", "editable (combo)", "mixed (multi-select)"]
+  },
+  "slots": {
+    "leadingIcon": "Optional leading icon (rendered in a reserved box; large size gets a secondary-bg chip)."
+  },
+  "states": ["default", "focused", "active", "disabled", "mixed"],
+  "tokens": {
+    "surface": { "bg": "bg/default", "ring": "border/default", "ring-editable-active": "border/selected" },
+    "text": { "value": "text/default", "muted": "text/tertiary (disabled or mixed)" },
+    "chevron": "icon/secondary",
+    "shape": { "radius": "radius/medium" }
+  },
+  "a11y": {
+    "role": "button (native <button type=button>)",
+    "label": "aria-label required (the trigger has no persistent text label of its own beyond the value).",
+    "chevron": "decorative; the value text conveys state."
+  },
+  "enforce": {
+    "role": "button",
+    "ariaRole": false
+  },
+  "code": {
+    "import": "import { Dropdown } from '@composa/ui'",
+    "example": "<Dropdown ariaLabel=\"Sizing\" value=\"Auto\" onClick={openMenu} />"
+  }
+}
