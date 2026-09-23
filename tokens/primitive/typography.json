@@ -1,0 +1,70 @@
+{
+  "figma": {
+    "composa": {
+      "font": {
+        "family": {
+          "$type": "fontFamily",
+          "$value": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      },
+      "body": {
+        "small": {
+          "size": { "$type": "dimension", "$value": "9px" },
+          "line": { "$type": "dimension", "$value": "14px" },
+          "weight": { "$type": "fontWeight", "$value": "450" },
+          "strong-weight": { "$type": "fontWeight", "$value": "550" },
+          "letter-spacing": { "$type": "dimension", "$value": "0.005em" }
+        },
+        "medium": {
+          "size": { "$type": "dimension", "$value": "11px" },
+          "line": { "$type": "dimension", "$value": "16px" },
+          "weight": { "$type": "fontWeight", "$value": "450" },
+          "strong-weight": { "$type": "fontWeight", "$value": "550" },
+          "letter-spacing": { "$type": "dimension", "$value": "0.005em" }
+        },
+        "large": {
+          "size": { "$type": "dimension", "$value": "13px" },
+          "line": { "$type": "dimension", "$value": "22px" },
+          "weight": { "$type": "fontWeight", "$value": "450" },
+          "strong-weight": { "$type": "fontWeight", "$value": "550" },
+          "letter-spacing": { "$type": "dimension", "$value": "0.005em" }
+        }
+      },
+      "heading": {
+        "$description": "UI3 Typography heading scale (Mode 1 export). letterSpacing converted from the px source to em (px / fontSize).",
+        "display": {
+          "$description": "UI3 display uses the Whyte family, which Composa does NOT ship. Substituted to the Inter app family. fontWeight 450 (font.weight.default); letterSpacing -3px @ 48px = -0.0625em.",
+          "family": { "$type": "fontFamily", "$value": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif" },
+          "size": { "$type": "dimension", "$value": "48px" },
+          "line": { "$type": "dimension", "$value": "56px" },
+          "weight": { "$type": "fontWeight", "$value": "450" },
+          "letter-spacing": { "$type": "dimension", "$value": "-0.0625em" }
+        },
+        "large": {
+          "$description": "Inter 24/32; fontWeight 550 (font.weight.heavy); letterSpacing -1.7px @ 24px = -0.0708em.",
+          "family": { "$type": "fontFamily", "$value": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif" },
+          "size": { "$type": "dimension", "$value": "24px" },
+          "line": { "$type": "dimension", "$value": "32px" },
+          "weight": { "$type": "fontWeight", "$value": "550" },
+          "letter-spacing": { "$type": "dimension", "$value": "-0.0708em" }
+        },
+        "medium": {
+          "$description": "Inter 15/25; fontWeight 550 (font.weight.heavy); letterSpacing -0.5px @ 15px = -0.0333em.",
+          "family": { "$type": "fontFamily", "$value": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif" },
+          "size": { "$type": "dimension", "$value": "15px" },
+          "line": { "$type": "dimension", "$value": "25px" },
+          "weight": { "$type": "fontWeight", "$value": "550" },
+          "letter-spacing": { "$type": "dimension", "$value": "-0.0333em" }
+        },
+        "small": {
+          "$description": "Inter 13/22; fontWeight 550 (font.weight.heavy); letterSpacing -0.25px @ 13px = -0.0192em.",
+          "family": { "$type": "fontFamily", "$value": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif" },
+          "size": { "$type": "dimension", "$value": "13px" },
+          "line": { "$type": "dimension", "$value": "22px" },
+          "weight": { "$type": "fontWeight", "$value": "550" },
+          "letter-spacing": { "$type": "dimension", "$value": "-0.0192em" }
+        }
+      }
+    }
+  }
+}

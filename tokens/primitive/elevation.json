@@ -1,0 +1,43 @@
+{
+  "figma": {
+    "composa": {
+      "elevation": {
+        "100": {
+          "canvas": {
+            "$type": "shadow",
+            "$value": "0 0 0.5px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.15)",
+            "$extensions": { "composa": { "dark": "0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 0 0.5px 0 rgba(0, 0, 0, 0.5), inset 0 0 0.5px 0 rgba(255, 255, 255, 0.3), inset 0 0.5px 0 0 rgba(255, 255, 255, 0.1)" } }
+          }
+        },
+        "200": {
+          "canvas": {
+            "$type": "shadow",
+            "$value": "0 0 0.5px rgba(0, 0, 0, 0.18), 0 3px 8px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.1)",
+            "$extensions": { "composa": { "dark": "0 1px 3px 0 rgba(0, 0, 0, 0.5), 0 3px 8px 0 rgba(0, 0, 0, 0.35), inset 0 0 0.5px 0 rgba(255, 255, 255, 0.3), inset 0 0.5px 0 0 rgba(255, 255, 255, 0.08)" } }
+          }
+        },
+        "300": {
+          "tooltip": {
+            "$type": "shadow",
+            "$value": "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 5px 12px 0 rgba(0, 0, 0, 0.13), 0 0 0.5px 0 rgba(0, 0, 0, 0.15)",
+            "$extensions": { "composa": { "dark": "0 1px 3px 0 rgba(0, 0, 0, 0.5), 0 5px 12px 0 rgba(0, 0, 0, 0.35), inset 0 0 0.5px 0 rgba(255, 255, 255, 0.3), inset 0 0.5px 0 0 rgba(255, 255, 255, 0.08)" } }
+          }
+        },
+        "400": {
+          "menu-panel": {
+            "$type": "shadow",
+            "$value": "0 0 0.5px rgba(0, 0, 0, 0.12), 0 10px 16px rgba(0, 0, 0, 0.12), 0 2px 5px rgba(0, 0, 0, 0.15)",
+            "$extensions": { "composa": { "dark": "0 2px 5px 0 rgba(0, 0, 0, 0.35), 0 10px 16px 0 rgba(0, 0, 0, 0.35), inset 0 0 0.5px 0 rgba(255, 255, 255, 0.35), inset 0 0.5px 0 0 rgba(255, 255, 255, 0.08)" } }
+          }
+        },
+        "500": {
+          "modal": {
+            "$type": "shadow",
+            "$value": "0 2px 4px 0 rgba(0, 0, 0, 0.12), 0 8px 20px 0 rgba(0, 0, 0, 0.18), 0 0 0.5px 0 rgba(0, 0, 0, 0.15)",
+            "$extensions": { "composa": { "dark": "0 2px 4px 0 rgba(0, 0, 0, 0.4), 0 8px 20px 0 rgba(0, 0, 0, 0.5), 0 0 0.5px 0 rgba(0, 0, 0, 0.6), inset 0 0 0.5px 0 rgba(255, 255, 255, 0.2)", "note": "Softened from a heavy 0.35/0.45 double-drop to a lighter Figma-like modal elevation (lower opacity, tighter blur)." } }
+          }
+        }
+      }
+    }
+  }
+}

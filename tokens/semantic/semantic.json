@@ -1,0 +1,148 @@
+{
+  "composa": {
+    "$description": "SEMANTIC layer — code-facing --composa-* aliases that reference primitives. Components consume ONLY these names. Hand-authored component-level tokens (control/menu/switch/tooltip/dialog/tabs/Composa and computed values such as radius-large and text-secondary-observed) are NOT pure primitive references and live in the hand-authored overrides layer design/tokens.css. The $extensions.composa.aliasKey on each token preserves the canonical dotted key used in the design/generated/composa-core-tokens.json aliases mirror.",
+    "color": {
+      "bg": { "$type": "color", "$value": "{figma.composa.color.bg}", "$extensions": { "composa": { "aliasKey": "color.bg" } } },
+      "bg-secondary": { "$type": "color", "$value": "{figma.composa.color.bg-secondary}", "$extensions": { "composa": { "aliasKey": "color.bg.secondary" } } },
+      "bg-secondary-on-canvas": { "$type": "color", "$value": "{figma.composa.color.bg-secondary-on-canvas}", "$extensions": { "composa": { "aliasKey": "color.bg.secondaryOnCanvas" } } },
+      "bg-brand": { "$type": "color", "$value": "{figma.composa.color.brand-default}", "$extensions": { "composa": { "$description": "Composa product brand primary. DELIBERATELY diverges from UI3's bg-brand (#0d99ff) — references the formal composa.color.brand-default primitive (#ff5c16, Composa orange).", "aliasKey": "color.bg.brand", "aliasKeyAlso": { "color.bg.brandCanonical": "{figma.composa.color.bg-brand}" } } } },
+      "bg-on-selected": { "$type": "color", "$value": "{figma.composa.color.bg-on-selected}", "$extensions": { "composa": { "aliasKey": "color.bg.onSelected" } } },
+      "bg-selected": { "$type": "color", "$value": "{figma.composa.color.bg-selected}", "$extensions": { "composa": { "aliasKey": "color.bg.selected" } } },
+      "bg-selected-secondary": { "$type": "color", "$value": "{figma.composa.color.bg-selected-secondary}", "$extensions": { "composa": { "aliasKey": "color.bg.selectedSecondary" } } },
+      "bg-tertiary": { "$type": "color", "$value": "{figma.composa.color.bg-tertiary}", "$extensions": { "composa": { "aliasKey": "color.bg.tertiary" } } },
+      "accent": { "$type": "color", "$value": "{figma.composa.color.accent}", "$extensions": { "composa": { "$description": "Selection-control accent (blue). Distinct from color.bg-brand (orange). Themeable brand≠accent delineation.", "aliasKey": "color.accent" } } },
+      "bg-hover-transparent": { "$type": "color", "$value": "{figma.composa.color.bg-hover-transparent}", "$extensions": { "composa": { "aliasKey": "color.bg.hoverTransparent" } } },
+      "bg-transparent-secondary-hover": { "$type": "color", "$value": "{figma.composa.color.bg-transparent-secondary-hover}", "$extensions": { "composa": { "aliasKey": "color.bg.transparentSecondaryHover" } } },
+      "accent-blue": { "$type": "color", "$value": "{figma.composa.color.accent-blue}", "$extensions": { "composa": { "aliasKey": "color.accent.blue" } } },
+      "accent-component": { "$type": "color", "$value": "{figma.composa.color.accent-component}", "$extensions": { "composa": { "aliasKey": "color.accent.component" } } },
+      "accent-measure": { "$type": "color", "$value": "{figma.composa.color.accent-measure}", "$extensions": { "composa": { "aliasKey": "color.accent.measure" } } },
+      "accent-spacing": { "$type": "color", "$value": "{figma.composa.color.accent-spacing}", "$extensions": { "composa": { "aliasKey": "color.accent.spacing" } } },
+      "text-component": { "$type": "color", "$value": "{figma.composa.color.text-component}", "$extensions": { "composa": { "aliasKey": "color.text.component" } } },
+      "fs-canvas-default-fill": { "$type": "color", "$value": "{figma.composa.color.fs-canvas-default-fill}", "$extensions": { "composa": { "aliasKey": "color.fsCanvasDefaultFill" } } },
+      "border": { "$type": "color", "$value": "{figma.composa.color.border}", "$extensions": { "composa": { "aliasKey": "color.border" } } },
+      "border-translucent": { "$type": "color", "$value": "{figma.composa.color.border-translucent}", "$extensions": { "composa": { "aliasKey": "color.borderTranslucent" } } },
+      "border-selected": { "$type": "color", "$value": "{figma.composa.color.border-selected}", "$extensions": { "composa": { "aliasKey": "color.border.selected" } } },
+      "bg-danger": { "$type": "color", "$value": "{figma.composa.color.bg-danger}", "$extensions": { "composa": { "aliasKey": "color.bg.danger" } } },
+      "text-danger": { "$type": "color", "$value": "{figma.composa.color.text-danger}", "$extensions": { "composa": { "aliasKey": "color.text.danger" } } },
+      "icon-danger": { "$type": "color", "$value": "{figma.composa.color.icon-danger}", "$extensions": { "composa": { "aliasKey": "color.icon.danger" } } },
+      "border-danger": { "$type": "color", "$value": "{figma.composa.color.border-danger}", "$extensions": { "composa": { "aliasKey": "color.border.danger" } } },
+      "bg-success": { "$type": "color", "$value": "{figma.composa.color.bg-success}", "$extensions": { "composa": { "aliasKey": "color.bg.success" } } },
+      "text-success": { "$type": "color", "$value": "{figma.composa.color.text-success}", "$extensions": { "composa": { "aliasKey": "color.text.success" } } },
+      "icon-success": { "$type": "color", "$value": "{figma.composa.color.icon-success}", "$extensions": { "composa": { "aliasKey": "color.icon.success" } } },
+      "border-success": { "$type": "color", "$value": "{figma.composa.color.border-success}", "$extensions": { "composa": { "aliasKey": "color.border.success" } } },
+      "bg-warning": { "$type": "color", "$value": "{figma.composa.color.bg-warning}", "$extensions": { "composa": { "aliasKey": "color.bg.warning" } } },
+      "text-warning": { "$type": "color", "$value": "{figma.composa.color.text-warning}", "$extensions": { "composa": { "aliasKey": "color.text.warning" } } },
+      "icon-warning": { "$type": "color", "$value": "{figma.composa.color.icon-warning}", "$extensions": { "composa": { "aliasKey": "color.icon.warning" } } },
+      "border-warning": { "$type": "color", "$value": "{figma.composa.color.border-warning}", "$extensions": { "composa": { "aliasKey": "color.border.warning" } } },
+      "bg-hover": { "$type": "color", "$value": "{figma.composa.color.bg-hover}", "$extensions": { "composa": { "aliasKey": "color.bg.hover" } } },
+      "bg-brand-secondary": { "$type": "color", "$value": "{figma.composa.color.bg-brand-secondary}", "$extensions": { "composa": { "aliasKey": "color.bg.brandSecondary" } } },
+      "bg-brand-tertiary": { "$type": "color", "$value": "{figma.composa.color.bg-brand-tertiary}", "$extensions": { "composa": { "aliasKey": "color.bg.brandTertiary" } } },
+      "border-brand": { "$type": "color", "$value": "{figma.composa.color.border-brand}", "$extensions": { "composa": { "aliasKey": "color.border.brand" } } },
+      "border-strong": { "$type": "color", "$value": "{figma.composa.color.border-strong}", "$extensions": { "composa": { "aliasKey": "color.border.strong" } } },
+      "special-shadow": { "$type": "color", "$value": "{figma.composa.color.special-shadow}", "$extensions": { "composa": { "aliasKey": "color.special.shadow" } } },
+      "bg-disabled": { "$type": "color", "$value": "{figma.composa.color.bg-disabled}", "$extensions": { "composa": { "aliasKey": "color.bg.disabled" } } },
+      "text-disabled": { "$type": "color", "$value": "{figma.composa.color.text-disabled}", "$extensions": { "composa": { "aliasKey": "color.text.disabled" } } },
+      "border-disabled": { "$type": "color", "$value": "{figma.composa.color.border-disabled}", "$extensions": { "composa": { "aliasKey": "color.border.disabled" } } },
+      "bg-brand-pressed": { "$type": "color", "$value": "{figma.composa.color.brand-pressed}", "$extensions": { "composa": { "$description": "Composa brand primary pressed/hover (darkened Composa orange). Pairs with the deliberate color.bg-brand re-map.", "aliasKey": "color.bg.brandPressed" } } },
+      "bg-pressed": { "$type": "color", "$value": "{figma.composa.color.bg-pressed}", "$extensions": { "composa": { "aliasKey": "color.bg.pressed" } } },
+      "text-brand": { "$type": "color", "$value": "{figma.composa.color.text-brand}", "$extensions": { "composa": { "aliasKey": "color.text.brand" } } },
+      "icon-on-brand": { "$type": "color", "$value": "{figma.composa.color.icon-on-brand}", "$extensions": { "composa": { "aliasKey": "color.icon.onBrand" } } },
+      "bg-inverse": { "$type": "color", "$value": "{figma.composa.color.bg-inverse}", "$extensions": { "composa": { "aliasKey": "color.bg.inverse" } } },
+      "text": { "$type": "color", "$value": "{figma.composa.color.text}", "$extensions": { "composa": { "aliasKey": "color.text" } } },
+      "text-secondary": { "$type": "color", "$value": "{figma.composa.color.text-secondary}", "$extensions": { "composa": { "aliasKey": "color.text.secondary" } } },
+      "text-tertiary": { "$type": "color", "$value": "{figma.composa.color.text-tertiary}", "$extensions": { "composa": { "aliasKey": "color.text.tertiary" } } },
+      "text-on-brand": { "$type": "color", "$value": "{figma.composa.color.text-on-brand}", "$extensions": { "composa": { "aliasKey": "color.text.onBrand" } } },
+      "text-on-inverse": { "$type": "color", "$value": "{figma.composa.color.text-on-inverse}", "$extensions": { "composa": { "aliasKey": "color.text.onInverse" } } },
+      "icon": { "$type": "color", "$value": "{figma.composa.color.icon}", "$extensions": { "composa": { "aliasKey": "color.icon" } } },
+      "icon-secondary": { "$type": "color", "$value": "{figma.composa.color.icon-secondary}", "$extensions": { "composa": { "aliasKey": "color.icon.secondary" } } },
+      "icon-tertiary": { "$type": "color", "$value": "{figma.composa.color.icon-tertiary}", "$extensions": { "composa": { "aliasKey": "color.icon.tertiary" } } },
+      "scrollbar": { "$type": "color", "$value": "{figma.composa.color.scrollbar}", "$extensions": { "composa": { "aliasKey": "color.scrollbar" } } },
+      "multiplayer-yellow": { "$type": "color", "$value": "{figma.composa.color.multiplayer-yellow}", "$extensions": { "composa": { "aliasKey": "color.multiplayer.yellow" } } },
+      "text-on-multiplayer-yellow": { "$type": "color", "$value": "{figma.composa.color.text-on-multiplayer-yellow}", "$extensions": { "composa": { "aliasKey": "color.text.onMultiplayerYellow" } } }
+    },
+    "radius": {
+      "none": { "$type": "dimension", "$value": "{figma.composa.radius.none}", "$extensions": { "composa": { "aliasKey": "radius.none" } } },
+      "small": { "$type": "dimension", "$value": "{figma.composa.radius.small}", "$extensions": { "composa": { "aliasKey": "radius.small" } } },
+      "medium": { "$type": "dimension", "$value": "{figma.composa.radius.medium}", "$extensions": { "composa": { "aliasKey": "radius.medium" } } },
+      "full": { "$type": "dimension", "$value": "{figma.composa.radius.full}", "$extensions": { "composa": { "aliasKey": "radius.full" } } }
+    },
+    "space": {
+      "0": { "$type": "dimension", "$value": "{figma.composa.space.0}", "$extensions": { "composa": { "aliasKey": "space.0" } } },
+      "1": { "$type": "dimension", "$value": "{figma.composa.space.1}", "$extensions": { "composa": { "aliasKey": "space.1" } } },
+      "2": { "$type": "dimension", "$value": "{figma.composa.space.2}", "$extensions": { "composa": { "aliasKey": "space.2" } } },
+      "2-5": { "$type": "dimension", "$value": "{figma.composa.space.2-5}", "$description": "Composa extension — UI3 has no 12px spacer.", "$extensions": { "composa": { "aliasKey": "space.2-5" } } },
+      "3": { "$type": "dimension", "$value": "{figma.composa.space.3}", "$extensions": { "composa": { "aliasKey": "space.3" } } },
+      "4": { "$type": "dimension", "$value": "{figma.composa.space.4}", "$extensions": { "composa": { "aliasKey": "space.4" } } },
+      "5": { "$type": "dimension", "$value": "{figma.composa.space.5}", "$extensions": { "composa": { "aliasKey": "space.5" } } },
+      "6": { "$type": "dimension", "$value": "{figma.composa.space.6}", "$extensions": { "composa": { "aliasKey": "space.6" } } }
+    },
+    "height": {
+      "input": { "$type": "dimension", "$value": "{figma.composa.height.input}", "$extensions": { "composa": { "aliasKey": "height.input" } } },
+      "heading": { "$type": "dimension", "$value": "{figma.composa.height.heading}", "$extensions": { "composa": { "aliasKey": "height.heading" } } }
+    },
+    "font": {
+      "family": { "$type": "fontFamily", "$value": "{figma.composa.font.family}", "$extensions": { "composa": { "aliasKey": "font.family" } } }
+    },
+    "body": {
+      "small": {
+        "size": { "$type": "dimension", "$value": "{figma.composa.body.small.size}", "$extensions": { "composa": { "aliasKey": "body.small.size" } } },
+        "line": { "$type": "dimension", "$value": "{figma.composa.body.small.line}", "$extensions": { "composa": { "aliasKey": "body.small.lineHeight" } } },
+        "weight": { "$type": "fontWeight", "$value": "{figma.composa.body.small.weight}", "$extensions": { "composa": { "aliasKey": "body.small.weight" } } },
+        "strong-weight": { "$type": "fontWeight", "$value": "{figma.composa.body.small.strong-weight}", "$extensions": { "composa": { "aliasKey": "body.small.strongWeight" } } },
+        "letter-spacing": { "$type": "dimension", "$value": "{figma.composa.body.small.letter-spacing}", "$extensions": { "composa": { "aliasKey": "body.small.letterSpacing" } } }
+      },
+      "medium": {
+        "size": { "$type": "dimension", "$value": "{figma.composa.body.medium.size}", "$extensions": { "composa": { "aliasKey": "body.medium.size" } } },
+        "line": { "$type": "dimension", "$value": "{figma.composa.body.medium.line}", "$extensions": { "composa": { "aliasKey": "body.medium.lineHeight" } } },
+        "weight": { "$type": "fontWeight", "$value": "{figma.composa.body.medium.weight}", "$extensions": { "composa": { "aliasKey": "body.medium.weight" } } },
+        "strong-weight": { "$type": "fontWeight", "$value": "{figma.composa.body.medium.strong-weight}", "$extensions": { "composa": { "aliasKey": "body.medium.strongWeight" } } },
+        "letter-spacing": { "$type": "dimension", "$value": "{figma.composa.body.medium.letter-spacing}", "$extensions": { "composa": { "aliasKey": "body.medium.letterSpacing" } } }
+      },
+      "large": {
+        "size": { "$type": "dimension", "$value": "{figma.composa.body.large.size}", "$extensions": { "composa": { "aliasKey": "body.large.size" } } },
+        "line": { "$type": "dimension", "$value": "{figma.composa.body.large.line}", "$extensions": { "composa": { "aliasKey": "body.large.lineHeight" } } },
+        "weight": { "$type": "fontWeight", "$value": "{figma.composa.body.large.weight}", "$extensions": { "composa": { "aliasKey": "body.large.weight" } } },
+        "strong-weight": { "$type": "fontWeight", "$value": "{figma.composa.body.large.strong-weight}", "$extensions": { "composa": { "aliasKey": "body.large.strongWeight" } } },
+        "letter-spacing": { "$type": "dimension", "$value": "{figma.composa.body.large.letter-spacing}", "$extensions": { "composa": { "aliasKey": "body.large.letterSpacing" } } }
+      }
+    },
+    "heading": {
+      "$description": "UI3 Typography heading scale. display family is Inter (UI3's Whyte is not shipped by Composa).",
+      "display": {
+        "family": { "$type": "fontFamily", "$value": "{figma.composa.heading.display.family}", "$extensions": { "composa": { "aliasKey": "heading.display.family" } } },
+        "size": { "$type": "dimension", "$value": "{figma.composa.heading.display.size}", "$extensions": { "composa": { "aliasKey": "heading.display.size" } } },
+        "line": { "$type": "dimension", "$value": "{figma.composa.heading.display.line}", "$extensions": { "composa": { "aliasKey": "heading.display.lineHeight" } } },
+        "weight": { "$type": "fontWeight", "$value": "{figma.composa.heading.display.weight}", "$extensions": { "composa": { "aliasKey": "heading.display.weight" } } },
+        "letter-spacing": { "$type": "dimension", "$value": "{figma.composa.heading.display.letter-spacing}", "$extensions": { "composa": { "aliasKey": "heading.display.letterSpacing" } } }
+      },
+      "large": {
+        "family": { "$type": "fontFamily", "$value": "{figma.composa.heading.large.family}", "$extensions": { "composa": { "aliasKey": "heading.large.family" } } },
+        "size": { "$type": "dimension", "$value": "{figma.composa.heading.large.size}", "$extensions": { "composa": { "aliasKey": "heading.large.size" } } },
+        "line": { "$type": "dimension", "$value": "{figma.composa.heading.large.line}", "$extensions": { "composa": { "aliasKey": "heading.large.lineHeight" } } },
+        "weight": { "$type": "fontWeight", "$value": "{figma.composa.heading.large.weight}", "$extensions": { "composa": { "aliasKey": "heading.large.weight" } } },
+        "letter-spacing": { "$type": "dimension", "$value": "{figma.composa.heading.large.letter-spacing}", "$extensions": { "composa": { "aliasKey": "heading.large.letterSpacing" } } }
+      },
+      "medium": {
+        "family": { "$type": "fontFamily", "$value": "{figma.composa.heading.medium.family}", "$extensions": { "composa": { "aliasKey": "heading.medium.family" } } },
+        "size": { "$type": "dimension", "$value": "{figma.composa.heading.medium.size}", "$extensions": { "composa": { "aliasKey": "heading.medium.size" } } },
+        "line": { "$type": "dimension", "$value": "{figma.composa.heading.medium.line}", "$extensions": { "composa": { "aliasKey": "heading.medium.lineHeight" } } },
+        "weight": { "$type": "fontWeight", "$value": "{figma.composa.heading.medium.weight}", "$extensions": { "composa": { "aliasKey": "heading.medium.weight" } } },
+        "letter-spacing": { "$type": "dimension", "$value": "{figma.composa.heading.medium.letter-spacing}", "$extensions": { "composa": { "aliasKey": "heading.medium.letterSpacing" } } }
+      },
+      "small": {
+        "family": { "$type": "fontFamily", "$value": "{figma.composa.heading.small.family}", "$extensions": { "composa": { "aliasKey": "heading.small.family" } } },
+        "size": { "$type": "dimension", "$value": "{figma.composa.heading.small.size}", "$extensions": { "composa": { "aliasKey": "heading.small.size" } } },
+        "line": { "$type": "dimension", "$value": "{figma.composa.heading.small.line}", "$extensions": { "composa": { "aliasKey": "heading.small.lineHeight" } } },
+        "weight": { "$type": "fontWeight", "$value": "{figma.composa.heading.small.weight}", "$extensions": { "composa": { "aliasKey": "heading.small.weight" } } },
+        "letter-spacing": { "$type": "dimension", "$value": "{figma.composa.heading.small.letter-spacing}", "$extensions": { "composa": { "aliasKey": "heading.small.letterSpacing" } } }
+      }
+    },
+    "elevation": {
+      "100-canvas": { "$type": "shadow", "$value": "{figma.composa.elevation.100.canvas}", "$extensions": { "composa": { "aliasKey": "elevation.100.canvas" } } },
+      "200-canvas": { "$type": "shadow", "$value": "{figma.composa.elevation.200.canvas}", "$extensions": { "composa": { "aliasKey": "elevation.200.canvas" } } },
+      "300-tooltip": { "$type": "shadow", "$value": "{figma.composa.elevation.300.tooltip}", "$extensions": { "composa": { "aliasKey": "elevation.300.tooltip" } } },
+      "400-menu-panel": { "$type": "shadow", "$value": "{figma.composa.elevation.400.menu-panel}", "$extensions": { "composa": { "aliasKey": "elevation.400.menuPanel" } } },
+      "500-modal": { "$type": "shadow", "$value": "{figma.composa.elevation.500.modal}", "$extensions": { "composa": { "aliasKey": "elevation.500.modal" } } }
+    }
+  }
+}
