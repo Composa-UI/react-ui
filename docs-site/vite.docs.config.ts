@@ -13,8 +13,11 @@ export default defineConfig({
   // The app (index.html + main.tsx) lives here; annotations/tokens/src are read
   // via relative imports that climb back to the repo root.
   root: path.resolve(__dirname, "app"),
-  // Relative asset URLs so the site works from a GitHub Pages project subpath.
-  base: "./",
+  // The site is a GitHub Pages PROJECT page served at
+  // https://composa-ui.github.io/react-ui/ , so assets resolve under /react-ui/.
+  // import.meta.env.BASE_URL is this value, which the "View in Storybook" links
+  // use to reach the sibling Storybook build at /react-ui/storybook/.
+  base: "/react-ui/",
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: { "@": path.resolve(repoRoot, "src") },

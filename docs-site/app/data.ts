@@ -63,6 +63,57 @@ export const components: Annotation[] = Object.entries(modules)
 
 export const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
+// ── Storybook linkage ───────────────────────────────────────────────────────
+// Mirror Storybook's own id derivation (@storybook/csf `sanitize` + `toId`) so
+// the "View in Storybook" link resolves to the right story without guessing.
+// Each story is titled `<Category>/<Component>` with a single `Default` export,
+// so its id is `sanitize("<Category>/<Component>")--default`.
+const sanitize = (s: string) =>
+  s
+    .toLowerCase()
+    // eslint-disable-next-line no-useless-escape
+    .replace(/[ '’–—―′¿`~!@#$%^&*()_|+\-=?;:'",.<>\{\}\[\]\\\/]/gi, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+/, "")
+    .replace(/-+$/, "");
+
+export const storyTitle = (c: Annotation) => `${c.category}/${c.component}`;
+export const storyId = (c: Annotation) => `${sanitize(storyTitle(c))}--default`;
+
+// import.meta.env.BASE_URL is the docs app base ("/react-ui/" in the deployed
+// build, "/" in local dev). Storybook is assembled one level down at
+// `<base>storybook/`, so this link resolves under the Pages project prefix.
+export const storybookHref = (c: Annotation) =>
+  `${import.meta.env.BASE_URL}storybook/?path=/story/${storyId(c)}`;
+
+// ── Hash routing (Pages is static → no BrowserRouter) ────────────────────────
+export type Route =
+  | { kind: "home" }
+  | { kind: "foundations" }
+  | { kind: "token-compliance" }
+  | { kind: "component"; component: Annotation }
+  | { kind: "not-found"; slug: string };
+
+const bySlug = new Map(components.map(c => [slug(c.component), c] as const));
+
+export const componentBySlug = (s: string) => bySlug.get(s);
+
+export const routeForComponent = (c: Annotation) => `#/components/${slug(c.component)}`;
+
+export function parseRoute(hash: string): Route {
+  // "#/components/button" → ["components","button"]; "" / "#/" → home.
+  const path = hash.replace(/^#/, "").replace(/^\/+/, "").replace(/\/+$/, "");
+  if (path === "") return { kind: "home" };
+  if (path === "foundations") return { kind: "foundations" };
+  if (path === "token-compliance") return { kind: "token-compliance" };
+  const m = path.match(/^components\/(.+)$/);
+  if (m) {
+    const c = bySlug.get(m[1]);
+    return c ? { kind: "component", component: c } : { kind: "not-found", slug: m[1] };
+  }
+  return { kind: "not-found", slug: path };
+}
+
 // Resolve a --color-* alias one level so swatches paint a real value.
 export const colorVal = (raw: string): string => {
   const m = String(raw).match(/^var\(--color-([\w-]+)\)$/);
