@@ -49,7 +49,7 @@ const REQUIRED = [
   "Switch", "Checkbox", "Dial", "AlignmentControl",
   "CreationToolbar", "CropToolbar", "LayerList", "Notification",
   "Slider", "ListCell", "Tooltip", "SplitButton", "Menu", "NumericInput",
-  "Modal", "InputField",
+  "Modal", "InputField", "InspectorRailSwitcher", "SidePanel",
 ];
 
 // Components whose source lives in a shared file (not <Component>.tsx). Used to
