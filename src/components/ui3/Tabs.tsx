@@ -79,6 +79,34 @@ export function Tabs({ tabs, value, defaultValue, onChange, className }: TabsPro
   );
 }
 
+interface TabPanelProps {
+  /** Must match the controlling tab's `panelId`. */
+  panelId: string;
+  /** Whether this panel's tab is currently selected. */
+  active: boolean;
+  children?: ReactNode;
+  className?: string;
+}
+
+// TabPanel — the content region a Tabs entry controls. Pair with a tab whose
+// `panelId` matches: the tab renders id={`${panelId}-tab`} + aria-controls={panelId};
+// this panel renders id={panelId} + aria-labelledby={`${panelId}-tab`}. Hidden and
+// emptied when inactive so only the selected panel is in the tab/reading order.
+export function TabPanel({ panelId, active, children, className }: TabPanelProps) {
+  return (
+    <div
+      role="tabpanel"
+      id={panelId}
+      aria-labelledby={`${panelId}-tab`}
+      hidden={!active}
+      tabIndex={active ? 0 : -1}
+      className={className}
+    >
+      {active ? children : null}
+    </div>
+  );
+}
+
 // SingleTab — used when there's only one tab (just shows a bold label)
 interface SingleTabProps {
   label: string;
