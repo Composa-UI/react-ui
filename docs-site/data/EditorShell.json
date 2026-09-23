@@ -1,0 +1,31 @@
+{
+  "component": "EditorShell",
+  "category": "Templates / Screens",
+  "intent": "The editor screen, published by the design system. Named region slots (nav rail, left panel, canvas, inspector, timeline) the host fills; the shell owns the layout and the overlay boundary.",
+  "use_when": [
+    "Assembling an editor screen from the DS instead of hand-writing the top-level layout.",
+    "You want the swap test: change one region and nothing else moves.",
+    "Building a second Figma-mental-model tool (e.g. a doc editor) — omit the timeline slot and reuse the same shell."
+  ],
+  "dont_use_when": [
+    "You need a single panel, not a whole screen — use Inspector / PropertyPanel / Panel directly.",
+    "The region owns product or document state — that stays in the host; slots take rendered nodes."
+  ],
+  "variants": {
+    "regions": ["navRail", "leftPanel", "canvas (grows)", "inspector", "timeline (optional)", "overlays"],
+    "overlayBoundary": ["true (default) — the workspace row is the DS overlay collision boundary", "false — the host provides its own"]
+  },
+  "tokens": {
+    "layout": { "canvas": "flex-1 (only region that grows)", "rails/panels": "shrink-0 (own their width)" },
+    "surface": "layout-only — no color or spacing tokens of its own; each slotted region carries its own"
+  },
+  "a11y": {
+    "role": "application (labelled by aria-label)",
+    "landmarks": "slotted regions own their own landmarks (inspector = complementary, canvas = main); the shell does not double them.",
+    "reading order": "nav rail → left panel → canvas → inspector → timeline, matching the DOM."
+  },
+  "code": {
+    "import": "import { EditorShell, Inspector, NavRail } from '@composa/ui'",
+    "example": "<EditorShell\n  aria-label=\"Composa editor\"\n  navRail={<NavRail … />}\n  leftPanel={<LeftPanel … />}\n  canvas={<main aria-label=\"Canvas\">…</main>}\n  inspector={<Inspector>…</Inspector>}\n  timeline={<Timeline … />}   /* omit for a doc editor */\n  overlays={<><CreationToolbar … /><Notifications … /></>}\n/>"
+  }
+}

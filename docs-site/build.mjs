@@ -8,7 +8,7 @@ const root = new URL("../", import.meta.url);
 const tokens = JSON.parse(await readFile(new URL("tokens/composa.tokens.json", root), "utf8")).tokens;
 const dataDir = new URL("docs-site/data/", root);
 const files = (await readdir(dataDir)).filter(f => f.endsWith(".json"));
-const order = ["Button", "Tabs", "Inspector"];
+const order = ["Button", "Tabs", "Inspector", "EditorShell"];
 const components = (await Promise.all(files.map(async f => JSON.parse(await readFile(new URL(f, dataDir), "utf8")))))
   .sort((a, b) => (order.indexOf(a.component) + 1 || 99) - (order.indexOf(b.component) + 1 || 99));
 

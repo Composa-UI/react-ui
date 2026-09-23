@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import cropPlaygroundMedia from "./imports/SlidesTemplate/9bf3285fa6c14222923aa8fcd4bf31f6e40807d9.png";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { PropertyPanel, type ClipSpeed, type ElementEffectSetting, type ElementFillSetting, type ElementLayoutGuideSetting, type ElementLayoutSettings, type ElementSelectionColorSetting, type ElementStrokeSetting, type ElementTypographySettings, type InspectorExportSetting, type ProjectFrameRate, type SlideBackgroundType, type SlideTransitionDirection, type SlideTransitionEasing, type SlideTransitionType } from "./components/ui3/PropertyPanel";
@@ -45,6 +45,9 @@ import { MultiChoiceCard } from "./components/ui3/MultiChoiceCard";
 import { GitHubToolResultCard } from "./components/ui3/GitHubToolResultCard";
 import { GitHubPermissionCard } from "./components/ui3/GitHubPermissionCard";
 import { ShareModal, type SharePerson } from "./components/ui3/ShareModal";
+import { EditorShell } from "./components/ui3/EditorShell";
+import { Inspector } from "./components/ui3/Inspector";
+import { PanelSection } from "./components/ui3/Panel";
 import thumb0 from "./imports/SlidesTemplate/9bf3285fa6c14222923aa8fcd4bf31f6e40807d9.png";
 import thumb1 from "./imports/SlidesTemplate/201951eb24dd285dd0794f4e790b8175c012bf20.png";
 import thumb2 from "./imports/SlidesTemplate/4f36d4cb9f77c2e380641dd47deb24943efa0b8a.png";
@@ -899,6 +902,58 @@ function Issue207ControlsFixture({ mode, width }: { mode: "light" | "dark"; widt
       <NumericInput ariaLabel={`${mode} disabled mixed`} value={0} mixed disabled keyframe={{ active: true, onToggle: () => undefined }} />
     </div>
   </section>;
+}
+
+// EditorShell — the editor screen published by the design system
+// (design-system-slots #9). Left column: the full editor, timeline included.
+// Right column: the SAME shell reused with the `timeline` slot omitted — the
+// document-agnostic path a second Figma-mental-model tool (a doc editor) takes.
+// Region labels make the named slots (and the swap boundary) legible.
+function EditorShellStory({ dark }: { dark: boolean }) {
+  const surface = dark ? "#2c2c2c" : "#ffffff";
+  const line = dark ? "#3a3a3a" : "#d9d9d9";
+  const ink = dark ? "#cfcfcf" : "#555555";
+  const stub = (label: string, width?: number) => (
+    <div style={{
+      width: width ?? "100%", height: "100%", display: "flex", alignItems: "center",
+      justifyContent: "center", background: surface, borderRight: `1px solid ${line}`,
+      color: ink, font: "600 11px system-ui", letterSpacing: "0.04em",
+    }}>{label}</div>
+  );
+  const inspector = (
+    <Inspector aria-label="Design inspector">
+      <PanelSection title="Position" />
+      <PanelSection title="Fill" />
+    </Inspector>
+  );
+  const timeline = (
+    <div style={{
+      height: 120, display: "flex", alignItems: "center", justifyContent: "center",
+      background: surface, borderTop: `1px solid ${line}`, color: ink, font: "600 11px system-ui",
+    }}>Timeline</div>
+  );
+  const frame = (title: string, node: ReactNode) => (
+    <div style={{ flex: "0 0 auto" }}>
+      <div style={{ font: "600 11px system-ui", marginBottom: 6, color: ink }}>{title}</div>
+      <div style={{ width: 620, height: 380, border: `1px solid ${line}`, borderRadius: 8, overflow: "hidden" }}>
+        {node}
+      </div>
+    </div>
+  );
+  return (
+    <div data-composa-mode={dark ? "dark" : undefined}
+      style={{ minHeight: "100vh", width: "100vw", display: "flex", gap: 24, flexWrap: "wrap",
+        alignItems: "flex-start", padding: 24, boxSizing: "border-box", background: dark ? "#1e1e1e" : "#e6e6e6" }}>
+      {frame("editor (with timeline)",
+        <EditorShell aria-label="Composa editor"
+          navRail={stub("Nav", 48)} leftPanel={stub("Left panel", 200)}
+          canvas={stub("Canvas")} inspector={inspector} timeline={timeline} />)}
+      {frame("doc editor (same shell, no timeline slot)",
+        <EditorShell aria-label="Doc editor"
+          navRail={stub("Nav", 48)} leftPanel={stub("Left panel", 200)}
+          canvas={stub("Canvas")} inspector={inspector} />)}
+    </div>
+  );
 }
 
 export default function Playground() {
@@ -1756,6 +1811,10 @@ export default function Playground() {
           onTimelineCollapsedChange={noop} />
       </div>
     );
+  }
+
+  if (view === "editor-shell") {
+    return <EditorShellStory dark={new URLSearchParams(window.location.search).get("theme") === "dark"} />;
   }
 
   if (view === "slides") {
