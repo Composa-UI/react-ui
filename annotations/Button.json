@@ -1,0 +1,41 @@
+{
+  "component": "Button",
+  "category": "Actions",
+  "intent": "Primary interactive control that triggers an action in place.",
+  "use_when": [
+    "An action taken in place: Save, Apply, Delete.",
+    "The one primary action in a view (use style Primary)."
+  ],
+  "dont_use_when": [
+    "Navigation to another view — use a link.",
+    "An icon-only affordance — use IconButton."
+  ],
+  "variants": {
+    "style": ["Primary", "Secondary", "Ghost", "Danger"],
+    "size": ["Small", "Medium"],
+    "width": ["hug", "fill (wide sidebar)"]
+  },
+  "slots": {},
+  "states": ["default", "hover", "pressed", "disabled", "focus-visible"],
+  "tokens": {
+    "Primary": { "bg": "bg/brand", "hover": "bg/brand-pressed", "text": "text/onbrand" },
+    "Secondary": { "bg": "bg/secondary", "border": "border/default", "text": "text/default" },
+    "Danger": { "bg": "bg/danger", "text": "text/onbrand" },
+    "shape": { "radius": "radius/medium" }
+  },
+  "a11y": {
+    "role": "button (native <button>)",
+    "keyboard": ["Enter", "Space"],
+    "focus": "focus-visible ring bound to the focus-ring token; disabled is removed from the tab order.",
+    "contrast": "label vs background >= 4.5:1 in light and dark."
+  },
+  "enforce": {
+    "role": "button",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { Button } from '@composa/ui'",
+    "example": "<Button style=\"Primary\">Save</Button>"
+  }
+}

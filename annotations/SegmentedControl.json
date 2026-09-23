@@ -1,0 +1,60 @@
+{
+  "component": "SegmentedControl",
+  "category": "Inputs",
+  "intent": "A single-select segmented control: mutually exclusive options as one connected row of icons and/or labels.",
+  "use_when": [
+    "2–4 mutually exclusive options in one row (mode, alignment, view).",
+    "An inspector toggle group that reads as one enclosed control."
+  ],
+  "dont_use_when": [
+    "Many options — use a Dropdown / menu.",
+    "Independent on/off toggles — use grouped icon buttons."
+  ],
+  "variants": {
+    "content": [
+      "label",
+      "icon",
+      "icon + label"
+    ]
+  },
+  "slots": {
+    "segments": "Segment[] (value, label?, icon?, ariaLabel?) — the options."
+  },
+  "states": [
+    "idle",
+    "selected",
+    "hover",
+    "disabled",
+    "focus-visible"
+  ],
+  "tokens": {
+    "surface": {
+      "bg": "bg/secondary",
+      "ring": "border/default"
+    },
+    "selected": {
+      "bg": "bg/default",
+      "text": "text/default (550)"
+    },
+    "idle": {
+      "text": "text/secondary",
+      "hover": "bg/default"
+    },
+    "disabled": "text/tertiary",
+    "focus": "border/selected-strong ring"
+  },
+  "a11y": {
+    "role": "group (aria-label)",
+    "segments": "each is a <button> with aria-pressed and its own aria-label; keyboard single-selection.",
+    "labelless": "icon-only segments still carry an aria-label."
+  },
+  "enforce": {
+    "role": "group",
+    "ariaRole": true,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { SegmentedControl } from '@composa/ui'",
+    "example": "<SegmentedControl ariaLabel=\"Alignment\" value={align} onChange={setAlign}\n  segments={[{ value: 'left', ariaLabel: 'Left', icon: <AlignLeft/> }, { value: 'center', ariaLabel: 'Center', icon: <AlignCenter/> }]} />"
+  }
+}

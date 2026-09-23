@@ -1,0 +1,54 @@
+{
+  "component": "Switch",
+  "category": "Inputs",
+  "intent": "A binary on/off switch with an accessible label; supports a mixed (indeterminate) state.",
+  "use_when": [
+    "Toggling a single setting on/off in place.",
+    "You need an indeterminate (mixed) state across a multi-selection."
+  ],
+  "dont_use_when": [
+    "Choosing among options — use RadioButton / SegmentedControl.",
+    "A form checkmark reads better — use Checkbox."
+  ],
+  "variants": {
+    "size": [
+      "medium",
+      "compact"
+    ]
+  },
+  "slots": {},
+  "states": [
+    "off",
+    "on",
+    "mixed",
+    "disabled",
+    "focused"
+  ],
+  "tokens": {
+    "track": {
+      "on": "bg/brand",
+      "off": "border/default"
+    },
+    "thumb": {
+      "fill": "bg/default",
+      "shadow": "elevation/100"
+    },
+    "shape": "radius/full",
+    "focus": "focus-ring"
+  },
+  "a11y": {
+    "role": "switch",
+    "state": "aria-checked = true / false / mixed",
+    "label": "aria-label from the required label prop",
+    "disabled": "aria-disabled"
+  },
+  "enforce": {
+    "role": "switch",
+    "ariaRole": true,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { Switch } from '@composa/ui'",
+    "example": "<Switch label=\"Snap to grid\" checked={on} onCheckedChange={setOn} />"
+  }
+}

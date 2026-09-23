@@ -1,0 +1,44 @@
+{
+  "component": "CreationToolbar",
+  "category": "Toolbars",
+  "intent": "The floating creation toolbar: tool groups (Move/Hand, Frame, Shape, Type) as a pill; each group's button reflects its last-used tool and shows an active state when any of its tools is selected.",
+  "use_when": [
+    "The canvas-level tool switcher for an editor."
+  ],
+  "dont_use_when": [
+    "Inspector controls — this is a canvas tool pill.",
+    "Crop mode — use CropToolbar."
+  ],
+  "variants": {
+    "groups": [
+      "Move / Hand",
+      "Frame",
+      "Shape (Rectangle / Ellipse / Line)",
+      "Type"
+    ]
+  },
+  "slots": {},
+  "states": [
+    "idle",
+    "active group",
+    "group menu open"
+  ],
+  "tokens": {
+    "note": "DS tokens only; no hardcoded hex — verified.",
+    "active": "brand / selected accent"
+  },
+  "a11y": {
+    "role": "toolbar",
+    "tools": "each group button reflects the last-used tool; a menu exposes the group's variants.",
+    "memory": "tool memory is UI-only — it never enters the document or the host undo stack."
+  },
+  "enforce": {
+    "role": "toolbar",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { CreationToolbar } from '@composa/ui'",
+    "example": "<CreationToolbar activeTool={tool} onToolChange={setTool} />"
+  }
+}

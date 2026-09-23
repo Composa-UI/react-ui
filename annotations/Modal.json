@@ -1,0 +1,54 @@
+{
+  "component": "Modal",
+  "category": "Overlays",
+  "intent": "A modal dialog on Radix Dialog: focus trap, Escape, aria-modal, portal. Width presets (compact / dialog / standard / tall / medium); the backdrop is optional for floating inspector dialogs.",
+  "use_when": [
+    "A blocking task (share, settings, confirm).",
+    "A floating inspector dialog (backdrop=false)."
+  ],
+  "dont_use_when": [
+    "A transient message — use Notification.",
+    "A menu — use Menu."
+  ],
+  "variants": {
+    "width": [
+      "compact (240)",
+      "dialog (320)",
+      "standard (480)",
+      "tall (70vh)",
+      "medium (50vh)"
+    ],
+    "backdrop": [
+      "scrim (blocks background)",
+      "none (floating)"
+    ]
+  },
+  "slots": {
+    "children": "ModalHeader / ModalBody / ModalFooter."
+  },
+  "states": [
+    "open",
+    "closed"
+  ],
+  "tokens": {
+    "surface": {
+      "bg": "bg/default",
+      "radius": "radius/lg",
+      "shadow": "elevation/500"
+    },
+    "backdrop": "modal-backdrop = rgba(0,0,0,0.4) (mode-invariant)"
+  },
+  "a11y": {
+    "role": "dialog (Radix: aria-modal, focus trap, Escape, portal).",
+    "title": "ModalHeader labels the dialog."
+  },
+  "enforce": {
+    "role": "dialog",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { Modal, ModalHeader, ModalBody, ModalFooter } from '@composa/ui'",
+    "example": "<Modal open={open} onClose={close} width=\"standard\">\n  <ModalHeader>Share</ModalHeader>\n  <ModalBody>…</ModalBody>\n  <ModalFooter>…</ModalFooter>\n</Modal>"
+  }
+}

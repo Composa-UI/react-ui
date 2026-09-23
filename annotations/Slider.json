@@ -1,0 +1,58 @@
+{
+  "component": "Slider",
+  "category": "Inputs",
+  "intent": "A horizontal slider on a native range input: a pill track with a fill and a circular handle. Track and handle variants cover gradient, alpha, and gradient-stop use.",
+  "use_when": [
+    "A bounded value with a draggable track (opacity, zoom, a gradient stop)."
+  ],
+  "dont_use_when": [
+    "A rotary value — use Dial.",
+    "A precise typed number — use NumericInput."
+  ],
+  "variants": {
+    "handle": [
+      "fill",
+      "stroke (modified value)",
+      "chit (gradient-stop swatch)"
+    ],
+    "track": [
+      "default",
+      "gradient",
+      "alpha (checkerboard)"
+    ],
+    "size": [
+      "default",
+      "compact"
+    ]
+  },
+  "slots": {},
+  "states": [
+    "default",
+    "focused",
+    "disabled",
+    "modified (delta indicator)"
+  ],
+  "tokens": {
+    "track": {
+      "bg": "bg/secondary",
+      "border": "border/default"
+    },
+    "fill": "bg/brand",
+    "handle": "bg/default (white circle) + shadow",
+    "focus": "border/selected",
+    "note": "The alpha-track checkerboard uses hardcoded #ccc/#fff (a standard transparency pattern), so this component is NOT tokensOnly."
+  },
+  "a11y": {
+    "role": "slider (native <input type=range>)",
+    "label": "ariaLabel when the visible label lives outside the primitive.",
+    "keyboard": "native range keys."
+  },
+  "enforce": {
+    "role": "slider",
+    "ariaRole": false
+  },
+  "code": {
+    "import": "import { Slider } from '@composa/ui'",
+    "example": "<Slider ariaLabel=\"Opacity\" value={opacity} onChange={setOpacity} min={0} max={100} />"
+  }
+}

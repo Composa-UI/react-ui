@@ -1,0 +1,51 @@
+{
+  "component": "InspectorRailSwitcher",
+  "category": "Panels",
+  "intent": "The right-rail access seam: a fixed-width aside with an Inspector / Agent tab header. The host controls which view is visible; each child owns its internal navigation.",
+  "use_when": [
+    "Switching the right rail between the inspector and an agent view.",
+    "You want the canonical rail chrome (Tabs header + tabpanel) without owning it."
+  ],
+  "dont_use_when": [
+    "A single inspector — use Inspector.",
+    "A left-rail destination switch — use NavRail."
+  ],
+  "variants": {
+    "active": [
+      "inspector",
+      "agent"
+    ]
+  },
+  "slots": {
+    "inspector": "The inspector view.",
+    "agent": "The agent view."
+  },
+  "states": [
+    "inspector active",
+    "agent active"
+  ],
+  "tokens": {
+    "surface": {
+      "bg": "bg/default",
+      "ring": "border/translucent"
+    },
+    "header": {
+      "height": "36px",
+      "border": "border/default"
+    },
+    "width": "PANEL_W"
+  },
+  "a11y": {
+    "role": "complementary (aside) with a Tabs header (tablist) over a tabpanel body.",
+    "tabs": "uses the real Tabs primitive — roving focus + aria-controls."
+  },
+  "enforce": {
+    "role": "complementary",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { InspectorRailSwitcher } from '@composa/ui'",
+    "example": "<InspectorRailSwitcher active={view} onChange={setView}\n  inspector={<Inspector>…</Inspector>} agent={<AgentPanel … />} />"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "component": "Tooltip",
+  "category": "Overlays",
+  "intent": "A tooltip: a small dark floating label (with an optional hotkey) shown on hover/focus of its trigger. Always dark so it reads above any surface.",
+  "use_when": [
+    "Naming an icon-only control.",
+    "Showing a keyboard hotkey hint."
+  ],
+  "dont_use_when": [
+    "Essential information that must not be hover-only.",
+    "Rich or interactive content — use a popover."
+  ],
+  "variants": {
+    "content": ["label", "label + hotkey"]
+  },
+  "slots": {
+    "children": "The trigger the tooltip describes."
+  },
+  "states": ["hidden", "shown"],
+  "tokens": {
+    "note": "Deliberately dark: the background and arrow are hardcoded #1e1e1e so the tooltip floats above any surface — tracked, so NOT tokensOnly."
+  },
+  "a11y": {
+    "role": "tooltip (Radix)",
+    "wiring": "Radix associates the tooltip with its trigger; the tooltip itself is not focusable.",
+    "nonEssential": "hover/focus only — never the sole home of essential information."
+  },
+  "enforce": {
+    "role": "tooltip",
+    "ariaRole": false
+  },
+  "code": {
+    "import": "import { Tooltip } from '@composa/ui'",
+    "example": "<Tooltip label=\"Align left\" hotkey=\"⌥A\"><IconButton … /></Tooltip>"
+  }
+}

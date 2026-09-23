@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://composa.ui/annotation.schema.v1.json",
+  "title": "Composa @composa/ui component annotation (contract v1)",
+  "description": "One machine-readable annotation per component. It is the single source the docs site renders and the enforcement test checks, so a component is 'done' only when a valid, truthful annotation exists. Fields follow the design-system-slots DoD (intent, slots, tokens, states, a11y, enforce); swap_boundary is optional and deprioritized per the owner.",
+  "type": "object",
+  "required": ["component", "category", "intent", "slots", "states", "tokens", "a11y", "enforce", "code"],
+  "additionalProperties": true,
+  "properties": {
+    "component": { "type": "string", "description": "Exported component name." },
+    "category": { "type": "string" },
+    "intent": { "type": "string", "description": "One line: what this is for." },
+    "slots": {
+      "type": "object",
+      "description": "Named composition points a host fills. Empty object for a primitive with no slots."
+    },
+    "states": {
+      "type": "array",
+      "description": "The visual/interaction states the component renders.",
+      "items": { "type": "string" }
+    },
+    "tokens": {
+      "type": "object",
+      "description": "Which design tokens each visual property binds to. No hardcoded values."
+    },
+    "a11y": { "type": "object" },
+    "enforce": {
+      "type": "object",
+      "description": "Machine-checkable claims the annotation makes about the real component. The enforcement test verifies these against the rendered output / source.",
+      "required": ["role"],
+      "additionalProperties": true,
+      "properties": {
+        "role": {
+          "type": "string",
+          "description": "The ARIA role or native element the component exposes (e.g. 'application', 'complementary', 'tablist', 'button')."
+        },
+        "ariaRole": {
+          "type": "boolean",
+          "description": "true when `role` is an ARIA role attribute the rendered tree must carry (checked by render); false/absent when it is a native element name."
+        },
+        "tokensOnly": {
+          "type": "boolean",
+          "description": "true asserts the component source contains no hardcoded hex color (Foundations). The test reads the source and verifies it."
+        }
+      }
+    },
+    "swap_boundary": {
+      "type": "object",
+      "description": "Optional. Deprioritized per owner (2026-09-23)."
+    },
+    "code": {
+      "type": "object",
+      "required": ["import", "example"],
+      "properties": {
+        "import": { "type": "string" },
+        "example": { "type": "string" }
+      }
+    }
+  }
+}

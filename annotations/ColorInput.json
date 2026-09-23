@@ -1,0 +1,54 @@
+{
+  "component": "ColorInput",
+  "category": "Inputs",
+  "intent": "The inspector's fill/color row: a color swatch trigger, an editable hex field, and an opacity field. Supports solid / gradient / image / variable fill types and keyframes.",
+  "use_when": [
+    "Editing a fill or color in the inspector (a Fill / Stroke / Effect row).",
+    "You need hex + opacity entry alongside a swatch that opens the picker."
+  ],
+  "dont_use_when": [
+    "A grade wheel — use ColorWheel.",
+    "A plain number — use NumericInput."
+  ],
+  "variants": {
+    "fillType": [
+      "Fill (solid)",
+      "gradient",
+      "image",
+      "Variable"
+    ],
+    "size": [
+      "medium",
+      "…"
+    ],
+    "showOpacity": [
+      "with opacity field",
+      "swatch + hex only"
+    ]
+  },
+  "slots": {},
+  "states": [
+    "default",
+    "focused",
+    "disabled",
+    "gradient",
+    "image",
+    "variable",
+    "keyframed"
+  ],
+  "tokens": {
+    "note": "Composite (in Input.tsx). The swatch shows the live fill; the default color prop is a hardcoded #ff24bd placeholder — so not tokensOnly."
+  },
+  "a11y": {
+    "role": "a composite: a swatch button (onSwatchClick), a hex textbox, and an opacity spinbutton — each with its own aria-label.",
+    "hex": "accepts a 6-digit hex; invalid entry reverts."
+  },
+  "enforce": {
+    "role": "button",
+    "ariaRole": false
+  },
+  "code": {
+    "import": "import { ColorInput } from '@composa/ui'",
+    "example": "<ColorInput ariaLabel=\"Fill\" color={fill} opacity={opacity}\n  onSwatchClick={openPicker} onColorChange={setFill} onOpacityChange={setOpacity} />"
+  }
+}

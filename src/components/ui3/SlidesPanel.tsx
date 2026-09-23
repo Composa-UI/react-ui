@@ -292,8 +292,8 @@ export function SlidesPanel({ slides, aspectRatio, title = "Product review", sub
       {/* New slide — ONE button, one action.
           It used to be a split control: a "New comp ▾" segment that opened the
           template picker, and a plus that inserted. Both the segmentation and
-          the chevron only existed to reach templates, and templates are gated
-          off (owner feedback #67), so the control that survives is a plain
+          the chevron only existed to reach templates, and templates are not
+          surfaced here (owner feedback #67), so the control that survives is a plain
           full-width button. No chevron with nothing behind it, and no segment
           boundary implying a choice the user does not have. */}
       <div className="shrink-0 p-[8px] border-t border-b border-c-border">

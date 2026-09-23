@@ -1,0 +1,63 @@
+name: Deploy docs to GitHub Pages
+
+# Builds the design-system docs and publishes docs-site/dist to GitHub Pages.
+# `npm run docs` assembles ONE site into docs-site/dist:
+#   - the Vite + React docs app (docs-site/app) at the root — Carbon-style
+#     per-component pages (hash routing) with a live preview of every component;
+#   - a real Storybook (storybook build) copied to docs-site/dist/storybook.
+# The site is a PROJECT page at https://composa-ui.github.io/react-ui/ , so the
+# docs app builds with base /react-ui/ and Storybook is served at
+# /react-ui/storybook/ (relative asset paths). The build command and uploaded
+# directory are unchanged: `npm run docs` → docs-site/dist.
+#
+# One-time setup by a repo admin: Settings -> Pages -> Build and deployment ->
+# Source: "GitHub Actions". After that this workflow deploys on every push that
+# touches the docs, the annotations, or the token source.
+
+on:
+  push:
+    branches:
+      - main
+      - claude/composa-design-system-slots-l5k7of
+    paths:
+      - "docs-site/**"
+      - ".storybook/**"
+      - "annotations/**"
+      - "tokens/composa.tokens.json"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm ci
+      - name: Build docs site
+        run: npm run docs
+      - uses: actions/configure-pages@v5
+        with:
+          # Self-configure Pages to the GitHub Actions build type, so the deploy
+          # works whether or not "Source: GitHub Actions" was set by hand.
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs-site/dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

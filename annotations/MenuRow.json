@@ -1,0 +1,71 @@
+{
+  "component": "MenuRow",
+  "category": "Menus",
+  "intent": "One row of a menu or menu-toolbar. Type-driven anatomy: a reserved checkmark slot and a leading-icon slot, plus heading / divider / toolbar / footer shapes.",
+  "use_when": [
+    "Composing a menu's contents (inside Menu / a popover surface).",
+    "type=\"toolbar\" for a row of inline icon buttons; type=\"checkmark\" for a selectable option with a reserved check column."
+  ],
+  "dont_use_when": [
+    "You need the menu container / positioning — use Menu.",
+    "A standalone action outside a menu — use Button."
+  ],
+  "variants": {
+    "type": [
+      "simple",
+      "checkmark",
+      "toggle",
+      "expand",
+      "complex",
+      "heading",
+      "divider",
+      "toolbar",
+      "footer"
+    ],
+    "selectionRole": [
+      "radio",
+      "checkbox"
+    ]
+  },
+  "slots": {
+    "leading": "Leading slot (check / switch / icon). Reserved even when empty so labels align.",
+    "trailing": "Trailing slot (shortcut text, submenu chevron).",
+    "children": "toolbar / footer content (inline buttons or actions)."
+  },
+  "states": [
+    "default",
+    "hover",
+    "checked",
+    "mixed",
+    "disabled",
+    "destructive",
+    "submenu-expanded"
+  ],
+  "tokens": {
+    "text": {
+      "label": "text/default",
+      "shortcut": "text/secondary",
+      "heading": "text/secondary"
+    },
+    "hover": {
+      "bg": "bg/brand",
+      "text": "text/on-brand"
+    },
+    "divider": "border/menu",
+    "destructive": "text/danger"
+  },
+  "a11y": {
+    "role": "menuitem (interactive); menuitemradio / menuitemcheckbox when selectionRole is set; heading and divider are non-interactive.",
+    "disabledReason": "surfaced as visible text and associated via aria-describedby.",
+    "submenu": "hasSubmenu sets aria-haspopup / aria-expanded / aria-controls on the trigger row."
+  },
+  "enforce": {
+    "role": "menuitem",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { Menu, MenuRow } from '@composa/ui'",
+    "example": "<MenuRow type=\"checkmark\" label=\"Snap to pixels\" checked selectionRole=\"checkbox\" onClick={toggle} />\n<MenuRow type=\"toolbar\">\n  <IconButton … /><IconButton … />\n</MenuRow>"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "component": "ColorWheel",
+  "category": "Inputs",
+  "intent": "A circular hue/saturation color well for grade controls (Shadows / Midtones / Highlights): hue around the disc, saturation from the neutral center to the edge, with a draggable center handle.",
+  "use_when": [
+    "A tonal-grade push (a hue and an amount) — the video color-wheels UI."
+  ],
+  "dont_use_when": [
+    "Picking an exact color — use ColorInput / ColorDialog.",
+    "A single scalar value — use Slider or Dial."
+  ],
+  "variants": {},
+  "slots": {},
+  "states": [
+    "neutral (center)",
+    "pushed",
+    "dragging",
+    "focused",
+    "disabled"
+  ],
+  "tokens": {
+    "note": "DS CSS-variable theming for the chrome; the hue disc is an intrinsic generated color gradient (a rainbow), not tokenizable."
+  },
+  "a11y": {
+    "role": "slider (the disc is focusable)",
+    "keyboard": [
+      "Arrow left/right = hue",
+      "Arrow up/down = saturation",
+      "Shift = x5 step",
+      "Home = neutral center"
+    ],
+    "value": "hue (0-360) + saturation (0-1); center = neutral."
+  },
+  "enforce": {
+    "role": "slider",
+    "ariaRole": false
+  },
+  "code": {
+    "import": "import { ColorWheel } from '@composa/ui'",
+    "example": "<ColorWheel ariaLabel=\"Midtones\" hue={hue} saturation={sat} onChange={(h, s) => setGrade(h, s)} />"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "component": "Inspector",
+  "category": "Panels",
+  "intent": "The composable right-rail shell. Renders the PanelSection children it is given, in order.",
+  "use_when": [
+    "Building an inspector by composing sections.",
+    "You want to reorder, add, remove, or replace a section by changing children."
+  ],
+  "dont_use_when": [
+    "You want the capability-driven default panel — use PropertyPanel."
+  ],
+  "variants": {
+    "header": [
+      "optional fixed zone above the scroll area (e.g. zoom + Design/Animate tabs)"
+    ]
+  },
+  "slots": {
+    "header": "Fixed zone above the scrolling sections (e.g. the zoom + Design/Animate tab row).",
+    "children": "The PanelSection stack, rendered in the order given."
+  },
+  "states": [
+    "default",
+    "scrolled"
+  ],
+  "tokens": {
+    "surface": {
+      "bg": "bg/default",
+      "ring": "border/translucent"
+    },
+    "section": {
+      "header height": "40px",
+      "gutter": "16px"
+    }
+  },
+  "a11y": {
+    "role": "complementary (labelled by aria-label)",
+    "sections": "each PanelSection can opt into a region landmark.",
+    "scroll": "overlay scrollbar — hides with no layout shift; only the selected content is in the reading order."
+  },
+  "enforce": {
+    "role": "complementary",
+    "ariaRole": true,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { Inspector, PanelSection } from '@composa/ui'",
+    "example": "<Inspector aria-label=\"Design inspector\" header={<Tabs … />}>\n  <PanelSection title=\"Position\">…</PanelSection>\n  <PanelSection title=\"Fill\">…</PanelSection>\n</Inspector>"
+  }
+}

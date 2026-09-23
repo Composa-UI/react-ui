@@ -1,0 +1,38 @@
+{
+  "component": "Tabs",
+  "category": "Navigation",
+  "intent": "A tablist with roving focus. Pair with TabPanel for linked, accessible content regions.",
+  "use_when": [
+    "Switching between peer views in one surface (e.g. the inspector's Design / Animate).",
+    "You need real tablist semantics, not a SingleTab label."
+  ],
+  "dont_use_when": [
+    "There is only one view — render a label (SingleTab), not a one-tab tablist."
+  ],
+  "variants": {
+    "selection": ["controlled (value + onChange)", "uncontrolled (defaultValue)"],
+    "linked": ["panels (every tab has a panelId) enables aria-controls + roving focus"]
+  },
+  "slots": {
+    "panels": "Each tab links to a TabPanel by panelId; the panel carries the content region."
+  },
+  "states": ["selected", "unselected", "hover", "focus (roving)", "disabled"],
+  "tokens": {
+    "active": { "bg": "bg/secondary", "text": "text (strong 550)" },
+    "inactive": { "text": "text/secondary", "hover": "bg/hover" }
+  },
+  "a11y": {
+    "role": "tablist / tab / tabpanel",
+    "keyboard": ["ArrowLeft / ArrowRight", "Home", "End"],
+    "focus": "Roving tabIndex: only the selected tab is tabbable. TabPanel is hidden and out of tab order when inactive, and labelled by its tab."
+  },
+  "enforce": {
+    "role": "tablist",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { Tabs, TabPanel } from '@composa/ui'",
+    "example": "<Tabs\n  tabs={[\n    { value: 'design', label: 'Design', panelId: 'design' },\n    { value: 'animate', label: 'Animate', panelId: 'animate' },\n  ]}\n  value={tab}\n  onChange={setTab}\n/>\n<TabPanel panelId=\"design\" active={tab === 'design'}>…</TabPanel>\n<TabPanel panelId=\"animate\" active={tab === 'animate'}>…</TabPanel>"
+  }
+}

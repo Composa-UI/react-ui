@@ -1,0 +1,42 @@
+{
+  "component": "Menu",
+  "category": "Menus",
+  "intent": "A menu surface: a dark, rounded container that holds MenuRow children with roving keyboard focus over its items. Pair with PopoverMenu for positioning.",
+  "use_when": [
+    "The contents of a context / dropdown menu.",
+    "Grouping MenuRow items (with dividers and headings)."
+  ],
+  "dont_use_when": [
+    "A single inline control — use the control directly.",
+    "A full modal — use a dialog."
+  ],
+  "variants": {
+    "width": [
+      "minWidth floor (120)",
+      "maxHeight (scrolls)"
+    ]
+  },
+  "slots": {
+    "children": "MenuRow items, dividers, and headings."
+  },
+  "states": [
+    "default",
+    "scrolled (maxHeight)"
+  ],
+  "tokens": {
+    "note": "Renders dark (data-composa-mode=dark) so child tokens resolve to dark values."
+  },
+  "a11y": {
+    "role": "menu",
+    "items": "roving focus over menuitem / menuitemradio / menuitemcheckbox children; Arrow / Home / End."
+  },
+  "enforce": {
+    "role": "menu",
+    "ariaRole": true,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { Menu, MenuRow, PopoverMenu } from '@composa/ui'",
+    "example": "<PopoverMenu trigger={btn}>{close => (\n  <Menu>\n    <MenuRow label=\"Rename\" onClick={() => { rename(); close(); }} />\n  </Menu>\n)}</PopoverMenu>"
+  }
+}
