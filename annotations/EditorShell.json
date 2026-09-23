@@ -12,9 +12,17 @@
     "The region owns product or document state — that stays in the host; slots take rendered nodes."
   ],
   "variants": {
-    "regions": ["navRail", "leftPanel", "canvas (grows)", "inspector", "timeline (optional)", "overlays"],
     "overlayBoundary": ["true (default) — the workspace row is the DS overlay collision boundary", "false — the host provides its own"]
   },
+  "slots": {
+    "navRail": "Far-left icon navigation rail (e.g. NavRail).",
+    "leftPanel": "Resizable left panel: composition / layers / assets / agent.",
+    "canvas": "The document surface. The only region that grows.",
+    "inspector": "Right inspector rail (e.g. Inspector / PropertyPanel).",
+    "timeline": "Bottom timeline strip. Optional — omit it for a tool with no timeline (doc editor).",
+    "overlays": "Floating chrome: toolbars, notifications, help, portalled dialogs."
+  },
+  "states": ["editor (with timeline)", "doc-editor (no timeline slot)"],
   "tokens": {
     "layout": { "canvas": "flex-1 (only region that grows)", "rails/panels": "shrink-0 (own their width)" },
     "surface": "layout-only — no color or spacing tokens of its own; each slotted region carries its own"
@@ -23,6 +31,11 @@
     "role": "application (labelled by aria-label)",
     "landmarks": "slotted regions own their own landmarks (inspector = complementary, canvas = main); the shell does not double them.",
     "reading order": "nav rail → left panel → canvas → inspector → timeline, matching the DOM."
+  },
+  "enforce": {
+    "role": "application",
+    "ariaRole": true,
+    "tokensOnly": true
   },
   "code": {
     "import": "import { EditorShell, Inspector, NavRail } from '@composa/ui'",

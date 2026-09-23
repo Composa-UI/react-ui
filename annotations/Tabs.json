@@ -13,6 +13,10 @@
     "selection": ["controlled (value + onChange)", "uncontrolled (defaultValue)"],
     "linked": ["panels (every tab has a panelId) enables aria-controls + roving focus"]
   },
+  "slots": {
+    "panels": "Each tab links to a TabPanel by panelId; the panel carries the content region."
+  },
+  "states": ["selected", "unselected", "hover", "focus (roving)", "disabled"],
   "tokens": {
     "active": { "bg": "bg/secondary", "text": "text (strong 550)" },
     "inactive": { "text": "text/secondary", "hover": "bg/hover" }
@@ -21,6 +25,10 @@
     "role": "tablist / tab / tabpanel",
     "keyboard": ["ArrowLeft / ArrowRight", "Home", "End"],
     "focus": "Roving tabIndex: only the selected tab is tabbable. TabPanel is hidden and out of tab order when inactive, and labelled by its tab."
+  },
+  "enforce": {
+    "role": "tablist",
+    "ariaRole": false
   },
   "code": {
     "import": "import { Tabs, TabPanel } from '@composa/ui'",

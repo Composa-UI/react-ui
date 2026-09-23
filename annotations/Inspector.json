@@ -12,6 +12,11 @@
   "variants": {
     "header": ["optional fixed zone above the scroll area (e.g. zoom + Design/Animate tabs)"]
   },
+  "slots": {
+    "header": "Fixed zone above the scrolling sections (e.g. the zoom + Design/Animate tab row).",
+    "children": "The PanelSection stack, rendered in the order given."
+  },
+  "states": ["default", "scrolled"],
   "tokens": {
     "surface": { "bg": "bg/default", "ring": "border/translucent" },
     "section": { "header height": "40px", "gutter": "16px" }
@@ -20,6 +25,11 @@
     "role": "complementary (labelled by aria-label)",
     "sections": "each PanelSection can opt into a region landmark.",
     "scroll": "overlay scrollbar — hides with no layout shift; only the selected content is in the reading order."
+  },
+  "enforce": {
+    "role": "complementary",
+    "ariaRole": true,
+    "tokensOnly": true
   },
   "code": {
     "import": "import { Inspector, PanelSection } from '@composa/ui'",
