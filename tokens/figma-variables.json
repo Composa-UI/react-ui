@@ -1,0 +1,841 @@
+{
+  "$meta": {
+    "source": "tokens/composa.tokens.json",
+    "note": "Figma Variables import generated from the single token source. COLOR values are per-mode CSS strings or { alias } references; FLOAT values are px numbers. Regenerate with `node tools/tokens/build-figma-vars.mjs`."
+  },
+  "collections": {
+    "Color": {
+      "modes": [
+        "Light",
+        "Dark"
+      ],
+      "variables": {
+        "bg": {
+          "type": "COLOR",
+          "scopes": [
+            "FRAME_FILL",
+            "SHAPE_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-bg)"
+          },
+          "values": {
+            "Light": "#ffffff",
+            "Dark": "#2c2c2c"
+          }
+        },
+        "bg/assistive": {
+          "type": "COLOR",
+          "scopes": [
+            "FRAME_FILL",
+            "SHAPE_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-bg-assistive)"
+          },
+          "values": {
+            "Light": "#f531b3",
+            "Dark": "#f531b3"
+          }
+        },
+        "bg/brand": {
+          "type": "COLOR",
+          "scopes": [
+            "FRAME_FILL",
+            "SHAPE_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-bg-brand)"
+          },
+          "values": {
+            "Light": "#795ee4",
+            "Dark": "#6d53d1"
+          }
+        },
+        "bg/brand-pressed": {
+          "type": "COLOR",
+          "scopes": [
+            "FRAME_FILL",
+            "SHAPE_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-bg-brand-pressed)"
+          },
+          "values": {
+            "Light": "#6b4fd1",
+            "Dark": "#5c44b4"
+          }
+        },
+        "bg/danger": {
+          "type": "COLOR",
+          "scopes": [
+            "FRAME_FILL",
+            "SHAPE_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-bg-danger)"
+          },
+          "values": {
+            "Light": "#de330d",
+            "Dark": "#d93c19"
+          }
+        },
+        "bg/disabled": {
+          "type": "COLOR",
+          "scopes": [
+            "FRAME_FILL",
+            "SHAPE_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-bg-disabled)"
+          },
+          "values": {
+            "Light": "#d9d9d9",
+            "Dark": "#757575"
+          }
+        },
+        "bg/figjam": {
+          "type": "COLOR",
+          "scopes": [
+            "FRAME_FILL",
+            "SHAPE_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-bg-figjam)"
+          },
+          "values": {
+            "Light": "#9747ff",
+            "Dark": "#8a38f5"
+          }
+        },
+        "bg/handoff": {
+          "type": "COLOR",
+          "scopes": [
+            "FRAME_FILL",
+            "SHAPE_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-bg-handoff)"
+          },
+          "values": {
+            "Light": "#14ae5c",
+            "Dark": "#17864c"
+          }
+        },
+        "bg/hover": {
+          "type": "COLOR",
+          "scopes": [
+            "FRAME_FILL",
+            "SHAPE_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-bg-hover)"
+          },
+          "values": {
+            "Light": "#f5f5f5",
+            "Dark": "#383838"
+          }
+        },
+        "bg/inverse": {
+          "type": "COLOR",
+          "scopes": [
+            "FRAME_FILL",
+            "SHAPE_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-bg-inverse)"
+          },
+          "values": {
+            "Light": "#2c2c2c",
+            "Dark": "#ffffff"
+          }
+        },
+        "bg/menu": {
+          "type": "COLOR",
+          "scopes": [
+            "FRAME_FILL",
+            "SHAPE_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-bg-menu)"
+          },
+          "values": {
+            "Light": "#1f1f1f",
+            "Dark": "#1f1f1f"
+          }
+        },
+        "bg/pressed": {
+          "type": "COLOR",
+          "scopes": [
+            "FRAME_FILL",
+            "SHAPE_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-bg-pressed)"
+          },
+          "values": {
+            "Light": "#f5f5f5",
+            "Dark": "#383838"
+          }
+        },
+        "bg/secondary": {
+          "type": "COLOR",
+          "scopes": [
+            "FRAME_FILL",
+            "SHAPE_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-bg-secondary)"
+          },
+          "values": {
+            "Light": "#f5f5f5",
+            "Dark": "#383838"
+          }
+        },
+        "bg/selected": {
+          "type": "COLOR",
+          "scopes": [
+            "FRAME_FILL",
+            "SHAPE_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-bg-selected)"
+          },
+          "values": {
+            "Light": "#efeefd",
+            "Dark": "#57537a"
+          }
+        },
+        "bg/success": {
+          "type": "COLOR",
+          "scopes": [
+            "FRAME_FILL",
+            "SHAPE_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-bg-success)"
+          },
+          "values": {
+            "Light": "#108747",
+            "Dark": "#17864c"
+          }
+        },
+        "bg/toolbar": {
+          "type": "COLOR",
+          "scopes": [
+            "FRAME_FILL",
+            "SHAPE_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-bg-toolbar)"
+          },
+          "values": {
+            "Light": "#2c2c2c",
+            "Dark": "#2c2c2c"
+          }
+        },
+        "bg/warning": {
+          "type": "COLOR",
+          "scopes": [
+            "FRAME_FILL",
+            "SHAPE_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-bg-warning)"
+          },
+          "values": {
+            "Light": "#ffcd29",
+            "Dark": "#f3c11b"
+          }
+        },
+        "border": {
+          "type": "COLOR",
+          "scopes": [
+            "STROKE_COLOR"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-border)"
+          },
+          "values": {
+            "Light": "#e6e6e6",
+            "Dark": "#444444"
+          }
+        },
+        "border/disabled": {
+          "type": "COLOR",
+          "scopes": [
+            "STROKE_COLOR"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-border-disabled)"
+          },
+          "values": {
+            "Light": "#e6e6e6",
+            "Dark": "#444444"
+          }
+        },
+        "border/menu": {
+          "type": "COLOR",
+          "scopes": [
+            "STROKE_COLOR"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-border-menu)"
+          },
+          "values": {
+            "Light": "#444444",
+            "Dark": "#444444"
+          }
+        },
+        "border/onbrand-strong": {
+          "type": "COLOR",
+          "scopes": [
+            "STROKE_COLOR"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-border-onbrand-strong)"
+          },
+          "values": {
+            "Light": "#6b4fd1",
+            "Dark": "#5c44b4"
+          }
+        },
+        "border/selected": {
+          "type": "COLOR",
+          "scopes": [
+            "STROKE_COLOR"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-border-selected)"
+          },
+          "values": {
+            "Light": "#795ee4",
+            "Dark": "#795ee4"
+          }
+        },
+        "border/selected-strong": {
+          "type": "COLOR",
+          "scopes": [
+            "STROKE_COLOR"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-border-selected-strong)"
+          },
+          "values": {
+            "Light": "#6b4fd1",
+            "Dark": "#6b4fd1"
+          }
+        },
+        "border/strong": {
+          "type": "COLOR",
+          "scopes": [
+            "STROKE_COLOR"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-border-strong)"
+          },
+          "values": {
+            "Light": "#2c2c2c",
+            "Dark": "rgba(255, 255, 255, 0.9)"
+          }
+        },
+        "border/translucent": {
+          "type": "COLOR",
+          "scopes": [
+            "STROKE_COLOR"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-border-translucent)"
+          },
+          "values": {
+            "Light": "rgba(0, 0, 0, 0.1)",
+            "Dark": "rgba(255, 255, 255, 0.1)"
+          }
+        },
+        "focus/ring": {
+          "type": "COLOR",
+          "scopes": [
+            "STROKE_COLOR"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-focus-ring)"
+          },
+          "values": {
+            "Light": {
+              "alias": "border/selected"
+            },
+            "Dark": {
+              "alias": "border/selected"
+            }
+          }
+        },
+        "icon": {
+          "type": "COLOR",
+          "scopes": [
+            "SHAPE_FILL",
+            "FRAME_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-icon)"
+          },
+          "values": {
+            "Light": "rgba(0, 0, 0, 0.9)",
+            "Dark": "#ffffff"
+          }
+        },
+        "icon/assistive": {
+          "type": "COLOR",
+          "scopes": [
+            "SHAPE_FILL",
+            "FRAME_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-icon-assistive)"
+          },
+          "values": {
+            "Light": "#f531b3",
+            "Dark": "#f531b3"
+          }
+        },
+        "icon/brand": {
+          "type": "COLOR",
+          "scopes": [
+            "SHAPE_FILL",
+            "FRAME_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-icon-brand)"
+          },
+          "values": {
+            "Light": "#6b4fd1",
+            "Dark": "#bab5f3"
+          }
+        },
+        "icon/danger": {
+          "type": "COLOR",
+          "scopes": [
+            "SHAPE_FILL",
+            "FRAME_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-icon-danger)"
+          },
+          "values": {
+            "Light": "#f24822",
+            "Dark": "#e03e1a"
+          }
+        },
+        "icon/onbrand": {
+          "type": "COLOR",
+          "scopes": [
+            "SHAPE_FILL",
+            "FRAME_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-icon-onbrand)"
+          },
+          "values": {
+            "Light": "#ffffff",
+            "Dark": "#ffffff"
+          }
+        },
+        "icon/secondary": {
+          "type": "COLOR",
+          "scopes": [
+            "SHAPE_FILL",
+            "FRAME_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-icon-secondary)"
+          },
+          "values": {
+            "Light": "rgba(0, 0, 0, 0.5)",
+            "Dark": "rgba(255, 255, 255, 0.7)"
+          }
+        },
+        "icon/success": {
+          "type": "COLOR",
+          "scopes": [
+            "SHAPE_FILL",
+            "FRAME_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-icon-success)"
+          },
+          "values": {
+            "Light": "#009951",
+            "Dark": "#79d297"
+          }
+        },
+        "icon/tertiary": {
+          "type": "COLOR",
+          "scopes": [
+            "SHAPE_FILL",
+            "FRAME_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-icon-tertiary)"
+          },
+          "values": {
+            "Light": "rgba(0, 0, 0, 0.3)",
+            "Dark": "rgba(255, 255, 255, 0.4)"
+          }
+        },
+        "icon/warning": {
+          "type": "COLOR",
+          "scopes": [
+            "SHAPE_FILL",
+            "FRAME_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-icon-warning)"
+          },
+          "values": {
+            "Light": "#ffcd29",
+            "Dark": "#f3c11b"
+          }
+        },
+        "text": {
+          "type": "COLOR",
+          "scopes": [
+            "TEXT_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-text)"
+          },
+          "values": {
+            "Light": "rgba(0, 0, 0, 0.9)",
+            "Dark": "#ffffff"
+          }
+        },
+        "text/assistive": {
+          "type": "COLOR",
+          "scopes": [
+            "TEXT_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-text-assistive)"
+          },
+          "values": {
+            "Light": "#f531b3",
+            "Dark": "#f531b3"
+          }
+        },
+        "text/brand": {
+          "type": "COLOR",
+          "scopes": [
+            "TEXT_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-text-brand)"
+          },
+          "values": {
+            "Light": "#6b4fd1",
+            "Dark": "#bab5f3"
+          }
+        },
+        "text/danger": {
+          "type": "COLOR",
+          "scopes": [
+            "TEXT_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-text-danger)"
+          },
+          "values": {
+            "Light": "#dc3412",
+            "Dark": "#fca397"
+          }
+        },
+        "text/figjam": {
+          "type": "COLOR",
+          "scopes": [
+            "TEXT_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-text-figjam)"
+          },
+          "values": {
+            "Light": "#8638e5",
+            "Dark": "#d1a8ff"
+          }
+        },
+        "text/handoff": {
+          "type": "COLOR",
+          "scopes": [
+            "TEXT_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-text-handoff)"
+          },
+          "values": {
+            "Light": "#009951",
+            "Dark": "#79d297"
+          }
+        },
+        "text/on-inverse": {
+          "type": "COLOR",
+          "scopes": [
+            "TEXT_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-text-on-inverse)"
+          },
+          "values": {
+            "Light": "rgba(255, 255, 255, 0.9)",
+            "Dark": "rgba(0, 0, 0, 0.9)"
+          }
+        },
+        "text/onbrand": {
+          "type": "COLOR",
+          "scopes": [
+            "TEXT_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-text-onbrand)"
+          },
+          "values": {
+            "Light": "#ffffff",
+            "Dark": "#ffffff"
+          }
+        },
+        "text/onbrand-secondary": {
+          "type": "COLOR",
+          "scopes": [
+            "TEXT_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-text-onbrand-secondary)"
+          },
+          "values": {
+            "Light": "rgba(255, 255, 255, 0.7)",
+            "Dark": "rgba(255, 255, 255, 0.7)"
+          }
+        },
+        "text/onbrand-tertiary": {
+          "type": "COLOR",
+          "scopes": [
+            "TEXT_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-text-onbrand-tertiary)"
+          },
+          "values": {
+            "Light": "rgba(255, 255, 255, 0.4)",
+            "Dark": "rgba(255, 255, 255, 0.4)"
+          }
+        },
+        "text/secondary": {
+          "type": "COLOR",
+          "scopes": [
+            "TEXT_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-text-secondary)"
+          },
+          "values": {
+            "Light": "rgba(0, 0, 0, 0.5)",
+            "Dark": "rgba(255, 255, 255, 0.7)"
+          }
+        },
+        "text/success": {
+          "type": "COLOR",
+          "scopes": [
+            "TEXT_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-text-success)"
+          },
+          "values": {
+            "Light": "#009951",
+            "Dark": "#79d297"
+          }
+        },
+        "text/tertiary": {
+          "type": "COLOR",
+          "scopes": [
+            "TEXT_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-text-tertiary)"
+          },
+          "values": {
+            "Light": "rgba(0, 0, 0, 0.3)",
+            "Dark": "rgba(255, 255, 255, 0.4)"
+          }
+        },
+        "text/warning": {
+          "type": "COLOR",
+          "scopes": [
+            "TEXT_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-text-warning)"
+          },
+          "values": {
+            "Light": "#b86200",
+            "Dark": "#f7d15f"
+          }
+        }
+      }
+    },
+    "Radius": {
+      "modes": [
+        "Value"
+      ],
+      "variables": {
+        "radius/full": {
+          "type": "FLOAT",
+          "scopes": [
+            "CORNER_RADIUS"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--radius-full)"
+          },
+          "values": {
+            "Value": 9999
+          }
+        },
+        "radius/large": {
+          "type": "FLOAT",
+          "scopes": [
+            "CORNER_RADIUS"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--radius-large)"
+          },
+          "values": {
+            "Value": 13
+          }
+        },
+        "radius/medium": {
+          "type": "FLOAT",
+          "scopes": [
+            "CORNER_RADIUS"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--radius-medium)"
+          },
+          "values": {
+            "Value": 5
+          }
+        },
+        "radius/none": {
+          "type": "FLOAT",
+          "scopes": [
+            "CORNER_RADIUS"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--radius-none)"
+          },
+          "values": {
+            "Value": 0
+          }
+        },
+        "radius/small": {
+          "type": "FLOAT",
+          "scopes": [
+            "CORNER_RADIUS"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--radius-small)"
+          },
+          "values": {
+            "Value": 2
+          }
+        }
+      }
+    },
+    "Spacing": {
+      "modes": [
+        "Value"
+      ],
+      "variables": {
+        "spacing/0": {
+          "type": "FLOAT",
+          "scopes": [
+            "GAP"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--spacer-0)"
+          },
+          "values": {
+            "Value": 0
+          }
+        },
+        "spacing/1": {
+          "type": "FLOAT",
+          "scopes": [
+            "GAP"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--spacer-1)"
+          },
+          "values": {
+            "Value": 4
+          }
+        },
+        "spacing/2": {
+          "type": "FLOAT",
+          "scopes": [
+            "GAP"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--spacer-2)"
+          },
+          "values": {
+            "Value": 8
+          }
+        },
+        "spacing/3": {
+          "type": "FLOAT",
+          "scopes": [
+            "GAP"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--spacer-3)"
+          },
+          "values": {
+            "Value": 16
+          }
+        },
+        "spacing/4": {
+          "type": "FLOAT",
+          "scopes": [
+            "GAP"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--spacer-4)"
+          },
+          "values": {
+            "Value": 24
+          }
+        },
+        "spacing/5": {
+          "type": "FLOAT",
+          "scopes": [
+            "GAP"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--spacer-5)"
+          },
+          "values": {
+            "Value": 32
+          }
+        },
+        "spacing/6": {
+          "type": "FLOAT",
+          "scopes": [
+            "GAP"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--spacer-6)"
+          },
+          "values": {
+            "Value": 40
+          }
+        }
+      }
+    }
+  }
+}
