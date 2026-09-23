@@ -44,6 +44,7 @@ const REQUIRED = [
   "Button", "Tabs", "Inspector", "EditorShell", "Dropdown", "MenuRow", "NavRail",
   "PanelSection", "SegmentedControl", "RadioButton",
   "Switch", "Checkbox", "Dial", "AlignmentControl",
+  "CreationToolbar", "CropToolbar", "LayerList",
 ];
 
 // Components this test can render trivially to verify an ARIA-role claim.

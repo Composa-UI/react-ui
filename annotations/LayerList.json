@@ -1,0 +1,37 @@
+{
+  "component": "LayerList",
+  "category": "Editor / Panels",
+  "intent": "A Figma-style layers tree: data-driven LayerNode[] with nesting. Each row is a chevron (if a group) + type icon + name + visibility/lock. Component/instance rows use the brand accent.",
+  "use_when": [
+    "Showing and selecting the document's layer hierarchy."
+  ],
+  "dont_use_when": [
+    "A flat list — use ListCell rows.",
+    "Slides / compositions — use SlidesPanel / CompositionPanel."
+  ],
+  "variants": {
+    "selection": ["single", "parent (emphasized row + de-emphasized visible descendants)"]
+  },
+  "slots": {
+    "nodes": "LayerNode[] (id, name, type, children, hidden, locked, autoLayout, maskSource)."
+  },
+  "states": ["default", "selected", "parent-selected", "hidden", "locked", "drag-reorder"],
+  "tokens": {
+    "note": "Light theme, c-* tokens only; no hardcoded hex — verified.",
+    "accent": "component / instance rows use text/brand"
+  },
+  "a11y": {
+    "role": "tree + treeitem",
+    "nesting": "chevron toggles group expansion; keyboard tree navigation.",
+    "perRow": "visibility (eye) and lock toggles carry labels."
+  },
+  "enforce": {
+    "role": "tree",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { LayerList } from '@composa/ui'",
+    "example": "<LayerList nodes={layers} selectedIds={sel} onSelect={select} />"
+  }
+}
