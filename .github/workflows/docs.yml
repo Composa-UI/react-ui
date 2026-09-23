@@ -46,6 +46,10 @@ jobs:
       - name: Build docs site
         run: npm run docs
       - uses: actions/configure-pages@v5
+        with:
+          # Self-configure Pages to the GitHub Actions build type, so the deploy
+          # works whether or not "Source: GitHub Actions" was set by hand.
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs-site/dist
