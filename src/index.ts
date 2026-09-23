@@ -51,6 +51,7 @@ export * from "./components/ui3/NavRail";
 export * from "./components/ui3/Notification";
 export * from "./components/ui3/Panel";
 export * from "./components/ui3/PropertyPanel";
+export * from "./components/ui3/Inspector";
 export * from "./components/ui3/ProjectLibraryPublisher";
 export * from "./components/ui3/EasingInspectorSection";
 export * from "./components/ui3/easing";
