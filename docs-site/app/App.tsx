@@ -87,7 +87,7 @@ function Sidebar({ route }: { route: Route }) {
   );
 }
 
-function Page({ route }: { route: Route }) {
+function Page({ route, theme }: { route: Route; theme: Theme }) {
   switch (route.kind) {
     case "home":
       return <HomePage />;
@@ -96,7 +96,8 @@ function Page({ route }: { route: Route }) {
     case "token-compliance":
       return <TokenCompliance />;
     case "component":
-      return <ComponentPage c={route.component} />;
+      // theme drives the embedded Storybook demo's `composaMode` global.
+      return <ComponentPage c={route.component} theme={theme} />;
     case "not-found":
       return <NotFoundPage slug={route.slug} />;
   }
@@ -129,7 +130,7 @@ export default function App() {
             {theme === "dark" ? "☀ Light" : "☾ Dark"}
           </button>
         </div>
-        <Page route={route} />
+        <Page route={route} theme={theme} />
       </main>
     </div>
   );
