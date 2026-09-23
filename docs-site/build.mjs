@@ -9,7 +9,7 @@ const root = new URL("../", import.meta.url);
 const tokens = JSON.parse(await readFile(new URL("tokens/composa.tokens.json", root), "utf8")).tokens;
 const dataDir = new URL("annotations/", root);
 const files = (await readdir(dataDir)).filter(f => f.endsWith(".json") && f !== "annotation.schema.json");
-const order = ["Button", "Tabs", "Inspector", "EditorShell", "NavRail", "Dropdown", "MenuRow", "SegmentedControl", "RadioButton", "Switch", "Checkbox", "Dial", "AlignmentControl", "CreationToolbar", "CropToolbar", "LayerList", "Notification", "Slider", "ListCell", "Tooltip", "SplitButton", "Menu", "NumericInput", "Modal", "InputField", "InspectorRailSwitcher", "SidePanel", "PanelSection"];
+const order = ["Button", "Tabs", "Inspector", "EditorShell", "NavRail", "Dropdown", "MenuRow", "SegmentedControl", "RadioButton", "Switch", "Checkbox", "Dial", "AlignmentControl", "CreationToolbar", "CropToolbar", "LayerList", "Notification", "Slider", "ListCell", "Tooltip", "SplitButton", "Menu", "NumericInput", "Modal", "InputField", "InspectorRailSwitcher", "SidePanel", "ColorWheel", "ColorInput", "PanelSection"];
 const components = (await Promise.all(files.map(async f => JSON.parse(await readFile(new URL(f, dataDir), "utf8")))))
   .sort((a, b) => (order.indexOf(a.component) + 1 || 99) - (order.indexOf(b.component) + 1 || 99));
 

@@ -50,6 +50,7 @@ const REQUIRED = [
   "CreationToolbar", "CropToolbar", "LayerList", "Notification",
   "Slider", "ListCell", "Tooltip", "SplitButton", "Menu", "NumericInput",
   "Modal", "InputField", "InspectorRailSwitcher", "SidePanel",
+  "ColorWheel", "ColorInput",
 ];
 
 // Components whose source lives in a shared file (not <Component>.tsx). Used to
