@@ -1,0 +1,42 @@
+{
+  "component": "ListCell",
+  "category": "Panels / Layout",
+  "intent": "A mode-adaptive list / inspector row: a leading slot, label + sublabel, a trailing slot, and a shortcut. Interactive (role=button) when onClick is set. For menu surfaces use MenuRow.",
+  "use_when": [
+    "A row in a panel / inspector list.",
+    "A clickable settings or action row on a light surface."
+  ],
+  "dont_use_when": [
+    "Menu contents — use MenuRow (dark, blue hover).",
+    "A layer hierarchy — use LayerList."
+  ],
+  "variants": {
+    "size": ["compact", "default", "large"],
+    "variant": ["default", "selected", "disabled", "destructive"]
+  },
+  "slots": {
+    "leading": "24px leading slot (icon / avatar / chit).",
+    "trailing": "Trailing slot (control / chevron / value)."
+  },
+  "states": ["default", "selected", "disabled", "destructive", "hover", "focus"],
+  "tokens": {
+    "label": "text/default (danger or tertiary by variant)",
+    "selected": "bg/selected",
+    "hover": "bg/hover",
+    "muted": "text/secondary",
+    "focus": "focus-ring"
+  },
+  "a11y": {
+    "role": "button when onClick is set (Enter / Space activate); otherwise a static row.",
+    "labels": "label truncates; leading/trailing carry their own labels."
+  },
+  "enforce": {
+    "role": "button",
+    "ariaRole": true,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { ListCell } from '@composa/ui'",
+    "example": "<ListCell label=\"Rename\" leading={<PencilIcon/>} shortcut=\"⌘R\" onClick={rename} />"
+  }
+}

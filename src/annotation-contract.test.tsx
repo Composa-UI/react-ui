@@ -11,6 +11,7 @@ import { Switch } from "./components/ui3/Switch";
 import { Checkbox } from "./components/ui3/Checkbox";
 import { AlignmentControl } from "./components/ui3/AlignmentControl";
 import { Notification } from "./components/ui3/Notification";
+import { ListCell } from "./components/ui3/ListCell";
 
 // Annotation contract v1 enforcement (design-system-slots DoD: "a component is
 // 'done' only when annotated"). Three layers, zero extra deps:
@@ -46,6 +47,7 @@ const REQUIRED = [
   "PanelSection", "SegmentedControl", "RadioButton",
   "Switch", "Checkbox", "Dial", "AlignmentControl",
   "CreationToolbar", "CropToolbar", "LayerList", "Notification",
+  "Slider", "ListCell", "Tooltip",
 ];
 
 // Components this test can render trivially to verify an ARIA-role claim.
@@ -65,6 +67,7 @@ const RENDERABLE: Record<string, () => ReactElement> = {
   Checkbox: () => <Checkbox ariaLabel="contract" />,
   AlignmentControl: () => <AlignmentControl value="mc" onChange={() => {}} />,
   Notification: () => <Notification message="contract" />,
+  ListCell: () => <ListCell label="contract" onClick={() => {}} />,
 };
 
 type Spec = { type?: string; required?: string[]; properties?: Record<string, Spec> };
