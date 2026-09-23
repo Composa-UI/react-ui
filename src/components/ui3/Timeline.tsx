@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
+import { createContext, Fragment, useContext, useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { clsx } from "clsx";
 import { Play, Pause, Square, Diamond, Repeat, PanelBottomClose, PanelBottomOpen, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, Layers } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
@@ -631,21 +631,40 @@ export function timelineDurationBarProjection(
   };
 }
 
-function DurationBar({ trackId, name, range, projection, selectionState, viewport, plotWidth, duration, laneRef, edgeDrag, onChange, onGestureStart, onGestureEnd }: {
+/** Props for {@link TimelineDurationBar} — a layer row's authored duration bar. */
+export interface TimelineDurationBarProps {
+  /** Identity of the owning track/layer. */
   trackId: string;
+  /** Layer name, used to build accessible labels. */
   name: string;
+  /** Authored `[start,end]` range in ms. */
   range: [number, number];
+  /** The visible projection of `range` into `viewport` (from {@link timelineDurationBarProjection}). */
   projection: TimelineDurationBarProjection;
+  /** Row selection state driving the bar's fill/stroke tokens. */
   selectionState: RowSelectionState;
+  /** Visible time window. */
   viewport: TimelineViewport;
+  /** Plot width in pixels. */
   plotWidth: number;
+  /** Total timeline duration (ms) used to clamp edits. */
   duration: number;
+  /** Ref to the lane element used to resolve pointer coordinates during edge-drag. */
   laneRef: { current: HTMLDivElement | null };
+  /** Edge-drag auto-scroll controller. */
   edgeDrag: TimelineEdgeDragController;
+  /** Omit to render a read-only (`role="img"`) bar with no move/scale targets. */
   onChange?: (change: TimelineDurationBarChange) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
-}) {
+}
+
+/**
+ * A layer row's authored duration bar with move + trim-start/trim-end handles
+ * (pointer and keyboard), sharing the timeline's Escape-cancel gesture semantics.
+ * Exported for reuse (DEC-097); scheduling/persistence stay host-owned.
+ */
+export function TimelineDurationBar({ trackId, name, range, projection, selectionState, viewport, plotWidth, duration, laneRef, edgeDrag, onChange, onGestureStart, onGestureEnd }: TimelineDurationBarProps) {
   const drag = useRef<{
     action: TimelineDurationBarAction;
     initialRange: [number, number];
@@ -863,11 +882,23 @@ function PresetBar({ trackId, preset, projection, viewport, plotWidth, duration,
   );
 }
 
-function Lane({ prop, trackId, propertyId, active = false, height, viewport, plotWidth, edgeDrag, onSelect, onMove, onDelete, onEasingSelect, onEasingPresetChange, onGestureStart, onGestureEnd }: {
-  prop: PropTrack; trackId: string; propertyId: string;
+/** Props for {@link TimelineLane} — one property row's keyframe lane. */
+export interface TimelineLaneProps {
+  /** The property track whose keyframes, connecting line, and easing segments this lane draws. */
+  prop: PropTrack;
+  /** Identity of the owning track/layer. */
+  trackId: string;
+  /** Identity of this property within the track. */
+  propertyId: string;
   /** Parent object has a selected keyframe — lines + unselected diamonds go blue (Composa#320). */
-  active?: boolean; height: number;
-  viewport: TimelineViewport; plotWidth: number;
+  active?: boolean;
+  /** Row height in pixels. */
+  height: number;
+  /** Visible time window. */
+  viewport: TimelineViewport;
+  /** Plot width in pixels. */
+  plotWidth: number;
+  /** Edge-drag auto-scroll controller. */
   edgeDrag: TimelineEdgeDragController;
   onSelect?: (target: KeyframeTarget, additive: boolean) => void;
   onMove?: (target: KeyframeTarget, timeMs: number) => void;
@@ -876,7 +907,15 @@ function Lane({ prop, trackId, propertyId, active = false, height, viewport, plo
   onEasingPresetChange?: (target: TimelineEasingSegmentTarget, easing: NamedEasingPreset) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
-}) {
+}
+
+/**
+ * One property row's keyframe lane: the optional duration/trim bar, the connecting
+ * line, per-interval easing segments, and the draggable keyframe diamonds (with a
+ * right-click "Delete keyframe" menu). Exported for reuse (DEC-097). Keyframes are
+ * added through the inspector diamond — the lane itself is not an add surface.
+ */
+export function TimelineLane({ prop, trackId, propertyId, active = false, height, viewport, plotWidth, edgeDrag, onSelect, onMove, onDelete, onEasingSelect, onEasingPresetChange, onGestureStart, onGestureEnd }: TimelineLaneProps) {
   const laneMode = useComposaMode();
   // Right-click keyframe context menu (Composa#345) — the id of the keyframe whose menu is open.
   const [menuKeyframeId, setMenuKeyframeId] = useState<string | null>(null);
@@ -1024,7 +1063,21 @@ function Lane({ prop, trackId, propertyId, active = false, height, viewport, plo
 // leaves the object row and every child owns the elbow that terminates at its own
 // name. Keeping the final stem to half a row is important — a collapsed list, or
 // the last child in a list, must never leave an orphaned rule below itself.
-function TimelineChildConnector({ index, count, depth }: { index: number; count: number; depth: number }) {
+/** Props for {@link TimelineChildConnector}. */
+export interface TimelineChildConnectorProps {
+  /** This child's index among its siblings (0-based). */
+  index: number;
+  /** Total sibling count — the last child stops the vertical stem at half height. */
+  count: number;
+  /** Tree nesting depth, offsetting the elbow horizontally by 16px per level. */
+  depth: number;
+}
+
+/**
+ * The Figma-style elbow connector drawn beside a property/preset child row, branching
+ * from the parent object's icon centre down to the child's name. Exported for reuse (DEC-097).
+ */
+export function TimelineChildConnector({ index, count, depth }: TimelineChildConnectorProps) {
   // The parent icon occupies x=32..48 at depth zero. Branch from its horizontal
   // centre (x=40), then stop four pixels before the child label at x=48.
   const left = 40 + depth * 16;
@@ -1049,10 +1102,24 @@ function TimelineChildConnector({ index, count, depth }: { index: number; count:
   );
 }
 
-function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onVisibilityChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onPropertyValueChange, onPropertyToggleHidden, onPresetToggleHidden, onPresetSelect, onPresetBarChange, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: {
-  track: Track; trackIndex: number;
+/**
+ * Props for {@link TimelineTrackRows} — the rendered rows of one timeline track
+ * (its layer row plus, when expanded, its Animate-preset and property rows).
+ */
+export interface TimelineTrackRowsProps {
+  /** The track/layer to render (name, type, props, preset bars, hierarchy). */
+  track: Track;
+  /** This track's index in the list (used for the id fallback and child connectors). */
+  trackIndex: number;
+  /** Whether this track's layer row is the roving-tabindex focus target in the listbox. */
   focusable: boolean;
-  viewport: TimelineViewport; plotWidth: number; duration: number;
+  /** Visible time window. */
+  viewport: TimelineViewport;
+  /** Plot width in pixels. */
+  plotWidth: number;
+  /** Total timeline duration (ms). */
+  duration: number;
+  /** Edge-drag auto-scroll controller shared with the parent timeline. */
   edgeDrag: TimelineEdgeDragController;
   onTrackSelect?: (trackId: string, modifiers: TimelineTrackSelectionModifiers) => void;
   onExpandedChange?: (trackId: string, expanded: boolean) => void;
@@ -1075,7 +1142,15 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
   onDurationBarChange?: (change: TimelineDurationBarChange) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
-}) {
+}
+
+/**
+ * The rows that make up one timeline track: the layer row (disclosure, type icon,
+ * name, visibility, aggregate keyframes + duration bar) and, when expanded, its
+ * Animate-preset bar rows and property rows (each a name column + a {@link TimelineLane}).
+ * Exported so a host can compose the layer/property rows outside the monolith (DEC-097).
+ */
+export function TimelineTrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration, edgeDrag, onTrackSelect, onExpandedChange, onVisibilityChange, onAggregateKeyframeSelect, onKeyframeMove, onKeyframeSelect, onKeyframeDelete, onPropertyAddKeyframe, onPropertyStepKeyframe, selectedTimelineRowId, onPropertyRowSelect, onPropertyValueChange, onPropertyToggleHidden, onPresetToggleHidden, onPresetSelect, onPresetBarChange, onEasingSegmentSelect, onEasingPresetChange, onDurationBarChange, onGestureStart, onGestureEnd }: TimelineTrackRowsProps) {
   const trackId = track.id ?? `track-${trackIndex}`;
   const laneRef = useRef<HTMLDivElement>(null);
   const depth = Math.max(0, track.depth ?? 0);
@@ -1154,7 +1229,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
         </div>
         <div ref={laneRef} data-timeline-pan-surface className="flex-1 relative overflow-hidden" style={{ height: ROW_LAYER }}>
           {durationBar && (
-            <DurationBar trackId={trackId} name={track.name} range={track.bar!} projection={durationBar} selectionState={selectionState}
+            <TimelineDurationBar trackId={trackId} name={track.name} range={track.bar!} projection={durationBar} selectionState={selectionState}
               viewport={viewport} plotWidth={plotWidth} duration={duration} laneRef={laneRef} edgeDrag={edgeDrag}
               onChange={track.durationBarEditable === false ? undefined : onDurationBarChange}
               onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
@@ -1249,7 +1324,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
               {p.hidden ? <EyeOff size={14} strokeWidth={1.5} className="text-c-icon-secondary" /> : <Eye size={14} strokeWidth={1.5} className="text-c-icon-secondary" />}
             </button>
           </div>
-          <Lane prop={p} trackId={trackId} propertyId={p.id ?? `property-${i}`} active={trackActive} height={ROW_PROP} viewport={viewport} plotWidth={plotWidth} edgeDrag={edgeDrag} onSelect={onKeyframeSelect} onMove={onKeyframeMove} onDelete={onKeyframeDelete} onEasingSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+          <TimelineLane prop={p} trackId={trackId} propertyId={p.id ?? `property-${i}`} active={trackActive} height={ROW_PROP} viewport={viewport} plotWidth={plotWidth} edgeDrag={edgeDrag} onSelect={onKeyframeSelect} onMove={onKeyframeMove} onDelete={onKeyframeDelete} onEasingSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
         </div>
         );
       })}
@@ -1275,11 +1350,33 @@ function TransportIconButton({ children, label, onClick, active }: { children: R
   );
 }
 
-function Transport({ current, duration, mode, playing, loop, autoKeyframe = false, onPlayingChange, onStop, onLoopChange, onAutoKeyframeChange }: {
-  current: number; duration: number; mode: TimelineMode; playing: boolean; loop: boolean; autoKeyframe?: boolean;
-  onPlayingChange: (playing: boolean) => void; onStop?: () => void; onLoopChange: (loop: boolean) => void;
+/** Props for {@link TimelineTransport}. */
+export interface TimelineTransportProps {
+  /** Current playhead time (ms). Formatted as ms in slide mode, seconds in master mode. */
+  current: number;
+  /** Total duration (ms) shown in the second timecode cell. */
+  duration: number;
+  /** Which timeline view this transport belongs to; drives the timecode format. */
+  mode: TimelineMode;
+  /** Whether playback is running (Play ↔ Pause). */
+  playing: boolean;
+  /** Whether looping is armed. */
+  loop: boolean;
+  /** Auto-keyframe / record armed state (slide mode only) — Composa#330. */
+  autoKeyframe?: boolean;
+  onPlayingChange: (playing: boolean) => void;
+  onStop?: () => void;
+  onLoopChange: (loop: boolean) => void;
+  /** Wire to expose the auto-keyframe toggle; omit to hide it. */
   onAutoKeyframeChange?: (value: boolean) => void;
-}) {
+}
+
+/**
+ * The timeline transport toolbar: Play/Stop, optional auto-keyframe toggle, the
+ * current/duration timecode group, and the loop toggle. Identical across master and
+ * slide views (only the timecode format differs). Exported for reuse (DEC-097).
+ */
+export function TimelineTransport({ current, duration, mode, playing, loop, autoKeyframe = false, onPlayingChange, onStop, onLoopChange, onAutoKeyframeChange }: TimelineTransportProps) {
   const leftW = useTrackHeaderWidth();
   const slide = mode === "slide";
   const fmt = slide
@@ -1335,10 +1432,22 @@ function Transport({ current, duration, mode, playing, loop, autoKeyframe = fals
   );
 }
 
+/** Props shared by both timeline rulers ({@link TimelineRuler}, {@link TimelineSecondRuler}). */
+export interface TimelineRulerProps {
+  /** The visible time window the ruler labels. */
+  viewport: TimelineViewport;
+  /** Plot width in pixels — used to derive tick density. */
+  width: number;
+}
+
 // ── ruler (slide-local view — milliseconds) ────────────────────────────────────────
 // Each tick renders a short mark AT the time position with its label to the right
 // (Figma parity — Composa#326: the ticks row was previously labels-only).
-function Ruler({ viewport, width }: { viewport: TimelineViewport; width: number }) {
+/**
+ * Slide-local time ruler: millisecond ticks with their labels centred on the time
+ * position. Exported so a host can compose the same ruler over its own plot (DEC-097).
+ */
+export function TimelineRuler({ viewport, width }: TimelineRulerProps) {
   const ticks = tickTimes(viewport, width);
   return (
     <div className="absolute inset-0 overflow-hidden">
@@ -1354,7 +1463,11 @@ function Ruler({ viewport, width }: { viewport: TimelineViewport; width: number 
 }
 
 // ── ruler (master view — seconds, switching to m:ss when zoomed far out) ────────────
-function SecondRuler({ viewport, width }: { viewport: TimelineViewport; width: number }) {
+/**
+ * Master-view time ruler: second ticks that switch to `m:ss` when zoomed far out.
+ * Shares {@link TimelineRulerProps} with {@link TimelineRuler}.
+ */
+export function TimelineSecondRuler({ viewport, width }: TimelineRulerProps) {
   const ticks = tickTimes(viewport, width);
   const spanMs = viewport.endMs - viewport.startMs;
   return (
@@ -1376,12 +1489,24 @@ function SecondRuler({ viewport, width }: { viewport: TimelineViewport; width: n
 // duration and drags to pan; when everything fits it spans the full track (nothing
 // to scroll). Complements the existing shift-wheel / trackpad-x pan, giving it a
 // readable position indicator. Uses the shared viewport math (timelineScrollbarPan).
-function TimelineTimeScrollbar({ viewport, duration, plotWidth, onPan }: {
+/** Props for {@link TimelineTimeScrollbar}. */
+export interface TimelineTimeScrollbarProps {
+  /** Visible time window (drives the thumb position + size). */
   viewport: TimelineViewport;
+  /** Total timeline duration (ms) — the scrollable extent. */
   duration: number;
+  /** Plot width in pixels (the scrollbar track width past the header column). */
   plotWidth: number;
+  /** Emits the panned viewport as the thumb is dragged. */
   onPan: (next: TimelineViewport) => void;
-}) {
+}
+
+/**
+ * The horizontal time-axis scrollbar under the lanes: a draggable thumb showing the
+ * visible window over the whole duration, offset past the track-header column so it
+ * aligns with the plot. Exported for reuse (DEC-097).
+ */
+export function TimelineTimeScrollbar({ viewport, duration, plotWidth, onPan }: TimelineTimeScrollbarProps) {
   const leftW = useTrackHeaderWidth();
   const drag = useRef<{ pointerId: number; startClientX: number; startViewport: TimelineViewport } | null>(null);
   const trackWidth = Math.max(1, plotWidth);
@@ -1438,9 +1563,13 @@ function TimelineTimeScrollbar({ viewport, duration, plotWidth, onPan }: {
 // presentation toggles reflecting `control`; a callback is only wired when the host
 // supplies the corresponding handler — otherwise the affordance renders disabled so
 // the anatomy stays visible without pretending to do something.
-interface MasterLaneHeaderProps {
+/** Props for {@link TimelineMasterLaneHeader} — the shared left-column header of a master lane. */
+export interface TimelineMasterLaneHeaderProps {
+  /** Lane type glyph shown before the label. */
   icon: React.ReactNode;
+  /** Lane name (also used to build every control's aria-label). */
   label: string;
+  /** Per-lane control state (visibility/solo/mute/lock); resting defaults apply when omitted. */
   control?: MasterLaneControlState;
   /**
    * Whether the lane reads as switched off, resolved ACROSS lanes by
@@ -1457,7 +1586,7 @@ interface MasterLaneHeaderProps {
 }
 
 /** `MUTED_BAR` applies to this lane's bars — see `masterLaneDisabled`. */
-function laneIsDisabled(header: MasterLaneHeaderProps): boolean {
+function laneIsDisabled(header: TimelineMasterLaneHeaderProps): boolean {
   return header.laneDisabled ?? (header.control?.visible ?? true) === false;
 }
 
@@ -1472,11 +1601,17 @@ function laneIsDisabled(header: MasterLaneHeaderProps): boolean {
  * Reusing it means lock finally means something without inventing a lane-level
  * engine model, which does not exist: `locked` is per-object in the engine today.
  */
-function laneIsLocked(header: MasterLaneHeaderProps): boolean {
+function laneIsLocked(header: TimelineMasterLaneHeaderProps): boolean {
   return header.control?.locked ?? false;
 }
 
-function MasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onSoloToggle, onMuteToggle, onLockToggle }: MasterLaneHeaderProps) {
+/**
+ * Shared left-column header for every master lane: a `[type icon] [label] [+ add]`
+ * top row over a `[visibility] [solo] [mute] [lock]` control row (Figma 2-4060). Each
+ * control is a presentation toggle; a callback binds only when the host supplies the
+ * matching handler, otherwise the affordance renders disabled. Exported for reuse (DEC-097).
+ */
+export function TimelineMasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onSoloToggle, onMuteToggle, onLockToggle }: TimelineMasterLaneHeaderProps) {
   const leftW = useTrackHeaderWidth();
   const visible = control?.visible ?? true;
   const solo = control?.solo ?? false;
@@ -1548,10 +1683,16 @@ function MasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onS
 }
 
 // ── master track rows: "Slides" block track + "Video"/"Audio" lanes ──────────────
-function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onContextMenu, onMove, onTrim, onGestureStart, onGestureEnd }: {
+/** Props for {@link TimelineBlockTrack} — the master-view "Compositions" (slides) lane. */
+export interface TimelineBlockTrackProps {
+  /** Composition blocks, each a `[start,end]` range on the master timeline. */
   blocks: SlideBlock[];
-  header: MasterLaneHeaderProps;
-  viewport: TimelineViewport; plotWidth: number;
+  /** Left-column header (icon/label/controls) for this lane. */
+  header: TimelineMasterLaneHeaderProps;
+  /** Visible time window. */
+  viewport: TimelineViewport;
+  /** Plot width in pixels (used to convert pointer deltas to time). */
+  plotWidth: number;
   onSelect?: (id: string) => void;
   onOpen?: (id: string) => void;
   onContextMenu?: (id: string, detail: TimelineBlockContextMenuDetail) => void;
@@ -1559,7 +1700,14 @@ function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onC
   onTrim?: (id: string, edge: "start" | "end", timeMs: number) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
-}) {
+}
+
+/**
+ * Master-view "Compositions" lane: a header column plus draggable/trimmable slide
+ * blocks. Exported for reuse (DEC-097). Holds no document state — every change is a
+ * controlled callback.
+ */
+export function TimelineBlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onContextMenu, onMove, onTrim, onGestureStart, onGestureEnd }: TimelineBlockTrackProps) {
   const drag = useRef<{ id: string; kind: "move" | "start" | "end"; startX: number; range: [number, number] } | null>(null);
   const begin = (event: React.PointerEvent, block: SlideBlock, kind: "move" | "start" | "end") => {
     if (!shouldBeginTimelinePointer(event.button, event.isPrimary)) return;
@@ -1594,7 +1742,7 @@ function BlockTrack({ blocks, header, viewport, plotWidth, onSelect, onOpen, onC
   return (
     <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK }}>
       {/* left header — [icon][label][+] + [vis][solo][mute][lock] */}
-      <MasterLaneHeader {...header} />
+      <TimelineMasterLaneHeader {...header} />
       {/* block lane */}
       <div data-timeline-pan-surface className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }}>
         {blocks.map((b, i) => {
@@ -1742,11 +1890,19 @@ function LaneDropOverlay({ hint }: { hint: string }) {
   );
 }
 
-function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDropFiles, onSelect, onOpen, onContextMenu, onMove, onTrim, onGestureStart, onGestureEnd }: {
+/** Props for {@link TimelineBaseVideoTrack} — the master-view "Video" lane. */
+export interface TimelineBaseVideoTrackProps {
+  /** Base video/image clips on the lane. */
   clips: BaseClipBlock[];
-  header: MasterLaneHeaderProps;
-  viewport: TimelineViewport; plotWidth: number;
+  /** Left-column header (icon/label/controls) for this lane. */
+  header: TimelineMasterLaneHeaderProps;
+  /** Visible time window. */
+  viewport: TimelineViewport;
+  /** Plot width in pixels. */
+  plotWidth: number;
+  /** Accepted drop MIME prefixes (e.g. `["image/", "video/"]`); enables the drop target. */
   accept?: readonly string[];
+  /** Hint text shown in the drop overlay. */
   dropHint?: string;
   onDropFiles?: (files: File[]) => void;
   onSelect?: (id: string) => void;
@@ -1756,7 +1912,14 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
   onTrim?: (id: string, edge: "start" | "end", timeMs: number, detail?: TimelineClipTrimDetail) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
-}) {
+}
+
+/**
+ * Master-view "Video" lane: a header column plus draggable/trimmable base clips with
+ * optional poster thumbnails and per-clip audio strips, and a file-drop target when
+ * `accept` + `onDropFiles` are wired. Exported for reuse (DEC-097).
+ */
+export function TimelineBaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDropFiles, onSelect, onOpen, onContextMenu, onMove, onTrim, onGestureStart, onGestureEnd }: TimelineBaseVideoTrackProps) {
   const drag = useRef<{ id: string; kind: "move" | "start" | "end"; startX: number; range: [number, number] } | null>(null);
   const begin = (event: React.PointerEvent, clip: BaseClipBlock, kind: "move" | "start" | "end") => {
     if (!shouldBeginTimelinePointer(event.button, event.isPrimary)) return;
@@ -1793,7 +1956,7 @@ function BaseVideoTrack({ clips, header, viewport, plotWidth, accept, dropHint, 
   const locked = laneIsLocked(header);
   return (
     <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK }}>
-      <MasterLaneHeader {...header} />
+      <TimelineMasterLaneHeader {...header} />
       <div {...dropHandlers} data-timeline-pan-surface data-lane-drop-active={dragActive || undefined} className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Base video track" : "Base video track (empty)"}>
         {dragActive && <LaneDropOverlay hint={dropHint ?? "Drop media here"} />}
         {clips.map(clip => {
@@ -1969,11 +2132,19 @@ function AudioLaneWaveform({ id, peaks, active }: { id: string; peaks?: number[]
   );
 }
 
-function AudioTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDropFiles, onSelect, onOpen, onContextMenu, onMove, onTrim, onGestureStart, onGestureEnd }: {
+/** Props for {@link TimelineAudioTrack} — the master-view "Audio" lane. */
+export interface TimelineAudioTrackProps {
+  /** Audio clips on the lane; each renders its name over a waveform strip. */
   clips: AudioClipBlock[];
-  header: MasterLaneHeaderProps;
-  viewport: TimelineViewport; plotWidth: number;
+  /** Left-column header (icon/label/controls) for this lane. */
+  header: TimelineMasterLaneHeaderProps;
+  /** Visible time window. */
+  viewport: TimelineViewport;
+  /** Plot width in pixels. */
+  plotWidth: number;
+  /** Accepted drop MIME prefixes (e.g. `["audio/"]`); enables the drop target. */
   accept?: readonly string[];
+  /** Hint text shown in the drop overlay. */
   dropHint?: string;
   onDropFiles?: (files: File[]) => void;
   onSelect?: (id: string) => void;
@@ -1983,7 +2154,14 @@ function AudioTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDr
   onTrim?: (id: string, edge: "start" | "end", timeMs: number, detail?: TimelineClipTrimDetail) => void;
   onGestureStart?: (target: TimelineGestureTarget) => void;
   onGestureEnd?: (target: TimelineGestureTarget, detail: { cancelled: boolean }) => void;
-}) {
+}
+
+/**
+ * Master-view "Audio" lane: a header column plus draggable/trimmable audio clips,
+ * each rendered as a name over a waveform strip, and a file-drop target when
+ * `accept` + `onDropFiles` are wired. Exported for reuse (DEC-097).
+ */
+export function TimelineAudioTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDropFiles, onSelect, onOpen, onContextMenu, onMove, onTrim, onGestureStart, onGestureEnd }: TimelineAudioTrackProps) {
   const drag = useRef<{ id: string; kind: "move" | "start" | "end"; startX: number; range: [number, number] } | null>(null);
   const begin = (event: React.PointerEvent, clip: AudioClipBlock, kind: "move" | "start" | "end") => {
     if (!shouldBeginTimelinePointer(event.button, event.isPrimary)) return;
@@ -2018,7 +2196,7 @@ function AudioTrack({ clips, header, viewport, plotWidth, accept, dropHint, onDr
   const locked = laneIsLocked(header);
   return (
     <div className="flex border-b border-c-border" style={{ height: ROW_BLOCK }}>
-      <MasterLaneHeader {...header} />
+      <TimelineMasterLaneHeader {...header} />
       <div {...dropHandlers} data-timeline-pan-surface data-lane-drop-active={dragActive || undefined} className="flex-1 relative overflow-hidden" style={{ height: ROW_BLOCK }} aria-label={clips.length ? "Audio track" : "Audio track (empty)"}>
         {dragActive && <LaneDropOverlay hint={dropHint ?? "Drop audio here"} />}
         {clips.map(clip => {
@@ -2160,6 +2338,7 @@ export function Timeline({
   timelineCollapsed = false,
   onTimelineCollapsedChange,
   trackHeaderWidth,
+  renderTrackRow,
 }: {
   mode?: TimelineMode;
   tracks?: Track[];
@@ -2278,6 +2457,13 @@ export function Timeline({
    * (DEC-097). The default path is unchanged.
    */
   trackHeaderWidth?: number;
+  /**
+   * Override how each slide-local track's rows are rendered (DEC-097 composition
+   * seam). Receives the exact {@link TimelineTrackRowsProps} the built-in rows get;
+   * return your own node (e.g. wrap or decorate {@link TimelineTrackRows}). Omit to
+   * use the built-in rows unchanged. Only applies in slide mode.
+   */
+  renderTrackRow?: (props: TimelineTrackRowsProps) => ReactNode;
 }) {
   const master = mode === "master";
   const leftW = trackHeaderWidth ?? LEFT_W;
@@ -2319,7 +2505,7 @@ export function Timeline({
   // Build the shared header contract for one master lane: resolves its control
   // state and only binds a callback when the host supplied the matching handler,
   // so an unwired affordance stays visible-but-disabled rather than a no-op.
-  const laneHeaderProps = (lane: MasterLane, icon: React.ReactNode, label: string): MasterLaneHeaderProps => ({
+  const laneHeaderProps = (lane: MasterLane, icon: React.ReactNode, label: string): TimelineMasterLaneHeaderProps => ({
     icon, label,
     control: laneControls?.[lane],
     // Resolved here, not in the lane body: solo is a statement about the OTHER
@@ -2480,7 +2666,7 @@ export function Timeline({
           pre-Iteration-1 full-width geometry beneath it (owner feedback #699). */}
       <div className="relative flex shrink-0 border-b border-c-border" style={{ height: master ? ROW_BLOCK : 40 }}>
         <div className="shrink-0 flex">
-          <Transport current={playhead} duration={duration} mode={mode} playing={playing} loop={loop} onPlayingChange={setPlaying} onLoopChange={setLoop}
+          <TimelineTransport current={playhead} duration={duration} mode={mode} playing={playing} loop={loop} onPlayingChange={setPlaying} onLoopChange={setLoop}
             autoKeyframe={recording} onAutoKeyframeChange={onAutoKeyframeChange}
             onStop={() => { setPlaying(false); onStop?.(); }} />
         </div>
@@ -2554,7 +2740,7 @@ export function Timeline({
               as one empty region top to bottom rather than as lanes that ran out
               under a ruler that did not. */}
           <PastContentWash duration={duration} viewport={viewport} />
-          {master ? <SecondRuler viewport={viewport} width={plotWidth} /> : <Ruler viewport={viewport} width={plotWidth} />}
+          {master ? <TimelineSecondRuler viewport={viewport} width={plotWidth} /> : <TimelineRuler viewport={viewport} width={plotWidth} />}
           {/* continuous playhead stroke through the header ruler, joining the body line
               below so the playhead reads unbroken (Composa#342, gated by #344) */}
           {seekable && PLAYHEAD_CONNECTED && <div className="absolute top-[10px] bottom-0 w-px z-[15] -translate-x-1/2 pointer-events-none" style={{ left: percent(playhead, viewport), backgroundColor: recording ? "#ff3b30" : BLUE }} />}
@@ -2619,9 +2805,9 @@ export function Timeline({
       <ScrollArea className="relative" contentClassName="relative" viewportRef={scrollViewportRef}>
         {master ? (
           <>
-            <BlockTrack header={laneHeaderProps("slides", <Layers size={16} strokeWidth={1.5} />, "Compositions")} blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
-            <BaseVideoTrack header={laneHeaderProps("video", <VideoMediaIcon data-icon-semantic="media-video" size={16} strokeWidth={1.5} />, "Video")} clips={baseClips} viewport={viewport} plotWidth={plotWidth} accept={VIDEO_LANE_DROP_ACCEPT} dropHint="Drop image or video here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("video", files) : undefined} onSelect={onClipSelect} onOpen={onClipOpen} onContextMenu={onClipContextMenu} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
-            <AudioTrack header={laneHeaderProps("audio", <AudioMediaIcon data-icon-semantic="media-audio" size={16} strokeWidth={1.5} />, "Audio")} clips={audioClips} viewport={viewport} plotWidth={plotWidth} accept={AUDIO_LANE_DROP_ACCEPT} dropHint="Drop audio here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("audio", files) : undefined} onSelect={onAudioClipSelect} onOpen={onAudioClipOpen} onContextMenu={onAudioClipContextMenu} onMove={onAudioClipMove} onTrim={onAudioClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <TimelineBlockTrack header={laneHeaderProps("slides", <Layers size={16} strokeWidth={1.5} />, "Compositions")} blocks={blocks} viewport={viewport} plotWidth={plotWidth} onSelect={onBlockSelect} onOpen={onBlockOpen} onContextMenu={onBlockContextMenu} onMove={onBlockMove} onTrim={onBlockTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <TimelineBaseVideoTrack header={laneHeaderProps("video", <VideoMediaIcon data-icon-semantic="media-video" size={16} strokeWidth={1.5} />, "Video")} clips={baseClips} viewport={viewport} plotWidth={plotWidth} accept={VIDEO_LANE_DROP_ACCEPT} dropHint="Drop image or video here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("video", files) : undefined} onSelect={onClipSelect} onOpen={onClipOpen} onContextMenu={onClipContextMenu} onMove={onClipMove} onTrim={onClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
+            <TimelineAudioTrack header={laneHeaderProps("audio", <AudioMediaIcon data-icon-semantic="media-audio" size={16} strokeWidth={1.5} />, "Audio")} clips={audioClips} viewport={viewport} plotWidth={plotWidth} accept={AUDIO_LANE_DROP_ACCEPT} dropHint="Drop audio here" onDropFiles={onLaneDropFiles ? files => onLaneDropFiles("audio", files) : undefined} onSelect={onAudioClipSelect} onOpen={onAudioClipOpen} onContextMenu={onAudioClipContextMenu} onMove={onAudioClipMove} onTrim={onAudioClipTrim} onGestureStart={onGestureStart} onGestureEnd={onGestureEnd} />
           </>
         ) : (
           <>
@@ -2639,17 +2825,31 @@ export function Timeline({
               </button>
             </div>
             <div role={onTrackSelect ? "listbox" : undefined} aria-label={onTrackSelect ? "Timeline layers" : undefined} aria-multiselectable={onTrackSelect ? true : undefined}>
-            {tracks.map((t, i) => <TrackRows key={t.id ?? i} track={t} trackIndex={i} focusable={i === Math.max(0, tracks.findIndex(track => (track.selectionState ?? (track.selected ? "selected" : "none")) === "selected"))} viewport={viewport} plotWidth={plotWidth} duration={duration} edgeDrag={edgeDrag} onTrackSelect={onTrackSelect}
-              onExpandedChange={onTrackExpandedChange} onVisibilityChange={onTrackVisibilityChange} onAggregateKeyframeSelect={onAggregateKeyframeSelect}
-              onKeyframeSelect={(target, additive) => { revealTime(target.timeMs); onKeyframeSelect?.(target, additive); }} onKeyframeMove={onKeyframeMove} onKeyframeDelete={onKeyframeDelete}
-              onEasingSegmentSelect={onEasingSegmentSelect} onEasingPresetChange={onEasingPresetChange}
-              onDurationBarChange={onDurationBarChange}
-              onPresetSelect={onPresetSelect} onPresetBarChange={onPresetBarChange}
-              onGestureStart={onGestureStart} onGestureEnd={onGestureEnd}
-              onPropertyAddKeyframe={onPropertyAddKeyframe ? (trackId, propertyId, timeMs = playhead) => onPropertyAddKeyframe(trackId, propertyId, timeMs) : undefined}
-              onPropertyStepKeyframe={onPropertyStepKeyframe}
-              selectedTimelineRowId={selectedTimelineRowId} onPropertyRowSelect={onPropertyRowSelect} onPropertyValueChange={onPropertyValueChange}
-              onPropertyToggleHidden={onPropertyToggleHidden} onPresetToggleHidden={onPresetToggleHidden} />)}
+            {tracks.map((t, i) => {
+              // One track's row props, built exactly as the inline JSX did. Passing them
+              // through `renderTrackRow` (default: the built-in rows) is the DEC-097
+              // composition seam — the default path is spread onto TimelineTrackRows and
+              // is byte-identical to rendering it directly.
+              const rowProps: TimelineTrackRowsProps = {
+                track: t, trackIndex: i,
+                focusable: i === Math.max(0, tracks.findIndex(track => (track.selectionState ?? (track.selected ? "selected" : "none")) === "selected")),
+                viewport, plotWidth, duration, edgeDrag, onTrackSelect,
+                onExpandedChange: onTrackExpandedChange, onVisibilityChange: onTrackVisibilityChange, onAggregateKeyframeSelect,
+                onKeyframeSelect: (target, additive) => { revealTime(target.timeMs); onKeyframeSelect?.(target, additive); }, onKeyframeMove, onKeyframeDelete,
+                onEasingSegmentSelect, onEasingPresetChange,
+                onDurationBarChange,
+                onPresetSelect, onPresetBarChange,
+                onGestureStart, onGestureEnd,
+                onPropertyAddKeyframe: onPropertyAddKeyframe ? (trackId, propertyId, timeMs = playhead) => onPropertyAddKeyframe(trackId, propertyId, timeMs) : undefined,
+                onPropertyStepKeyframe,
+                selectedTimelineRowId, onPropertyRowSelect, onPropertyValueChange,
+                onPropertyToggleHidden, onPresetToggleHidden,
+              };
+              const key = t.id ?? i;
+              return renderTrackRow
+                ? <Fragment key={key}>{renderTrackRow(rowProps)}</Fragment>
+                : <TimelineTrackRows key={key} {...rowProps} />;
+            })}
             </div>
           </>
         )}
