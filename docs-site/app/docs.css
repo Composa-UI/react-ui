@@ -10,9 +10,11 @@
 
 :root {
   /* Carbon White theme */
-  --cds-bg: #ffffff;
-  --cds-layer: #f4f4f4; /* gray-10 */
-  --cds-layer-hover: #e8e8e8;
+  --cds-canvas: #f4f4f4; /* gray-10 — page/content background */
+  --cds-surface: #ffffff; /* white — sidebar, cards, panels */
+  --cds-bg: #ffffff; /* legacy alias of surface */
+  --cds-layer: #e8e8e8; /* gray-20 — chips, swatches, hover fills */
+  --cds-layer-hover: #e0e0e0;
   --cds-border-subtle: #e0e0e0; /* gray-20 */
   --cds-border-strong: #8d8d8d; /* gray-50 */
   --cds-text: #161616; /* gray-100 */
@@ -37,9 +39,11 @@
 
 :root[data-composa-mode="dark"] {
   /* Carbon Gray-100 theme */
-  --cds-bg: #161616;
-  --cds-layer: #262626; /* gray-90 */
-  --cds-layer-hover: #333333;
+  --cds-canvas: #161616; /* gray-100 — page/content background */
+  --cds-surface: #262626; /* gray-90 — sidebar, cards, panels */
+  --cds-bg: #262626; /* legacy alias of surface */
+  --cds-layer: #393939; /* gray-80 — chips, swatches, hover fills */
+  --cds-layer-hover: #4d4d4d;
   --cds-border-subtle: #393939; /* gray-80 */
   --cds-border-strong: #6f6f6f; /* gray-60 */
   --cds-text: #f4f4f4;
@@ -64,7 +68,7 @@ body {
 body {
   font-family: var(--docs-sans);
   color: var(--cds-text);
-  background: var(--cds-bg);
+  background: var(--cds-canvas);
   -webkit-font-smoothing: antialiased;
   letter-spacing: 0;
 }
@@ -74,7 +78,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: var(--cds-bg);
+  background: var(--cds-canvas);
   color: var(--cds-text);
 }
 .uishell {
@@ -183,7 +187,11 @@ main {
   flex-direction: column;
 }
 .masthead-body {
-  padding: 56px 48px 40px;
+  min-height: 176px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 40px 48px 32px;
 }
 .masthead-eyebrow {
   font-size: 14px;
@@ -233,7 +241,9 @@ main {
   color: #ffffff;
 }
 .masthead-tab.is-active {
-  background: var(--cds-bg);
+  /* Carbon contained tab: the selected tab is the content-panel color, so it
+     reads as connected to the content below rather than a floating white chip. */
+  background: var(--cds-canvas);
   color: var(--cds-text);
   border-top-color: var(--cds-link); /* IBM blue indicator */
   font-weight: 600;
@@ -631,7 +641,7 @@ table.docs-tc a:hover {
 }
 .sb-demo-stage {
   border: 1px solid var(--cds-border-subtle);
-  background: var(--cds-layer);
+  background: var(--cds-surface);
 }
 .sb-demo-frame {
   display: block;
