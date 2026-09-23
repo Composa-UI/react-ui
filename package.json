@@ -20,7 +20,7 @@
     "tokens:build": "node tools/tokens/build-json.mjs",
     "tokens:figma": "node tools/tokens/build-figma-vars.mjs",
     "tokens:check": "node tools/tokens/verify-parity.mjs",
-    "docs": "node docs-site/build.mjs",
+    "docs": "vite build --config docs-site/vite.docs.config.ts",
     "check": "npm run tokens:check && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {

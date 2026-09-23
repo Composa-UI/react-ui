@@ -1,7 +1,9 @@
 name: Deploy docs to GitHub Pages
 
-# Builds the Carbon-style design-system docs (docs-site/build.mjs, zero-dependency)
-# and publishes docs-site/dist to GitHub Pages.
+# Builds the design-system docs — a Vite + React app (docs-site/app) that keeps
+# the Carbon-style foundations / token-compliance / per-component tabs AND adds a
+# live, interactive preview of every real component — and publishes docs-site/dist
+# to GitHub Pages.
 #
 # One-time setup by a repo admin: Settings -> Pages -> Build and deployment ->
 # Source: "GitHub Actions". After that this workflow deploys on every push that
@@ -39,8 +41,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Install dependencies
+        run: npm ci
       - name: Build docs site
-        run: node docs-site/build.mjs
+        run: npm run docs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
