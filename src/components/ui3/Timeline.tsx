@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
 import { clsx } from "clsx";
 import { Play, Pause, Square, Diamond, Repeat, PanelBottomClose, PanelBottomOpen, Eye, EyeOff, ChevronDown, ChevronRight as DisclosureRight, ChevronLeft, ChevronRight, ChevronLeft as ChevronLeftBack, Volume2, VolumeX, Plus, Lock, LockOpen, Layers } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
@@ -29,6 +29,14 @@ import { iconForSemantic } from "./IconSemantics";
 const FONT = "font-[family-name:var(--composa-font-family)]";
 export const TIMELINE_TRACK_HEADER_WIDTH = 297;
 const LEFT_W = TIMELINE_TRACK_HEADER_WIDTH;
+// The track-header column width is a slot, not a hardcoded constant (DEC-097). A
+// host may override it via the Timeline `trackHeaderWidth` prop; every part that
+// has to line up with the header column (rows, transport, lane headers, the
+// scrollbar spacer, the body divider, plot-width math) reads the resolved width
+// from this context, which defaults to TIMELINE_TRACK_HEADER_WIDTH so the
+// unconfigured path is byte-identical to before.
+const TimelineTrackHeaderWidthContext = createContext<number>(LEFT_W);
+const useTrackHeaderWidth = () => useContext(TimelineTrackHeaderWidthContext);
 // Master is deliberately unruled. Slide-local uses one continuous body-owned
 // divider rather than assembling a rule per row; that keeps the line intact
 // through scrolling and through the empty authored-motion state.
@@ -320,8 +328,8 @@ export const shouldBeginTimelinePointer = (button: number, isPrimary: boolean): 
 export const shouldBeginTimelineMiddlePan = (button: number, isPrimary: boolean, ownsPanSurface: boolean): boolean =>
   button === 1 && isPrimary && ownsPanSurface;
 
-export function shouldHandleTimelineReveal(master: boolean, requestKey: string | number | undefined, handledKey: string | number | null, timelineWidth: number): boolean {
-  return !master && requestKey !== undefined && requestKey !== handledKey && timelineWidth > LEFT_W + 1;
+export function shouldHandleTimelineReveal(master: boolean, requestKey: string | number | undefined, handledKey: string | number | null, timelineWidth: number, trackHeaderWidth: number = LEFT_W): boolean {
+  return !master && requestKey !== undefined && requestKey !== handledKey && timelineWidth > trackHeaderWidth + 1;
 }
 
 function useGestureEscapeOwnership(cancel: () => void) {
@@ -1075,6 +1083,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
   const presetCount = track.bars?.length ?? 0;
   const childCount = presetCount + track.props.length;
   const hasChildren = childCount > 0;
+  const leftW = useTrackHeaderWidth();
   const selectionState = track.selectionState ?? (track.selected ? "selected" : "none");
   const durationBar = track.bar ? timelineDurationBarProjection(track.bar, viewport) : null;
   const aggregateKeys = onAggregateKeyframeSelect ? collectAggregateKeyframes(track.props.flatMap((prop, propertyIndex) => {
@@ -1096,7 +1105,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
           className={clsx("pointer-events-none absolute inset-0", rowSelectionHighlightClassName(selectionState))}
         />
         <div className="relative shrink-0 flex items-center gap-[8px] pr-[8px]"
-          style={{ width: LEFT_W, paddingLeft: 8 + depth * 16 }}>
+          style={{ width: leftW, paddingLeft: 8 + depth * 16 }}>
           {/* tree guides: a vertical line at each ancestor indent level (Composa#343) */}
           {Array.from({ length: depth }).map((_, level) => (
             <span key={`guide-${level}`} aria-hidden className="pointer-events-none absolute top-0 bottom-0 w-px bg-c-border" style={{ left: 16 + level * 16 }} />
@@ -1170,7 +1179,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
         const presetProjection = timelineDurationBarProjection(preset.timeRange, viewport);
         return (
         <div key={preset.id} className={clsx("group/preset flex", preset.hidden && "opacity-40")} style={{ height: ROW_PROP }}>
-          <div className="relative shrink-0 flex items-center gap-[6px] pr-[8px]" style={{ width: LEFT_W, paddingLeft: 56 + depth * 16 }}>
+          <div className="relative shrink-0 flex items-center gap-[6px] pr-[8px]" style={{ width: leftW, paddingLeft: 56 + depth * 16 }}>
             <TimelineChildConnector index={childIndex} count={childCount} depth={depth} />
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate text-c-text-secondary")}>{preset.label}</span>
             {preset.editable !== false && <button type="button"
@@ -1204,7 +1213,7 @@ function TrackRows({ track, trackIndex, focusable, viewport, plotWidth, duration
           className={clsx("flex", p.hidden && "opacity-40", propSelected ? "bg-c-bg-selected" : rowGraySelected && "bg-c-bg-secondary")}
           style={{ height: ROW_PROP }}
           onClick={event => { if (!(event.target as Element).closest?.("button,[data-keyframe-id],[data-easing-segment]")) onPropertyRowSelect?.(propertyId); }}>
-          <div className="group/prop relative shrink-0 flex items-center gap-[6px] pr-[8px]" style={{ width: LEFT_W, paddingLeft: 56 + depth * 16 }}>
+          <div className="group/prop relative shrink-0 flex items-center gap-[6px] pr-[8px]" style={{ width: leftW, paddingLeft: 56 + depth * 16 }}>
             <TimelineChildConnector index={presetCount + i} count={childCount} depth={depth} />
             <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[450] truncate", p.accent ? "text-[#8638e5]" : "text-c-text-secondary")}>{p.name}</span>
             {/* keyframe stepper: ◀ prev-keyframe · ◇ toggle-at-playhead · ▶ next-keyframe */}
@@ -1271,13 +1280,14 @@ function Transport({ current, duration, mode, playing, loop, autoKeyframe = fals
   onPlayingChange: (playing: boolean) => void; onStop?: () => void; onLoopChange: (loop: boolean) => void;
   onAutoKeyframeChange?: (value: boolean) => void;
 }) {
+  const leftW = useTrackHeaderWidth();
   const slide = mode === "slide";
   const fmt = slide
     ? (n: number) => String(Math.round(n)).padStart(5, "0")
     : (n: number) => (n / 1000).toFixed(2) + "s";
   const tcW = slide ? 42 : 54; // timecode cell width — ms strings are narrower than "4.20s"
   return (
-    <div className="shrink-0 flex items-center gap-[8px]" style={{ width: LEFT_W, paddingLeft: TRANSPORT_PAD_X, paddingRight: TRANSPORT_PAD_X }}>
+    <div className="shrink-0 flex items-center gap-[8px]" style={{ width: leftW, paddingLeft: TRANSPORT_PAD_X, paddingRight: TRANSPORT_PAD_X }}>
       {/* shared transport controls */}
       <TransportIconButton label={playing ? "Pause" : "Play"} active={playing} onClick={() => onPlayingChange(!playing)}>{playing ? <Pause size={TRANSPORT_GLYPH} strokeWidth={1.5} /> : <Play size={TRANSPORT_GLYPH} strokeWidth={1.5} />}</TransportIconButton>
       <TransportIconButton label="Stop" onClick={onStop}><Square size={14} strokeWidth={1.5} /></TransportIconButton>
@@ -1372,6 +1382,7 @@ function TimelineTimeScrollbar({ viewport, duration, plotWidth, onPan }: {
   plotWidth: number;
   onPan: (next: TimelineViewport) => void;
 }) {
+  const leftW = useTrackHeaderWidth();
   const drag = useRef<{ pointerId: number; startClientX: number; startViewport: TimelineViewport } | null>(null);
   const trackWidth = Math.max(1, plotWidth);
   const { leftPx, widthPx, scrollable } = timelineScrollbarThumb(viewport, duration, trackWidth);
@@ -1396,7 +1407,7 @@ function TimelineTimeScrollbar({ viewport, duration, plotWidth, onPan }: {
   };
   return (
     <div className="flex shrink-0 h-[12px] border-t border-c-border bg-c-bg" data-timeline-time-scrollbar>
-      <div className="shrink-0" style={{ width: LEFT_W }} />
+      <div className="shrink-0" style={{ width: leftW }} />
       <div className="relative flex-1 min-w-0">
         <div
           role="scrollbar"
@@ -1466,6 +1477,7 @@ function laneIsLocked(header: MasterLaneHeaderProps): boolean {
 }
 
 function MasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onSoloToggle, onMuteToggle, onLockToggle }: MasterLaneHeaderProps) {
+  const leftW = useTrackHeaderWidth();
   const visible = control?.visible ?? true;
   const solo = control?.solo ?? false;
   const muted = control?.muted ?? false;
@@ -1513,7 +1525,7 @@ function MasterLaneHeader({ icon, label, control, onAdd, onVisibilityToggle, onS
   // No right stroke — the shared left-column contract is unruled in both views.
   // `pr-[8px]` stays so the controls never slide into the plot.
   return (
-    <div data-timeline-lane-header={label} className="shrink-0 flex flex-col justify-center gap-[6px] pr-[8px]" style={{ width: LEFT_W, height: ROW_BLOCK, paddingLeft: TRACK_HEADER_PAD_L }}>
+    <div data-timeline-lane-header={label} className="shrink-0 flex flex-col justify-center gap-[6px] pr-[8px]" style={{ width: leftW, height: ROW_BLOCK, paddingLeft: TRACK_HEADER_PAD_L }}>
       {/* top row — [type icon] [label] [+ add]. Icons use the primary c-icon token. */}
       <div className="flex items-center gap-[6px]">
         <span className={clsx("shrink-0 flex items-center", visible ? "text-c-icon" : "text-c-icon opacity-60")} aria-hidden>{icon}</span>
@@ -2147,6 +2159,7 @@ export function Timeline({
   onBack,
   timelineCollapsed = false,
   onTimelineCollapsedChange,
+  trackHeaderWidth,
 }: {
   mode?: TimelineMode;
   tracks?: Track[];
@@ -2258,8 +2271,16 @@ export function Timeline({
    */
   timelineCollapsed?: boolean;
   onTimelineCollapsedChange?: (collapsed: boolean) => void;
+  /**
+   * Width of the track-header column (the left region every lane header, the
+   * transport, and the ruler offset line up against). Defaults to
+   * TIMELINE_TRACK_HEADER_WIDTH; override to reflow the header column as a slot
+   * (DEC-097). The default path is unchanged.
+   */
+  trackHeaderWidth?: number;
 }) {
   const master = mode === "master";
+  const leftW = trackHeaderWidth ?? LEFT_W;
   // Record chrome belongs only to the slide-local authoring scope. Deriving it
   // here also makes the master timeline fail closed if a host accidentally
   // carries a stale `autoKeyframe` value across the scope switch.
@@ -2272,7 +2293,7 @@ export function Timeline({
   const [internalPlaying, setInternalPlaying] = useState(defaultPlaying);
   const [internalLoop, setInternalLoop] = useState(defaultLoop);
   const [internalViewport, setInternalViewport] = useState(() => normalizeViewport(defaultViewport ?? { startMs: 0, endMs: duration }, duration));
-  const [timelineWidth, setTimelineWidth] = useState(LEFT_W + 1);
+  const [timelineWidth, setTimelineWidth] = useState(leftW + 1);
   // Chromium promotes an already pointer-focused slider to `:focus-visible`
   // when the editor-level Space shortcut runs. Track keyboard intent ourselves
   // so Space can preserve focus without painting a blue ring around the whole
@@ -2294,7 +2315,7 @@ export function Timeline({
   const viewportRef = useRef(viewport);
   // Pre-Iteration-1 geometry: the plot spans the full row after the track-list
   // column. The right chrome is an overlay rather than reserved plot space (#699).
-  const plotWidth = Math.max(1, timelineWidth - LEFT_W);
+  const plotWidth = Math.max(1, timelineWidth - leftW);
   // Build the shared header contract for one master lane: resolves its control
   // state and only binds a callback when the host supplied the matching handler,
   // so an unwired affordance stays visible-but-disabled rather than a no-op.
@@ -2326,7 +2347,7 @@ export function Timeline({
   const edgeDrag = useTimelineEdgeDragAutoScroll(viewportRef, duration, setViewport);
   const playheadEdgeFollow = useTimelineEdgeDragAutoScroll(viewportRef, duration, setViewport, "playhead-edge-follow");
   const revealTime = (timeMs: number) => {
-    if (timelineWidth <= LEFT_W + 1) return;
+    if (timelineWidth <= leftW + 1) return;
     const next = revealTimeInViewport(viewport, timeMs, duration, 0.05, Math.max(0.1, RIGHT_OVERLAY_W / plotWidth));
     if (next.startMs !== viewport.startMs || next.endMs !== viewport.endMs) setViewport(next, "keyframe-reveal");
   };
@@ -2372,7 +2393,7 @@ export function Timeline({
       if (event.ctrlKey || event.metaKey) {
         if (event.deltaY === 0) return;
         const rect = element.getBoundingClientRect();
-        const ratio = timelineAnchorRatioAtX(event.clientX - rect.left - LEFT_W, plotWidth);
+        const ratio = timelineAnchorRatioAtX(event.clientX - rect.left - leftW, plotWidth);
         const deltaY = wheelDeltaPixels(event.deltaY, event.deltaMode, pageSize);
         const next = zoomViewport(viewport, ratio, Math.exp(deltaY * .002), duration);
         if (!timelineViewportChanged(viewport, next)) return;
@@ -2401,7 +2422,7 @@ export function Timeline({
   }, [viewport.startMs, viewport.endMs, plotWidth, duration, controlledViewport, onViewportChange]);
 
   useEffect(() => {
-    if (!revealKeyframe || !shouldHandleTimelineReveal(master, revealKeyframe.requestKey, handledRevealKey.current, timelineWidth)) return;
+    if (!revealKeyframe || !shouldHandleTimelineReveal(master, revealKeyframe.requestKey, handledRevealKey.current, timelineWidth, leftW)) return;
     handledRevealKey.current = revealKeyframe.requestKey;
     revealTime(revealKeyframe.timeMs);
     onKeyframeRevealHandled?.(revealKeyframe.requestKey);
@@ -2440,6 +2461,7 @@ export function Timeline({
     try { event.currentTarget.releasePointerCapture(event.pointerId); } catch {}
   };
   return (
+    <TimelineTrackHeaderWidthContext.Provider value={leftW}>
     <div ref={timelineRef} data-timeline-viewport-start-ms={viewport.startMs} data-timeline-viewport-end-ms={viewport.endMs} data-timeline-autokeyframe={recording || undefined}
       onPointerDownCapture={beginMiddlePan} onPointerMoveCapture={moveMiddlePan}
       onPointerUpCapture={endMiddlePan} onPointerCancelCapture={endMiddlePan} onLostPointerCapture={endMiddlePan}
@@ -2610,7 +2632,7 @@ export function Timeline({
                 onClick={onBack}
                 aria-label="Back to project"
                 className={clsx(FONT, "shrink-0 flex items-center gap-[4px] pl-[8px] pr-[8px] h-full text-[11px] font-[450] text-c-text-secondary hover:text-c-text")}
-                style={{ width: LEFT_W }}
+                style={{ width: leftW }}
               >
                 <ChevronLeftBack size={14} strokeWidth={1.5} className="shrink-0" />
                 <span>Project</span>
@@ -2634,13 +2656,13 @@ export function Timeline({
         {/* Empty room past the content end — see PastContentWash / row #47. Inside
             the scroll CONTENT (like the playhead wrapper below) so it spans every
             lane at any scroll position, and offset past the track-header column. */}
-        <PastContentWash duration={duration} viewport={viewport} left={LEFT_W} />
+        <PastContentWash duration={duration} viewport={viewport} left={leftW} />
         <div
           aria-hidden
           data-timeline-track-header-divider
           data-timeline-local-header-divider={master ? undefined : true}
           className="absolute top-0 bottom-0 z-[25] w-px bg-c-border-strong/20 pointer-events-none"
-          style={{ left: LEFT_W }}
+          style={{ left: leftW }}
         />
         {/* shared playhead line spanning the FULL lanes region — above the keyframe
             diamonds (Composa#320). The wrapper's `top-0 bottom-0` resolves against the
@@ -2648,7 +2670,7 @@ export function Timeline({
             spans header-ruler-bottom through the last lane at any scroll position,
             instead of only the visible viewport height. Gated on `seekable` — the
             slide-local null state has nothing to seek, so no line (LT-2). */}
-        {seekable && <div className="absolute top-0 bottom-0 right-0 z-20 overflow-hidden pointer-events-none" style={{ left: LEFT_W }}>
+        {seekable && <div className="absolute top-0 bottom-0 right-0 z-20 overflow-hidden pointer-events-none" style={{ left: leftW }}>
           <div className="absolute top-0 bottom-0 w-px" style={{ left: percent(playhead, viewport), backgroundColor: recording ? "#ff3b30" : BLUE }} />
         </div>}
       </ScrollArea>
@@ -2656,5 +2678,6 @@ export function Timeline({
       <TimelineTimeScrollbar viewport={viewport} duration={duration} plotWidth={plotWidth} onPan={next => setViewport(next, "pointer-pan")} />
       </>)}
     </div>
+    </TimelineTrackHeaderWidthContext.Provider>
   );
 }

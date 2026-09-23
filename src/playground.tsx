@@ -1799,9 +1799,13 @@ export default function Playground() {
     // permanently inert — otherwise the playground can't demo their tooltips
     // (Composa#628: an unwired control suppresses its tooltip by design).
     const noop = () => undefined;
+    // ?th=<px> overrides the track-header column width (DEC-097 slot); default keeps 297.
+    const thParam = Number(new URLSearchParams(window.location.search).get("th"));
+    const trackHeaderWidth = Number.isFinite(thParam) && thParam > 0 ? thParam : undefined;
     return (
       <div style={{ height: "100vh", width: "100vw", background: "#e6e6e6", padding: 24, boxSizing: "border-box" }}>
         <Timeline height={360} mode={view === "timeline-master" ? "master" : "slide"}
+          trackHeaderWidth={trackHeaderWidth}
           baseClips={clipBlocks} laneControls={laneControls}
           onLaneAdd={noop}
           onLaneVisibilityToggle={lane => toggleLane(lane, "visible")}
