@@ -1,0 +1,42 @@
+{
+  "component": "InputField",
+  "category": "Inputs / Controls",
+  "intent": "A single- or multi-line text field with leading/trailing slots, an inline label or dropdown, a hint line, and validation variants.",
+  "use_when": [
+    "Free-text entry (name, URL, search).",
+    "A field paired with an inline unit label or a unit Dropdown."
+  ],
+  "dont_use_when": [
+    "A number — use NumericInput.",
+    "A choice — use Dropdown / SegmentedControl."
+  ],
+  "variants": {
+    "variant": ["default", "error", "success", "warning"],
+    "shape": ["single-line", "multiline (textarea)"]
+  },
+  "slots": {
+    "leadingIcon": "leading glyph",
+    "trailingIcon": "trailing glyph",
+    "inlineLabel": "inline unit / label inside the field",
+    "inlineDropdown": "an inline Dropdown (e.g. unit picker)",
+    "hint": "helper / validation text below the field"
+  },
+  "states": ["default", "focused", "error", "success", "warning", "disabled", "readOnly"],
+  "tokens": {
+    "text": "text/default; placeholder text/tertiary",
+    "hint": "text/tertiary (danger / success / warning by variant)",
+    "gotcha": "value-controlled — defaultValue renders empty (per AGENTS.md)."
+  },
+  "a11y": {
+    "role": "textbox (native <input> / <textarea>)",
+    "label": "the label prop is associated with the field; the hint is described-by."
+  },
+  "enforce": {
+    "role": "textbox",
+    "ariaRole": false
+  },
+  "code": {
+    "import": "import { InputField } from '@composa/ui'",
+    "example": "<InputField label=\"Name\" value={name} onChange={setName} />"
+  }
+}

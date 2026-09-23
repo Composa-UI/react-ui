@@ -49,7 +49,14 @@ const REQUIRED = [
   "Switch", "Checkbox", "Dial", "AlignmentControl",
   "CreationToolbar", "CropToolbar", "LayerList", "Notification",
   "Slider", "ListCell", "Tooltip", "SplitButton", "Menu", "NumericInput",
+  "Modal", "InputField",
 ];
+
+// Components whose source lives in a shared file (not <Component>.tsx). Used to
+// resolve the file the tokensOnly source-scan reads.
+const SOURCE_FILE: Record<string, string> = {
+  Modal: "Dialog",
+};
 
 // Components this test can render trivially to verify an ARIA-role claim.
 const RENDERABLE: Record<string, () => ReactElement> = {
@@ -129,7 +136,7 @@ describe("annotation contract v1", () => {
       const enforce = (ann.enforce ?? {}) as { tokensOnly?: boolean };
       if (enforce.tokensOnly !== true) continue;
       const name = ann.component as string;
-      const src = stripComments(readFileSync(srcDir + name + ".tsx", "utf8"));
+      const src = stripComments(readFileSync(srcDir + (SOURCE_FILE[name] ?? name) + ".tsx", "utf8"));
       expect(src, `${name} declares tokensOnly but contains a hex literal`).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
     }
   });
