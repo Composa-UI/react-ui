@@ -1,0 +1,35 @@
+{
+  "component": "NumericInput",
+  "category": "Inputs / Controls",
+  "intent": "The inspector's number-entry primitive: a numeric field with drag-scrub, keyboard step, a mixed (multi-select) state, and an optional keyframe affordance.",
+  "use_when": [
+    "Entering or nudging a number in the inspector (x, y, w, h, opacity, rotation).",
+    "You need drag-to-scrub plus typed entry on one field."
+  ],
+  "dont_use_when": [
+    "Free text — use InputField.",
+    "A bounded value with a track — use Slider or Dial."
+  ],
+  "variants": {
+    "mixed": ["single value", "mixed (multi-select differing values)"],
+    "keyframe": ["off", "keyframe toggle shown"]
+  },
+  "slots": {},
+  "states": ["default", "focused", "mixed", "disabled", "keyframed"],
+  "tokens": {
+    "note": "Binds to DS tokens; Input.tsx carries a hardcoded default color elsewhere in the file, so this is not claimed tokensOnly."
+  },
+  "a11y": {
+    "role": "spinbutton",
+    "keyboard": "Arrow = ±step, larger step with a modifier; the label is a horizontal drag-scrub surface.",
+    "label": "ariaLabel when the visible label is on the owning row."
+  },
+  "enforce": {
+    "role": "spinbutton",
+    "ariaRole": false
+  },
+  "code": {
+    "import": "import { NumericInput } from '@composa/ui'",
+    "example": "<NumericInput ariaLabel=\"X\" value={x} onChange={setX} />"
+  }
+}

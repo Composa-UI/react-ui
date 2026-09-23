@@ -1,0 +1,40 @@
+{
+  "component": "SplitButton",
+  "category": "Actions",
+  "intent": "A split button: a primary action segment plus a chevron that opens a menu of related choices. The chevron stays operable even when the action is disabled, so the menu is always reachable.",
+  "use_when": [
+    "A default action with related alternatives behind a menu (crop aspect, export format).",
+    "Capability gating where the menu must stay reachable while the action is disabled."
+  ],
+  "dont_use_when": [
+    "A single action — use Button.",
+    "Many equal options — use a menu or SegmentedControl."
+  ],
+  "variants": {
+    "size": ["default", "large"],
+    "action": ["default", "selected (brand-active)", "disabled (chevron still operable)"],
+    "menu": ["static", "disclosure (menuOpen -> aria-expanded)"]
+  },
+  "slots": {
+    "icon": "The action segment's glyph."
+  },
+  "states": ["default", "selected", "action-disabled", "menu-open", "hover"],
+  "tokens": {
+    "surface": "bg/secondary enclosure",
+    "segments": { "bg": "bg/default", "hover": "bg/hover" },
+    "icon": "icon/default"
+  },
+  "a11y": {
+    "role": "two native buttons — an action (aria-label + aria-pressed) and a menu chevron (aria-haspopup=menu + aria-expanded).",
+    "gating": "the chevron remains operable when the action segment is disabled."
+  },
+  "enforce": {
+    "role": "button",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { SplitButton } from '@composa/ui'",
+    "example": "<SplitButton icon={<Crop/>} actionLabel=\"Reset crop\" menuLabel=\"Aspect ratio\"\n  onIconClick={reset} menuTrigger={t => <PopoverMenu trigger={t}>…</PopoverMenu>} />"
+  }
+}
