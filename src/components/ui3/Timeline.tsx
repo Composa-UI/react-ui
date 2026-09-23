@@ -37,6 +37,18 @@ const LEFT_W = TIMELINE_TRACK_HEADER_WIDTH;
 // unconfigured path is byte-identical to before.
 const TimelineTrackHeaderWidthContext = createContext<number>(LEFT_W);
 const useTrackHeaderWidth = () => useContext(TimelineTrackHeaderWidthContext);
+
+/**
+ * Sets the track-header column width for any exported Timeline sub-components
+ * composed beneath it (`TimelineTrackRows`, `TimelineMasterLaneHeader`,
+ * `TimelineTransport`, `TimelineTimeScrollbar`, …). The monolithic `Timeline`
+ * provides this itself from its `trackHeaderWidth` prop; a host that composes the
+ * pieces standalone wraps them in this provider to keep their header columns
+ * aligned with a custom-width plot. Defaults to `TIMELINE_TRACK_HEADER_WIDTH`.
+ */
+export function TimelineTrackHeaderWidthProvider({ width, children }: { width: number; children: ReactNode }) {
+  return <TimelineTrackHeaderWidthContext.Provider value={width}>{children}</TimelineTrackHeaderWidthContext.Provider>;
+}
 // Master is deliberately unruled. Slide-local uses one continuous body-owned
 // divider rather than assembling a rule per row; that keeps the line intact
 // through scrolling and through the empty authored-motion state.
@@ -2825,14 +2837,19 @@ export function Timeline({
               </button>
             </div>
             <div role={onTrackSelect ? "listbox" : undefined} aria-label={onTrackSelect ? "Timeline layers" : undefined} aria-multiselectable={onTrackSelect ? true : undefined}>
-            {tracks.map((t, i) => {
+            {(() => {
+            // The roving-tabindex focus target is the first selected track (or the
+            // first track when none is selected). Resolved once here rather than
+            // re-scanning `tracks` for every row (was an O(n²) findIndex per map iteration).
+            const focusedTrackIndex = Math.max(0, tracks.findIndex(track => (track.selectionState ?? (track.selected ? "selected" : "none")) === "selected"));
+            return tracks.map((t, i) => {
               // One track's row props, built exactly as the inline JSX did. Passing them
               // through `renderTrackRow` (default: the built-in rows) is the DEC-097
               // composition seam — the default path is spread onto TimelineTrackRows and
               // is byte-identical to rendering it directly.
               const rowProps: TimelineTrackRowsProps = {
                 track: t, trackIndex: i,
-                focusable: i === Math.max(0, tracks.findIndex(track => (track.selectionState ?? (track.selected ? "selected" : "none")) === "selected")),
+                focusable: i === focusedTrackIndex,
                 viewport, plotWidth, duration, edgeDrag, onTrackSelect,
                 onExpandedChange: onTrackExpandedChange, onVisibilityChange: onTrackVisibilityChange, onAggregateKeyframeSelect,
                 onKeyframeSelect: (target, additive) => { revealTime(target.timeMs); onKeyframeSelect?.(target, additive); }, onKeyframeMove, onKeyframeDelete,
@@ -2849,7 +2866,8 @@ export function Timeline({
               return renderTrackRow
                 ? <Fragment key={key}>{renderTrackRow(rowProps)}</Fragment>
                 : <TimelineTrackRows key={key} {...rowProps} />;
-            })}
+            });
+            })()}
             </div>
           </>
         )}

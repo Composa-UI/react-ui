@@ -37,12 +37,12 @@
     "surface": "layout-only — no color or spacing tokens of its own; each slotted region carries its own"
   },
   "a11y": {
-    "role": "application (labelled by aria-label)",
-    "landmarks": "slotted regions own their own landmarks (inspector = complementary, canvas = main); the shell does not double them.",
+    "role": "group (labelled by aria-label)",
+    "landmarks": "slotted regions own their own landmarks (inspector = complementary, canvas = main); the shell is a plain group — deliberately NOT role=application, which would switch AT into application mode and hide those inner landmarks.",
     "reading order": "nav rail → left panel → canvas → inspector → timeline, matching the DOM."
   },
   "enforce": {
-    "role": "application",
+    "role": "group",
     "ariaRole": true,
     "tokensOnly": true
   },

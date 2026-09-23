@@ -53,7 +53,6 @@ export function Notification({ message, actions = [{ label: "Action" }], icon, c
 
   return (
     <div
-      role="status"
       className={clsx(
         "flex items-stretch rounded-[5px] pl-[8px]",
         SHADOW,
@@ -61,8 +60,10 @@ export function Notification({ message, actions = [{ label: "Action" }], icon, c
       )}
       style={{ backgroundColor: BG, minHeight: 56 }}
     >
-      {/* Content: icon + message */}
-      <div className="flex gap-[4px] items-center pr-[4px] w-[212px] py-[8px]">
+      {/* Content: icon + message. role="status" scopes the polite live region to
+          the announced content only — the action buttons stay out of it, so a
+          screen reader announces the message on appearance, not the CTA labels. */}
+      <div role="status" className="flex gap-[4px] items-center pr-[4px] w-[212px] py-[8px]">
         <span className="shrink-0 flex items-center justify-center size-[24px] text-white">
           {icon ?? <ComponentIcon />}
         </span>

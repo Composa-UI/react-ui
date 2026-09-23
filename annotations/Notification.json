@@ -27,8 +27,8 @@
     "note": "Deliberately a dark pill: its background (#1e1e1e), separators (#383838), and white text are hardcoded to read on any surface — tracked, so NOT tokensOnly."
   },
   "a11y": {
-    "role": "status (polite live region — announced without stealing focus)",
-    "actions": "each CTA is a <button> with a visible label."
+    "role": "status (polite live region — announced without stealing focus). Scoped to the icon+message content region, not the whole toast, so the CTA labels stay out of the announcement.",
+    "actions": "each CTA is a <button> with a visible label, outside the live region."
   },
   "enforce": {
     "role": "status",

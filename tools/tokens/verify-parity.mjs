@@ -1,8 +1,12 @@
-// Drift-check (CI gate): assert tokens/composa.tokens.json and the shipped
-// composa-tokens.css define exactly the same variables and values, in both
-// light and dark. Fails the build on any drift. Zero-dependency:
-// `node tools/tokens/verify-parity.mjs`.
+// Drift-check (CI gate): two guarantees, both from the single token source
+// tokens/composa.tokens.json:
+//   1. the shipped composa-tokens.css defines exactly the same variables and
+//      values, in both light and dark;
+//   2. the committed tokens/figma-variables.json is exactly what
+//      build-figma-vars.mjs would regenerate from that source.
+// Fails the build on any drift. Zero-dependency: `node tools/tokens/verify-parity.mjs`.
 import { readTokensCss } from "./parse-css.mjs";
+import { buildFigmaVariables, serialize, OUT as FIGMA_OUT, readTokenDoc } from "./build-figma-vars.mjs";
 import { readFile } from "node:fs/promises";
 
 const CSS = new URL("../../src/styles/composa-tokens.css", import.meta.url);
@@ -39,6 +43,27 @@ if (errors.length) {
   console.error("TOKEN DRIFT — composa-tokens.css and composa.tokens.json disagree:\n  " + errors.join("\n  "));
   process.exit(1);
 }
+
+// Figma-variables drift: the committed file must equal a fresh regeneration from
+// the same token source, so a token edit that skips `npm run tokens:figma` (or a
+// hand-edit of the generated file) fails CI instead of silently rotting.
+const expectedFigma = serialize(buildFigmaVariables(doc));
+let committedFigma = null;
+try {
+  committedFigma = await readFile(FIGMA_OUT, "utf8");
+} catch {
+  console.error(
+    "TOKEN DRIFT — tokens/figma-variables.json is missing. Regenerate with `node tools/tokens/build-figma-vars.mjs`.",
+  );
+  process.exit(1);
+}
+if (committedFigma !== expectedFigma) {
+  console.error(
+    "TOKEN DRIFT — tokens/figma-variables.json is stale (does not match the token source). Regenerate with `node tools/tokens/build-figma-vars.mjs`.",
+  );
+  process.exit(1);
+}
+
 console.log(
-  `token parity OK — ${Object.keys(css.light).length} light vars, ${Object.keys(css.dark).length} dark overrides; CSS and JSON agree.`,
+  `token parity OK — ${Object.keys(css.light).length} light vars, ${Object.keys(css.dark).length} dark overrides; CSS, JSON, and figma-variables.json all agree.`,
 );

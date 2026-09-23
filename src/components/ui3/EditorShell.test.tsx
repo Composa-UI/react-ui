@@ -24,7 +24,7 @@ const regionsOf = (r: ReactTestRenderer): string[] =>
     .map(n => n.props["data-editor-region"] as string);
 
 describe("EditorShell", () => {
-  it("is a labelled application landmark that lays regions out in reading order", () => {
+  it("is a labelled group (not role=application) that lays regions out in reading order", () => {
     const r = render(
       <EditorShell
         aria-label="Composa editor"
@@ -35,8 +35,11 @@ describe("EditorShell", () => {
         timeline={<div>TIME</div>}
       />,
     );
-    const app = r.root.find(n => n.props.role === "application");
+    const app = r.root.find(n => n.props.role === "group");
     expect(app.props["aria-label"]).toBe("Composa editor");
+    // role="application" would put AT into application mode and hide the inner
+    // landmarks (canvas=main, inspector=complementary) the shell exists to preserve.
+    expect(r.root.findAll(n => n.props.role === "application")).toHaveLength(0);
     expect(regionsOf(r)).toEqual(["navRail", "leftPanel", "canvas", "inspector", "timeline"]);
   });
 

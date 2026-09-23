@@ -30,7 +30,7 @@ export interface EditorShellProps {
    */
   overlayBoundary?: boolean;
   className?: string;
-  /** Accessible name for the editor application landmark. */
+  /** Accessible name for the editor region group. */
   "aria-label"?: string;
 }
 
@@ -61,7 +61,11 @@ export function EditorShell({
 }: EditorShellProps) {
   return (
     <div
-      role="application"
+      // A plain labelled grouping, NOT role="application": application would
+      // switch AT into forms/application mode and hide the very inner landmarks
+      // the shell is built to preserve (canvas = main, inspector = complementary).
+      // group names the workspace without suppressing that landmark navigation.
+      role="group"
       aria-label={ariaLabel}
       className={clsx("relative flex flex-col h-full min-h-0 overflow-hidden", className)}
     >

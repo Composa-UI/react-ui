@@ -16,6 +16,7 @@ import {
   TimelineDurationBar,
   TimelineChildConnector,
   TimelineTimeScrollbar,
+  TimelineTrackHeaderWidthProvider,
   timelineDurationBarProjection,
   TIMELINE_TRACK_HEADER_WIDTH,
   type Track,
@@ -113,6 +114,19 @@ describe("TimelineMasterLaneHeader", () => {
     expect(byLabel(r, "Mute Video")).toHaveLength(1);
     expect(byLabel(r, "Lock Video")).toHaveLength(1);
     expect(byLabel(r, "Add to Video")).toHaveLength(1);
+  });
+
+  it("honors a TimelineTrackHeaderWidthProvider override when composed standalone", () => {
+    // A host composing the pieces outside the monolithic Timeline can retune the
+    // header column so it stays aligned with a custom-width plot (DEC-097 seam).
+    const r = render(
+      <TimelineTrackHeaderWidthProvider width={200}>
+        <TimelineMasterLaneHeader {...header} />
+      </TimelineTrackHeaderWidthProvider>,
+    );
+    const container = r.root.find(n => n.props["data-timeline-lane-header"] === "Video");
+    expect(container.props.style.width).toBe(200);
+    expect(container.props.style.width).not.toBe(TIMELINE_TRACK_HEADER_WIDTH);
   });
 });
 
