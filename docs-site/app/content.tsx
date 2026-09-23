@@ -65,24 +65,36 @@ function KV({ obj }: { obj?: Record<string, unknown> }) {
   );
 }
 
-// ── Page shell: a Carbon-style page header ──────────────────────────────────
+// ── Page shell: Carbon's black masthead ─────────────────────────────────────
+// Carbon component pages open with a tall black band carrying the big, light
+// page title; on component pages the tab bar sits at the bottom of that same
+// black band. The page description (lede) and everything else render below it on
+// the content surface — never inside the black band.
 
-function PageHeader({
+function Masthead({
   eyebrow,
   title,
-  lede,
+  tabs,
 }: {
   eyebrow?: ReactNode;
   title: string;
-  lede?: ReactNode;
+  tabs?: ReactNode;
 }) {
   return (
-    <header className="page-header">
-      {eyebrow && <div className="page-eyebrow">{eyebrow}</div>}
-      <h1 className="page-title">{title}</h1>
-      {lede && <p className="page-lede">{lede}</p>}
+    <header className="masthead">
+      <div className="masthead-body">
+        {eyebrow && <div className="masthead-eyebrow">{eyebrow}</div>}
+        <h1 className="masthead-title">{title}</h1>
+      </div>
+      {tabs}
     </header>
   );
+}
+
+// Carbon's <PageDescription>: the lede paragraph at the top of the content, on
+// the content surface (below the masthead).
+function PageDescription({ children }: { children: ReactNode }) {
+  return <p className="page-description">{children}</p>;
 }
 
 // ── Home / overview ─────────────────────────────────────────────────────────
@@ -94,20 +106,16 @@ export function HomePage() {
   })).filter(g => g.items.length > 0);
 
   return (
-    <article className="page">
-      <PageHeader
-        eyebrow="Design system · v0"
-        title="Composa UI"
-        lede={
-          <>
-            A Figma-fidelity component kit — the visual layer for the Composa editor. Foundations,
-            token compliance, and every component with a live, interactive preview. Code · Figma ·
-            docs from one token source.
-          </>
-        }
-      />
+    <>
+      <Masthead eyebrow="Design system · v0" title="Composa UI" />
+      <div className="page">
+        <PageDescription>
+          A Figma-fidelity component kit — the visual layer for the Composa editor. Foundations,
+          token compliance, and every component with a live, interactive preview. Code · Figma ·
+          docs from one token source.
+        </PageDescription>
 
-      <div className="home-cards">
+        <div className="home-cards">
         <a className="home-card" href="#/foundations">
           <h3>Foundations</h3>
           <p>Color, radius and spacing swatches generated from the single token source.</p>
@@ -140,11 +148,12 @@ export function HomePage() {
         ))}
       </div>
 
-      <p className="muted footer">
-        Built from <code>tokens/composa.tokens.json</code> + <code>annotations/*.json</code>;
-        previews render the real components from <code>src</code>.
-      </p>
-    </article>
+        <p className="muted footer">
+          Built from <code>tokens/composa.tokens.json</code> + <code>annotations/*.json</code>;
+          previews render the real components from <code>src</code>.
+        </p>
+      </div>
+    </>
   );
 }
 
@@ -156,18 +165,14 @@ export function Foundations() {
     (a, b) => parseInt(a[1].value) - parseInt(b[1].value),
   );
   return (
-    <article className="page">
-      <PageHeader
-        eyebrow="Overview"
-        title="Foundations"
-        lede={
-          <>
-            Generated from <code>tokens/composa.tokens.json</code>, the single source of truth. Each
-            swatch shows light and dark.
-          </>
-        }
-      />
-      <h2>Color</h2>
+    <>
+      <Masthead eyebrow="Overview" title="Foundations" />
+      <div className="page">
+        <PageDescription>
+          Generated from <code>tokens/composa.tokens.json</code>, the single source of truth. Each
+          swatch shows light and dark.
+        </PageDescription>
+        <h2>Color</h2>
       <div className="grid-sw">
         {Object.entries(tokens.color).map(([k, e]) => (
           <div className="sw" key={k}>
@@ -188,18 +193,19 @@ export function Foundations() {
           </div>
         ))}
       </div>
-      <h2>Spacing</h2>
-      <div className="grid-sp">
-        {space.map(([k, e]) => (
-          <div className="sp" key={k}>
-            <span style={{ width: e.value }} />
-            <code>
-              spacer/{k} · {e.value}
-            </code>
-          </div>
-        ))}
+        <h2>Spacing</h2>
+        <div className="grid-sp">
+          {space.map(([k, e]) => (
+            <div className="sp" key={k}>
+              <span style={{ width: e.value }} />
+              <code>
+                spacer/{k} · {e.value}
+              </code>
+            </div>
+          ))}
+        </div>
       </div>
-    </article>
+    </>
   );
 }
 
@@ -212,23 +218,19 @@ function isTokenOnly(c: Annotation) {
 export function TokenCompliance() {
   const n = components.filter(isTokenOnly).length;
   return (
-    <article className="page">
-      <PageHeader
-        eyebrow="Overview"
-        title="Token compliance"
-        lede={
-          <>
-            Which annotated components are fully token-bound. Enforced by the annotation contract: a
-            component may claim <code>tokensOnly</code> only if its source carries no hardcoded hex,
-            so this is verified, not asserted. <b>
-              {n} of {components.length}
-            </b>{" "}
-            are verified token-only; the rest name their hardcoded values — that is the
-            hardcoded-hex debt to burn down.
-          </>
-        }
-      />
-      <table className="docs-kv docs-tc">
+    <>
+      <Masthead eyebrow="Overview" title="Token compliance" />
+      <div className="page">
+        <PageDescription>
+          Which annotated components are fully token-bound. Enforced by the annotation contract: a
+          component may claim <code>tokensOnly</code> only if its source carries no hardcoded hex, so
+          this is verified, not asserted. <b>
+            {n} of {components.length}
+          </b>{" "}
+          are verified token-only; the rest name their hardcoded values — that is the hardcoded-hex
+          debt to burn down.
+        </PageDescription>
+        <table className="docs-kv docs-tc">
         <tbody>
           <tr>
             <th>Component</th>
@@ -252,13 +254,14 @@ export function TokenCompliance() {
                     <span className="tc-na">— not asserted</span>
                   )}
                 </td>
-                <td className="muted">{note || (ok ? "Source verified hex-free." : "")}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </article>
+                  <td className="muted">{note || (ok ? "Source verified hex-free." : "")}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -362,7 +365,7 @@ function AnchorLinks({ items }: { items: Sec[] }) {
             document.getElementById(it.id)?.scrollIntoView({ behavior: "smooth", block: "start" })
           }
         >
-          <span aria-hidden className="anchor-caret">›</span>
+          <span aria-hidden className="anchor-caret">↳</span>
           {it.label}
         </button>
       ))}
@@ -436,18 +439,15 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
   const hasStates = !!(c.states && c.states.length > 0);
   const hasGuidance = !!((c.use_when && c.use_when.length) || (c.dont_use_when && c.dont_use_when.length));
 
-  // Carbon's Usage page: Live demo → Overview → guidance (Do/Don't) → Variants →
-  // Anatomy (slots) → States. Only the sections the annotation supports render.
+  // Carbon's Usage page: Live demo → guidance (Do/Don't) → Variants → Anatomy
+  // (slots) → States. The intent shows as the PageDescription lede above the
+  // anchor links, so there's no separate Overview section. Only the sections the
+  // annotation supports render.
   const usageSections: Sec[] = [
     {
       id: "live-demo",
       label: "Live demo",
       body: <StorybookDemo c={c} theme={theme} />,
-    },
-    {
-      id: "overview",
-      label: "Overview",
-      body: <p className="doc-lede">{c.intent}</p>,
     },
     ...(hasGuidance
       ? [{
@@ -567,92 +567,116 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
   ];
 
   return (
-    <article className="page component-page">
-      <PageHeader
+    <>
+      <Masthead
         eyebrow={<span className="cat">{c.category}</span>}
         title={c.component}
-        lede={c.intent}
+        tabs={
+          <div
+            className="masthead-tabs"
+            role="tablist"
+            aria-label={`${c.component} documentation`}
+          >
+            {TABS.map(t => (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={tab === t.id}
+                className={"masthead-tab" + (tab === t.id ? " is-active" : "")}
+                onClick={() => setTab(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        }
       />
 
-      <div className="docs-tabs" role="tablist" aria-label={`${c.component} documentation`}>
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            className={"docs-tab" + (tab === t.id ? " is-active" : "")}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <div className="page">
+        <div className="tab-panel" role="tabpanel">
+          {tab === "usage" && (
+            <>
+              <PageDescription>{c.intent}</PageDescription>
+              <TabBody sections={usageSections} />
+            </>
+          )}
 
-      <div className="tab-panel" role="tabpanel">
-        {tab === "usage" && <TabBody sections={usageSections} />}
+          {tab === "style" && (
+            <>
+              <PageDescription>
+                How {c.component} is styled — every value below is a design token from the single
+                source, so it reskins and flips light/dark with the system.
+              </PageDescription>
+              <TabBody sections={styleSections} />
+            </>
+          )}
 
-        {tab === "style" && <TabBody sections={styleSections} />}
+          {tab === "code" && (
+            <div className="code-tab">
+              {/* Carbon's code.mdx: a lede, then a "Documentation" grid of
+                  framework cards that path the reader to Storybook, then the live
+                  demo. Composa ships React only, so one card. */}
+              <PageDescription>
+                Preview the {c.component} component with the React live demo. For detailed code usage
+                documentation, see the Storybook.
+              </PageDescription>
 
-        {tab === "code" && (
-          <div className="code-tab">
-            {/* Carbon's code.mdx: a lede, then a "Documentation" grid of
-                framework cards that path the reader to Storybook, then the live
-                demo. Composa ships React only, so one card. */}
-            <p className="code-lede">
-              Preview the {c.component} component with the React live demo. For detailed code usage
-              documentation, see the Storybook.
-            </p>
+              <h2 className="section-h" id="documentation">
+                Documentation
+              </h2>
+              <div className="resource-card-group">
+                <ResourceCard subTitle="React" href={storybookHref(c)}>
+                  <ReactLogo />
+                </ResourceCard>
+              </div>
 
-            <h2 className="section-h" id="documentation">
-              Documentation
-            </h2>
-            <div className="resource-card-group">
-              <ResourceCard subTitle="React" href={storybookHref(c)}>
-                <ReactLogo />
-              </ResourceCard>
+              <h2 className="section-h" id="code-live-demo">
+                Live demo
+              </h2>
+              <StorybookDemo c={c} theme={theme} />
+
+              <h2 className="section-h" id="install">
+                Install &amp; import
+              </h2>
+              <pre>
+                <code>
+                  {c.code.import}
+                  {"\n\n"}
+                  {c.code.example}
+                </code>
+              </pre>
             </div>
+          )}
 
-            <h2 className="section-h" id="code-live-demo">
-              Live demo
-            </h2>
-            <StorybookDemo c={c} theme={theme} />
-
-            <h2 className="section-h" id="install">
-              Install &amp; import
-            </h2>
-            <pre>
-              <code>
-                {c.code.import}
-                {"\n\n"}
-                {c.code.example}
-              </code>
-            </pre>
-          </div>
-        )}
-
-        {tab === "a11y" && <TabBody sections={a11ySections} />}
+          {tab === "a11y" && (
+            <>
+              <PageDescription>
+                Accessibility is built in. Here’s what the kit provides for {c.component}, and how
+                the annotation contract verifies it.
+              </PageDescription>
+              <TabBody sections={a11ySections} />
+            </>
+          )}
+        </div>
       </div>
-    </article>
+    </>
   );
 }
 
 export function NotFoundPage({ slug: s }: { slug: string }) {
   return (
-    <article className="page">
-      <PageHeader
-        eyebrow="404"
-        title="Page not found"
-        lede={
-          <>
-            No component or page matches <code>{s}</code>.
-          </>
-        }
-      />
-      <p>
-        <a href="#/">← Back to overview</a>
-      </p>
-    </article>
+    <>
+      <Masthead eyebrow="404" title="Page not found" />
+      <div className="page">
+        <PageDescription>
+          No component or page matches <code>{s}</code>.
+        </PageDescription>
+        <p>
+          <a href="#/">← Back to overview</a>
+        </p>
+      </div>
+    </>
   );
 }
 

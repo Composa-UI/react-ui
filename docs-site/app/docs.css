@@ -175,33 +175,82 @@ main {
   max-width: 960px;
 }
 
-/* ── Page header ─────────────────────────────────────────────────────────── */
-.page-header {
-  margin-bottom: 40px;
+/* ── Masthead: Carbon's black title band ─────────────────────────────────── */
+.masthead {
+  background: var(--cds-header-bg);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
 }
-.page-eyebrow {
-  font-size: 12px;
-  color: var(--cds-text-secondary);
-  letter-spacing: 0.02em;
-  margin-bottom: 12px;
+.masthead-body {
+  padding: 56px 48px 40px;
+}
+.masthead-eyebrow {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0;
+  margin-bottom: 20px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.page-title {
-  font-size: 42px;
-  line-height: 1.15;
+.masthead-title {
+  font-size: 54px;
+  line-height: 1.07;
   font-weight: 300; /* Carbon expressive heading — light */
   letter-spacing: 0;
   margin: 0;
+  color: #ffffff;
 }
-.page-lede {
-  color: var(--cds-text-secondary);
-  font-size: 20px;
-  font-weight: 300;
+/* Category chip, on black */
+.masthead-eyebrow .cat {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  padding: 2px 8px;
+}
+
+/* Tabs sit at the bottom of the black band (contained-tab treatment) */
+.masthead-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 48px;
+  border-top: 1px solid var(--cds-header-border);
+}
+.masthead-tab {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-top: 2px solid transparent;
+  color: rgba(255, 255, 255, 0.72);
+  font: inherit;
+  font-size: 14px;
+  padding: 14px 20px;
+  cursor: pointer;
+}
+.masthead-tab:hover {
+  background: #262626;
+  color: #ffffff;
+}
+.masthead-tab.is-active {
+  background: var(--cds-bg);
+  color: var(--cds-text);
+  border-top-color: var(--cds-link); /* IBM blue indicator */
+  font-weight: 600;
+}
+.masthead-tab:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: -2px;
+}
+
+/* Carbon <PageDescription> — the lede on the content surface, below the band. */
+.page-description {
+  font-size: 22px;
   line-height: 1.4;
-  margin: 16px 0 0;
-  max-width: 60ch;
+  font-weight: 300;
+  color: var(--cds-text);
+  margin: 0 0 40px;
+  max-width: 640px;
 }
 .cat {
   font-size: 12px;
@@ -451,37 +500,7 @@ table.docs-tc a:hover {
   color: var(--cds-text-secondary);
 }
 
-/* ── Component page: Carbon tabs ─────────────────────────────────────────── */
-.docs-tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--cds-border-subtle);
-  margin: 40px 0 32px;
-}
-.docs-tab {
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--cds-text-secondary);
-  font: inherit;
-  font-size: 14px;
-  padding: 14px 16px;
-  cursor: pointer;
-  margin-bottom: -1px;
-}
-.docs-tab:hover {
-  color: var(--cds-text);
-  border-bottom-color: var(--cds-border-strong);
-}
-.docs-tab.is-active {
-  color: var(--cds-text);
-  border-bottom-color: var(--cds-link); /* IBM blue indicator */
-  font-weight: 600;
-}
-.docs-tab:focus-visible {
-  outline: 2px solid var(--cds-focus);
-  outline-offset: -2px;
-}
+/* ── Component page: tab panel ───────────────────────────────────────────── */
 .tab-panel {
   min-height: 120px;
 }
@@ -508,34 +527,34 @@ table.docs-tc a:hover {
   margin: 0 0 8px;
 }
 
-/* ── AnchorLinks ("on this page") ─────────────────────────────────────────── */
+/* ── AnchorLinks ("on this page") — Carbon's two-column ↳ list ────────────── */
 .anchor-links {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0;
-  border-left: 1px solid var(--cds-border-subtle);
-  margin: 0 0 32px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 40px;
+  margin: 0 0 48px;
+  max-width: 760px;
 }
 .anchor-link {
   display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
+  gap: 12px;
   background: none;
   border: none;
   font: inherit;
-  font-size: 14px;
-  color: var(--cds-link);
+  font-size: 18px;
+  color: var(--cds-text);
   cursor: pointer;
-  padding: 6px 16px;
+  padding: 8px 0;
   text-align: left;
 }
 .anchor-link:hover {
+  color: var(--cds-link);
   text-decoration: underline;
 }
 .anchor-caret {
   color: var(--cds-text-helper);
-  font-weight: 600;
+  font-size: 16px;
 }
 
 /* ── Do / Don't cards (sharp, Carbon support colors) ─────────────────────── */
