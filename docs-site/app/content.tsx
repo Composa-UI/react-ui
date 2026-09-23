@@ -1,10 +1,16 @@
 // Carbon-style documentation content, one page per component.
 //
-// Each annotated component gets its OWN page (see App.tsx routing): a page
-// header (name + category chip + one-line intent), a prominent live preview of
-// the REAL component, then Usage / Style / Code / Accessibility sub-tabs.
-// Foundations and Token compliance are their own pages too. Everything the old
-// single-scroll app showed is preserved — just reorganized.
+// Modeled on carbondesignsystem.com's component pages: each annotated component
+// gets its OWN page (see App.tsx routing) with a page header (name + category
+// chip + one-line intent) and Usage / Style / Code / Accessibility sub-tabs.
+// Following Carbon:
+//   - the LIVE DEMO lives inside the Usage tab (an embedded Storybook story,
+//     Carbon's <StorybookDemo>), not as a separate canvas above the tabs;
+//   - the CODE tab is a lede + a "Documentation" section of framework
+//     ResourceCards that link out to Storybook (Carbon's code.mdx), then the
+//     live demo and the import/example snippet. Composa ships React only, so the
+//     framework grid is a single React card.
+// Foundations and Token compliance are their own pages too.
 import { useState, type ReactNode } from "react";
 import {
   components,
@@ -12,24 +18,14 @@ import {
   colorVal,
   slug,
   storybookHref,
+  storybookIframeHref,
   routeForComponent,
   GROUP_ORDER,
   type Annotation,
+  type Theme,
 } from "./data";
-import { FIXTURES, FIXTURE_NOTES } from "./fixtures";
 
 // ── Small JSX renderers (ports of the generator's helpers) ──────────────────
-
-function List({ items }: { items?: string[] }) {
-  if (!items || !items.length) return null;
-  return (
-    <ul className="docs-ul">
-      {items.map((i, n) => (
-        <li key={n}>{i}</li>
-      ))}
-    </ul>
-  );
-}
 
 function codeList(v: unknown[]): ReactNode {
   return v.map((x, i) => (
@@ -266,21 +262,158 @@ export function TokenCompliance() {
   );
 }
 
-// ── Live preview canvas ─────────────────────────────────────────────────────
+// ── Live demo (Carbon <StorybookDemo>) ──────────────────────────────────────
+// The isolated Storybook story, embedded as an iframe. The page's light/dark
+// toggle is wired into the story's `composaMode` global (via storybookIframeHref)
+// so the embedded demo tracks the surrounding page's theme, and a caption links
+// out to the full story for controls / variants / API docs.
 
-function Preview({ c }: { c: Annotation }) {
-  const render = FIXTURES[c.component];
-  const note = FIXTURE_NOTES[c.component];
+function StorybookDemo({ c, theme }: { c: Annotation; theme: Theme }) {
   return (
-    <div className="preview">
-      <div className="preview-head">
-        <span className="preview-dot" aria-hidden />
-        Live preview
+    <div className="sb-demo">
+      <div className="sb-demo-stage">
+        <iframe
+          key={theme}
+          title={`${c.component} live demo`}
+          className="sb-demo-frame"
+          src={storybookIframeHref(c, theme)}
+          loading="lazy"
+          sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
+        />
       </div>
-      <div className="preview-stage">
-        {render ? render() : <p className="muted">No preview fixture.</p>}
+      <p className="sb-demo-caption">
+        This is the isolated Storybook story — the real component rendered from the design-system
+        tokens.{" "}
+        <a href={storybookHref(c)} target="_blank" rel="noreferrer">
+          View the full story on Storybook <span aria-hidden>↗</span>
+        </a>{" "}
+        for controls, variants, and API docs.
+      </p>
+    </div>
+  );
+}
+
+// React brand mark for the Code tab's framework ResourceCard.
+function ReactLogo() {
+  return (
+    <svg className="fw-logo" viewBox="-11.5 -10.23 23 20.46" width="42" height="38" aria-hidden>
+      <circle r="2.05" fill="currentColor" />
+      <g fill="none" stroke="currentColor" strokeWidth="1">
+        <ellipse rx="11" ry="4.2" />
+        <ellipse rx="11" ry="4.2" transform="rotate(60)" />
+        <ellipse rx="11" ry="4.2" transform="rotate(120)" />
+      </g>
+    </svg>
+  );
+}
+
+// Carbon's "Launch" glyph (open in new window), for a ResourceCard's corner.
+function LaunchIcon() {
+  return (
+    <svg className="launch-icon" width="20" height="20" viewBox="0 0 32 32" fill="currentColor" aria-hidden>
+      <path d="M26 28H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10v2H6v20h20V16h2v10a2 2 0 0 1-2 2Z" />
+      <path d="M20 2v2h6.586L18 12.586 19.414 14 28 5.414V12h2V2Z" />
+    </svg>
+  );
+}
+
+// A Carbon-style resource tile: a big clickable card with the framework name,
+// its logo, and a Launch corner. Links out to the framework's Storybook.
+function ResourceCard({
+  subTitle,
+  href,
+  children,
+}: {
+  subTitle: string;
+  href: string;
+  children: ReactNode;
+}) {
+  return (
+    <a className="resource-card" href={href} target="_blank" rel="noreferrer">
+      <span className="resource-card-title">{subTitle}</span>
+      <span className="resource-card-foot">
+        <span className="resource-card-logo">{children}</span>
+        <LaunchIcon />
+      </span>
+    </a>
+  );
+}
+
+// ── Carbon page chrome: AnchorLinks, Section, Do/Don't ──────────────────────
+// Carbon's component pages carry the same anatomy on every tab: an "on this
+// page" AnchorLinks box, `##` sections in a fixed rhythm, and Do/Don't cards.
+// These render that same chrome from Composa's annotation data.
+
+type Sec = { id: string; label: string; body: ReactNode };
+
+// Carbon's <AnchorLinks>: an "on this page" box. The site routes on the URL
+// hash (#/components/...), so these scroll to the section element instead of
+// setting a fragment (which would clobber the route).
+function AnchorLinks({ items }: { items: Sec[] }) {
+  if (items.length < 2) return null;
+  return (
+    <nav className="anchor-links" aria-label="On this page">
+      {items.map(it => (
+        <button
+          key={it.id}
+          type="button"
+          className="anchor-link"
+          onClick={() =>
+            document.getElementById(it.id)?.scrollIntoView({ behavior: "smooth", block: "start" })
+          }
+        >
+          <span aria-hidden className="anchor-caret">›</span>
+          {it.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+// A tab body rendered Carbon-style: the AnchorLinks box, then each `##` section
+// with a stable id the links scroll to. Empty sections are dropped upstream.
+function TabBody({ sections }: { sections: Sec[] }) {
+  return (
+    <div>
+      <AnchorLinks items={sections} />
+      {sections.map(s => (
+        <section key={s.id} id={s.id} className="doc-section">
+          <h2 className="section-h">{s.label}</h2>
+          {s.body}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+// Carbon's <DoDont>: green-barred "do" / red-barred "don't" cards. Composa's
+// use_when → do, dont_use_when → don't.
+function DoDont({ dos, donts }: { dos?: string[]; donts?: string[] }) {
+  const hasDo = dos && dos.length > 0;
+  const hasDont = donts && donts.length > 0;
+  if (!hasDo && !hasDont) return null;
+  return (
+    <div className="dodont-grid">
+      <div className="dodont-col">
+        <div className="dodont-head do">Do</div>
+        {(dos ?? []).map((t, i) => (
+          <div className="dodont do" key={i}>
+            <span className="dodont-mark" aria-hidden>✓</span>
+            <p>{t}</p>
+          </div>
+        ))}
+        {!hasDo && <p className="muted dodont-empty">No specific guidance.</p>}
       </div>
-      {note && <p className="preview-note">{note}</p>}
+      <div className="dodont-col">
+        <div className="dodont-head dont">Don’t</div>
+        {(donts ?? []).map((t, i) => (
+          <div className="dodont dont" key={i}>
+            <span className="dodont-mark" aria-hidden>✕</span>
+            <p>{t}</p>
+          </div>
+        ))}
+        {!hasDont && <p className="muted dodont-empty">No specific guidance.</p>}
+      </div>
     </div>
   );
 }
@@ -294,12 +427,144 @@ const TABS = [
   { id: "a11y", label: "Accessibility" },
 ] as const;
 
-export function ComponentPage({ c }: { c: Annotation }) {
+export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("usage");
   const tokensOnly = isTokenOnly(c);
-  const styleNote = tokensOnly
-    ? "Every visual property binds to a token — source verified hex-free."
-    : "Mostly token-bound; carries some hardcoded values (see the note below).";
+  const enforce = (c.enforce ?? {}) as { role?: string; ariaRole?: boolean; tokensOnly?: boolean };
+  const hasSlots = !!(c.slots && Object.keys(c.slots).length > 0);
+  const hasVariants = !!(c.variants && Object.keys(c.variants).length > 0);
+  const hasStates = !!(c.states && c.states.length > 0);
+  const hasGuidance = !!((c.use_when && c.use_when.length) || (c.dont_use_when && c.dont_use_when.length));
+
+  // Carbon's Usage page: Live demo → Overview → guidance (Do/Don't) → Variants →
+  // Anatomy (slots) → States. Only the sections the annotation supports render.
+  const usageSections: Sec[] = [
+    {
+      id: "live-demo",
+      label: "Live demo",
+      body: <StorybookDemo c={c} theme={theme} />,
+    },
+    {
+      id: "overview",
+      label: "Overview",
+      body: <p className="doc-lede">{c.intent}</p>,
+    },
+    ...(hasGuidance
+      ? [{
+          id: "guidance",
+          label: "When to use",
+          body: <DoDont dos={c.use_when} donts={c.dont_use_when} />,
+        } as Sec]
+      : []),
+    ...(hasVariants
+      ? [{ id: "variants", label: "Variants", body: <KV obj={c.variants} /> } as Sec]
+      : []),
+    ...(hasSlots
+      ? [{ id: "anatomy", label: "Anatomy", body: <KV obj={c.slots} /> } as Sec]
+      : []),
+    ...(hasStates
+      ? [{
+          id: "states",
+          label: "States",
+          body: <p className="muted chips">{codeList(c.states!)}</p>,
+        } as Sec]
+      : []),
+  ];
+
+  // Carbon's Style page: Color/Typography/Structure — Composa is fully
+  // token-bound, so its Style is Design tokens + the verified compliance status.
+  const styleSections: Sec[] = [
+    {
+      id: "tokens",
+      label: "Design tokens",
+      body: (
+        <>
+          <p className="doc-lede">
+            {tokensOnly
+              ? "Every visual property binds to a design token — the source is verified hex-free by the annotation contract."
+              : "Mostly token-bound; this component still carries some hardcoded values, listed below as the hardcoded-hex debt to burn down."}
+          </p>
+          <KV obj={c.tokens} />
+        </>
+      ),
+    },
+    {
+      id: "compliance",
+      label: "Token compliance",
+      body: (
+        <p className="muted">
+          {tokensOnly ? (
+            <>
+              <span className="tc-ok">✓ token-only</span> — no hardcoded hex in source.{" "}
+            </>
+          ) : (
+            <>
+              <span className="tc-warn">⚠ hardcoded values</span> present.{" "}
+            </>
+          )}
+          See the <a href="#/token-compliance">token-compliance report</a> for every component.
+        </p>
+      ),
+    },
+  ];
+
+  // Carbon's Accessibility page: What Carbon provides → Design recommendations →
+  // Development considerations + A11yStatus. Composa's honest analog: what the
+  // kit provides (a11y annotation), how the annotation contract verifies it, and
+  // the kit-wide development considerations.
+  const a11ySections: Sec[] = [
+    {
+      id: "provides",
+      label: "What the kit provides",
+      body: <KV obj={c.a11y} />,
+    },
+    {
+      id: "verified",
+      label: "How it’s verified",
+      body: (
+        <ul className="docs-ul">
+          {enforce.ariaRole && enforce.role && (
+            <li>
+              The <code>role=&quot;{enforce.role}&quot;</code> is render-verified: the annotation
+              contract test fails if the component does not actually render it.
+            </li>
+          )}
+          {enforce.tokensOnly && (
+            <li>
+              The <code>tokensOnly</code> claim is checked against source — a declared token-only
+              component may carry no hardcoded hex.
+            </li>
+          )}
+          <li>
+            The annotation itself is schema-validated and coverage-gated: the component is “done”
+            only once it carries a valid annotation.
+          </li>
+        </ul>
+      ),
+    },
+    {
+      id: "dev",
+      label: "Development considerations",
+      body: (
+        <ul className="docs-ul">
+          <li>
+            Interactive elements carry real <code>aria-label</code>s / <code>role</code>s — the
+            editor’s e2e suite locates kit surfaces by role and label, so a missing label is a
+            consumer break, not just an a11y gap.
+          </li>
+          <li>
+            Radix popovers, menus, and dialogs portal to <code>document.body</code>; hosts mirror{" "}
+            <code>data-composa-mode</code> onto <code>&lt;html&gt;</code> so portalled overlays
+            resolve the right theme. Keep portalled content labelled.
+          </li>
+          <li>
+            Controlled + uncontrolled discipline: value comes from props, changes emit via{" "}
+            <code>onXChange</code>, and the host owns document state.
+          </li>
+        </ul>
+      ),
+    },
+  ];
 
   return (
     <article className="page component-page">
@@ -308,8 +573,6 @@ export function ComponentPage({ c }: { c: Annotation }) {
         title={c.component}
         lede={c.intent}
       />
-
-      <Preview c={c} />
 
       <div className="docs-tabs" role="tablist" aria-label={`${c.component} documentation`}>
         {TABS.map(t => (
@@ -327,52 +590,37 @@ export function ComponentPage({ c }: { c: Annotation }) {
       </div>
 
       <div className="tab-panel" role="tabpanel">
-        {tab === "usage" && (
-          <div>
-            <h3>When to use</h3>
-            <List items={c.use_when} />
-            <h3>When not to use</h3>
-            <List items={c.dont_use_when} />
-            <h3>Variants</h3>
-            <KV obj={c.variants} />
-            {c.slots && Object.keys(c.slots).length > 0 && (
-              <>
-                <h3>Slots</h3>
-                <KV obj={c.slots} />
-              </>
-            )}
-            {c.states && c.states.length > 0 && (
-              <>
-                <h3>States</h3>
-                <p className="muted chips">{codeList(c.states)}</p>
-              </>
-            )}
-          </div>
-        )}
+        {tab === "usage" && <TabBody sections={usageSections} />}
 
-        {tab === "style" && (
-          <div>
-            <h3>Tokens</h3>
-            <p className="muted">{styleNote}</p>
-            <KV obj={c.tokens} />
-          </div>
-        )}
+        {tab === "style" && <TabBody sections={styleSections} />}
 
         {tab === "code" && (
           <div className="code-tab">
-            <div className="code-actions">
-              <a
-                className="storybook-link"
-                href={storybookHref(c)}
-                target="_blank"
-                rel="noreferrer"
-              >
-                View in Storybook <span aria-hidden>↗</span>
-              </a>
-              <span className="muted code-actions-note">
-                Opens this component's live, isolated story.
-              </span>
+            {/* Carbon's code.mdx: a lede, then a "Documentation" grid of
+                framework cards that path the reader to Storybook, then the live
+                demo. Composa ships React only, so one card. */}
+            <p className="code-lede">
+              Preview the {c.component} component with the React live demo. For detailed code usage
+              documentation, see the Storybook.
+            </p>
+
+            <h2 className="section-h" id="documentation">
+              Documentation
+            </h2>
+            <div className="resource-card-group">
+              <ResourceCard subTitle="React" href={storybookHref(c)}>
+                <ReactLogo />
+              </ResourceCard>
             </div>
+
+            <h2 className="section-h" id="code-live-demo">
+              Live demo
+            </h2>
+            <StorybookDemo c={c} theme={theme} />
+
+            <h2 className="section-h" id="install">
+              Install &amp; import
+            </h2>
             <pre>
               <code>
                 {c.code.import}
@@ -383,7 +631,7 @@ export function ComponentPage({ c }: { c: Annotation }) {
           </div>
         )}
 
-        {tab === "a11y" && <KV obj={c.a11y} />}
+        {tab === "a11y" && <TabBody sections={a11ySections} />}
       </div>
     </article>
   );
