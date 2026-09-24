@@ -246,40 +246,81 @@ function A11yTag({ tone, label }: { tone: "on" | "mid" | "off"; label: string })
   return <span className={"a11y-tag " + tone}>{label}</span>;
 }
 
-// Per-component accessibility status cards (Carbon's <A11yStatus layout="cards">).
-// One card per AX aspect Composa's contract can speak to, each with a status tag.
-function A11yStatusCards({ c }: { c: Annotation }) {
+// The AX aspects Composa's contract can speak to, one per row/card.
+type A11yItem = { title: string; tone: "on" | "mid" | "off"; tag: string; detail: ReactNode };
+function a11yStatusItems(c: Annotation): A11yItem[] {
   const f = a11yFacts(c);
-  const cards: { title: string; value: ReactNode; tone: "on" | "mid" | "off"; tag: string }[] = [
+  return [
     {
       title: "ARIA role",
-      value: f.role === "—" ? "—" : <code>{f.role}</code>,
       tone: f.roleVerified ? "on" : "mid",
       tag: f.roleVerified ? "Verified in CI" : "Declared",
+      detail:
+        f.role === "—" ? (
+          "No explicit role"
+        ) : (
+          <>
+            <code>role=&quot;{f.role}&quot;</code>{" "}
+            {f.roleVerified ? "— render-verified in CI" : "— declared, not CI-verified"}
+          </>
+        ),
     },
     {
       title: "Keyboard navigation",
-      value: f.keyboard ? "Interaction documented" : "Not documented",
       tone: f.keyboard ? "on" : "off",
       tag: f.keyboard ? "Documented" : "Not documented",
+      detail: f.keyboard ? "Keyboard interaction documented" : "Not documented in the annotation",
     },
     {
       title: "Labels & names",
-      value: f.labels ? "Naming documented" : "Not documented",
       tone: f.labels ? "on" : "off",
       tag: f.labels ? "Documented" : "Not documented",
+      detail: f.labels ? "Naming documented" : "Not documented in the annotation",
     },
   ];
+}
+
+// Cards on the USAGE tab (Carbon's <A11yStatus layout="cards">): each card links
+// through to the Accessibility tab's table.
+function A11yStatusCards({ c, onOpen }: { c: Annotation; onOpen: () => void }) {
   return (
     <div className="a11y-cards">
-      {cards.map(cd => (
-        <div className="a11y-card" key={cd.title}>
-          <div className="a11y-card-title">{cd.title}</div>
-          <div className="a11y-card-value">{cd.value}</div>
-          <A11yTag tone={cd.tone} label={cd.tag} />
-        </div>
+      {a11yStatusItems(c).map(it => (
+        <button type="button" className="a11y-card" key={it.title} onClick={onOpen}>
+          <div className="a11y-card-title">{it.title}</div>
+          <div className="a11y-card-foot">
+            <A11yTag tone={it.tone} label={it.tag} />
+            <span className="a11y-card-arrow" aria-hidden>
+              →
+            </span>
+          </div>
+        </button>
       ))}
     </div>
+  );
+}
+
+// Table on the ACCESSIBILITY tab (Carbon's <A11yStatus layout="table">).
+function A11yStatusTable({ c }: { c: Annotation }) {
+  return (
+    <table className="docs-kv docs-tc a11y-status-table">
+      <tbody>
+        <tr>
+          <th>Accessibility test</th>
+          <th>Status</th>
+          <th>Detail</th>
+        </tr>
+        {a11yStatusItems(c).map(it => (
+          <tr key={it.title}>
+            <td>{it.title}</td>
+            <td>
+              <A11yTag tone={it.tone} label={it.tag} />
+            </td>
+            <td className="muted">{it.detail}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -722,6 +763,19 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
       label: "Live demo",
       body: <StorybookDemo c={c} theme={theme} />,
     },
+    {
+      id: "a11y-status",
+      label: "Accessibility status",
+      body: (
+        <A11yStatusCards
+          c={c}
+          onOpen={() => {
+            setTab("a11y");
+            setTimeout(() => document.getElementById("status")?.scrollIntoView(), 0);
+          }}
+        />
+      ),
+    },
     ...(hasGuidance
       ? [{
           id: "guidance",
@@ -789,7 +843,7 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
     {
       id: "status",
       label: "Accessibility status",
-      body: <A11yStatusCards c={c} />,
+      body: <A11yStatusTable c={c} />,
     },
     {
       id: "provides",
