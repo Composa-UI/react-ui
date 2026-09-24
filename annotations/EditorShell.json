@@ -1,7 +1,17 @@
 {
   "component": "EditorShell",
   "category": "Templates",
+  "archetype": "shell",
   "intent": "The editor screen, published by the design system. Named region slots (nav rail, left panel, canvas, inspector, timeline) the host fills; the shell owns the layout and the overlay boundary.",
+  "guidance": "Fill the region slots and let the shell own the layout and the overlay boundary — the swap test is that changing one region moves nothing else. Omit the timeline slot for a tool that has none (a doc editor) and the shell reflows without it. The shell is a plain group, deliberately not role=application, so the inner landmarks (canvas = main, inspector = complementary) stay visible to assistive tech.",
+  "anatomy": [
+    { "part": "Nav rail", "description": "Far-left icon navigation rail (e.g. NavRail)." },
+    { "part": "Left panel", "description": "Resizable left panel: composition, layers, assets, or agent." },
+    { "part": "Canvas", "description": "The document surface — the only region that grows to fill space." },
+    { "part": "Inspector", "description": "Right inspector rail (e.g. Inspector / PropertyPanel)." },
+    { "part": "Timeline", "description": "Bottom timeline strip. Optional — omit it for a tool with no timeline." },
+    { "part": "Overlays", "description": "Floating chrome: toolbars, notifications, help, and portalled dialogs, within the shell's overlay boundary." }
+  ],
   "use_when": [
     "Assembling an editor screen from the DS instead of hand-writing the top-level layout.",
     "You want the swap test: change one region and nothing else moves.",

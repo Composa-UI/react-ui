@@ -702,72 +702,136 @@ table.docs-tc a:hover {
   font-size: 16px;
 }
 
-/* ── Do / Don't cards (sharp, Carbon support colors) ─────────────────────── */
+/* ── Do / Don't cards (Carbon: accent bar + filled badge + caption) ───────── */
 .dodont-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: 1fr 1fr;
   gap: 24px;
   margin: 4px 0 8px;
+}
+@media (max-width: 640px) {
+  .dodont-grid {
+    grid-template-columns: 1fr;
+  }
 }
 .dodont-col {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 .dodont-head {
   font-size: 14px;
   font-weight: 600;
-  padding-bottom: 8px;
-  border-bottom: 2px solid;
+  color: var(--cds-text);
 }
-.dodont-head.do {
-  color: var(--cds-success);
-  border-color: var(--cds-success);
-}
-.dodont-head.dont {
-  color: var(--cds-error);
-  border-color: var(--cds-error);
-}
-.dodont {
+/* Each guidance item is a card: white surface, a 4px accent bar on top, the
+   filled status badge, then the caption. */
+.dd-card {
   display: flex;
+  flex-direction: column;
   gap: 12px;
-  align-items: flex-start;
+  background: var(--cds-surface);
   border: 1px solid var(--cds-border-subtle);
-  border-top: 3px solid;
-  padding: 14px 16px;
-  background: var(--cds-bg);
+  border-top: 4px solid;
+  padding: 20px;
 }
-.dodont.do {
+.dd-card.do {
   border-top-color: var(--cds-success);
 }
-.dodont.dont {
+.dd-card.dont {
   border-top-color: var(--cds-error);
 }
-.dodont p {
+.dd-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+.dd-badge.do {
+  background: var(--cds-success);
+}
+.dd-badge.dont {
+  background: var(--cds-error);
+}
+.dd-text {
   margin: 0;
   font-size: 14px;
   line-height: 1.5;
   color: var(--cds-text);
 }
-.dodont-mark {
+.dodont-empty {
+  margin: 0;
+}
+
+/* ── Anatomy (Carbon numbered legend) ────────────────────────────────────── */
+.anatomy-legend {
+  list-style: none;
+  margin: 4px 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.anatomy-legend li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.anatomy-num {
   flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--cds-text);
+  color: var(--cds-surface);
+  font-size: 12px;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  margin-top: 1px;
 }
-.dodont.do .dodont-mark {
-  color: var(--cds-success);
+.anatomy-body {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--cds-text);
 }
-.dodont.dont .dodont-mark {
-  color: var(--cds-error);
+
+/* ── Guidance (bounded prose) ────────────────────────────────────────────── */
+.doc-prose {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--cds-text);
+  max-width: 62ch;
+  margin: 0 0 12px;
 }
-.dodont-empty {
+
+/* ── Examples ────────────────────────────────────────────────────────────── */
+.examples-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 4px 0 8px;
+}
+.example-item {
+  border: 1px solid var(--cds-border-subtle);
+  border-left: 4px solid var(--cds-link);
+  background: var(--cds-surface);
+  padding: 16px 18px;
+}
+.example-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cds-text);
+  margin-bottom: 4px;
+}
+.example-desc {
   margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--cds-text-secondary);
 }
 
 /* ── Live demo (embedded Storybook story) ────────────────────────────────── */

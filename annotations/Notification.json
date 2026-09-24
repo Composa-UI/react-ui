@@ -1,7 +1,15 @@
 {
   "component": "Notification",
   "category": "Overlays",
+  "archetype": "overlay",
   "intent": "A toast: a dark pill with a leading icon + message and one or two stacked action buttons. Announced politely to assistive tech.",
+  "guidance": "Keep the message to one line of essential, non-blocking information — the toast is announced politely and never steals focus, so it must not be the sole home of anything critical. Give it at most two actions; a second stacks below the first with a divider. The pill is deliberately dark so it reads on any surface — don't recolor it to match a light panel.",
+  "anatomy": [
+    { "part": "Leading icon", "description": "24px glyph slot; defaults to the component diamond. Pass a contextual icon so the toast matches how the subject is shown elsewhere." },
+    { "part": "Message", "description": "The polite live-region text that assistive tech announces on appearance." },
+    { "part": "Divider", "description": "Vertical rule separating the message from the action column." },
+    { "part": "Action(s)", "description": "One or two stacked CTA buttons, outside the live region so their labels aren't announced." }
+  ],
   "use_when": [
     "A transient, non-blocking message with optional actions (undo, view, retry)."
   ],
