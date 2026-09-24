@@ -1,0 +1,139 @@
+{
+  "component": "Timeline",
+  "category": "Panels",
+  "archetype": "composite",
+  "intent": "The editor's bottom timeline region: one playhead shared across a master project strip (seconds) and a slide-local element-animation view (ms), driven entirely by controlled data.",
+  "guidance": "Holds no document state: drive it with tracks/blocks/clips plus a controlled viewport and playhead, and commit every edit through callbacks. `mode` swaps the whole surface — master (project strip, seconds ruler) vs slide-local (per-property keyframes, ms ruler) — but the playhead is one object; only the time scale changes. Auto-keyframe/record chrome is scoped to slide mode and fails closed in master. The plot spans full-width beneath the right zoom/collapse overlay; the track-header column is a width slot (`trackHeaderWidth`, default 297px). Wire one callback per affordance — an unwired control renders visible-but-disabled, never a silent no-op. Easing is quick-switched from a timeline popover but fully edited in the inspector, not here.",
+  "anatomy": [
+    {
+      "part": "Transport",
+      "description": "Left of the header: Play/Pause, Stop, an optional auto-keyframe (record) toggle in slide mode, the current + duration timecode group (ms or seconds), and a Loop toggle."
+    },
+    {
+      "part": "Time ruler",
+      "description": "Center scrub surface: millisecond ticks (slide) or second ticks that fold to m:ss when zoomed out (master), labels centered on the time position."
+    },
+    {
+      "part": "Playhead",
+      "description": "A triangular handle on the ruler plus a vertical line spanning every lane; recolors red while auto-keyframe/record is armed."
+    },
+    {
+      "part": "Zoom + collapse cluster",
+      "description": "Right-hand absolute overlay: a range slider for time-axis zoom and a collapse/expand-timeline button."
+    },
+    {
+      "part": "Track-header column",
+      "description": "Fixed left column (default 297px) that the transport, lane headers, and every row line up against; a hairline divider marks its right edge."
+    },
+    {
+      "part": "Master lanes",
+      "description": "Master view: Compositions, Video, and Audio rows, each a lane header ([type icon][label][+] over [eye][solo][mute][lock]) beside a track of draggable/trimmable clip bars with optional thumbnails and waveform strips."
+    },
+    {
+      "part": "Layer rows",
+      "description": "Slide view: a \"← Project\" back row above a listbox of animated-layer rows (disclosure chevron, type icon, name, visibility eye, aggregate keyframes, duration bar)."
+    },
+    {
+      "part": "Property rows",
+      "description": "Slide view, expanded: a name column (prev/add/next keyframe stepper, inline value field, eye) beside a keyframe lane of diamonds, a connecting line, and per-interval easing segments; Animate-preset bars sit above them."
+    },
+    {
+      "part": "Time scrollbar",
+      "description": "Horizontal draggable thumb at the bottom showing the visible window over the whole duration, offset past the header column."
+    }
+  ],
+  "use_when": [
+    "Building the editor's bottom timeline: a slide's element keyframe tracks (ms) or the full-project master strip of composition/video/audio clips (seconds).",
+    "You need one playhead and viewport shared across a master and a slide-local view, driven by controlled props.",
+    "You want draggable/trimmable clip + duration bars and keyframe lanes that emit committed callbacks rather than owning state."
+  ],
+  "dont_use_when": [
+    "You only need preset-based animation recipes (Build In / Action / Build Out) — use the Animate inspector tab.",
+    "You need the full easing bezier/curve editor with numeric handles — that lives in the inspector, not the timeline.",
+    "The surface must own document state, undo, order, or persistence — that stays in the host editor."
+  ],
+  "variants": {
+    "mode": [
+      "master (full-project strip — Compositions/Video/Audio lanes, seconds ruler)",
+      "slide (slide-local element animation — layer + property keyframe rows, ms ruler, record chrome)"
+    ]
+  },
+  "slots": {
+    "renderTrackRow": "Slide-mode composition seam (DEC-097): override how each track's rows render, receiving the exact TimelineTrackRowsProps the built-in rows get. Omit to use TimelineTrackRows unchanged."
+  },
+  "states": [
+    "default",
+    "playing (Play swaps to Pause)",
+    "recording (auto-keyframe armed — red top accent + red playhead, slide mode only)",
+    "collapsed (body + scrollbar hidden, header-only)",
+    "ruler: keyboard-focus (inset ring)",
+    "bar: selected (bg-c-bg-brand + strong border)",
+    "bar: active (composition canvas-focus tint)",
+    "lane: dimmed (eye-off or another lane soloed — opacity-40)",
+    "lane: muted (waveform strip dims only)",
+    "lane: locked (bars read-only, no trim handles)",
+    "row/preset: hidden (eye-off — opacity-40)",
+    "track: selected (full-lane highlight)",
+    "keyframe: selected (solid fill) / parent-active (accent stroke)",
+    "property row: selected (bg-c-bg-selected) / gray-selected (bg-c-bg-secondary)",
+    "past-content headroom (grey wash beyond duration)"
+  ],
+  "tokens": {
+    "surface": {
+      "panel": "bg-c-bg",
+      "raised (timecode cells / unselected bars / zoom track / past-content wash)": "bg-c-bg-secondary",
+      "selected bar / zoom fill": "bg-c-bg-brand",
+      "active tint / armed toggle / active-keyframe fill": "bg-c-bg-selected",
+      "control hover": "bg-c-bg-hover",
+      "clip waveform bed": "bg-c-bg-inverse/10",
+      "lane drop overlay": "bg-c-bg-brand/10"
+    },
+    "text": {
+      "primary (names, current timecode)": "text-c-text",
+      "secondary (ruler ticks, duration timecode, property names)": "text-c-text-secondary",
+      "on selected bar": "text-white"
+    },
+    "icon": {
+      "transport glyphs / lane controls": "text-c-icon",
+      "secondary icons / grip pips / waveform bars": "text-c-icon-secondary"
+    },
+    "border": {
+      "hairlines / lane + row dividers / root border-t": "border-c-border",
+      "accent border": "border-c-border-selected",
+      "selected-strong border": "border-c-border-selected-strong",
+      "track-header column divider": "bg-c-border-strong/20"
+    },
+    "accent": {
+      "playhead / keyframe diamond / easing curve": "var(--color-border-selected) (BLUE)"
+    },
+    "radius": {
+      "bars / clips": "rounded-[4px]",
+      "controls": "rounded-c-md / rounded-c-sm"
+    },
+    "type": {
+      "family": "var(--composa-font-family)",
+      "label": "text-[11px]",
+      "weight": "font-[450] default, font-[550] selected track, font-[650] solo “S”"
+    },
+    "focus": {
+      "ring": "ring-c-focus-ring / ring-c-border-selected-strong"
+    },
+    "note": "Hardcoded hex/rgba literals exist — #8638e5 (accented property track line, diamond fill, name), #ff3b30 (auto-keyframe/record top accent + playhead), and rgba(0,0,0,0.25) (legacy numeric-keyframe connecting line). The selection accent is the token var(--color-border-selected). Because #hex literals exist, tokensOnly is not asserted."
+  },
+  "a11y": {
+    "role": "No landmark role on the root region; interactive parts carry their own roles. Playhead is role=\"slider\" (always rendered); the slide-local layer list is role=\"listbox\" aria-multiselectable with role=\"option\" rows.",
+    "playhead": "role=slider, aria-label \"Playhead\", aria-valuemin/max/now in ms; Arrow/Home/End scrub, Space toggles play, plus K (add keyframe) and Delete/Backspace in slide mode when wired.",
+    "layers": "Roving tabindex across role=option rows; Arrow/Home/End move focus, Enter/Space select, Arrow Left/Right collapse/expand.",
+    "scrollbar": "Horizontal time scrollbar is role=scrollbar aria-orientation=horizontal with aria-valuemin/max/now.",
+    "bars": "Composition/clip bars are role=button with aria-pressed and aria-haspopup for their context menu; trim handles are role=slider; every icon control has an aria-label mirrored by its hover tooltip."
+  },
+  "enforce": {
+    "role": "slider",
+    "ariaRole": false,
+    "tokensOnly": false
+  },
+  "code": {
+    "import": "import { Timeline } from '@composa/ui'",
+    "example": "<Timeline\n  mode=\"slide\"\n  tracks={tracks}\n  playhead={timeMs}\n  onPlayheadChange={(ms) => setTime(ms)}\n  onKeyframeSelect={(t) => select(t)}\n  onKeyframeMove={(t, ms) => moveKeyframe(t, ms)}\n  autoKeyframe={recording}\n  onAutoKeyframeChange={setRecording}\n  onBack={exitSlide}\n/>"
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "component": "PropertyPanel",
+  "category": "Panels",
+  "archetype": "composite",
+  "intent": "The capability-driven default inspector: renders the full, selection-aware property stack for the current mode — hosts pass data and callbacks, not sections.",
+  "guidance": "Controlled and stateless: pass values plus onXChange callbacks; PropertyPanel owns no document state (uncontrolled props fall back to demo data). `mode` swaps the entire body — element is the default; project, slide, video-clip, audio-clip, and media-effects each render their own sections. `capabilities` gate deferred systems (styles, variables, libraries, videoFill, dropZone); a disabled capability is omitted, never a no-op. Position, Layout, and Appearance are always present; every other section renders only when its data is supplied. Multi-select shows Mixed placeholders and appends Selection colors. keyframeControls add per-property diamonds only while the host supplies them. Reach for Inspector + PanelSection instead when you need to hand-compose or reorder the section stack.",
+  "anatomy": [
+    { "part": "Multiplayer bar", "description": "Top strip above the tabs, shared by every mode: Present/Preview, Share, account avatar, and presence menu (MultiplayerBar)." },
+    { "part": "Tab strip", "description": "Design · Animate seam (InspectorTabs) with the zoom control in the header zone; absent in project/clip modes." },
+    { "part": "Element-type label", "description": "40px row naming the selection — Text / Frame / Rectangle / Component / Group; Mixed on mixed-type multi-select." },
+    { "part": "Section stack", "description": "The scrolling PanelSections in order: Position, Layout, Appearance (always present), then Typography, Fill, Stroke, Effects, Selection colors, Export by presence." },
+    { "part": "Scroll region", "description": "ScrollArea with an overlay scrollbar; only the active tab's content sits in the reading order." }
+  ],
+  "use_when": [
+    "You want the batteries-included inspector: pass selection data + capabilities and it renders the right sections.",
+    "The selection should drive which body renders (element / project / slide / video-clip / audio-clip / media-effects)."
+  ],
+  "dont_use_when": [
+    "You need to hand-compose, reorder, or replace sections — use Inspector with PanelSection children.",
+    "You are building a one-off custom panel — compose PanelSection directly."
+  ],
+  "slots": {},
+  "states": [
+    "element",
+    "project",
+    "slide",
+    "video-clip",
+    "audio-clip",
+    "media-effects"
+  ],
+  "tokens": {
+    "surface": {
+      "bg": "bg-c-bg",
+      "border": "border-c-border",
+      "width": "290px (PANEL_W)"
+    },
+    "text": {
+      "primary": "text-c-text",
+      "secondary": "text-c-text-secondary",
+      "tertiary": "text-c-text-tertiary",
+      "icon": "text-c-icon"
+    },
+    "hover": {
+      "bg": "bg-c-bg-hover"
+    },
+    "radius": "rounded-c-md",
+    "type": {
+      "family": "var(--composa-font-family)",
+      "body": "--composa-body-medium-size / -line / -weight / -letter-spacing",
+      "note": "Header/element-type labels hardcode text-[11px] font-[550] and the SUBLABEL hardcodes text-[9px] font-[450] tracking-[0.05em] rather than binding a --composa type token."
+    },
+    "section": {
+      "header height": "40px",
+      "gutter": "16px"
+    },
+    "note": "The TemplateStyleSection preview swatch hardcodes bg-[#e95000] / bg-[#ffcd00] / bg-[#100f10] over bg-white (chrome, not tokens); demo fill/stroke/selection-color defaults also carry #hex placeholders."
+  },
+  "a11y": {
+    "role": "No landmark role on the surface — the root is a plain div (data-composa-inspector-surface); wrap it or pass a label to expose it as a complementary landmark.",
+    "tabpanels": "Design/Animate bodies render role=tabpanel, each aria-labelledby its tab.",
+    "groups": "Flow, Grid + gap, and Alignment + gap clusters use role=group with aria-label.",
+    "controls": "Icon-only actions and nested inputs/menus carry their own aria-labels and tooltips."
+  },
+  "enforce": {
+    "role": "none",
+    "ariaRole": false,
+    "tokensOnly": false
+  },
+  "code": {
+    "import": "import { PropertyPanel } from '@composa/ui'",
+    "example": "<PropertyPanel\n  mode=\"element\"\n  elementType=\"frame\"\n  x={0} y={0}\n  width={1200} height={115}\n  opacity={100}\n  capabilities={{ variables: true }}\n  onXChange={setX}\n  onOpacityChange={setOpacity}\n/>"
+  }
+}

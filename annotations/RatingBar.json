@@ -1,0 +1,42 @@
+{
+  "component": "RatingBar",
+  "category": "Inputs",
+  "archetype": "primitive",
+  "intent": "Thumbs up/down vote control for rating an AI response, with a trailing info affordance.",
+  "guidance": "Controlled by the `vote` prop alone: pass `vote` and it reflects that value; omit `vote` and it keeps internal state. `onVote` fires on every change in both modes. Only one vote is active at a time, and clicking the active vote clears it back to null. The trailing Info button is a static affordance with no handler of its own — wire it host-side if you need it.",
+  "use_when": [
+    "Collecting quick up/down feedback beneath an AI response.",
+    "A single toggleable sentiment where re-clicking the active vote clears it."
+  ],
+  "dont_use_when": [
+    "A graded score (e.g. 1-5) — RatingBar is binary up/down only.",
+    "A persistent on/off setting — use Switch."
+  ],
+  "slots": {},
+  "states": ["default", "hover", "active", "focus-visible"],
+  "tokens": {
+    "default": { "icon": "icon/tertiary" },
+    "hover": { "bg": "bg/hover" },
+    "active-up": { "text": "text/brand" },
+    "active-down": { "text": "text/danger" },
+    "focus": { "ring": "focus-ring" },
+    "shape": { "radius": "radius/medium" },
+    "note": "Button box size-[24px], icon 16px, and container mt-[4px] are hardcoded arbitrary values, not tokens."
+  },
+  "a11y": {
+    "role": "three native <button>s (thumbs up, thumbs down, info); no wrapper role.",
+    "labels": ["Thumbs up", "Thumbs down", "Response info"],
+    "state": "aria-pressed on each vote button reflects the active vote; the active vote clears on re-click.",
+    "keyboard": ["Enter", "Space"],
+    "focus": "focus-visible ring bound to the focus-ring token."
+  },
+  "enforce": {
+    "role": "button",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { RatingBar } from '@composa/ui'",
+    "example": "<RatingBar vote={vote} onVote={setVote} />"
+  }
+}

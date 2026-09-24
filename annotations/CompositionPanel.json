@@ -1,0 +1,65 @@
+{
+  "component": "CompositionPanel",
+  "category": "Panels",
+  "archetype": "composite",
+  "intent": "The default left-rail content: a draggable vertical split of the Slides list over the Layers tree.",
+  "guidance": "Presentational only — the editor owns slide/layer data and persists both the split ratio (onSplitChange) and the panel width (onWidthChange). Split and width are each controlled or uncontrolled; the split defaults to ~40% slides over ~60% layers and each pane keeps an 80px minimum. The divider is an invisible 4px hit area on the top edge of the layers pane (ns-resize cursor, no visible handle); Arrow Up/Down nudge it 2% for keyboard users. Width lives in SidePanel so Composition, Assets, and Agent share one rail width across tab switches. Renders light by default, dark under an ancestor data-composa-mode='dark'. Wire the slide and layer callbacks through to the editor's data model and undo.",
+  "anatomy": [
+    {
+      "part": "Slides panel",
+      "description": "Top pane (~40%): the inline-rename project-title combo header, the New slide button, and the scrolling slide-thumbnail list (SlidesPanel)."
+    },
+    {
+      "part": "Split divider",
+      "description": "Draggable horizontal separator on the top edge of the layers pane — invisible 4px hit area, ns-resize cursor, no visible handle; drag or arrow-nudge to change the two panes' relative heights."
+    },
+    {
+      "part": "Layers panel",
+      "description": "Bottom pane (fills the rest, ~60%): the Figma-style layer tree (LayerList)."
+    },
+    {
+      "part": "Width handle",
+      "description": "Invisible vertical separator on the panel's right edge (owned by SidePanel) that drags the whole rail's width."
+    }
+  ],
+  "use_when": [
+    "You need the default left rail: a project's slides above its layers in one resizable column.",
+    "You want the slides/layers heights to be user-adjustable via a draggable divider."
+  ],
+  "dont_use_when": [
+    "You only need the layer tree or only the slide list — render LayerList or SlidesPanel directly.",
+    "For the Assets or Agent left-rail tabs — those wrap SidePanel with their own content.",
+    "For the right-rail property inspector — use Inspector."
+  ],
+  "slots": {},
+  "states": [
+    "default",
+    "resizing",
+    "focused"
+  ],
+  "tokens": {
+    "surface": {
+      "bg": "bg/default (c-bg)",
+      "border": "border/default (c-border — right rail divider, via SidePanel)"
+    },
+    "resize": {
+      "handle": "border/selected at 40% (c-border-selected/40 — split-divider focus + width-handle drag)"
+    },
+    "note": "DEMO_SLIDES thumbnails carry hardcoded hex tints (#4f46e5, #0ea5e9, #f59e0b, #10b981, #34d399, #6ee7b7, #ef4444, #8b5cf6); the 4px divider hit area, 80px pane minimum, ~0.4 default split, and 240px default width are literal px."
+  },
+  "a11y": {
+    "role": "Presentational split container (no landmark on the root); both resize dividers render role=separator.",
+    "split": "Horizontal separator — aria-orientation=horizontal, aria-label 'Resize slides and layers', aria-valuenow/min/max (0–100), tabIndex 0; Arrow Up/Down nudge 2%.",
+    "width": "Vertical separator on the right edge (SidePanel) — aria-orientation=vertical, aria-label 'Resize panel width', aria-valuenow/min/max, Arrow Left/Right nudge 8px.",
+    "theme": "Theme-aware — light by default, dark under an ancestor data-composa-mode='dark'."
+  },
+  "enforce": {
+    "role": "separator",
+    "ariaRole": false,
+    "tokensOnly": false
+  },
+  "code": {
+    "import": "import { CompositionPanel } from '@composa/ui'",
+    "example": "<CompositionPanel\n  slides={slides}\n  layers={layers}\n  selectedLayerId={selectedId}\n  onLayerSelectionChange={setSelectedId}\n  split={split}\n  onSplitChange={setSplit}\n  width={railWidth}\n  onWidthChange={setRailWidth}\n/>"
+  }
+}

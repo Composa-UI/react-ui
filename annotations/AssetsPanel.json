@@ -1,0 +1,127 @@
+{
+  "component": "AssetsPanel",
+  "category": "Panels",
+  "archetype": "composite",
+  "intent": "The Assets left-rail panel — a per-project media library to browse, filter, search, and insert uploaded images, video, and audio.",
+  "guidance": "Presentational and fully controlled: it emits callbacks (onUpload, onDropFiles, onInsert, onAddToTimeline, onRename, onDelete, onRetry) and runs no upload or drag-drop side effects — the host owns bytes, undo, and persistence. Card click is panel-local highlight only; insertion is what enters editor selection. Insert routes video and audio to onAddToTimeline and images to onInsert. Delete confirms only when inUseCount > 0. Control width from the host so it survives switching left-rail tabs (Composa#664). Video cards skim on pointer move — only the hovered card mounts a decoder, and the static poster stays the keyboard/touch fallback. Audio cards draw a waveform instead of a colour tint. Pass libraries to group cards under labelled sections.",
+  "anatomy": [
+    {
+      "part": "Header",
+      "description": "40px row: the title label (default \"Assets\") plus the Upload icon button; bottom border."
+    },
+    {
+      "part": "Library heading",
+      "description": "A single SingleTab label (\"Library\") — one view remains, so it is a label, not a tablist."
+    },
+    {
+      "part": "Controls",
+      "description": "Search field (name filter) above a borderless type-filter Dropdown (All · Images · Videos · Audio); bordered top and bottom."
+    },
+    {
+      "part": "Asset grid",
+      "description": "Scrollable 2-column thumbnail grid; when libraries are passed, cards split into aria-labelled <section> groups with a header + optional open-chevron, ungrouped cards trailing."
+    },
+    {
+      "part": "Asset card",
+      "description": "Thumbnail (image/video poster, tint fallback, or audio waveform) with a type badge (IMG/VID/AUD), a duration badge for video/audio, and hover Insert + Delete quick-actions; truncated filename below."
+    },
+    {
+      "part": "Empty state",
+      "description": "Shown when no assets exist: an image icon, \"No assets yet\", and an Upload media button."
+    },
+    {
+      "part": "Drop overlay",
+      "description": "Full-panel dashed drop target (\"Drop to upload\") that appears while OS files are dragged over the panel."
+    },
+    {
+      "part": "Menus and dialogs",
+      "description": "Right-click context menu (Insert/Add to timeline, Rename, Delete) plus Rename and in-use Delete-confirm modals."
+    }
+  ],
+  "use_when": [
+    "Showing a project's uploaded media in the left rail so it can be inserted onto the slide or timeline.",
+    "You need per-card upload progress, error/retry, and OS drag-drop onto the panel.",
+    "Grouping media under named libraries via `libraries` + `AssetItem.libraryId`."
+  ],
+  "dont_use_when": [
+    "Editing the selected element's properties — use Inspector / PropertyPanel.",
+    "Picking a document colour or variable — use ColorDialog.",
+    "You need a global or shared asset browser — this stores per-project media only."
+  ],
+  "slots": {},
+  "states": [
+    "default",
+    "empty",
+    "no-matching",
+    "drop-active",
+    "card: selected",
+    "card: hover (quick-actions)",
+    "card: uploading (progress)",
+    "card: error (retry)",
+    "card: video-scrub"
+  ],
+  "tokens": {
+    "surface": {
+      "panel": "bg-c-bg",
+      "thumbnail / uploading track / empty circle": "bg-c-bg-secondary",
+      "type + duration badge": "bg-c-bg-inverse",
+      "badge text": "text-c-text-on-inverse",
+      "icon-button hover": "bg-c-bg-hover"
+    },
+    "brand": {
+      "progress fill / empty upload button": "bg-c-bg-brand",
+      "upload button hover": "bg-c-bg-brand-pressed",
+      "upload button text": "text-c-text-on-brand",
+      "drop overlay text / icon": "text-c-text-brand"
+    },
+    "danger": {
+      "error overlay": "bg-c-bg-danger/15",
+      "error text + Retry": "text-c-text-danger"
+    },
+    "text": {
+      "title / label": "text-c-text",
+      "caption / filename": "text-c-text-secondary",
+      "search placeholder": "text-c-text-tertiary"
+    },
+    "icon": {
+      "action icons": "text-c-icon",
+      "search / empty / waveform": "text-c-icon-secondary"
+    },
+    "border": {
+      "dividers": "border-c-border",
+      "thumbnail ring": "ring-c-border -> hover ring-c-border-strong",
+      "selected ring": "ring-c-border-selected-strong",
+      "focus ring": "ring-c-focus-ring",
+      "drop overlay": "border-c-border-selected / bg-c-bg-selected/80"
+    },
+    "radius": {
+      "badge / quick-action": "rounded-c-sm",
+      "thumbnail / icon button / upload button": "rounded-c-md",
+      "drop overlay": "rounded-c-lg",
+      "progress track / circles": "rounded-c-full"
+    },
+    "type": {
+      "font": "var(--composa-font-family)",
+      "label / caption": "--composa-body-medium-*",
+      "drop overlay subtext": "--composa-body-small-*",
+      "note": "Header title, badges, Retry, and the empty upload button use hardcoded sizes/weights (title 13px/550 leading-[22px] tracking-[-0.0325px]; badges text-[9px] font-[550]; search 11px/16px), and badge/card box metrics are raw px."
+    },
+    "note": "The DEMO_ASSETS default data hardcodes #hex tint gradients (e.g. #7c5cff, #ff6ac1); the scrub playhead uses bg-white/90 + shadow rgba(0,0,0,0.6) and the hover overlay uses from-black/25. Because #hex literals exist, tokensOnly is not asserted."
+  },
+  "a11y": {
+    "role": "No landmark role on the panel container (a plain resizable div shell from SidePanel); grouped libraries render as aria-labelled <section> regions.",
+    "cards": "Each card is a button with aria-label (filename) and aria-pressed (selection); video cards add aria-describedby to an sr-only skim instruction.",
+    "controls": "The filter Dropdown has ariaLabel \"Filter by type\"; Upload / Insert / Delete / Open-library buttons carry aria-label + title; the search input uses a placeholder.",
+    "video-preview": "The preview <video> and playhead are aria-hidden; the static poster stays available for keyboard and touch input.",
+    "resize": "SidePanel exposes the right-edge handle as role=\"separator\" with aria-orientation/valuenow/valuemin/valuemax."
+  },
+  "enforce": {
+    "role": "none",
+    "ariaRole": false,
+    "tokensOnly": false
+  },
+  "code": {
+    "import": "import { AssetsPanel } from '@composa/ui'",
+    "example": "<AssetsPanel\n  assets={assets}\n  selectedId={selectedId}\n  onSelect={(id) => setSelectedId(id)}\n  onUpload={openFilePicker}\n  onDropFiles={upload}\n  onInsert={insertOnSlide}\n  onAddToTimeline={addClip}\n  onDelete={removeAsset}\n/>"
+  }
+}
