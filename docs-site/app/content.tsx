@@ -240,6 +240,49 @@ function a11yFacts(c: Annotation) {
   };
 }
 
+// Carbon's A11yStatusTag: a status pill. on = enforced/tested (green),
+// mid = documented/declared (blue), off = not documented (muted).
+function A11yTag({ tone, label }: { tone: "on" | "mid" | "off"; label: string }) {
+  return <span className={"a11y-tag " + tone}>{label}</span>;
+}
+
+// Per-component accessibility status cards (Carbon's <A11yStatus layout="cards">).
+// One card per AX aspect Composa's contract can speak to, each with a status tag.
+function A11yStatusCards({ c }: { c: Annotation }) {
+  const f = a11yFacts(c);
+  const cards: { title: string; value: ReactNode; tone: "on" | "mid" | "off"; tag: string }[] = [
+    {
+      title: "ARIA role",
+      value: f.role === "—" ? "—" : <code>{f.role}</code>,
+      tone: f.roleVerified ? "on" : "mid",
+      tag: f.roleVerified ? "Verified in CI" : "Declared",
+    },
+    {
+      title: "Keyboard navigation",
+      value: f.keyboard ? "Interaction documented" : "Not documented",
+      tone: f.keyboard ? "on" : "off",
+      tag: f.keyboard ? "Documented" : "Not documented",
+    },
+    {
+      title: "Labels & names",
+      value: f.labels ? "Naming documented" : "Not documented",
+      tone: f.labels ? "on" : "off",
+      tag: f.labels ? "Documented" : "Not documented",
+    },
+  ];
+  return (
+    <div className="a11y-cards">
+      {cards.map(cd => (
+        <div className="a11y-card" key={cd.title}>
+          <div className="a11y-card-title">{cd.title}</div>
+          <div className="a11y-card-value">{cd.value}</div>
+          <A11yTag tone={cd.tone} label={cd.tag} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function StatusPage() {
   const tokenOK = components.filter(isTokenOnly).length;
   const roleVerified = components.filter(c => a11yFacts(c).roleVerified).length;
@@ -743,6 +786,11 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
   // kit provides (a11y annotation), how the annotation contract verifies it, and
   // the kit-wide development considerations.
   const a11ySections: Sec[] = [
+    {
+      id: "status",
+      label: "Accessibility status",
+      body: <A11yStatusCards c={c} />,
+    },
     {
       id: "provides",
       label: "What the kit provides",
