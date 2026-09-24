@@ -78,13 +78,43 @@ const sanitize = (s: string) =>
     .replace(/-+$/, "");
 
 export const storyTitle = (c: Annotation) => `${c.category}/${c.component}`;
-export const storyId = (c: Annotation) => `${sanitize(storyTitle(c))}--default`;
+
+// Story id for a given variant. Storybook derives ids as
+// `sanitize(title) + "--" + sanitize(exportName)`, so each variant label must
+// match a same-named story export (see docs-site/stories/*). "Default" is the
+// baseline export every component ships.
+export const storyVariantId = (c: Annotation, variant = "Default") =>
+  `${sanitize(storyTitle(c))}--${sanitize(variant)}`;
+export const storyId = (c: Annotation) => storyVariantId(c, "Default");
+
+// Per-component variant labels shown in the demo's variant dropdown (Carbon's
+// StorybookDemo `variants`). Labels-only here so the docs app stays free of the
+// component library; each label maps to a story export of the same name and to
+// FIXTURE_VARIANTS in docs-site/app/fixtures.tsx. Components not listed here
+// have just the single "Default" story and render no dropdown.
+export const VARIANTS: Record<string, string[]> = {
+  Button: ["Default", "Primary", "Secondary", "Ghost", "Destructive", "Disabled"],
+};
+export const variantsFor = (c: Annotation): string[] => VARIANTS[c.component] ?? ["Default"];
+
+// Components in sidebar order (grouped by taxonomy), for prev/next pagination.
+export const orderedComponents: Annotation[] = GROUP_ORDER.flatMap(g =>
+  components.filter(c => c.category === g),
+);
+export function prevNextComponent(c: Annotation): { prev?: Annotation; next?: Annotation } {
+  const i = orderedComponents.findIndex(x => x.component === c.component);
+  if (i < 0) return {};
+  return {
+    prev: i > 0 ? orderedComponents[i - 1] : undefined,
+    next: i < orderedComponents.length - 1 ? orderedComponents[i + 1] : undefined,
+  };
+}
 
 // import.meta.env.BASE_URL is the docs app base ("/react-ui/" in the deployed
 // build, "/" in local dev). Storybook is assembled one level down at
 // `<base>storybook/`, so this link resolves under the Pages project prefix.
-export const storybookHref = (c: Annotation) =>
-  `${import.meta.env.BASE_URL}storybook/?path=/story/${storyId(c)}`;
+export const storybookHref = (c: Annotation, variant = "Default") =>
+  `${import.meta.env.BASE_URL}storybook/?path=/story/${storyVariantId(c, variant)}`;
 
 export type Theme = "light" | "dark";
 
@@ -92,14 +122,14 @@ export type Theme = "light" | "dark";
 // Storybook's headless `iframe.html` (the story alone, no manager chrome) and
 // wires the docs page's light/dark toggle to the story's `composaMode` global so
 // the embedded demo tracks the surrounding page's theme.
-export const storybookIframeHref = (c: Annotation, theme: Theme) =>
-  `${import.meta.env.BASE_URL}storybook/iframe.html?id=${storyId(c)}&globals=composaMode:${theme}`;
+export const storybookIframeHref = (c: Annotation, theme: Theme, variant = "Default") =>
+  `${import.meta.env.BASE_URL}storybook/iframe.html?id=${storyVariantId(c, variant)}&globals=composaMode:${theme}`;
 
 // ── Hash routing (Pages is static → no BrowserRouter) ────────────────────────
 export type Route =
   | { kind: "home" }
   | { kind: "foundations" }
-  | { kind: "token-compliance" }
+  | { kind: "status" }
   | { kind: "component"; component: Annotation }
   | { kind: "not-found"; slug: string };
 
@@ -114,7 +144,8 @@ export function parseRoute(hash: string): Route {
   const path = hash.replace(/^#/, "").replace(/^\/+/, "").replace(/\/+$/, "");
   if (path === "") return { kind: "home" };
   if (path === "foundations") return { kind: "foundations" };
-  if (path === "token-compliance") return { kind: "token-compliance" };
+  // `token-compliance` kept as an alias for the reframed Status page.
+  if (path === "status" || path === "token-compliance") return { kind: "status" };
   const m = path.match(/^components\/(.+)$/);
   if (m) {
     const c = bySlug.get(m[1]);

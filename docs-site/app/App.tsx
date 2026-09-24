@@ -10,7 +10,7 @@ import {
 import {
   HomePage,
   Foundations,
-  TokenCompliance,
+  StatusPage,
   ComponentPage,
   NotFoundPage,
 } from "./content";
@@ -39,7 +39,7 @@ function isActive(route: Route, href: string) {
   const target = href.replace(/^#/, "");
   if (route.kind === "home") return target === "/" || target === "";
   if (route.kind === "foundations") return target === "/foundations";
-  if (route.kind === "token-compliance") return target === "/token-compliance";
+  if (route.kind === "status") return target === "/status" || target === "/token-compliance";
   if (route.kind === "component") return target === `/components/${slug(route.component.component)}`;
   return false;
 }
@@ -61,7 +61,7 @@ function Sidebar({ route }: { route: Route }) {
       <div className="nav-group">Overview</div>
       {link("#/", "Home")}
       {link("#/foundations", "Foundations")}
-      {link("#/token-compliance", "Token compliance")}
+      {link("#/status", "Status")}
       {groups.map(({ group, items }) => (
         <div key={group}>
           <div className="nav-group">{group}</div>
@@ -90,8 +90,8 @@ function Page({ route, theme }: { route: Route; theme: Theme }) {
       return <HomePage />;
     case "foundations":
       return <Foundations />;
-    case "token-compliance":
-      return <TokenCompliance />;
+    case "status":
+      return <StatusPage />;
     case "component":
       // theme drives the embedded Storybook demo's `composaMode` global.
       return <ComponentPage c={route.component} theme={theme} />;

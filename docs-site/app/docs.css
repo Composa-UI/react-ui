@@ -395,36 +395,70 @@ a:hover {
   color: var(--cds-link);
 }
 
-/* ── key/value + compliance tables ───────────────────────────────────────── */
+/* ── Tables — Carbon DataTable look ───────────────────────────────────────── */
+/* A white (surface) table elevated on the gray canvas: comfortable 48px rows,
+   left-aligned cells, hairline row rules, no vertical borders. */
 table.docs-kv {
   border-collapse: collapse;
   width: 100%;
   font-size: 14px;
+  background: transparent; /* body rows share the page background */
+  margin: 4px 0 8px;
 }
-table.docs-kv th {
+table.docs-kv th,
+table.docs-kv td {
   text-align: left;
+  vertical-align: top;
+  padding: 14px 16px;
+  line-height: 1.45;
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+table.docs-kv tbody tr:last-child > * {
+  border-bottom: 0;
+}
+/* Key/value tables: the first-column label */
+table.docs-kv th {
   color: var(--cds-text-secondary);
   font-weight: 600;
-  padding: 12px 16px 12px 0;
-  vertical-align: top;
   white-space: nowrap;
   width: 1%;
 }
-table.docs-kv td {
-  padding: 12px 0;
-  border-bottom: 1px solid var(--cds-border-subtle);
+
+/* Column-header data tables (token compliance, multi-column token tables): the
+   header row stays the table's white surface — distinguished by bold text and a
+   stronger bottom rule — so it reads as white, not a fill that blends into the
+   gray page. Body rows are the white card; hairline rules separate them. */
+table.docs-tc th {
+  width: auto;
+  color: var(--cds-text);
+  font-weight: 600;
 }
-table.docs-tc {
-  margin-top: 8px;
+table.docs-tc tr:first-child th {
+  background: var(--cds-surface); /* only the header is white */
+  border-bottom: 0; /* the white→transparent edge separates header from body */
 }
 table.docs-tc td {
-  padding: 12px 16px 12px 0;
-  border-bottom: 1px solid var(--cds-border-subtle);
-  font-size: 14px;
   width: auto;
 }
-table.docs-tc td:last-child {
-  font-size: 13px;
+table.docs-tc tbody tr:not(:first-child):hover {
+  background: var(--cds-layer);
+}
+
+/* Multi-column token table (Style tab): Element · Property · Token */
+.token-table td.token-el {
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: top;
+  /* inherits the same hairline row rule as every other cell (no thicker stroke) */
+}
+.token-table td {
+  color: var(--cds-text-secondary);
+}
+.token-table td.token-val code {
+  color: var(--cds-text);
+}
+.token-table tbody tr:not(:first-child):hover {
+  background: var(--cds-layer);
 }
 table.docs-tc a {
   color: var(--cds-link);
@@ -443,6 +477,76 @@ table.docs-tc a:hover {
 }
 .tc-na {
   color: var(--cds-text-helper);
+}
+
+/* Accessibility-status ticks (Carbon's A11yStatusTag) */
+.status-tick {
+  font-weight: 700;
+}
+.status-tick.on {
+  color: var(--cds-success);
+}
+.status-tick.off {
+  color: var(--cds-text-helper);
+}
+.status-a11y td {
+  white-space: nowrap;
+}
+
+/* Per-component accessibility status cards (Carbon's A11yStatus cards) */
+.a11y-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin: 4px 0 8px;
+}
+.a11y-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: var(--cds-surface);
+  border: 1px solid var(--cds-border-subtle);
+}
+.a11y-card-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cds-text-secondary);
+  font-weight: 600;
+}
+.a11y-card-value {
+  font-size: 15px;
+  color: var(--cds-text);
+}
+.a11y-tag {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px; /* Carbon tags are pill-shaped */
+}
+.a11y-tag.on {
+  color: #0e6027;
+  background: #a7f0ba;
+}
+.a11y-tag.mid {
+  color: #002d9c;
+  background: #d0e2ff;
+}
+.a11y-tag.off {
+  color: var(--cds-text-secondary);
+  background: var(--cds-layer);
+}
+:root[data-composa-mode="dark"] .a11y-tag.on {
+  color: #a7f0ba;
+  background: #044317;
+}
+:root[data-composa-mode="dark"] .a11y-tag.mid {
+  color: #d0e2ff;
+  background: #002d9c;
 }
 
 /* ── Foundations grids (sharp corners) ───────────────────────────────────── */
@@ -639,8 +743,66 @@ table.docs-tc a:hover {
 .sb-demo {
   margin-bottom: 8px;
 }
-.sb-demo-stage {
+/* Theme + Variant selectors, attached to the top of the demo frame as one
+   bordered block (Carbon's StorybookDemo). */
+.sb-demo-frameset {
   border: 1px solid var(--cds-border-subtle);
+  background: var(--cds-surface);
+}
+.sb-demo-toolbar {
+  display: flex;
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+.sb-demo-fluid {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+.sb-demo-fluid + .sb-demo-fluid {
+  border-left: 1px solid var(--cds-border-subtle);
+}
+.sb-demo-fluid-label {
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+  letter-spacing: 0.02em;
+}
+.sb-demo-fluid-field {
+  position: relative;
+}
+.sb-demo-fluid-field::after {
+  content: "";
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  width: 10px;
+  height: 6px;
+  transform: translateY(-50%);
+  background: var(--cds-text);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  pointer-events: none;
+}
+.sb-demo-fluid select {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  color: var(--cds-text);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 2px 24px 2px 0;
+  cursor: pointer;
+}
+.sb-demo-fluid select:focus-visible {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: 2px;
+}
+.sb-demo-stage {
   background: var(--cds-surface);
 }
 .sb-demo-frame {
@@ -732,6 +894,74 @@ pre code {
   padding: 0;
 }
 
+/* ── Page footer: prev/next + site footer (Carbon) ───────────────────────── */
+.doc-footer {
+  margin-top: 64px;
+}
+.doc-prevnext {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--cds-header-bg); /* gray-100 */
+}
+.doc-prevnext-link {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 96px;
+  padding: 24px 48px;
+  text-decoration: none;
+  color: #ffffff;
+}
+.doc-prevnext-link.is-next {
+  align-items: flex-end;
+  text-align: right;
+  border-left: 1px solid var(--cds-header-border);
+}
+.doc-prevnext-link:hover {
+  background: #262626;
+}
+.doc-prevnext-link.is-empty {
+  pointer-events: none;
+}
+.doc-prevnext-dir {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+.doc-prevnext-name {
+  font-size: 22px;
+  font-weight: 300;
+}
+.doc-siteftr {
+  display: flex;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 40px 48px 56px;
+  background: #000000;
+  color: rgba(255, 255, 255, 0.7);
+}
+.doc-siteftr-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.doc-siteftr-links a {
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 14px;
+}
+.doc-siteftr-links a:hover {
+  text-decoration: underline;
+}
+.doc-siteftr-meta {
+  font-size: 13px;
+  line-height: 1.7;
+  text-align: right;
+}
+.doc-siteftr-meta b {
+  color: #ffffff;
+  font-weight: 600;
+}
+
 /* ── Focus + responsive ──────────────────────────────────────────────────── */
 a:focus-visible,
 .docs-tab:focus-visible,
@@ -747,7 +977,22 @@ a:focus-visible,
   .page {
     padding: 32px 20px 72px;
   }
-  .page-title {
-    font-size: 32px;
+  .masthead-body {
+    padding: 32px 20px 24px;
+  }
+  .masthead-tabs {
+    padding: 0 8px;
+    overflow-x: auto;
+  }
+  .masthead-title {
+    font-size: 34px;
+  }
+  .anchor-links {
+    grid-template-columns: 1fr;
+  }
+  .doc-prevnext-link,
+  .doc-siteftr {
+    padding-left: 20px;
+    padding-right: 20px;
   }
 }

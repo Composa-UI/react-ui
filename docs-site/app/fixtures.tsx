@@ -449,3 +449,20 @@ export const FIXTURES: Record<string, () => ReactNode> = {
   CropToolbar: () => <CropToolbarFixture />,
   EditorShell: () => <EditorShellFixture />,
 };
+
+// Per-variant fixtures — the discrete stories a component's demo dropdown offers
+// (Carbon's StorybookDemo `variants`). Each label must match a same-named story
+// export in docs-site/stories/<Component>.stories.tsx and an entry in VARIANTS
+// (docs-site/app/data.ts). "Default" is the overview render (FIXTURES[Name]).
+// Extend this map (plus VARIANTS + the story exports) to give more components a
+// variant dropdown; components absent here ship only the single Default story.
+export const FIXTURE_VARIANTS: Record<string, { label: string; render: () => ReactNode }[]> = {
+  Button: [
+    { label: "Default", render: () => FIXTURES.Button() },
+    { label: "Primary", render: () => <Button label="Primary" variant="Primary" onClick={() => undefined} /> },
+    { label: "Secondary", render: () => <Button label="Secondary" variant="Secondary" onClick={() => undefined} /> },
+    { label: "Ghost", render: () => <Button label="Ghost" variant="Ghost" onClick={() => undefined} /> },
+    { label: "Destructive", render: () => <Button label="Delete" variant="Destructive" onClick={() => undefined} /> },
+    { label: "Disabled", render: () => <Button label="Disabled" variant="Primary" disabled /> },
+  ],
+};

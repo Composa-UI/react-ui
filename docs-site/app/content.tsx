@@ -19,6 +19,8 @@ import {
   slug,
   storybookHref,
   storybookIframeHref,
+  variantsFor,
+  prevNextComponent,
   routeForComponent,
   GROUP_ORDER,
   type Annotation,
@@ -121,9 +123,9 @@ export function HomePage() {
           <p>Color, radius and spacing swatches generated from the single token source.</p>
           <span className="home-card-go">Open →</span>
         </a>
-        <a className="home-card" href="#/token-compliance">
-          <h3>Token compliance</h3>
-          <p>Which components are fully token-bound, and the hardcoded-hex debt to burn down.</p>
+        <a className="home-card" href="#/status">
+          <h3>Status</h3>
+          <p>Per-component token compliance and accessibility, verified by the annotation contract.</p>
           <span className="home-card-go">Open →</span>
         </a>
       </div>
@@ -209,57 +211,195 @@ export function Foundations() {
   );
 }
 
-// ── Token compliance page ───────────────────────────────────────────────────
+// ── Status page: token compliance + accessibility (Carbon's status matrix) ──
 
 function isTokenOnly(c: Annotation) {
   return !!(c.enforce && c.enforce.tokensOnly === true);
 }
 
-export function TokenCompliance() {
-  const n = components.filter(isTokenOnly).length;
+// A compact status tick (Carbon's A11yStatusTag): green ✓ when true, muted – otherwise.
+function Tick({ on }: { on: boolean }) {
+  return (
+    <span className={"status-tick " + (on ? "on" : "off")} aria-hidden>
+      {on ? "✓" : "–"}
+    </span>
+  );
+}
+
+// Accessibility facts a component's annotation + the contract expose.
+function a11yFacts(c: Annotation) {
+  const a = (c.a11y ?? {}) as Record<string, unknown>;
+  const enforce = (c.enforce ?? {}) as { role?: string; ariaRole?: boolean };
+  const roleRaw = enforce.role || (typeof a.role === "string" ? a.role : "");
+  const role = String(roleRaw).replace(/\s*\(.*$/, "").trim() || "—";
+  return {
+    role,
+    roleVerified: enforce.ariaRole === true,
+    keyboard: "keyboard" in a,
+    labels: "label" in a || "labels" in a || "labelless" in a,
+  };
+}
+
+// Carbon's A11yStatusTag: a status pill. on = enforced/tested (green),
+// mid = documented/declared (blue), off = not documented (muted).
+function A11yTag({ tone, label }: { tone: "on" | "mid" | "off"; label: string }) {
+  return <span className={"a11y-tag " + tone}>{label}</span>;
+}
+
+// Per-component accessibility status cards (Carbon's <A11yStatus layout="cards">).
+// One card per AX aspect Composa's contract can speak to, each with a status tag.
+function A11yStatusCards({ c }: { c: Annotation }) {
+  const f = a11yFacts(c);
+  const cards: { title: string; value: ReactNode; tone: "on" | "mid" | "off"; tag: string }[] = [
+    {
+      title: "ARIA role",
+      value: f.role === "—" ? "—" : <code>{f.role}</code>,
+      tone: f.roleVerified ? "on" : "mid",
+      tag: f.roleVerified ? "Verified in CI" : "Declared",
+    },
+    {
+      title: "Keyboard navigation",
+      value: f.keyboard ? "Interaction documented" : "Not documented",
+      tone: f.keyboard ? "on" : "off",
+      tag: f.keyboard ? "Documented" : "Not documented",
+    },
+    {
+      title: "Labels & names",
+      value: f.labels ? "Naming documented" : "Not documented",
+      tone: f.labels ? "on" : "off",
+      tag: f.labels ? "Documented" : "Not documented",
+    },
+  ];
+  return (
+    <div className="a11y-cards">
+      {cards.map(cd => (
+        <div className="a11y-card" key={cd.title}>
+          <div className="a11y-card-title">{cd.title}</div>
+          <div className="a11y-card-value">{cd.value}</div>
+          <A11yTag tone={cd.tone} label={cd.tag} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function StatusPage() {
+  const tokenOK = components.filter(isTokenOnly).length;
+  const roleVerified = components.filter(c => a11yFacts(c).roleVerified).length;
+
+  const sections: Sec[] = [
+    {
+      id: "token-compliance",
+      label: "Token compliance",
+      body: (
+        <>
+          <p className="doc-lede">
+            Which components are fully token-bound. Enforced by the annotation contract: a component
+            may claim <code>tokensOnly</code> only if its source carries no hardcoded hex, so this is
+            verified, not asserted. <b>
+              {tokenOK} of {components.length}
+            </b>{" "}
+            are verified token-only; the rest name their hardcoded values — the hardcoded-hex debt to
+            burn down.
+          </p>
+          <table className="docs-kv docs-tc">
+            <tbody>
+              <tr>
+                <th>Component</th>
+                <th>Status</th>
+                <th>Note</th>
+              </tr>
+              {components.map(c => {
+                const ok = isTokenOnly(c);
+                const note = (c.tokens && c.tokens.note) || "";
+                return (
+                  <tr key={c.component}>
+                    <td>
+                      <a href={routeForComponent(c)}>{c.component}</a>
+                    </td>
+                    <td>
+                      {ok ? (
+                        <span className="tc-ok">✓ token-only</span>
+                      ) : note ? (
+                        <span className="tc-warn">⚠ hardcoded values</span>
+                      ) : (
+                        <span className="tc-na">— not asserted</span>
+                      )}
+                    </td>
+                    <td className="muted">{note || (ok ? "Source verified hex-free." : "")}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </>
+      ),
+    },
+    {
+      id: "accessibility",
+      label: "Accessibility",
+      body: (
+        <>
+          <p className="doc-lede">
+            What each component's annotation documents, and what the contract verifies. <b>Role
+            verified</b> means the contract renders the component and fails CI if the declared ARIA
+            role is absent — <b>
+              {roleVerified} of {components.length}
+            </b>{" "}
+            are render-verified today.
+          </p>
+          <table className="docs-kv docs-tc status-a11y">
+            <tbody>
+              <tr>
+                <th>Component</th>
+                <th>ARIA role</th>
+                <th>Role verified</th>
+                <th>Keyboard</th>
+                <th>Labels</th>
+              </tr>
+              {components.map(c => {
+                const f = a11yFacts(c);
+                return (
+                  <tr key={c.component}>
+                    <td>
+                      <a href={routeForComponent(c)}>{c.component}</a>
+                    </td>
+                    <td>
+                      {f.role === "—" ? <span className="muted">—</span> : <code>{f.role}</code>}
+                    </td>
+                    <td>
+                      <Tick on={f.roleVerified} />
+                    </td>
+                    <td>
+                      <Tick on={f.keyboard} />
+                    </td>
+                    <td>
+                      <Tick on={f.labels} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="muted" style={{ marginTop: 12 }}>
+            Role verified is enforced in CI; Keyboard and Labels reflect whether the component's a11y
+            annotation documents that behavior. Carbon publishes a similar per-component
+            accessibility-status matrix — this is Composa's equivalent, alongside token compliance.
+          </p>
+        </>
+      ),
+    },
+  ];
+
   return (
     <>
-      <Masthead eyebrow="Overview" title="Token compliance" />
+      <Masthead eyebrow="Overview" title="Status" />
       <div className="page">
         <PageDescription>
-          Which annotated components are fully token-bound. Enforced by the annotation contract: a
-          component may claim <code>tokensOnly</code> only if its source carries no hardcoded hex, so
-          this is verified, not asserted. <b>
-            {n} of {components.length}
-          </b>{" "}
-          are verified token-only; the rest name their hardcoded values — that is the hardcoded-hex
-          debt to burn down.
+          How each component measures up — token compliance and accessibility, both driven by the
+          enforced annotation contract.
         </PageDescription>
-        <table className="docs-kv docs-tc">
-        <tbody>
-          <tr>
-            <th>Component</th>
-            <th>Status</th>
-            <th>Note</th>
-          </tr>
-          {components.map(c => {
-            const ok = isTokenOnly(c);
-            const note = (c.tokens && c.tokens.note) || "";
-            return (
-              <tr key={c.component}>
-                <td>
-                  <a href={routeForComponent(c)}>{c.component}</a>
-                </td>
-                <td>
-                  {ok ? (
-                    <span className="tc-ok">✓ token-only</span>
-                  ) : note ? (
-                    <span className="tc-warn">⚠ hardcoded values</span>
-                  ) : (
-                    <span className="tc-na">— not asserted</span>
-                  )}
-                </td>
-                  <td className="muted">{note || (ok ? "Source verified hex-free." : "")}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <TabBody sections={sections} />
       </div>
     </>
   );
@@ -272,27 +412,160 @@ export function TokenCompliance() {
 // out to the full story for controls / variants / API docs.
 
 function StorybookDemo({ c, theme }: { c: Annotation; theme: Theme }) {
+  const variants = variantsFor(c);
+  const [variant, setVariant] = useState(variants[0]);
+  const [demoTheme, setDemoTheme] = useState<Theme>(theme);
+  const current = variants.includes(variant) ? variant : variants[0];
   return (
     <div className="sb-demo">
-      <div className="sb-demo-stage">
-        <iframe
-          key={theme}
-          title={`${c.component} live demo`}
-          className="sb-demo-frame"
-          src={storybookIframeHref(c, theme)}
-          loading="lazy"
-          sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
-        />
+      {/* Theme + Variant selectors, attached to the top of the demo frame
+          (Carbon's StorybookDemo). */}
+      <div className="sb-demo-frameset">
+        <div className="sb-demo-toolbar">
+          <label className="sb-demo-fluid">
+            <span className="sb-demo-fluid-label">Theme selector</span>
+            <div className="sb-demo-fluid-field">
+              <select value={demoTheme} onChange={e => setDemoTheme(e.target.value as Theme)}>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </div>
+          </label>
+          {variants.length > 1 && (
+            <label className="sb-demo-fluid">
+              <span className="sb-demo-fluid-label">Variant selector</span>
+              <div className="sb-demo-fluid-field">
+                <select value={current} onChange={e => setVariant(e.target.value)}>
+                  {variants.map(v => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </label>
+          )}
+        </div>
+        <div className="sb-demo-stage">
+          <iframe
+            key={`${demoTheme}-${current}`}
+            title={`${c.component} live demo`}
+            className="sb-demo-frame"
+            src={storybookIframeHref(c, demoTheme, current)}
+            loading="lazy"
+            sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
+          />
+        </div>
       </div>
       <p className="sb-demo-caption">
-        This is the isolated Storybook story — the real component rendered from the design-system
-        tokens.{" "}
-        <a href={storybookHref(c)} target="_blank" rel="noreferrer">
-          View the full story on Storybook <span aria-hidden>↗</span>
+        This live demo is the isolated Storybook story — the real component rendered from the
+        design-system tokens. View the{" "}
+        <a href={storybookHref(c, current)} target="_blank" rel="noreferrer">
+          full demo
         </a>{" "}
-        for controls, variants, and API docs.
+        on Storybook for additional information such as its controls and API docs.
       </p>
     </div>
+  );
+}
+
+// ── Multi-column token table (Carbon Style page) ────────────────────────────
+// Flattens the annotation's `tokens` into Element · Property · Token rows, the
+// element spanning its property rows, so Style reads like Carbon's color tables.
+function TokenTable({ tokens }: { tokens?: Record<string, unknown> }) {
+  if (!tokens || !Object.keys(tokens).length) return null;
+  const note = typeof tokens.note === "string" ? (tokens.note as string) : undefined;
+  type Row = { element: string; span: number; property: string; token: string };
+  const rows: Row[] = [];
+  for (const [element, val] of Object.entries(tokens)) {
+    if (element === "note") continue;
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      const entries = Object.entries(val as Record<string, unknown>);
+      entries.forEach(([property, token], i) =>
+        rows.push({ element, span: i === 0 ? entries.length : 0, property, token: String(token) }),
+      );
+    } else {
+      rows.push({ element, span: 1, property: "", token: String(val) });
+    }
+  }
+  if (!rows.length) return null;
+  // token-ish values (a slash/dot path, no spaces) render as code chips.
+  const isToken = (t: string) => /[/.]/.test(t) && !/\s/.test(t);
+  return (
+    <>
+      <table className="docs-kv docs-tc token-table">
+        <tbody>
+          <tr>
+            <th>Element</th>
+            <th>Property</th>
+            <th>Token</th>
+          </tr>
+          {rows.map((r, i) => (
+            <tr key={i}>
+              {r.span > 0 && (
+                <td className="token-el" rowSpan={r.span}>
+                  {r.element}
+                </td>
+              )}
+              <td className="token-prop">{r.property || "—"}</td>
+              <td className="token-val">{isToken(r.token) ? <code>{r.token}</code> : r.token}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {note && (
+        <p className="muted" style={{ marginTop: 12 }}>
+          {note}
+        </p>
+      )}
+    </>
+  );
+}
+
+// ── Page footer: prev/next pagination + site footer (Carbon) ────────────────
+const REPO_URL = "https://github.com/Composa-UI/react-ui";
+const BUILT_ON = new Date().toISOString().slice(0, 10);
+
+function ComponentFooter({ c }: { c: Annotation }) {
+  const { prev, next } = prevNextComponent(c);
+  return (
+    <footer className="doc-footer">
+      <nav className="doc-prevnext" aria-label="Component pagination">
+        {prev ? (
+          <a className="doc-prevnext-link" href={routeForComponent(prev)}>
+            <span className="doc-prevnext-dir">Previous</span>
+            <span className="doc-prevnext-name">{prev.component}</span>
+          </a>
+        ) : (
+          <span className="doc-prevnext-link is-empty" aria-hidden />
+        )}
+        {next ? (
+          <a className="doc-prevnext-link is-next" href={routeForComponent(next)}>
+            <span className="doc-prevnext-dir">Next</span>
+            <span className="doc-prevnext-name">{next.component}</span>
+          </a>
+        ) : (
+          <span className="doc-prevnext-link is-empty" aria-hidden />
+        )}
+      </nav>
+      <div className="doc-siteftr">
+        <div className="doc-siteftr-links">
+          <a href={REPO_URL} target="_blank" rel="noreferrer">
+            GitHub
+          </a>
+          <a href={`${import.meta.env.BASE_URL}storybook/`} target="_blank" rel="noreferrer">
+            Storybook
+          </a>
+        </div>
+        <div className="doc-siteftr-meta">
+          <div>
+            <b>Composa</b> UI · Design system v0
+          </div>
+          <div>Last updated {BUILT_ON}</div>
+          <div>Built from one token source · © {new Date().getFullYear()} Composa</div>
+        </div>
+      </div>
+    </footer>
   );
 }
 
@@ -484,7 +757,7 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
               ? "Every visual property binds to a design token — the source is verified hex-free by the annotation contract."
               : "Mostly token-bound; this component still carries some hardcoded values, listed below as the hardcoded-hex debt to burn down."}
           </p>
-          <KV obj={c.tokens} />
+          <TokenTable tokens={c.tokens} />
         </>
       ),
     },
@@ -502,7 +775,7 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
               <span className="tc-warn">⚠ hardcoded values</span> present.{" "}
             </>
           )}
-          See the <a href="#/token-compliance">token-compliance report</a> for every component.
+          See the <a href="#/status">Status page</a> for every component's compliance.
         </p>
       ),
     },
@@ -513,6 +786,11 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
   // kit provides (a11y annotation), how the annotation contract verifies it, and
   // the kit-wide development considerations.
   const a11ySections: Sec[] = [
+    {
+      id: "status",
+      label: "Accessibility status",
+      body: <A11yStatusCards c={c} />,
+    },
     {
       id: "provides",
       label: "What the kit provides",
@@ -660,6 +938,7 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
           )}
         </div>
       </div>
+      <ComponentFooter c={c} />
     </>
   );
 }
