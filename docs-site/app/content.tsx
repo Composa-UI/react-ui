@@ -67,6 +67,132 @@ function KV({ obj }: { obj?: Record<string, unknown> }) {
   );
 }
 
+// Split a "label (note)" string into its label and parenthetical note. Many
+// variant/state entries carry their own description this way
+// (e.g. "ghost (dark canvas)", "muted (empty / greyed)").
+function splitLabel(s: string): { label: string; note: string } {
+  const m = /^(.*?)\s*\((.*)\)\s*$/.exec(s);
+  return m ? { label: m[1].trim(), note: m[2].trim() } : { label: s.trim(), note: "" };
+}
+
+// "When to use" copy for the standard states, so the States table reads like
+// Carbon's even when an annotation only stores the bare state name. A state's
+// own parenthetical note (from splitLabel) wins over this; component-specific
+// states fall through to an em dash. Keyed by the lowercased label.
+const STATE_GLOSSARY: Record<string, string> = {
+  default: "Resting state — no interaction, and nothing selected.",
+  idle: "At rest, with no activity in progress.",
+  rest: "At rest, with no activity in progress.",
+  hover: "The pointer is over the control.",
+  focused: "The control has keyboard focus, showing a visible focus ring.",
+  focus: "The control has keyboard focus, showing a visible focus ring.",
+  "focus-visible": "Keyboard focus — the ring shows for keyboard users, not on a pointer click.",
+  active: "Being pressed, or the actively engaged item.",
+  pressed: "The control is held down.",
+  pushed: "The control is held down.",
+  selected: "The active choice within a set.",
+  unselected: "Not the active choice within a set.",
+  checked: "Ticked (true).",
+  unchecked: "Empty (false).",
+  mixed: "Indeterminate — some, but not all, children are checked.",
+  on: "The toggle is on.",
+  off: "The toggle is off.",
+  open: "Expanded / revealed.",
+  closed: "Collapsed / hidden.",
+  "menu-open": "Its menu is open.",
+  "submenu-expanded": "A submenu is expanded.",
+  hidden: "Not shown; awaiting the trigger that reveals it.",
+  shown: "Visible on screen.",
+  disabled: "Unavailable and non-interactive; rendered dimmed.",
+  "action-disabled": "One action is unavailable while the rest stay active.",
+  error: "Invalid input — flagged with the danger treatment and a message.",
+  success: "Valid input — confirmed with the success treatment.",
+  warning: "Needs attention — flagged with the warning treatment.",
+  readonly: "Displays a value that can't be edited.",
+  muted: "De-emphasized, low-emphasis styling.",
+  destructive: "A dangerous action, styled to warn before it's taken.",
+  dragging: "Being dragged by direct manipulation.",
+  "drag-reorder": "Being reordered by dragging.",
+  resizing: "Being resized by dragging a handle.",
+  zooming: "The view is being zoomed.",
+  keyframed: "A keyframe sits at the current playhead.",
+  scrolled: "Content has scrolled; an edge shadow marks the overflow.",
+  locked: "Locked from editing.",
+  "parent-selected": "An ancestor is selected.",
+  gradient: "The fill is a gradient.",
+  image: "The fill is an image.",
+  variable: "The fill is bound to a variable / token.",
+};
+
+function whenToUse(state: string): string {
+  const { note, label } = splitLabel(state);
+  return note || STATE_GLOSSARY[label.toLowerCase()] || "";
+}
+
+// Variants as Carbon's "Variant | Purpose" table. Values carry their purpose
+// inline as a parenthetical; when a component declares more than one variant
+// dimension, the dimension name leads each group (row-spanned, like TokenTable).
+function VariantsTable({ variants }: { variants?: Record<string, unknown> }) {
+  const dims = Object.entries(variants ?? {}).filter(([, v]) => Array.isArray(v)) as [string, string[]][];
+  if (!dims.length) return <KV obj={variants} />; // non-array shapes: fall back
+  const multi = dims.length > 1;
+  return (
+    <table className="docs-kv docs-tc">
+      <tbody>
+        <tr>
+          {multi && <th>Group</th>}
+          <th>Variant</th>
+          <th>Purpose</th>
+        </tr>
+        {dims.flatMap(([dim, vals]) =>
+          vals.map((v, i) => {
+            const { label, note } = splitLabel(v);
+            return (
+              <tr key={dim + "/" + v}>
+                {multi && i === 0 && (
+                  <td rowSpan={vals.length} className="token-el">
+                    {dim}
+                  </td>
+                )}
+                <td>
+                  <code>{label}</code>
+                </td>
+                <td className="muted">{note || <span aria-hidden>—</span>}</td>
+              </tr>
+            );
+          }),
+        )}
+      </tbody>
+    </table>
+  );
+}
+
+// States as Carbon's "State | When to use" table.
+function StatesTable({ states }: { states: string[] }) {
+  return (
+    <table className="docs-kv docs-tc">
+      <tbody>
+        <tr>
+          <th>State</th>
+          <th>When to use</th>
+        </tr>
+        {states.map(s => {
+          const { label } = splitLabel(s);
+          const desc = whenToUse(s);
+          return (
+            <tr key={s}>
+              <td>
+                <code>{label}</code>
+              </td>
+              <td className="muted">{desc || <span aria-hidden>—</span>}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
 // ── Page shell: Carbon's black masthead ─────────────────────────────────────
 // Carbon component pages open with a tall black band carrying the big, light
 // page title; on component pages the tab bar sits at the bottom of that same
@@ -828,7 +954,7 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
         } as Sec]
       : []),
     ...(hasVariants
-      ? [{ id: "variants", label: "Variants", body: <KV obj={c.variants} /> } as Sec]
+      ? [{ id: "variants", label: "Variants", body: <VariantsTable variants={c.variants} /> } as Sec]
       : []),
     ...(hasSlots
       ? [{ id: "anatomy", label: "Anatomy", body: <KV obj={c.slots} /> } as Sec]
@@ -837,7 +963,7 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
       ? [{
           id: "states",
           label: "States",
-          body: <p className="muted chips">{codeList(c.states!)}</p>,
+          body: <StatesTable states={c.states!} />,
         } as Sec]
       : []),
   ];
