@@ -425,13 +425,14 @@ table.docs-kv th {
   width: 1%;
 }
 
-/* Token compliance: a real column-header data table */
+/* Column-header data tables (token compliance, multi-column token tables): the
+   header row stays the table's white surface — distinguished by bold text and a
+   stronger bottom rule — so it reads as white, not a fill that blends into the
+   gray page. Body rows are the white card; hairline rules separate them. */
 table.docs-tc th {
   width: auto;
   color: var(--cds-text);
-}
-table.docs-tc tr:first-child {
-  background: var(--cds-canvas); /* Carbon header fill */
+  font-weight: 600;
 }
 table.docs-tc tr:first-child th {
   border-bottom: 1px solid var(--cds-border-strong);
@@ -440,6 +441,23 @@ table.docs-tc td {
   width: auto;
 }
 table.docs-tc tbody tr:not(:first-child):hover {
+  background: var(--cds-layer);
+}
+
+/* Multi-column token table (Style tab): Element · Property · Token */
+.token-table td.token-el {
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: top;
+  border-bottom: 1px solid var(--cds-border-strong);
+}
+.token-table td {
+  color: var(--cds-text-secondary);
+}
+.token-table td.token-val code {
+  color: var(--cds-text);
+}
+.token-table tbody tr:hover {
   background: var(--cds-layer);
 }
 table.docs-tc a {
@@ -655,31 +673,40 @@ table.docs-tc a:hover {
 .sb-demo {
   margin-bottom: 8px;
 }
-/* Variant dropdown above the demo (Carbon's StorybookDemo selector) */
+/* Theme + Variant selectors, attached to the top of the demo frame as one
+   bordered block (Carbon's StorybookDemo). */
+.sb-demo-frameset {
+  border: 1px solid var(--cds-border-subtle);
+  background: var(--cds-surface);
+}
 .sb-demo-toolbar {
   display: flex;
-  gap: 16px;
-  margin-bottom: 12px;
+  border-bottom: 1px solid var(--cds-border-subtle);
 }
-.sb-demo-select {
+.sb-demo-fluid {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 12px;
+  gap: 4px;
+  padding: 10px 16px;
+  cursor: pointer;
 }
-.sb-demo-select-label {
+.sb-demo-fluid + .sb-demo-fluid {
+  border-left: 1px solid var(--cds-border-subtle);
+}
+.sb-demo-fluid-label {
+  font-size: 12px;
   color: var(--cds-text-secondary);
   letter-spacing: 0.02em;
 }
-.sb-demo-select-field {
+.sb-demo-fluid-field {
   position: relative;
-  min-width: 220px;
 }
-.sb-demo-select-field::after {
-  /* chevron */
+.sb-demo-fluid-field::after {
   content: "";
   position: absolute;
-  right: 12px;
+  right: 2px;
   top: 50%;
   width: 10px;
   height: 6px;
@@ -688,29 +715,24 @@ table.docs-tc a:hover {
   clip-path: polygon(0 0, 100% 0, 50% 100%);
   pointer-events: none;
 }
-.sb-demo-select select {
+.sb-demo-fluid select {
   appearance: none;
   -webkit-appearance: none;
   width: 100%;
   font: inherit;
   font-size: 14px;
   color: var(--cds-text);
-  background: var(--cds-surface);
+  background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--cds-border-strong);
   border-radius: 0;
-  padding: 10px 32px 10px 14px;
+  padding: 2px 24px 2px 0;
   cursor: pointer;
 }
-.sb-demo-select select:hover {
-  background: var(--cds-layer);
-}
-.sb-demo-select select:focus-visible {
+.sb-demo-fluid select:focus-visible {
   outline: 2px solid var(--cds-focus);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 .sb-demo-stage {
-  border: 1px solid var(--cds-border-subtle);
   background: var(--cds-surface);
 }
 .sb-demo-frame {
@@ -802,6 +824,74 @@ pre code {
   padding: 0;
 }
 
+/* ── Page footer: prev/next + site footer (Carbon) ───────────────────────── */
+.doc-footer {
+  margin-top: 64px;
+}
+.doc-prevnext {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--cds-header-bg); /* gray-100 */
+}
+.doc-prevnext-link {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 96px;
+  padding: 24px 48px;
+  text-decoration: none;
+  color: #ffffff;
+}
+.doc-prevnext-link.is-next {
+  align-items: flex-end;
+  text-align: right;
+  border-left: 1px solid var(--cds-header-border);
+}
+.doc-prevnext-link:hover {
+  background: #262626;
+}
+.doc-prevnext-link.is-empty {
+  pointer-events: none;
+}
+.doc-prevnext-dir {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+.doc-prevnext-name {
+  font-size: 22px;
+  font-weight: 300;
+}
+.doc-siteftr {
+  display: flex;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 40px 48px 56px;
+  background: #000000;
+  color: rgba(255, 255, 255, 0.7);
+}
+.doc-siteftr-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.doc-siteftr-links a {
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 14px;
+}
+.doc-siteftr-links a:hover {
+  text-decoration: underline;
+}
+.doc-siteftr-meta {
+  font-size: 13px;
+  line-height: 1.7;
+  text-align: right;
+}
+.doc-siteftr-meta b {
+  color: #ffffff;
+  font-weight: 600;
+}
+
 /* ── Focus + responsive ──────────────────────────────────────────────────── */
 a:focus-visible,
 .docs-tab:focus-visible,
@@ -817,7 +907,22 @@ a:focus-visible,
   .page {
     padding: 32px 20px 72px;
   }
-  .page-title {
-    font-size: 32px;
+  .masthead-body {
+    padding: 32px 20px 24px;
+  }
+  .masthead-tabs {
+    padding: 0 8px;
+    overflow-x: auto;
+  }
+  .masthead-title {
+    font-size: 34px;
+  }
+  .anchor-links {
+    grid-template-columns: 1fr;
+  }
+  .doc-prevnext-link,
+  .doc-siteftr {
+    padding-left: 20px;
+    padding-right: 20px;
   }
 }

@@ -20,6 +20,7 @@ import {
   storybookHref,
   storybookIframeHref,
   variantsFor,
+  prevNextComponent,
   routeForComponent,
   GROUP_ORDER,
   type Annotation,
@@ -275,45 +276,158 @@ export function TokenCompliance() {
 function StorybookDemo({ c, theme }: { c: Annotation; theme: Theme }) {
   const variants = variantsFor(c);
   const [variant, setVariant] = useState(variants[0]);
-  // If the component's variant set changes (navigating between pages), reset.
+  const [demoTheme, setDemoTheme] = useState<Theme>(theme);
   const current = variants.includes(variant) ? variant : variants[0];
   return (
     <div className="sb-demo">
-      {variants.length > 1 && (
+      {/* Theme + Variant selectors, attached to the top of the demo frame
+          (Carbon's StorybookDemo). */}
+      <div className="sb-demo-frameset">
         <div className="sb-demo-toolbar">
-          <label className="sb-demo-select">
-            <span className="sb-demo-select-label">Variant</span>
-            <div className="sb-demo-select-field">
-              <select value={current} onChange={e => setVariant(e.target.value)}>
-                {variants.map(v => (
-                  <option key={v} value={v}>
-                    {v}
-                  </option>
-                ))}
+          <label className="sb-demo-fluid">
+            <span className="sb-demo-fluid-label">Theme selector</span>
+            <div className="sb-demo-fluid-field">
+              <select value={demoTheme} onChange={e => setDemoTheme(e.target.value as Theme)}>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
               </select>
             </div>
           </label>
+          {variants.length > 1 && (
+            <label className="sb-demo-fluid">
+              <span className="sb-demo-fluid-label">Variant selector</span>
+              <div className="sb-demo-fluid-field">
+                <select value={current} onChange={e => setVariant(e.target.value)}>
+                  {variants.map(v => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </label>
+          )}
         </div>
-      )}
-      <div className="sb-demo-stage">
-        <iframe
-          key={`${theme}-${current}`}
-          title={`${c.component} live demo`}
-          className="sb-demo-frame"
-          src={storybookIframeHref(c, theme, current)}
-          loading="lazy"
-          sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
-        />
+        <div className="sb-demo-stage">
+          <iframe
+            key={`${demoTheme}-${current}`}
+            title={`${c.component} live demo`}
+            className="sb-demo-frame"
+            src={storybookIframeHref(c, demoTheme, current)}
+            loading="lazy"
+            sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
+          />
+        </div>
       </div>
       <p className="sb-demo-caption">
-        This is the isolated Storybook story — the real component rendered from the design-system
-        tokens.{" "}
+        This live demo is the isolated Storybook story — the real component rendered from the
+        design-system tokens. View the{" "}
         <a href={storybookHref(c, current)} target="_blank" rel="noreferrer">
-          View the full story on Storybook <span aria-hidden>↗</span>
+          full demo
         </a>{" "}
-        for controls, variants, and API docs.
+        on Storybook for additional information such as its controls and API docs.
       </p>
     </div>
+  );
+}
+
+// ── Multi-column token table (Carbon Style page) ────────────────────────────
+// Flattens the annotation's `tokens` into Element · Property · Token rows, the
+// element spanning its property rows, so Style reads like Carbon's color tables.
+function TokenTable({ tokens }: { tokens?: Record<string, unknown> }) {
+  if (!tokens || !Object.keys(tokens).length) return null;
+  const note = typeof tokens.note === "string" ? (tokens.note as string) : undefined;
+  type Row = { element: string; span: number; property: string; token: string };
+  const rows: Row[] = [];
+  for (const [element, val] of Object.entries(tokens)) {
+    if (element === "note") continue;
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      const entries = Object.entries(val as Record<string, unknown>);
+      entries.forEach(([property, token], i) =>
+        rows.push({ element, span: i === 0 ? entries.length : 0, property, token: String(token) }),
+      );
+    } else {
+      rows.push({ element, span: 1, property: "", token: String(val) });
+    }
+  }
+  if (!rows.length) return null;
+  // token-ish values (a slash/dot path, no spaces) render as code chips.
+  const isToken = (t: string) => /[/.]/.test(t) && !/\s/.test(t);
+  return (
+    <>
+      <table className="docs-kv docs-tc token-table">
+        <tbody>
+          <tr>
+            <th>Element</th>
+            <th>Property</th>
+            <th>Token</th>
+          </tr>
+          {rows.map((r, i) => (
+            <tr key={i}>
+              {r.span > 0 && (
+                <td className="token-el" rowSpan={r.span}>
+                  {r.element}
+                </td>
+              )}
+              <td className="token-prop">{r.property || "—"}</td>
+              <td className="token-val">{isToken(r.token) ? <code>{r.token}</code> : r.token}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {note && (
+        <p className="muted" style={{ marginTop: 12 }}>
+          {note}
+        </p>
+      )}
+    </>
+  );
+}
+
+// ── Page footer: prev/next pagination + site footer (Carbon) ────────────────
+const REPO_URL = "https://github.com/Composa-UI/react-ui";
+const BUILT_ON = new Date().toISOString().slice(0, 10);
+
+function ComponentFooter({ c }: { c: Annotation }) {
+  const { prev, next } = prevNextComponent(c);
+  return (
+    <footer className="doc-footer">
+      <nav className="doc-prevnext" aria-label="Component pagination">
+        {prev ? (
+          <a className="doc-prevnext-link" href={routeForComponent(prev)}>
+            <span className="doc-prevnext-dir">Previous</span>
+            <span className="doc-prevnext-name">{prev.component}</span>
+          </a>
+        ) : (
+          <span className="doc-prevnext-link is-empty" aria-hidden />
+        )}
+        {next ? (
+          <a className="doc-prevnext-link is-next" href={routeForComponent(next)}>
+            <span className="doc-prevnext-dir">Next</span>
+            <span className="doc-prevnext-name">{next.component}</span>
+          </a>
+        ) : (
+          <span className="doc-prevnext-link is-empty" aria-hidden />
+        )}
+      </nav>
+      <div className="doc-siteftr">
+        <div className="doc-siteftr-links">
+          <a href={REPO_URL} target="_blank" rel="noreferrer">
+            GitHub
+          </a>
+          <a href={`${import.meta.env.BASE_URL}storybook/`} target="_blank" rel="noreferrer">
+            Storybook
+          </a>
+        </div>
+        <div className="doc-siteftr-meta">
+          <div>
+            <b>Composa</b> UI · Design system v0
+          </div>
+          <div>Last updated {BUILT_ON}</div>
+          <div>Built from one token source · © {new Date().getFullYear()} Composa</div>
+        </div>
+      </div>
+    </footer>
   );
 }
 
@@ -505,7 +619,7 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
               ? "Every visual property binds to a design token — the source is verified hex-free by the annotation contract."
               : "Mostly token-bound; this component still carries some hardcoded values, listed below as the hardcoded-hex debt to burn down."}
           </p>
-          <KV obj={c.tokens} />
+          <TokenTable tokens={c.tokens} />
         </>
       ),
     },
@@ -681,6 +795,7 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
           )}
         </div>
       </div>
+      <ComponentFooter c={c} />
     </>
   );
 }

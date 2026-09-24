@@ -97,6 +97,19 @@ export const VARIANTS: Record<string, string[]> = {
 };
 export const variantsFor = (c: Annotation): string[] => VARIANTS[c.component] ?? ["Default"];
 
+// Components in sidebar order (grouped by taxonomy), for prev/next pagination.
+export const orderedComponents: Annotation[] = GROUP_ORDER.flatMap(g =>
+  components.filter(c => c.category === g),
+);
+export function prevNextComponent(c: Annotation): { prev?: Annotation; next?: Annotation } {
+  const i = orderedComponents.findIndex(x => x.component === c.component);
+  if (i < 0) return {};
+  return {
+    prev: i > 0 ? orderedComponents[i - 1] : undefined,
+    next: i < orderedComponents.length - 1 ? orderedComponents[i + 1] : undefined,
+  };
+}
+
 // import.meta.env.BASE_URL is the docs app base ("/react-ui/" in the deployed
 // build, "/" in local dev). Storybook is assembled one level down at
 // `<base>storybook/`, so this link resolves under the Pages project prefix.
