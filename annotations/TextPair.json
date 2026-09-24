@@ -1,0 +1,56 @@
+{
+  "component": "TextPair",
+  "category": "Panels",
+  "archetype": "utility",
+  "intent": "Read-only label + value pair for property display in inspector rows, panels, and tooltips.",
+  "variants": {
+    "layout": [
+      "horizontal (default; label and value inline, baseline-aligned, value truncates)",
+      "vertical (label stacked above value)"
+    ],
+    "size": [
+      "default (11px / 16px line / 0.005em tracking)",
+      "small (9px / 14px line / 0.05em tracking)"
+    ],
+    "emphasis": [
+      "mutedLabel (label c-text-tertiary instead of c-text-secondary)",
+      "prominentValue (value weight 550 instead of 450)"
+    ]
+  },
+  "slots": {
+    "value": "string or ReactNode; not rendered when undefined"
+  },
+  "states": [],
+  "tokens": {
+    "label": {
+      "color": "c-text-secondary (default), c-text-tertiary (mutedLabel)",
+      "weight": "font-[450]",
+      "note": "size/leading/tracking hardcoded: 11px/16px/0.005em (default), 9px/14px/0.05em (small)"
+    },
+    "value": {
+      "color": "c-text",
+      "weight": "font-[450] (default), font-[550] (prominentValue)"
+    },
+    "font": {
+      "family": "var(--composa-font-family)"
+    },
+    "layout": {
+      "note": "hardcoded: horizontal gap-[6px] items-baseline min-w-0 (value truncate); vertical gap-[1px]"
+    }
+  },
+  "a11y": {
+    "role": "none (presentational <div>/<span>; not focusable or interactive)",
+    "keyboard": "none; read-only display.",
+    "note": "Carries no ARIA role or label; the containing row/panel owns any semantic labelling.",
+    "contrast": "label (c-text-secondary/tertiary) and value (c-text) vs the surface must meet contrast in light and dark."
+  },
+  "enforce": {
+    "role": "none",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { TextPair } from '@composa/ui'",
+    "example": "<TextPair label=\"Opacity\" value=\"80%\" />"
+  }
+}

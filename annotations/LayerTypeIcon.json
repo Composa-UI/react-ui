@@ -1,0 +1,37 @@
+{
+  "component": "LayerTypeIcon",
+  "category": "Panels",
+  "archetype": "utility",
+  "intent": "Canonical element-type glyph shown beside a layer in the Layers panel and the element timeline.",
+  "variants": {
+    "type": ["frame", "group", "text", "component (accent color)", "instance (accent color)", "image", "shape", "line", "ellipse"],
+    "autoLayoutMode": ["none (base frame glyph)", "horizontal (counter-align glyph, type=frame only)", "vertical (counter-align glyph, type=frame only)", "grid (layout-grid glyph)"],
+    "autoLayoutAlign": ["start", "center", "end (counter-axis alignment; picks the glyph for horizontal/vertical frames, defaults to start)"],
+    "tone": ["primary (text-c-icon)", "secondary (text-c-icon-secondary)"]
+  },
+  "slots": {},
+  "states": [],
+  "tokens": {
+    "color": {
+      "primary": "text-c-icon",
+      "secondary": "text-c-icon-secondary",
+      "component": "text-accent-component (type=component/instance, overrides tone)"
+    },
+    "layout": "shrink-0",
+    "note": "size (default 16) and strokeWidth (default 1.5) are numeric props forwarded to the Lucide glyph — plain values, not tokens."
+  },
+  "a11y": {
+    "role": "none rendered — a plain Lucide SVG glyph with no role, aria-label, or aria-hidden; presentational.",
+    "labeling": "Carries no accessible name; the layer's own name in the row (Layers panel / element timeline) is the accessible label. Never let this icon be the sole conveyor of element type.",
+    "attributes": "data-icon-semantic, data-layer-icon-type, data-auto-layout-mode, and data-auto-layout-align expose the resolved glyph and inputs for QA/tests, not for assistive tech."
+  },
+  "enforce": {
+    "role": "none (no role rendered)",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { LayerTypeIcon } from '@composa/ui'",
+    "example": "<LayerTypeIcon type=\"frame\" autoLayoutMode=\"horizontal\" autoLayoutAlign=\"center\" />"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "component": "ToolbarButton",
+  "category": "Actions",
+  "archetype": "primitive",
+  "intent": "Compact icon-only toolbar control that triggers an action or reflects a toggled-on state.",
+  "use_when": [
+    "An icon-only action or tool packed into a toolbar or grouped control row (bold, align, crop).",
+    "A binary formatting toggle whose on state is shown by passing the active prop."
+  ],
+  "dont_use_when": [
+    "The control needs a visible text label — use Button.",
+    "Selecting one option from a mutually exclusive set — use SegmentedControl."
+  ],
+  "slots": {
+    "icon": "Required ReactNode rendered centered; host supplies the glyph."
+  },
+  "states": [
+    "default",
+    "hover",
+    "pressed",
+    "active (toggled-on, via the active prop)",
+    "focus-visible"
+  ],
+  "tokens": {
+    "icon": { "color": "c-icon (text-c-icon)" },
+    "active": { "bg": "c-bg-secondary (also the pressed bg)" },
+    "hover": { "bg": "c-bg-hover-transparent (only when not active)" },
+    "shape": { "radius": "c-md (rounded-c-md)" },
+    "focus": { "ring": "c-focus-ring (focus-visible outline-2, offset 1)" },
+    "motion": { "transition": "colors, duration 100ms" },
+    "note": "Padding is hardcoded p-[4px] (not a spacing token); shrink-0 keeps it from collapsing in a flex toolbar."
+  },
+  "a11y": {
+    "role": "button (native <button>)",
+    "keyboard": ["Enter", "Space"],
+    "focus": "focus-visible outline bound to the c-focus-ring token; base outline is removed (outline-none).",
+    "note": "Icon-only and unlabeled: the component renders no aria-label and forwards no aria props (only icon, active, onClick, className), so it has no accessible name and active is not exposed as aria-pressed. Provide a labeled wrapper host-side."
+  },
+  "enforce": {
+    "role": "button",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { ToolbarButton } from '@composa/ui'",
+    "example": "<ToolbarButton icon={<BoldIcon />} active onClick={() => toggleBold()} />"
+  }
+}

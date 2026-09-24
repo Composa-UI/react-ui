@@ -1,0 +1,73 @@
+{
+  "component": "MultiChoiceCard",
+  "category": "Inputs",
+  "archetype": "composite",
+  "intent": "An inline single-select choice card for an agent response: pick one lettered option and it highlights in place.",
+  "guidance": "Use it for one small inline decision inside an agent response — a set of lettered options with one active at a time. Bind selected/onSelect to control the pick from the host; omit selected and it tracks its own internal state. The choices are toggle buttons (aria-pressed), not a radiogroup, so it reads as a row of press states rather than a strict single-choice group; if you need real radio semantics, reach for a RadioGroup instead. Pass short letter values (the badge sizes for one glyph) and one-line labels. Selecting paints the row with the selected background, fills the letter badge with the brand color, and deepens the label from secondary to primary text.",
+  "anatomy": [
+    { "part": "Card", "description": "Full-width rounded-c-lg container with an inset c-border ring; clips its contents." },
+    { "part": "Question", "description": "The prompt text row at the top of the card." },
+    { "part": "Choice list", "description": "Vertical stack of option buttons below the question." },
+    { "part": "Choice button", "description": "Full-width row per option; sets aria-pressed and highlights when it is the selected letter." },
+    { "part": "Letter badge", "description": "22px square holding the option's letter; fills with c-bg-brand when active, otherwise shows a c-border ring." },
+    { "part": "Label", "description": "The option's one-line description beside the badge." }
+  ],
+  "use_when": [
+    "Offering a small set of lettered options for one inline decision in an agent response.",
+    "You want the chosen option to highlight in place without leaving the card."
+  ],
+  "dont_use_when": [
+    "You need strict single-select semantics for mutually exclusive options — use a RadioGroup.",
+    "More than one option can be chosen at once — use Checkboxes."
+  ],
+  "slots": {},
+  "states": [
+    "default",
+    "hover",
+    "selected",
+    "focus-visible"
+  ],
+  "tokens": {
+    "card": {
+      "border": "c-border (ring-1 ring-inset)",
+      "radius": "rounded-c-lg"
+    },
+    "question": {
+      "text": "c-text"
+    },
+    "choice": {
+      "radius": "rounded-c-md",
+      "selectedBg": "c-bg-selected",
+      "hoverBg": "c-bg-hover",
+      "focusRing": "c-focus-ring"
+    },
+    "letterBadge": {
+      "activeBg": "c-bg-brand",
+      "border": "c-border (ring-1 ring-inset)",
+      "radius": "rounded-c-md"
+    },
+    "letterText": {
+      "active": "c-text-on-brand",
+      "default": "c-text"
+    },
+    "label": {
+      "active": "c-text",
+      "default": "c-text-secondary"
+    },
+    "note": "Spacing (px-[12px]/py-[8px], gap-[2px], p-[4px]), badge size (size-[22px]), and type (text-[13px]/[11px], leading-[22px]/[20px]/[16px], font-[550]/[450], tracking-[-0.032px]/[0.055px]) are hardcoded arbitrary Tailwind values, not tokens; font family via var(--composa-font-family)."
+  },
+  "a11y": {
+    "role": "No wrapper role; each choice is a native <button type=\"button\">.",
+    "selection": "aria-pressed on each button reflects the active letter (toggle-button semantics, not a radiogroup).",
+    "focus": "focus-visible ring via c-focus-ring; outline-none otherwise."
+  },
+  "enforce": {
+    "role": "button",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { MultiChoiceCard } from '@composa/ui'",
+    "example": "<MultiChoiceCard\n  question=\"Which layout do you want?\"\n  choices={[\n    { letter: 'A', label: 'Single column' },\n    { letter: 'B', label: 'Two columns' },\n  ]}\n  selected={choice}\n  onSelect={setChoice}\n/>"
+  }
+}

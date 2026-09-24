@@ -1,0 +1,55 @@
+{
+  "component": "UserBubble",
+  "category": "Feedback",
+  "archetype": "utility",
+  "intent": "Right-aligned user message in the Agent chat thread: a text bubble with an optional context chip above it and a 24px avatar to its right.",
+  "slots": {
+    "avatar": "Custom avatar node (ReactNode); defaults to a neutral CircleUserRound glyph on a c-bg-secondary circle."
+  },
+  "variants": {
+    "chip": ["none", "element (blue canvas-selection chip: layer-list icon + label)", "github (@GitHub connector chip)"]
+  },
+  "states": [],
+  "tokens": {
+    "bubble": {
+      "bg": "c-bg-secondary",
+      "text": "c-text",
+      "font": "--composa-font-family",
+      "note": "rounded-[16px], max-w-[192px], px-[12px] py-[9px], text-[13px]/leading-[20px], font-[450], tracking-[-0.032px], and column gap-[8px] are hardcoded, not tokens."
+    },
+    "avatar": {
+      "bg": "c-bg-secondary",
+      "icon": "c-icon",
+      "shape": "rounded-full",
+      "note": "size-[24px] circle; default CircleUserRound glyph size 15 / strokeWidth 1.5 hardcoded."
+    },
+    "ElementChip": {
+      "bg": "c-bg-selected",
+      "iconAndText": "c-text-brand",
+      "radius": "rounded-c-md",
+      "note": "h-[20px], max-w-[157px], gap-[2px], pl-[2px] pr-[5px], icon size 13 (in a 16px box), text-[12px]/leading-[16px], font-[450] hardcoded."
+    },
+    "GitHubChip": {
+      "bg": "c-bg",
+      "border": "c-border (ring-1 ring-inset)",
+      "icon": "c-icon",
+      "text": "c-text",
+      "radius": "rounded-c-md",
+      "note": "h-[24px], gap-[4px], px-[5px] py-[2px], icon size 14, text-[11px]/leading-[16px], font-[450], tracking-[0.055px] hardcoded."
+    }
+  },
+  "a11y": {
+    "role": "none — presentational <div>; not focusable or interactive. The message text is the accessible content.",
+    "icons": "the avatar glyph and both chip icons are decorative lucide SVGs with no alt or aria-label.",
+    "host": "the enclosing chat log/thread supplies message-turn and author semantics; UserBubble renders only the visual bubble."
+  },
+  "enforce": {
+    "role": "none",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { UserBubble } from '@composa/ui'",
+    "example": "<UserBubble text=\"Turn this into a video\" chip={{ type: 'element', label: 'Hero Section', kind: 'frame' }} />"
+  }
+}

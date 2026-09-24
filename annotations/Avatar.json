@@ -1,0 +1,41 @@
+{
+  "component": "Avatar",
+  "category": "Feedback",
+  "archetype": "utility",
+  "intent": "Small identity atom that shows a user or workspace as initials, photo, org icon, or a +N overflow badge, with optional multiplayer presence status.",
+  "slots": {
+    "icon": "Org/workspace icon (ReactNode) rendered centered in place of initials or photo."
+  },
+  "variants": {
+    "content": ["initial (letter/number)", "photo (src image)", "icon (org/workspace slot)", "overflow (+N badge, caps at 99+)"],
+    "color": ["purple", "blue", "pink", "red", "yellow", "green", "grey", "teal"],
+    "size": ["small (16px)", "default (24px)", "large (32px)"],
+    "shape": ["circle", "square"],
+    "status": ["default (none)", "dash (bar above)", "design (solid ring)", "spotlight (dashed ring)", "audio (sound bars)"],
+    "overflow": ["unread (bg/brand-pressed)", "read (grey #b3b3b3)"]
+  },
+  "states": ["default", "disabled"],
+  "tokens": {
+    "overflow": { "unreadBg": "bg/brand-pressed (var(--color-bg-brand-pressed))", "text": "white" },
+    "font": { "family": "var(--composa-font-family)", "weight": "450", "tracking": "-0.0325px (initials only)", "note": "weight and tracking are hardcoded arbitrary values" },
+    "size": { "small": "16px / text-9px / leading-14px", "default": "24px / text-13px / leading-22px", "large": "32px / text-15px / leading-24px", "note": "px and text/leading are hardcoded Tailwind arbitrary values" },
+    "shape": { "circle": "rounded-full", "square": "rounded-[5px] (hardcoded)" },
+    "disabled": { "opacity": "opacity-50" },
+    "note": "Identity colors (AVATAR_COLORS: #9747ff/#007be5/#ff24bd/#f24822/#ffcd29/#14ae5c/#b3b3b3/#18a0fb), overflow-read grey #b3b3b3, and AvatarStatus colors (#ffcd29 dash/rings, #14ae5c audio bars, white outlines) are fixed hex literals — intentionally not mode-adaptive."
+  },
+  "a11y": {
+    "role": "none — presentational <div>; not focusable or interactive",
+    "image": "photo variant renders <img alt=\"\"> (decorative); host must convey identity via adjacent text or an aria-label on the wrapping control",
+    "text": "initials and overflow count are visible text only, not labelled for assistive tech",
+    "status": "AvatarStatus indicators are pointer-events-none decoration, not exposed to assistive tech"
+  },
+  "enforce": {
+    "role": "none",
+    "ariaRole": false,
+    "tokensOnly": false
+  },
+  "code": {
+    "import": "import { Avatar } from '@composa/ui'",
+    "example": "<Avatar initial=\"H\" color=\"blue\" size=\"default\" />"
+  }
+}
