@@ -402,8 +402,7 @@ table.docs-kv {
   border-collapse: collapse;
   width: 100%;
   font-size: 14px;
-  background: var(--cds-surface);
-  border: 1px solid var(--cds-border-subtle);
+  background: transparent; /* body rows share the page background */
   margin: 4px 0 8px;
 }
 table.docs-kv th,
@@ -435,6 +434,7 @@ table.docs-tc th {
   font-weight: 600;
 }
 table.docs-tc tr:first-child th {
+  background: var(--cds-surface); /* only the header is white */
   border-bottom: 1px solid var(--cds-border-strong);
 }
 table.docs-tc td {
@@ -457,7 +457,7 @@ table.docs-tc tbody tr:not(:first-child):hover {
 .token-table td.token-val code {
   color: var(--cds-text);
 }
-.token-table tbody tr:hover {
+.token-table tbody tr:not(:first-child):hover {
   background: var(--cds-layer);
 }
 table.docs-tc a {
