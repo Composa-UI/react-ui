@@ -435,7 +435,7 @@ table.docs-tc th {
 }
 table.docs-tc tr:first-child th {
   background: var(--cds-surface); /* only the header is white */
-  border-bottom: 1px solid var(--cds-border-strong);
+  border-bottom: 0; /* the white→transparent edge separates header from body */
 }
 table.docs-tc td {
   width: auto;
@@ -449,7 +449,7 @@ table.docs-tc tbody tr:not(:first-child):hover {
   font-weight: 600;
   white-space: nowrap;
   vertical-align: top;
-  border-bottom: 1px solid var(--cds-border-strong);
+  /* inherits the same hairline row rule as every other cell (no thicker stroke) */
 }
 .token-table td {
   color: var(--cds-text-secondary);
