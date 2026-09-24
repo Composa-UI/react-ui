@@ -117,7 +117,7 @@ export function SingleTab({ label, className }: SingleTabProps) {
   return (
     <div className={clsx(
       "flex gap-[4px] h-[24px] items-center px-[8px]",
-      "text-[11px] font-[550] leading-[16px] tracking-[0.055px]",
+      "[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)]",
       "font-[family-name:var(--composa-font-family)] text-c-text",
       className,
     )}>

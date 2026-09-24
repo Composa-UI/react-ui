@@ -39,7 +39,7 @@ export function DeleteConfirmDialog({
     <Modal open={open} onClose={onClose} width={MODAL_WIDTHS.dialog} backdrop>
       <ModalHeader title={title} onClose={onClose} />
       <ModalBody scrollable={false} padding>
-        <p className={clsx(FONT, "text-[11px] font-[450] leading-[16px] tracking-[0.055px] text-c-text")}>
+        <p className={clsx(FONT, "[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text")}>
           {message}
         </p>
       </ModalBody>

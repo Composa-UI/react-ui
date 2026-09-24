@@ -25,7 +25,7 @@ export type ModalWidth = number | string;
 const MODAL_BACKDROP = "rgba(0,0,0,0.4)";
 
 const FONT = "font-[family-name:var(--composa-font-family)]";
-const TITLE_CLASS = clsx(FONT, "text-[11px] font-[550] leading-[16px] tracking-[0.055px] text-c-text");
+const TITLE_CLASS = clsx(FONT, "[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text");
 
 // The card surface. Shared by `Modal` (single-card, painted on the Radix
 // Content) and `ModalCard` (stacked, painted per card) so the two can't drift.

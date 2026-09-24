@@ -267,7 +267,7 @@ const BLEND_GROUPS: string[][] = [
 ];
 
 const FONT = "font-[family-name:var(--composa-font-family)]";
-const BODY = clsx(FONT, "text-[11px] font-[450] leading-[16px] tracking-[0.055px] text-c-text");
+const BODY = clsx(FONT, "[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text");
 const SUBLABEL = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary");
 const SettingsIcon = iconForSemantic("settings");
 const ResizeToFitIcon = iconForSemantic("resize-to-fit");

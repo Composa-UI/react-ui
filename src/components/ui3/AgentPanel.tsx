@@ -447,7 +447,7 @@ function ConversationCard({
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-[4px]">
-          <span className={clsx(FONT, "min-w-0 flex-1 truncate text-[11px] font-[550] leading-[16px] text-c-text")}>{conversation.title}</span>
+          <span className={clsx(FONT, "min-w-0 flex-1 truncate [font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text")}>{conversation.title}</span>
           <PrivateBadge />
         </span>
         <span className={clsx(FONT, "block text-[9px] leading-[14px] text-c-text-tertiary")}>{relativeTime(conversation.updatedAt)}</span>
@@ -533,7 +533,7 @@ function ActionMessage({ message }: { message: Extract<AgentPanelMessage, { type
     <section aria-label={message.title} className="overflow-hidden rounded-c-lg bg-c-bg-secondary ring-1 ring-inset ring-c-border-translucent">
       {message.preview && <div className="aspect-video bg-c-bg-inverse overflow-hidden">{message.preview}</div>}
       <div className="p-[8px]">
-        <h3 className={clsx(FONT, "m-0 text-[11px] font-[550] leading-[16px] text-c-text")}>{message.title}</h3>
+        <h3 className={clsx(FONT, "m-0 [font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text")}>{message.title}</h3>
         <p className={clsx(FONT, "m-0 mt-[2px] text-[9px] leading-[14px] text-c-text-secondary")}>{message.description}</p>
         {!!message.actions?.length && (
           <div className="mt-[8px] flex flex-wrap gap-[4px]">
@@ -754,7 +754,7 @@ export function AgentPanel({
                 and lays out on a single line — no stacked "Private" descriptor. */}
             <header className="h-[40px] shrink-0 px-[8px] border-b border-c-border flex items-center gap-[6px]">
               <IconButton label="Back to chats" onClick={onBack}><ArrowLeft size={16} strokeWidth={1.5} /></IconButton>
-              <h2 className={clsx(FONT, "min-w-0 flex-1 m-0 truncate text-[11px] font-[550] leading-[16px] text-c-text")}>{activeConversation.title}</h2>
+              <h2 className={clsx(FONT, "min-w-0 flex-1 m-0 truncate [font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text")}>{activeConversation.title}</h2>
               <BetaBadge />
               {onConversationOptions && <IconButton label="Conversation options" onClick={() => onConversationOptions(activeConversation.id)}><MoreHorizontal size={16} strokeWidth={1.5} /></IconButton>}
             </header>
@@ -828,7 +828,7 @@ export function AgentPanel({
         ) : (
           <>
             <header className="h-[40px] shrink-0 pl-[16px] pr-[8px] border-b border-c-border flex items-center gap-[6px]">
-              <h2 className={clsx(FONT, "m-0 text-[11px] font-[550] leading-[16px] text-c-text")}>Chats</h2>
+              <h2 className={clsx(FONT, "m-0 [font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text")}>Chats</h2>
               <BetaBadge />
               <span className="flex-1" />
               <IconButton label="New chat" onClick={onNewConversation}><Plus size={16} strokeWidth={1.5} /></IconButton>

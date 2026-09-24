@@ -77,7 +77,7 @@ export const PANEL_W = 290;
 
 const FONT     = "font-[family-name:var(--composa-font-family)]";
 const SUBLABEL = clsx(FONT, "text-[9px] font-[450] leading-[14px] tracking-[0.05em] text-c-text-secondary");
-const TITLE    = clsx(FONT, "text-[11px] font-[550] leading-[16px] tracking-[0.055px] text-c-text");
+const TITLE    = clsx(FONT, "[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text");
 
 // ─── Panel container ──────────────────────────────────────────────────────────
 

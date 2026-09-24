@@ -49,7 +49,7 @@ export interface GeneratedControlsDialogProps {
   onClose: () => void;
 }
 
-const LABEL = "w-[88px] shrink-0 text-[11px] font-[450] leading-[16px] text-c-text-secondary";
+const LABEL = "w-[88px] shrink-0 [font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text-secondary";
 
 function ControlRow({
   control,
@@ -96,7 +96,7 @@ export function GeneratedControlsDialog({ value, open, readOnly = false, trigger
     width={COMPACT_INSPECTOR_DIALOG_WIDTH} anchorSurfaceSelector={COMPOSA_INSPECTOR_SURFACE_SELECTOR}
     elevation={400} triggerClassName="block w-full">
     <div className="flex h-[40px] items-center border-b border-c-border px-[12px]">
-      <h2 className="m-0 flex-1 font-[family-name:var(--composa-font-family)] text-[11px] font-[550] leading-[16px] text-c-text">{value.title}</h2>
+      <h2 className="m-0 flex-1 font-[family-name:var(--composa-font-family)] [font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text">{value.title}</h2>
       <button type="button" aria-label={`Close ${value.title}`} onClick={onClose}
         className="flex size-[24px] items-center justify-center rounded-c-sm text-c-icon-secondary outline-none hover:bg-c-bg-hover focus-visible:ring-1 focus-visible:ring-c-focus-ring">
         <X size={16} strokeWidth={1.5} />

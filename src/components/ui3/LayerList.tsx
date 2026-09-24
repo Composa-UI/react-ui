@@ -294,7 +294,7 @@ function LayerRow({ row, hasChildren, open, focused, renaming, renameDraft, onRe
             event.preventDefault(); event.stopPropagation();
             event.key === "Enter" ? onRenameCommit() : onRenameCancel();
           }}
-          className={clsx(FONT, "relative flex-1 min-w-0 h-[22px] rounded-c-sm border border-c-border-selected bg-c-bg px-[4px] text-[11px] font-[450] leading-[16px] text-c-text outline-none")}
+          className={clsx(FONT, "relative flex-1 min-w-0 h-[22px] rounded-c-sm border border-c-border-selected bg-c-bg px-[4px] [font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text outline-none")}
         />
       ) : (
         <span className={clsx(FONT, "relative flex-1 min-w-0 text-[11px] leading-[16px] truncate", selectionState === "selected" ? "font-[550]" : "font-[450]", isComponent ? "text-accent-component" : "text-c-text")}>{node.name}</span>
@@ -549,14 +549,14 @@ export function LayerList({
       {/* header — the bottom divider only appears once the tree is scrolled (a
           "scrolled under" affordance), not persistently */}
       <div className={clsx("shrink-0 h-[40px] flex items-center px-[16px] border-t border-c-border", scrolled && "border-b border-c-border")}>
-        <span className={clsx(FONT, "text-[11px] font-[550] leading-[16px] text-c-text")}>{title}</span>
+        <span className={clsx(FONT, "[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text")}>{title}</span>
       </div>
       {/* tree — overlay scrollbar (theme-aware thumb), matching inspector/slides panels */}
       <ScrollArea viewportRef={viewportRef} className="py-[4px]" onScroll={st => setScrolled(st > 0)}>
         <div role="tree" aria-label={title} aria-multiselectable={selectedIds !== undefined || undefined} className="relative">
           {!flat.length && <div className={clsx(FONT, "flex h-[88px] flex-col items-center justify-center px-[16px] text-center") }>
-            <span className="text-[11px] font-[550] leading-[16px] text-c-text">No layers</span>
-            <span className="mt-[2px] text-[9px] font-[450] leading-[14px] text-c-text-secondary">Use the toolbar to add elements</span>
+            <span className="[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text">No layers</span>
+            <span className="mt-[2px] [font-size:var(--composa-body-small-size)] [line-height:var(--composa-body-small-line)] [font-weight:var(--composa-body-small-weight)] [letter-spacing:var(--composa-body-small-letter-spacing)] text-c-text-secondary">Use the toolbar to add elements</span>
           </div>}
           {flat.map((rowValue, rowIndex) => {
             const row = internalNames[rowValue.node.id] ? { ...rowValue, node: { ...rowValue.node, name: internalNames[rowValue.node.id] } } : rowValue;

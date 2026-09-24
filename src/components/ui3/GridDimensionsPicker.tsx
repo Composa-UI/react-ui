@@ -69,18 +69,18 @@ export function GridDimensionsPicker({ grid, keyframes, onChange, onAddTrack }: 
       style={{ gridTemplateColumns: `repeat(${previewColumns}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${previewRows}, minmax(0, 1fr))`, gap: 2 } as CSSProperties}
     >
       {Array.from({ length: previewColumns * previewRows }, (_, index) => <span key={index} className="rounded-[2px] bg-c-bg" />)}
-      <span className="absolute inset-0 flex items-center justify-center font-[family-name:var(--composa-font-family)] text-[11px] font-[450] leading-[16px]">{summary}</span>
+      <span className="absolute inset-0 flex items-center justify-center font-[family-name:var(--composa-font-family)] [font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)]">{summary}</span>
     </button>}
   >
     {() => <Menu className="gap-[8px] py-[8px]" >
       <div role="group" aria-label="Grid dimensions" className="flex flex-col gap-[8px]">
         <div>
-          <div className="px-[8px] pb-[3px] font-[family-name:var(--composa-font-family)] text-[9px] font-[450] leading-[14px] text-c-text-secondary">Columns</div>
+          <div className="px-[8px] pb-[3px] font-[family-name:var(--composa-font-family)] [font-size:var(--composa-body-small-size)] [line-height:var(--composa-body-small-line)] [font-weight:var(--composa-body-small-weight)] [letter-spacing:var(--composa-body-small-letter-spacing)] text-c-text-secondary">Columns</div>
           <TrackEditor axis="column" tracks={grid.columns} keyframes={keyframes} onChange={columnsValue => onChange?.({ columns: columnsValue })} />
           <div className="px-[8px] pt-[4px]"><PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add column" disabled={!onAddTrack || grid.columns.length >= GRID_TRACK_LIMIT} onClick={() => grid.columns.length < GRID_TRACK_LIMIT && onAddTrack?.("column")} /></div>
         </div>
         <div>
-          <div className="px-[8px] pb-[3px] font-[family-name:var(--composa-font-family)] text-[9px] font-[450] leading-[14px] text-c-text-secondary">Rows</div>
+          <div className="px-[8px] pb-[3px] font-[family-name:var(--composa-font-family)] [font-size:var(--composa-body-small-size)] [line-height:var(--composa-body-small-line)] [font-weight:var(--composa-body-small-weight)] [letter-spacing:var(--composa-body-small-letter-spacing)] text-c-text-secondary">Rows</div>
           <TrackEditor axis="row" tracks={grid.rows} keyframes={keyframes} onChange={rows => onChange?.({ rows })} />
           <div className="px-[8px] pt-[4px]"><PanelActionBtn icon={<Plus size={16} strokeWidth={1.5} />} label="Add row" disabled={!onAddTrack || grid.rows.length >= GRID_TRACK_LIMIT} onClick={() => grid.rows.length < GRID_TRACK_LIMIT && onAddTrack?.("row")} /></div>
         </div>

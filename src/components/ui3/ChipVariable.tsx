@@ -47,7 +47,7 @@ export function ChipVariable({ value, state = "Default", onDetach, className }: 
       className,
     )}>
       <span className={clsx(
-        "text-[11px] font-[450] leading-[16px] tracking-[0.055px]",
+        "[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)]",
         "font-[family-name:var(--composa-font-family)]",
         "overflow-hidden text-ellipsis whitespace-nowrap max-w-[80px]",
         textColor,

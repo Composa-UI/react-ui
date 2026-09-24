@@ -1333,7 +1333,7 @@ export function ColorDialog({
                 )}
               </PopoverMenu>
             </div>
-            <span className={clsx(FONT, "text-[11px] font-[450] leading-[16px] text-c-text-secondary")}>
+            <span className={clsx(FONT, "[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text-secondary")}>
               {boundSource
                 ? "This layer shows the track, cropped to fill its shape."
                 : "Pick a timeline track to show inside this layer."}

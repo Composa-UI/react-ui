@@ -32,7 +32,7 @@ export interface AutoLayoutSettingsDialogProps {
   onClose: () => void;
 }
 
-const LABEL = "w-[104px] shrink-0 text-[11px] font-[450] leading-[16px] text-c-text-secondary";
+const LABEL = "w-[104px] shrink-0 [font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text-secondary";
 
 function SettingRow({ label, children }: { label: string; children: ReactElement }) {
   return (
@@ -71,7 +71,7 @@ export function AutoLayoutSettingsDialog({
       triggerClassName="inline-flex"
     >
       <div className="flex h-[40px] items-center border-b border-c-border px-[12px]">
-        <h2 className="m-0 flex-1 font-[family-name:var(--composa-font-family)] text-[11px] font-[550] leading-[16px] text-c-text">
+        <h2 className="m-0 flex-1 font-[family-name:var(--composa-font-family)] [font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text">
           Auto layout settings
         </h2>
         <button

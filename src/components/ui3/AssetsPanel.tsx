@@ -24,8 +24,8 @@ import { iconForSemantic } from "./IconSemantics";
 // Presentational: fully controlled with callbacks — no upload/DnD side effects here.
 
 const FONT = "font-[family-name:var(--composa-font-family)]";
-const LABEL = clsx(FONT, "text-[11px] font-[550] leading-[16px] text-c-text");
-const CAPTION = clsx(FONT, "text-[11px] font-[450] leading-[16px] text-c-text-secondary");
+const LABEL = clsx(FONT, "[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text");
+const CAPTION = clsx(FONT, "[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text-secondary");
 
 export type AssetKind = "image" | "video" | "audio";
 export type AssetStatus = "ready" | "uploading" | "error";
@@ -385,7 +385,7 @@ function DropOverlay() {
         <Upload size={18} strokeWidth={2} />
       </div>
       <span className={clsx(LABEL, "!text-c-text-brand")}>Drop to upload</span>
-      <span className={clsx(FONT, "text-[9px] font-[450] leading-[14px] text-c-text-secondary text-center px-[16px]")}>
+      <span className={clsx(FONT, "[font-size:var(--composa-body-small-size)] [line-height:var(--composa-body-small-line)] [font-weight:var(--composa-body-small-weight)] [letter-spacing:var(--composa-body-small-letter-spacing)] text-c-text-secondary text-center px-[16px]")}>
         PNG · JPG · WebP · GIF · MP4 · MOV
       </span>
     </div>

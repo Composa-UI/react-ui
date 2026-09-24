@@ -198,7 +198,7 @@ export function InputField({
   return (
     <div className={clsx("flex flex-col gap-[4px]", className)}>
       {label && (
-        <label htmlFor={id} className="text-[11px] font-[550] leading-[16px] tracking-[0.005em] text-c-text select-none">
+        <label htmlFor={id} className="[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text select-none">
           {label}
         </label>
       )}
@@ -1060,7 +1060,7 @@ export function ColorInput({
   return (
     <div className={clsx("flex flex-col gap-[4px]", fullWidth && "w-full min-w-0", className)}>
       {label && (
-        <span className="text-[11px] font-[550] leading-[16px] tracking-[0.005em] text-c-text select-none">
+        <span className="[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text select-none">
           {label}
         </span>
       )}
