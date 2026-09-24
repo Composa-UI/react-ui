@@ -19,6 +19,7 @@ import {
   slug,
   storybookHref,
   storybookIframeHref,
+  variantsFor,
   routeForComponent,
   GROUP_ORDER,
   type Annotation,
@@ -272,14 +273,34 @@ export function TokenCompliance() {
 // out to the full story for controls / variants / API docs.
 
 function StorybookDemo({ c, theme }: { c: Annotation; theme: Theme }) {
+  const variants = variantsFor(c);
+  const [variant, setVariant] = useState(variants[0]);
+  // If the component's variant set changes (navigating between pages), reset.
+  const current = variants.includes(variant) ? variant : variants[0];
   return (
     <div className="sb-demo">
+      {variants.length > 1 && (
+        <div className="sb-demo-toolbar">
+          <label className="sb-demo-select">
+            <span className="sb-demo-select-label">Variant</span>
+            <div className="sb-demo-select-field">
+              <select value={current} onChange={e => setVariant(e.target.value)}>
+                {variants.map(v => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </label>
+        </div>
+      )}
       <div className="sb-demo-stage">
         <iframe
-          key={theme}
+          key={`${theme}-${current}`}
           title={`${c.component} live demo`}
           className="sb-demo-frame"
-          src={storybookIframeHref(c, theme)}
+          src={storybookIframeHref(c, theme, current)}
           loading="lazy"
           sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
         />
@@ -287,7 +308,7 @@ function StorybookDemo({ c, theme }: { c: Annotation; theme: Theme }) {
       <p className="sb-demo-caption">
         This is the isolated Storybook story — the real component rendered from the design-system
         tokens.{" "}
-        <a href={storybookHref(c)} target="_blank" rel="noreferrer">
+        <a href={storybookHref(c, current)} target="_blank" rel="noreferrer">
           View the full story on Storybook <span aria-hidden>↗</span>
         </a>{" "}
         for controls, variants, and API docs.

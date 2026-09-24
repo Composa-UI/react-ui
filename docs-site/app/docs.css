@@ -395,36 +395,52 @@ a:hover {
   color: var(--cds-link);
 }
 
-/* ── key/value + compliance tables ───────────────────────────────────────── */
+/* ── Tables — Carbon DataTable look ───────────────────────────────────────── */
+/* A white (surface) table elevated on the gray canvas: comfortable 48px rows,
+   left-aligned cells, hairline row rules, no vertical borders. */
 table.docs-kv {
   border-collapse: collapse;
   width: 100%;
   font-size: 14px;
+  background: var(--cds-surface);
+  border: 1px solid var(--cds-border-subtle);
+  margin: 4px 0 8px;
 }
-table.docs-kv th {
+table.docs-kv th,
+table.docs-kv td {
   text-align: left;
+  vertical-align: top;
+  padding: 14px 16px;
+  line-height: 1.45;
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+table.docs-kv tbody tr:last-child > * {
+  border-bottom: 0;
+}
+/* Key/value tables: the first-column label */
+table.docs-kv th {
   color: var(--cds-text-secondary);
   font-weight: 600;
-  padding: 12px 16px 12px 0;
-  vertical-align: top;
   white-space: nowrap;
   width: 1%;
 }
-table.docs-kv td {
-  padding: 12px 0;
-  border-bottom: 1px solid var(--cds-border-subtle);
+
+/* Token compliance: a real column-header data table */
+table.docs-tc th {
+  width: auto;
+  color: var(--cds-text);
 }
-table.docs-tc {
-  margin-top: 8px;
+table.docs-tc tr:first-child {
+  background: var(--cds-canvas); /* Carbon header fill */
+}
+table.docs-tc tr:first-child th {
+  border-bottom: 1px solid var(--cds-border-strong);
 }
 table.docs-tc td {
-  padding: 12px 16px 12px 0;
-  border-bottom: 1px solid var(--cds-border-subtle);
-  font-size: 14px;
   width: auto;
 }
-table.docs-tc td:last-child {
-  font-size: 13px;
+table.docs-tc tbody tr:not(:first-child):hover {
+  background: var(--cds-layer);
 }
 table.docs-tc a {
   color: var(--cds-link);
@@ -638,6 +654,60 @@ table.docs-tc a:hover {
 /* ── Live demo (embedded Storybook story) ────────────────────────────────── */
 .sb-demo {
   margin-bottom: 8px;
+}
+/* Variant dropdown above the demo (Carbon's StorybookDemo selector) */
+.sb-demo-toolbar {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.sb-demo-select {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+.sb-demo-select-label {
+  color: var(--cds-text-secondary);
+  letter-spacing: 0.02em;
+}
+.sb-demo-select-field {
+  position: relative;
+  min-width: 220px;
+}
+.sb-demo-select-field::after {
+  /* chevron */
+  content: "";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  width: 10px;
+  height: 6px;
+  transform: translateY(-50%);
+  background: var(--cds-text);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  pointer-events: none;
+}
+.sb-demo-select select {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  color: var(--cds-text);
+  background: var(--cds-surface);
+  border: 0;
+  border-bottom: 1px solid var(--cds-border-strong);
+  border-radius: 0;
+  padding: 10px 32px 10px 14px;
+  cursor: pointer;
+}
+.sb-demo-select select:hover {
+  background: var(--cds-layer);
+}
+.sb-demo-select select:focus-visible {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
 }
 .sb-demo-stage {
   border: 1px solid var(--cds-border-subtle);
