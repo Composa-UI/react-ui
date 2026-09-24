@@ -733,6 +733,58 @@ function TokenTable({ tokens }: { tokens?: Record<string, unknown> }) {
   );
 }
 
+// Classify one token leaf into a Carbon Style category from its property name
+// (or element, for scalars) and the token it references.
+type StyleCategory = "Color" | "Typography" | "Structure" | "Size" | "Feedback";
+function tokenCategory(element: string, property: string, token: string): StyleCategory {
+  const key = (property || element).toLowerCase();
+  const tv = token.toLowerCase();
+  // Interactive states → Feedback (Carbon's interactive-state color table).
+  if (/(^|[-\s/])(hover|pressed|active|focus(ed)?|selected|disabled|checked|error|success|warning|on|off)($|[-\s/])/.test(key))
+    return "Feedback";
+  if (/pressed|hover|-active|focus-ring|focus-inset/.test(tv)) return "Feedback";
+  // Structure — radius, elevation, shadow, spacing.
+  if (/^(radius|shape|shadow|elevation|spacing|gap|border-?width)$/.test(key) ||
+      /^(radius|elevation|shadow|spacing|space)\b/.test(tv))
+    return "Structure";
+  // Size — explicit dimensions.
+  if (/^(size|width|height|dimension)$/.test(key) || /^(size|sizing)\b/.test(tv)) return "Size";
+  // Typography — font / type tokens.
+  if (/^(font|type|typography|text-style)/.test(tv) || /^(font|typography|type)$/.test(key))
+    return "Typography";
+  return "Color";
+}
+
+// Split a component's tokens into Carbon's Style categories, preserving the
+// element -> { property: token } (or scalar) shape each subset needs for
+// TokenTable. Empty categories are dropped by the caller.
+function categorizeTokens(tokens?: Record<string, unknown>): Record<StyleCategory, Record<string, unknown>> {
+  const cats: Record<StyleCategory, Record<string, unknown>> = {
+    Color: {}, Typography: {}, Structure: {}, Size: {}, Feedback: {},
+  };
+  for (const [element, val] of Object.entries(tokens ?? {})) {
+    if (element === "note") continue;
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      for (const [prop, tok] of Object.entries(val as Record<string, unknown>)) {
+        const bucket = cats[tokenCategory(element, prop, String(tok))];
+        if (!bucket[element]) bucket[element] = {};
+        (bucket[element] as Record<string, unknown>)[prop] = tok;
+      }
+    } else {
+      cats[tokenCategory(element, "", String(val))][element] = val; // scalar
+    }
+  }
+  return cats;
+}
+
+const STYLE_CATEGORY_META: { name: StyleCategory; desc: string }[] = [
+  { name: "Color", desc: "Color tokens for the component's resting state." },
+  { name: "Typography", desc: "Type tokens." },
+  { name: "Structure", desc: "Radius, elevation, and shape tokens." },
+  { name: "Size", desc: "Sizing tokens." },
+  { name: "Feedback", desc: "Interactive-state tokens — hover, focus, active, and toggle states." },
+];
+
 // ── Page footer: prev/next pagination + site footer (Carbon) ────────────────
 const REPO_URL = "https://github.com/Composa-UI/react-ui";
 const BUILT_ON = new Date().toISOString().slice(0, 10);
@@ -970,37 +1022,59 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
 
   // Carbon's Style page: Color/Typography/Structure — Composa is fully
   // token-bound, so its Style is Design tokens + the verified compliance status.
+  // Carbon's Style page enumerates categories (Color / Typography / Structure /
+  // Size / Feedback). Composa derives them from the token references and renders
+  // only the categories a component actually has, so no faked-empty sections.
+  const styleCats = categorizeTokens(c.tokens);
+  const tokenNote = typeof c.tokens?.note === "string" ? (c.tokens.note as string) : "";
+  const categorySections: Sec[] = STYLE_CATEGORY_META.filter(
+    m => Object.keys(styleCats[m.name]).length > 0,
+  ).map(m => ({
+    id: slug(m.name),
+    label: m.name,
+    body: (
+      <>
+        <p className="doc-lede">{m.desc}</p>
+        <TokenTable tokens={styleCats[m.name]} />
+      </>
+    ),
+  }));
+
   const styleSections: Sec[] = [
-    {
-      id: "tokens",
-      label: "Design tokens",
-      body: (
-        <>
-          <p className="doc-lede">
-            {tokensOnly
-              ? "Every visual property binds to a design token — the source is verified hex-free by the annotation contract."
-              : "Mostly token-bound; this component still carries some hardcoded values, listed below as the hardcoded-hex debt to burn down."}
-          </p>
-          <TokenTable tokens={c.tokens} />
-        </>
-      ),
-    },
+    ...(categorySections.length
+      ? categorySections
+      : [
+          {
+            id: "tokens",
+            label: "Design tokens",
+            body: (
+              <p className="doc-lede">
+                {tokensOnly
+                  ? "Fully token-bound — every visual property resolves to a design token from the single source."
+                  : "Mostly token-bound; the remaining hardcoded values are listed under Token compliance."}
+              </p>
+            ),
+          } as Sec,
+        ]),
     {
       id: "compliance",
       label: "Token compliance",
       body: (
-        <p className="muted">
-          {tokensOnly ? (
-            <>
-              <span className="tc-ok">✓ token-only</span> — no hardcoded hex in source.{" "}
-            </>
-          ) : (
-            <>
-              <span className="tc-warn">⚠ hardcoded values</span> present.{" "}
-            </>
-          )}
-          See the <a href="#/status">Status page</a> for every component's compliance.
-        </p>
+        <>
+          <p className="muted">
+            {tokensOnly ? (
+              <>
+                <span className="tc-ok">✓ token-only</span> — no hardcoded hex in source.{" "}
+              </>
+            ) : (
+              <>
+                <span className="tc-warn">⚠ hardcoded values</span> present.{" "}
+              </>
+            )}
+            See the <a href="#/status">Status page</a> for every component's compliance.
+          </p>
+          {tokenNote && <p className="muted">{tokenNote}</p>}
+        </>
       ),
     },
   ];
@@ -1107,8 +1181,9 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
           {tab === "style" && (
             <>
               <PageDescription>
-                How {c.component} is styled — every value below is a design token from the single
-                source, so it reskins and flips light/dark with the system.
+                This page documents {c.component}'s visual specifications — color, structure, and
+                interactive states. Every value is a design token from the single source, so it
+                reskins and flips light/dark with the system.
               </PageDescription>
               <TabBody sections={styleSections} />
             </>
@@ -1137,17 +1212,6 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
                 Live demo
               </h2>
               <StorybookDemo c={c} theme={theme} />
-
-              <h2 className="section-h" id="install">
-                Install &amp; import
-              </h2>
-              <pre>
-                <code>
-                  {c.code.import}
-                  {"\n\n"}
-                  {c.code.example}
-                </code>
-              </pre>
             </div>
           )}
 
