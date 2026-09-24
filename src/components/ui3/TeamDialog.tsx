@@ -23,8 +23,8 @@ import { Avatar, type AvatarColor } from "./Avatar";
 const FONT    = "font-[family-name:var(--composa-font-family)]";
 const HEADING = clsx(FONT, "text-[14px] font-medium leading-[24px] tracking-[-0.006px] text-c-text");
 const VALUE   = clsx(FONT, "text-[11px] font-medium leading-[16px] tracking-[0.055px]");
-const CAPTION = clsx(FONT, "text-[11px] font-[450] leading-[16px] tracking-[0.055px] text-c-text-secondary");
-const LABEL   = clsx(FONT, "text-[11px] font-[450] leading-[16px] tracking-[0.055px]");
+const CAPTION = clsx(FONT, "[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text-secondary");
+const LABEL   = clsx(FONT, "[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)]");
 
 // Multiplayer identity grey (Figma variable color/multiplayergrey). Multiplayer
 // identity colours are fixed and mode-independent — same convention as the fixed
@@ -165,7 +165,7 @@ function RoleControl({
   const MENU_ITEM = clsx(
     "flex items-center gap-[4px] min-h-[24px] mx-[4px] px-[4px] rounded-c-md select-none",
     "cursor-pointer outline-none",
-    FONT, "text-[11px] font-[450] leading-[16px] tracking-[0.055px] text-white",
+    FONT, "[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-white",
     "data-[highlighted]:bg-c-bg-brand",
   );
 
@@ -235,7 +235,7 @@ function MemberRow({
           {member.isYou && <span className="text-c-text-secondary font-[450]"> (You)</span>}
         </span>
         {member.email && (
-          <span className={clsx(FONT, "text-[11px] font-[450] leading-[16px] tracking-[0.055px] text-c-text-secondary truncate")}>
+          <span className={clsx(FONT, "[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text-secondary truncate")}>
             {member.email}
           </span>
         )}

@@ -168,7 +168,7 @@ export function InspectorDialogHeader({ title, actions, onClose, className, ...r
         className,
       )}
     >
-      <span className="font-[family-name:var(--composa-font-family)] flex-1 min-w-0 text-[11px] font-[550] leading-[16px] tracking-[0.055px] text-c-text truncate">
+      <span className="font-[family-name:var(--composa-font-family)] flex-1 min-w-0 [font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text truncate">
         {title}
       </span>
       {actions && <div className="shrink-0 flex items-center gap-[4px]">{actions}</div>}

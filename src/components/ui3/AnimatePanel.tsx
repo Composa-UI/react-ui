@@ -107,7 +107,7 @@ const DEMO_ANIMS: ObjectAnimationItem[] = [
 function LabeledRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-center gap-[8px]">
-      <span className={clsx(FONT, "w-[52px] shrink-0 text-[11px] font-[450] leading-[16px] text-c-text-secondary")}>{label}</span>
+      <span className={clsx(FONT, "w-[52px] shrink-0 [font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text-secondary")}>{label}</span>
       <div className="flex-1 min-w-0">{children}</div>
     </div>
   );
@@ -313,7 +313,7 @@ function durationMs(animation: ObjectAnimationItem) {
  *  handle. `pl-[2px]` keeps it aligned to the card's left edge. */
 function BlockNumberLabel({ n }: { n: number }) {
   return (
-    <div data-animation-block-number={n} className={clsx(FONT, "h-[16px] flex items-center pl-[2px] text-[9px] font-[450] leading-[14px] tracking-[0.045px] text-c-text-secondary")}>{n}</div>
+    <div data-animation-block-number={n} className={clsx(FONT, "h-[16px] flex items-center pl-[2px] [font-size:var(--composa-body-small-size)] [line-height:var(--composa-body-small-line)] [font-weight:var(--composa-body-small-weight)] [letter-spacing:var(--composa-body-small-letter-spacing)] text-c-text-secondary")}>{n}</div>
   );
 }
 
@@ -534,7 +534,7 @@ function ObjectAnimationsSection({ anims, callbacks, settings = { start: "on-cli
                   onToggle={() => { setExpanded(current => current === id ? null : id); setActiveStyleDialog(null); }}
                   onRemove={() => callbacks?.onRemove?.(id)}
                 >
-                  <div className={clsx(FONT, "text-[11px] font-[550] leading-[16px] text-c-text")}>{phaseLabel}</div>
+                  <div className={clsx(FONT, "[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text")}>{phaseLabel}</div>
                   <LabeledRow label="Style">
                     <AnimationStylesDialog
                       open={activeStyleDialog === id}

@@ -46,7 +46,7 @@ export interface ShareScopeOption {
 
 const FONT  = "font-[family-name:var(--composa-font-family)]";
 // body/medium — Inter Medium 11px, matches Figma body text on every row.
-const LABEL = clsx(FONT, "text-[11px] font-[450] leading-[16px] tracking-[0.055px]");
+const LABEL = clsx(FONT, "[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)]");
 
 const HEADER_TITLE: Record<ShareVariant, string> = {
   project: "Share this project",

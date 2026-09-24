@@ -187,7 +187,7 @@ function installedFontsAccessScreen({
   return [
       /* Header — title + close (first child, doubles as the drag handle) */
       <div key="header" className="flex min-h-[40px] shrink-0 items-start gap-[4px] border-b border-c-border pl-[16px] pr-[8px] pt-[12px]">
-        <span className={clsx(FONT, "min-w-0 flex-1 text-[11px] font-[550] leading-[16px] text-c-text")}>
+        <span className={clsx(FONT, "min-w-0 flex-1 [font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text")}>
           Need to use installed fonts?
         </span>
         <button
@@ -205,7 +205,7 @@ function installedFontsAccessScreen({
         <span className="flex size-[40px] shrink-0 items-center justify-center rounded-c-md bg-c-bg-secondary text-c-icon-secondary">
           <MonitorSmartphone size={20} strokeWidth={1.5} />
         </span>
-        <p className={clsx(FONT, "min-w-0 flex-1 text-[11px] font-[450] leading-[16px] tracking-[0.055px] text-c-text-secondary")}>
+        <p className={clsx(FONT, "min-w-0 flex-1 [font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text-secondary")}>
           Composa can list the fonts installed on your device. Continue to let your browser share your installed font
           list. Your fonts never leave your device.
         </p>
@@ -217,7 +217,7 @@ function installedFontsAccessScreen({
           href="https://developer.mozilla.org/en-US/docs/Web/API/Window/queryLocalFonts"
           target="_blank"
           rel="noreferrer noopener"
-          className={clsx(FONT, "text-[11px] font-[450] leading-[16px] text-c-text-brand hover:underline")}
+          className={clsx(FONT, "[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text-brand hover:underline")}
         >
           Learn more
         </a>
@@ -345,7 +345,7 @@ export function FontPickerDialog({
       }) : [
           /* Header — title + close. First child so it doubles as the drag handle. */
           <div key="header" className="flex h-[40px] shrink-0 items-center gap-[4px] border-b border-c-border pl-[16px] pr-[8px]">
-            <span className={clsx(FONT, "min-w-0 flex-1 truncate text-[11px] font-[550] leading-[16px] text-c-text")}>Fonts</span>
+            <span className={clsx(FONT, "min-w-0 flex-1 truncate [font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text")}>Fonts</span>
             <button
               type="button"
               aria-label="Close fonts"
@@ -440,7 +440,7 @@ export function FontPickerDialog({
                   onClick={() => setScreen("access")}
                   className={clsx(
                     FONT,
-                    "flex h-[28px] w-full items-center gap-[8px] rounded-c-md px-[8px] text-left text-[11px] font-[450] leading-[16px] text-c-text hover:bg-c-bg-hover",
+                    "flex h-[28px] w-full items-center gap-[8px] rounded-c-md px-[8px] text-left [font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text hover:bg-c-bg-hover",
                   )}
                 >
                   <MonitorSmartphone size={16} strokeWidth={1.5} className="shrink-0 text-c-icon-secondary" />

@@ -161,7 +161,7 @@ export function SlideListItem({ item, aspectRatio, tabIndex = 0, onNavigate, onR
       <div className={clsx("absolute top-[6px] flex flex-col items-center", item.group && "gap-[4px]", numLeft)}>
         <div className="w-[24px] h-[16px] flex items-center justify-center">
           <span
-            className={clsx("text-[11px] font-[450] leading-[16px] tracking-[0.055px]", item.selected || item.inView ? "text-c-text-brand" : "text-c-text-secondary")}
+            className={clsx("[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)]", item.selected || item.inView ? "text-c-text-brand" : "text-c-text-secondary")}
             style={INTER}
           >
             {item.n}
@@ -304,7 +304,7 @@ export function SlidesPanel({ slides, aspectRatio, title = "Product review", sub
           className="w-full h-[24px] rounded-[6px] border border-c-border bg-c-bg flex items-center justify-center gap-[4px] hover:bg-c-bg-hover"
         >
           <Plus size={14} className="text-c-text" />
-          <span className="text-c-text text-[11px] font-[450] leading-[16px] tracking-[0.055px]" style={INTER}>New slide</span>
+          <span className="text-c-text [font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)]" style={INTER}>New slide</span>
         </button>
       </div>
 

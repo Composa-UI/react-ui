@@ -123,7 +123,7 @@ export function Dropdown({
         leadingIcon ? "px-[4px]" : "pl-[8px]",
       )}>
         <span className={clsx(
-          "text-[11px] font-[450] leading-[16px] tracking-[0.055px] whitespace-nowrap overflow-hidden text-ellipsis",
+          "[font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] whitespace-nowrap overflow-hidden text-ellipsis",
           "font-[family-name:var(--composa-font-family)]",
           textColor,
           valueHighlight,

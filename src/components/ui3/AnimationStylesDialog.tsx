@@ -138,7 +138,7 @@ export function AnimationStylesDialog({
     >
       {/* Header — title + close. First child so it doubles as the drag handle. */}
       <div className="flex items-center h-[40px] shrink-0 pl-[16px] pr-[8px] gap-[4px] border-b border-c-border">
-        <span className={clsx(FONT, "flex-1 min-w-0 text-[11px] font-[550] leading-[16px] text-c-text truncate")}>{title}</span>
+        <span className={clsx(FONT, "flex-1 min-w-0 [font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text truncate")}>{title}</span>
         <button
           type="button"
           aria-label="Close"
