@@ -83,7 +83,7 @@ export function Checkbox({
     : muted
       ? "bg-c-bg-secondary"
       : ghost
-        ? "bg-[#1e1e1e]"
+        ? "bg-[var(--color-bg-overlay)]"
         : isUnchecked
           ? "bg-c-bg-secondary"
           : "bg-c-bg-brand";

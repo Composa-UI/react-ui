@@ -24,7 +24,7 @@
     "two actions"
   ],
   "tokens": {
-    "note": "Deliberately a dark pill: its background (#1e1e1e), separators (#383838), and white text are hardcoded to read on any surface — tracked, so NOT tokensOnly."
+    "note": "Deliberately a dark pill that reads on any surface — its dark background and separators now bind to the theme-independent overlay tokens (--color-bg-overlay / --color-border-overlay), so it is fully token-bound."
   },
   "a11y": {
     "role": "status (polite live region — announced without stealing focus). Scoped to the icon+message content region, not the whole toast, so the CTA labels stay out of the announcement.",
@@ -32,7 +32,8 @@
   },
   "enforce": {
     "role": "status",
-    "ariaRole": true
+    "ariaRole": true,
+    "tokensOnly": true
   },
   "code": {
     "import": "import { Notification } from '@composa/ui'",

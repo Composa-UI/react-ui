@@ -78,6 +78,10 @@
         "value": "#2c2c2c",
         "dark": "#ffffff"
       },
+      "bg-overlay": {
+        "value": "#1e1e1e",
+        "dark": "#1e1e1e"
+      },
       "bg-menu": {
         "value": "#1f1f1f",
         "dark": "#1f1f1f"
@@ -129,6 +133,14 @@
       "border-selected-strong": {
         "value": "#6b4fd1",
         "dark": "#6b4fd1"
+      },
+      "border-selected-subtle": {
+        "value": "#dbd8ff",
+        "dark": "#dbd8ff"
+      },
+      "border-overlay": {
+        "value": "#383838",
+        "dark": "#383838"
       },
       "border-strong": {
         "value": "#2c2c2c",

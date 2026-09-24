@@ -4,8 +4,8 @@ import { type ReactNode } from "react";
 import { useComposaMode } from "./useComposaMode";
 
 // ─── Shared constants ─────────────────────────────────────────────────────────
-// Tooltip always renders dark (#1e1e1e) — it floats above any surface.
-const BG = "#1e1e1e";
+// Tooltip always renders on the dark overlay surface — it floats above any surface.
+const BG = "var(--color-bg-overlay)";
 const SHADOW = "drop-shadow-[0px_0px_0.25px_rgba(0,0,0,0.15),0px_5px_6px_rgba(0,0,0,0.13),0px_1px_1.5px_rgba(0,0,0,0.1)]";
 
 // ─── Arrow ────────────────────────────────────────────────────────────────────
@@ -15,7 +15,7 @@ function TooltipArrow() {
     <TooltipPrimitive.Arrow
       width={12}
       height={6}
-      className="fill-[#1e1e1e]"
+      className="fill-[var(--color-bg-overlay)]"
     />
   );
 }
@@ -302,7 +302,7 @@ export function TooltipLink({
       {/* CTA buttons with separators — shrink-0 + whitespace-nowrap prevents wrapping/stretching */}
       {displayCtas.map((c, i) => (
         <div key={c} className="flex items-center self-stretch shrink-0">
-          <div className="w-px self-stretch" style={{ backgroundColor: "#383838" }} />
+          <div className="w-px self-stretch" style={{ backgroundColor: "var(--color-border-overlay)" }} />
           <button
             onClick={() => onCtaClick?.(c)}
             className={clsx(

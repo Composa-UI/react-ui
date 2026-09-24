@@ -31,7 +31,7 @@
     "idle": {
       "text": "text/secondary"
     },
-    "note": "the button variant's focus ring is a hardcoded value, not yet a token — tracked, not tokensOnly."
+    "note": "Fully token-bound: the button variant's active/selected ring binds to --color-border-selected-subtle, and every other fill, text, and border resolves to a DS token."
   },
   "a11y": {
     "role": "radio",
@@ -40,7 +40,8 @@
   },
   "enforce": {
     "role": "radio",
-    "ariaRole": true
+    "ariaRole": true,
+    "tokensOnly": true
   },
   "code": {
     "import": "import { RadioButton } from '@composa/ui'",

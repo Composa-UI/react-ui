@@ -18,7 +18,7 @@
   },
   "states": ["hidden", "shown"],
   "tokens": {
-    "note": "Deliberately dark: the background and arrow are hardcoded #1e1e1e so the tooltip floats above any surface — tracked, so NOT tokensOnly."
+    "note": "Deliberately dark so it floats above any surface — the background/arrow (--color-bg-overlay) and divider (--color-border-overlay) are theme-independent overlay tokens, so it is fully token-bound."
   },
   "a11y": {
     "role": "tooltip (Radix)",
@@ -27,7 +27,8 @@
   },
   "enforce": {
     "role": "tooltip",
-    "ariaRole": false
+    "ariaRole": false,
+    "tokensOnly": true
   },
   "code": {
     "import": "import { Tooltip } from '@composa/ui'",
