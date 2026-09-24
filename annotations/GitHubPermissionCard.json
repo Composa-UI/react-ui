@@ -1,0 +1,81 @@
+{
+  "component": "GitHubPermissionCard",
+  "category": "Feedback",
+  "archetype": "composite",
+  "intent": "Connector permission card for a pending GitHub tool call: shows the request JSON with Run / Always run / Cancel, then collapses to a decided summary row.",
+  "guidance": "Render this when a GitHub tool call is awaiting the user's decision. The animated spinner marks the pending state, and the Request panel prints the exact JSON so the user can audit the call before allowing it. Run executes once, Always run whitelists the tool, Cancel dismisses — each collapses the card to one summary row stamped with the outcome. The card is presentational: wire onRun / onAlwaysRun / onCancel to the host's permission system; it owns only the decided-label transition. Pass params that mirror the real call — omitting them falls back to demo values that are unsafe to ship. It renders a plain div, so add role=\"group\" and a name for assistive tech.",
+  "anatomy": [
+    { "part": "Connector header", "description": "Github glyph (c-icon) + \"GitHub\" label (c-text), divided from the body by a bottom border (c-border)." },
+    { "part": "Tool row", "description": "Animated LoaderCircle (c-icon-secondary) signalling 'awaiting permission', the truncating tool name (c-text), and a trailing expand chevron (c-icon)." },
+    { "part": "Request panel", "description": "Inset card (bg-c-bg-secondary) with a \"Request\" label, a Copy-request button, and the pretty-printed JSON params — keys in c-text, string values in c-text-brand, number values in --color-accent-component." },
+    { "part": "Permission actions", "description": "Run (Primary Button) then Always run and Cancel (Secondary Buttons), inset under the request." },
+    { "part": "Decided summary row", "description": "Replaces the rows above once decided: a static LoaderCircle (c-icon-tertiary) + tool name + the outcome label \"Ran\" / \"Always run\" / \"Cancelled\" (c-text-tertiary)." }
+  ],
+  "use_when": [
+    "A GitHub tool call needs the user's explicit permission before it runs.",
+    "You want the request JSON visible and auditable before Run / Always run / Cancel."
+  ],
+  "dont_use_when": [
+    "The result is already produced and only needs placement — use an action card.",
+    "No decision is required — render the agent response directly."
+  ],
+  "slots": {},
+  "states": [
+    "pending",
+    "decided"
+  ],
+  "tokens": {
+    "surface": {
+      "radius": "rounded-c-lg",
+      "ring": "c-border (ring-1 ring-inset)"
+    },
+    "header": {
+      "divider": "border-c-border",
+      "icon": "c-icon",
+      "label": "c-text"
+    },
+    "toolRow": {
+      "spinnerPending": "c-icon-secondary (animate-spin)",
+      "spinnerDecided": "c-icon-tertiary",
+      "toolName": "c-text",
+      "chevron": "c-icon",
+      "decisionLabel": "c-text-tertiary"
+    },
+    "requestPanel": {
+      "radius": "rounded-c-md",
+      "bg": "c-bg-secondary",
+      "ring": "c-border",
+      "label": "c-text-secondary",
+      "copyButton": "c-icon-secondary, radius rounded-c-sm, hover bg-c-bg-hover, focus-visible ring c-focus-ring",
+      "jsonKeysAndBraces": "c-text",
+      "jsonStringValue": "c-text-brand",
+      "jsonNumberValue": "var(--color-accent-component)"
+    },
+    "type": {
+      "font": "var(--composa-font-family)",
+      "mono": "var(--font-family-mono)",
+      "headerAndToolName": "13px / 22px, weight 550, tracking -0.032px",
+      "label": "11px / 16px, weight 450, tracking 0.055px",
+      "json": "11px / 18px, tracking 0.055px",
+      "decisionLabel": "11px / 16px, weight 450"
+    },
+    "actions": "Button variant Primary (Run) + Secondary (Always run, Cancel), size default",
+    "note": "Rendered styling binds only c-* tokens and CSS vars; number values use the token-backed var(--color-accent-component). A source comment flags candidate syntax colours (brand violet #6b4fd1 for strings, magenta #ea10ac for numbers) pending a --color-c-syntax-* token. Because those #hex literals appear in the file, tokensOnly is set false."
+  },
+  "a11y": {
+    "role": "none rendered — the card, header, and rows are plain <div>s; add role=\"group\" and an accessible name to expose it as a labelled group.",
+    "copyButton": "<button> with aria-label=\"Copy request\".",
+    "actions": "Run / Always run / Cancel are real <button>s with visible text labels (via Button).",
+    "icons": "Github, LoaderCircle, and ChevronDown are unlabelled decorative glyphs; the spinner conveys the pending state visually only.",
+    "focus": "copy button shows a focus-visible ring (c-focus-ring); Buttons carry their own focus styles."
+  },
+  "enforce": {
+    "role": "group",
+    "ariaRole": false,
+    "tokensOnly": false
+  },
+  "code": {
+    "import": "import { GitHubPermissionCard } from '@composa/ui'",
+    "example": "<GitHubPermissionCard\n  toolName=\"list_issues\"\n  params={[\n    { key: \"owner\", value: \"octocat\", type: \"string\" },\n    { key: \"perPage\", value: 1, type: \"number\" },\n  ]}\n  onRun={() => runTool()}\n  onAlwaysRun={() => allowAlways()}\n  onCancel={() => dismiss()}\n/>"
+  }
+}

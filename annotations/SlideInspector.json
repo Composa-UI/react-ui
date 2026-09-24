@@ -1,0 +1,57 @@
+{
+  "component": "SlideInspector",
+  "category": "Panels",
+  "archetype": "composite",
+  "intent": "The slides-mode right rail: a fixed multiplayer/tabs header and slide-title bar over a scrolling Template style + Background stack.",
+  "guidance": "Mount as the right rail in slides mode. The multiplayer/tabs header and slide-title bar stay fixed while Template style and Background scroll beneath a hover-reveal white overlay thumb. Colours flow through the slides-* tokens shared with SlidesPanel, but the template preview swatch (#e95000/#ffcd00/#100f10) and the gradient fill icon still carry literal hex — tokenise before shipping. The component owns its own tab and fill-type state and takes no props, so the slide name, template, and colour values are hardcoded demo data; lift them to controlled props to wire real content. Give the icon-only buttons (Play, chevrons, Contrast) aria-labels — the editor's e2e suite locates kit surfaces by role/label.",
+  "anatomy": [
+    { "part": "Header (multiplayer + tabs)", "description": "Fixed top zone: avatar menu, Play/present split, Share button, then the Design / Prototype tab row and 100% zoom control." },
+    { "part": "Slide title bar", "description": "Fixed 48px row — slide name (\"Slide 1\") on the left, a Contrast toggle button on the right." },
+    { "part": "Scroll region", "description": "The section stack below the fixed chrome; a hover/scroll-reveal white overlay thumb, no layout shift." },
+    { "part": "Template style section", "description": "40px header + a full-width trigger: three-colour preview swatch, name (\"Radicle\") over typography (\"Whyte Inktrap, Inter\"), and a chevron." },
+    { "part": "Background section", "description": "40px header + a Solid / Gradient / Image segmented control over a colour-chit trigger (\"Color 1\")." }
+  ],
+  "use_when": [
+    "Rendering the right rail when a slide/composition is the active selection.",
+    "You want the Figma-fidelity slides inspector (multiplayer header, Design/Prototype tabs, Template style, Background)."
+  ],
+  "dont_use_when": [
+    "An element is selected — use the element PropertyPanel / Inspector instead.",
+    "You need controlled, host-wired inspector data now — this rail is a self-contained fidelity study with hardcoded values."
+  ],
+  "slots": {},
+  "states": [
+    "default",
+    "scrolled (overlay thumb reveals on hover/scroll)",
+    "tab: design | prototype (active tab)",
+    "fill: solid | gradient | image (selected fill type)"
+  ],
+  "tokens": {
+    "surface": {
+      "bg": "bg-slides-bg",
+      "border": "border-slides-border",
+      "left edge": "border-slides-hairline"
+    },
+    "accent": {
+      "share": "bg-slides-accent",
+      "avatar": "bg-slides-avatar",
+      "active tab / segmented track": "bg-slides-surface",
+      "colour chit": "bg-slides-chit"
+    },
+    "note": "Text uses white/opacity utilities (text-white, text-white/70, text-black/90), not tokens; radii (rounded-[5px], rounded-[2.667px]) and type (Inter via inline style, text-[11px]/[13px]) are hardcoded; the template preview swatch hardcodes #e95000/#ffcd00/#100f10 and the gradient fill icon hardcodes #fff."
+  },
+  "a11y": {
+    "role": "none — bare <div> rail; no landmark role rendered",
+    "labels": "icon-only buttons (Play, chevrons, Contrast) have no aria-label — accessibility gap",
+    "tabs": "Design / Prototype are <button>s with visible text but no role=tab / aria-selected"
+  },
+  "enforce": {
+    "role": "complementary",
+    "ariaRole": false,
+    "tokensOnly": false
+  },
+  "code": {
+    "import": "import { SlideInspector } from '@composa/ui'",
+    "example": "<SlideInspector />"
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "component": "GitHubToolResultCard",
+  "category": "Feedback",
+  "archetype": "composite",
+  "intent": "Connector result card for a completed GitHub tool call: a GitHub header, the tool name marked done with a brand-colored success check, and an optional result summary below.",
+  "guidance": "Render this once a GitHub tool call has completed; the brand CircleCheck (c-text-brand) is fixed, so the card only depicts success — pass GitHubPermissionCard for the pending decision, and a different surface for errors. The trailing chevron is decorative: the card wires no onClick, aria-expanded, or expand/collapse, so control the summary yourself by passing or omitting children. toolName sits on one truncating line — keep it the raw function name (e.g. get_me). The GitHub mark is lucide Github, never a raster octocat. It renders a plain div with no role, so add role=\"group\" and an accessible name at the host layer if it must be announced.",
+  "anatomy": [
+    { "part": "Connector header", "description": "Github glyph (c-icon) + \"GitHub\" label (c-text), divided from the body by a bottom border (c-border)." },
+    { "part": "Tool row", "description": "A brand-colored CircleCheck (c-text-brand) marking the call completed, the truncating tool name (c-text), and a trailing decorative chevron (c-icon)." },
+    { "part": "Result summary", "description": "Optional region below the tool row that renders children (the tool's output); shown only when children are passed." }
+  ],
+  "use_when": [
+    "Reporting a completed GitHub tool call in the agent thread, after any permission step.",
+    "You want a compact connector result with the tool name and an optional output summary."
+  ],
+  "dont_use_when": [
+    "The tool call is still awaiting the user's decision — use GitHubPermissionCard.",
+    "The call is pending or errored — this card only renders the completed, success state."
+  ],
+  "slots": {
+    "children": "Optional result summary rendered beneath the tool row (e.g. the tool's output); omit to show just the header + tool row."
+  },
+  "states": [],
+  "tokens": {
+    "surface": {
+      "radius": "rounded-c-lg",
+      "ring": "c-border (ring-1 ring-inset)",
+      "overflow": "hidden"
+    },
+    "header": {
+      "divider": "border-c-border",
+      "icon": "c-icon",
+      "label": "c-text"
+    },
+    "toolRow": {
+      "successCheck": "c-text-brand",
+      "toolName": "c-text",
+      "chevron": "c-icon"
+    },
+    "type": {
+      "font": "var(--composa-font-family)",
+      "headerAndToolName": "13px / 22px, weight 550, tracking -0.032px"
+    },
+    "note": "Rendered styling binds only c-* tokens and var(--composa-font-family); no #hex literals, so tokensOnly is true. Spacing and sizing are hardcoded: header px 12px / py 8px, tool row px 8px / py 8px, summary px 12px / pb 10px, gap 8px; 24px icon frames with an 18px Github / CircleCheck glyph and a 16px chevron (strokeWidth 1.5)."
+  },
+  "a11y": {
+    "role": "none rendered — the card, header, and rows are plain <div>s; add role=\"group\" and an accessible name to expose it as a labelled group.",
+    "chevron": "decorative only — the card renders no expand/collapse control, button, or aria-expanded, so the chevron toggles and announces nothing.",
+    "icons": "Github and CircleCheck are unlabelled decorative glyphs; the check conveys the completed state visually only.",
+    "toolName": "truncates on one line (min-w-0 truncate) — expose the full name elsewhere if it may clip."
+  },
+  "enforce": {
+    "role": "group",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { GitHubToolResultCard } from '@composa/ui'",
+    "example": "<GitHubToolResultCard toolName=\"get_me\">\n  Signed in as octocat.\n</GitHubToolResultCard>"
+  }
+}

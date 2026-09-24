@@ -1,0 +1,54 @@
+{
+  "component": "WorkedLabel",
+  "category": "Feedback",
+  "archetype": "primitive",
+  "intent": "Agent work indicator above a response: animated \"Thinking…\" while running, then an expandable \"Worked for {seconds}\" that reveals the reasoning steps.",
+  "use_when": [
+    "Above an agent response, to show it is working (thinking) or how long it worked (worked for {seconds}).",
+    "When the reasoning steps should collapse behind a disclosure the reader can expand."
+  ],
+  "dont_use_when": [
+    "A transient app status or alert unrelated to agent reasoning — use Notification.",
+    "A fixed status or duration with no steps to reveal — use plain label text."
+  ],
+  "slots": {},
+  "states": [
+    "thinking (bouncing dots + \"Thinking…\", disabled, not expandable)",
+    "worked (collapsed, \"Worked for {seconds}\" + chevron)",
+    "expanded (chevron rotated 180, steps list revealed)",
+    "hover (chevron icon-tertiary -> icon-secondary)",
+    "focus-visible"
+  ],
+  "tokens": {
+    "text": {
+      "label": "c-text-secondary (\"Thinking…\" / \"Worked\")",
+      "duration": "c-text-tertiary (\" for {seconds}\")",
+      "steps": "c-text-tertiary"
+    },
+    "icon": {
+      "dots": "c-icon-tertiary",
+      "chevron": "c-icon-tertiary, group-hover c-icon-secondary"
+    },
+    "border": { "steps-rule": "c-border (left rule on steps list)" },
+    "focus": { "ring": "c-focus-ring", "radius": "rounded-c-sm" },
+    "font": { "family": "--composa-font-family" },
+    "note": "Type (13px/22px and 11px/18px, weight 450, tracking -0.032px), gaps (2-6px), dot size 4px, chevron size 14, and bounce timing (0.9s duration, 0.15s per-dot stagger) are hardcoded, not tokens."
+  },
+  "a11y": {
+    "role": "button (native <button>)",
+    "keyboard": ["Enter", "Space"],
+    "aria-expanded": "reflects expanded in the worked state; omitted (undefined) while thinking.",
+    "disabled": "the button is disabled while thinking, removing it from the tab order.",
+    "hidden": "the bouncing-dots span is aria-hidden.",
+    "focus": "focus-visible ring bound to the focus-ring token."
+  },
+  "enforce": {
+    "role": "button",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { WorkedLabel } from '@composa/ui'",
+    "example": "<WorkedLabel seconds=\"16s\" steps={[\"Reading context...\", \"Formulating a response...\"]} />"
+  }
+}

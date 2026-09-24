@@ -1,0 +1,45 @@
+{
+  "component": "Panel",
+  "category": "Panels",
+  "archetype": "composite",
+  "intent": "The right-rail surface — a fixed-width bordered column that stacks the panel-section children it is given, top-to-bottom.",
+  "guidance": "Panel owns only the surface: a fixed 290px width, the bg/default ground, a 1px inset hairline ring, and top-to-bottom flex stacking. It adds no header, scroll, or inner padding — compose it from PanelSection children and wrap it in a ScrollArea when the stack overflows. Style with the c-* tokens so light and dark track. Panel sets no ARIA role, so label the rail at the host level or let each PanelSection opt into a region landmark. The 290px width is deliberate (widened from 240 so two-column numeric field rows stop truncating); override it via className only when a host genuinely needs a different rail.",
+  "anatomy": [
+    { "part": "Surface", "description": "The 290px-wide column: bg/default ground with a 1px inset hairline ring in border/translucent; lays children out with flex-col." },
+    { "part": "Section stack", "description": "The children, stacked top-to-bottom in the column — PanelSection rows and field rows in the order given." }
+  ],
+  "use_when": [
+    "Building a right-rail inspector or sidebar by stacking PanelSection children.",
+    "You want a fixed-width bordered surface whose ground and border track light/dark via tokens."
+  ],
+  "dont_use_when": [
+    "You need the header plus fixed overlay-scrollbar shell — use Inspector.",
+    "The surface must float above content with edge-aware placement — use an overlay/dialog primitive."
+  ],
+  "slots": {
+    "children": "The stacked panel content, rendered top-to-bottom in the column (PanelSection rows and field rows).",
+    "className": "Host-supplied class overrides merged onto the surface (e.g. a non-default width)."
+  },
+  "states": [],
+  "tokens": {
+    "surface": {
+      "bg": "bg/default",
+      "ring": "border/translucent"
+    },
+    "note": "290px fixed width (PANEL_W) applied as an inline style — a hardcoded dimension, not a token; the ring is a 1px inset hairline."
+  },
+  "a11y": {
+    "role": "none — renders a plain div surface and sets no ARIA role.",
+    "landmark": "Semantics come from the host (wrap or label the rail) or from each PanelSection opting into a region landmark.",
+    "label": "Panel takes no aria-label of its own; label the rail at the composition/host level."
+  },
+  "enforce": {
+    "role": "none",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { Panel } from '@composa/ui'",
+    "example": "<Panel>\n  <PanelSection title=\"Position\">…</PanelSection>\n  <PanelSection title=\"Fill\">…</PanelSection>\n</Panel>"
+  }
+}

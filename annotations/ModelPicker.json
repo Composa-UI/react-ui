@@ -1,0 +1,49 @@
+{
+  "component": "ModelPicker",
+  "category": "Inputs",
+  "archetype": "primitive",
+  "intent": "Compact stroke-free composer-toolbar pill that shows the active model and opens the model menu; the trigger control only.",
+  "guidance": "Render one per composer as the trigger for the model menu: the pill shows the active model and reports aria-haspopup=\"menu\", but the menu itself is host-owned (a PopoverMenu the host wires up), so keep placement, options, and selection there. Pass the committed provider label as `value` (e.g. Auto, Claude, OpenAI) — the selected provider travels with the turn, so reflect the real selection here, never a guess. Route `onClick` to open the host menu and set `disabled` when no menu can open, which suppresses onClick and dims the pill. Don't recolor it: it is deliberately borderless and binds to theme tokens.",
+  "anatomy": [
+    { "part": "Value label", "description": "The active model name (the `value` prop, default \"Default\"); 11px/16px medium text bound to c-text." },
+    { "part": "Chevron", "description": "12px ChevronDown in c-icon-secondary signalling the pill opens the model menu." }
+  ],
+  "use_when": [
+    "In the composer toolbar, to surface and change the active model/provider."
+  ],
+  "dont_use_when": [
+    "You need the model list itself or selection handling — the menu is host-owned (PopoverMenu); this is only the trigger.",
+    "A bordered value selector inside a panel form — use Dropdown."
+  ],
+  "slots": {},
+  "states": [
+    "default",
+    "hover",
+    "focus-visible",
+    "disabled"
+  ],
+  "tokens": {
+    "value": { "font": "composa-font-family (var(--composa-font-family))", "color": "c-text (text-c-text)" },
+    "chevron": { "color": "c-icon-secondary (text-c-icon-secondary)" },
+    "hover": { "bg": "c-bg-hover (hover:bg-c-bg-hover)" },
+    "focus": { "ring": "c-focus-ring (focus-visible:ring-1 ring-c-focus-ring)" },
+    "shape": { "radius": "c-full (rounded-c-full)" },
+    "note": "Height h-[24px], gap-[2px], padding pl-[8px]/pr-[4px], label 11px/16px weight 550 tracking 0.055px, chevron size 12 strokeWidth 2, and disabled opacity-60 are hardcoded arbitrary values, not spacing/type tokens. No hex literal, so color and shape stay token-bound."
+  },
+  "a11y": {
+    "role": "button (native <button type=button>; no explicit role attribute).",
+    "haspopup": "aria-haspopup=\"menu\" signals it opens the host-owned model menu.",
+    "label": "aria-label=\"Model: {value}\" names the control and announces the active model.",
+    "disabled": "disabled attribute; onClick is suppressed and cursor-not-allowed/opacity-60 reflect it.",
+    "chevron": "decorative glyph; the value text conveys the current model."
+  },
+  "enforce": {
+    "role": "button",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { ModelPicker } from '@composa/ui'",
+    "example": "<ModelPicker value=\"Claude\" onClick={openModelMenu} />"
+  }
+}

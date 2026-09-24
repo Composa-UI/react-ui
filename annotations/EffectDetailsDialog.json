@@ -1,0 +1,101 @@
+{
+  "component": "EffectDetailsDialog",
+  "category": "Overlays",
+  "archetype": "overlay",
+  "intent": "A non-modal inspector dialog for editing one media effect: its type, and either the shadow position/blur/spread/color/opacity or a blur-only radius, anchored beside the inspector rail.",
+  "guidance": "Anchor it to the effect's row with `trigger`; it docks to the inspector surface's left edge (8px gutter) so it clears the rail wherever the trigger sits. It is non-modal and does not trap focus, so the canvas stays live behind it and Escape closes. The rendered field set is the capability boundary: shadow types (Drop/Inner) expose position, blur, spread, color, and opacity; blur types (Layer/Background) expose only Blur; and only Drop shadow adds the show-behind-transparent toggle, so passing shadow bindings to a blur effect makes no phantom controls. Opening the nested color picker sets `blockOutsideDismiss`, so a click inside it won't dismiss the dialog. Pass `keyframes` only for controls the host actually animates.",
+  "anatomy": [
+    {
+      "part": "Header",
+      "description": "40px title bar with a bottom border; holds the type dropdown, the visibility toggle, and Close."
+    },
+    {
+      "part": "Effect-type dropdown",
+      "description": "Leading Dropdown opening a checkmark menu of the four effect types (Drop shadow, Inner shadow, Layer blur, Background blur)."
+    },
+    {
+      "part": "Visibility toggle",
+      "description": "Eye / eye-off button that shows or hides the effect (aria-label reflects the current state)."
+    },
+    {
+      "part": "Close",
+      "description": "X button that dismisses the dialog."
+    },
+    {
+      "part": "Body",
+      "description": "Padded field column (12px inset, 4px row gap) below the header."
+    },
+    {
+      "part": "Field rows",
+      "description": "Labeled control rows: Position (X/Y pair), Blur, Spread, Color, and Opacity for shadows, or a single Blur row for blur types; each shows a keyframe diamond when the host supplies a binding."
+    },
+    {
+      "part": "Show-behind-transparent",
+      "description": "Drop-shadow-only checkbox under the fields."
+    }
+  ],
+  "use_when": [
+    "Editing one media effect's parameters from a selected effect row in the inspector.",
+    "A shadow (drop/inner) or blur (layer/background) needs inline numeric and color controls beside the rail."
+  ],
+  "dont_use_when": [
+    "A blocking confirmation is needed — use a modal Dialog.",
+    "Managing the ordered effect list or Add-effect flow — that lives in the inspector's Effects section."
+  ],
+  "variants": {
+    "type": [
+      "Drop shadow",
+      "Inner shadow",
+      "Layer blur",
+      "Background blur"
+    ]
+  },
+  "slots": {
+    "trigger": "The control the dialog anchors to and launches from (e.g. the effect-type Dropdown in the panel row).",
+    "keyframes": "Host-owned motion bindings; each supplied control (position/blur/spread/color/opacity) exposes a keyframe diamond, omitted ones expose none."
+  },
+  "states": [
+    "open",
+    "closed",
+    "shadow type (Drop/Inner): position, blur, spread, color, opacity rows",
+    "blur type (Layer/Background): a single Blur row",
+    "Drop shadow: adds the show-behind-transparent checkbox",
+    "hidden: visibility toggled off (eye-off)",
+    "color picker open: nested ColorDialog; blocks outside dismiss"
+  ],
+  "tokens": {
+    "Surface": {
+      "background": "c-bg",
+      "radius": "c-lg",
+      "shadow": "c-500",
+      "elevation": "--elevation-400"
+    },
+    "Header": {
+      "border": "c-border"
+    },
+    "Field label": {
+      "color": "c-text-secondary"
+    },
+    "Header buttons": {
+      "icon": "c-icon-secondary",
+      "hoverBackground": "c-bg-hover",
+      "radius": "c-sm"
+    },
+    "note": "Field labels use hardcoded type (text-[11px] / leading-[16px] / font-[450]), not a type token. Effect color falls back to the literal value #000000 (a data default, not a styling color); because a #hex literal is present in the source, tokensOnly is false. Surface, border, and icon colors all bind to c-* tokens."
+  },
+  "a11y": {
+    "role": "dialog (non-modal — aria-label \"Effect details\", aria-modal false; the inspector dialog does not trap focus). Escape closes it.",
+    "visibilityToggle": "<button> whose aria-label is \"Hide effect\" / \"Show effect\", reflecting current visibility.",
+    "close": "<button aria-label=\"Close\">.",
+    "fields": "Each numeric/color input carries an ariaLabel (Position X/Y, Blur, Spread, Effect color, Opacity); the type menu marks the active option with a checkmark."
+  },
+  "enforce": {
+    "role": "dialog",
+    "ariaRole": false,
+    "tokensOnly": false
+  },
+  "code": {
+    "import": "import { EffectDetailsDialog } from '@composa/ui'",
+    "example": "<EffectDetailsDialog open={open} value={{ type: 'Drop shadow', visible: true, x: 0, y: 4, blur: 8, spread: 0, color: '#000000', opacity: 25 }} trigger={<Dropdown value=\"Drop shadow\" hug />} onChange={patch => update(patch)} onClose={close} />"
+  }
+}

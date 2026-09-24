@@ -1,0 +1,75 @@
+{
+  "component": "AnimatePanel",
+  "category": "Panels",
+  "archetype": "composite",
+  "intent": "The Animate tab body: two always-present sections — Comp transition and Object animations — for authoring a slide's transition and its per-object build/action animations.",
+  "guidance": "Both sections stay co-present inside a single ScrollArea; the host owns the data model and wires callbacks, the panel only renders and emits. Selecting an object tints every card that belongs to it, but only an exact timeline preset selection (focused) auto-expands one. Reorder via drag: visible \"With\" targets join a simultaneous rank, plus-line spaces create a new sequential rank. Render what the host wired — the Easing row appears only with onEasingChange, \"Custom…\" only with onCustomEasingRequest, and the Start/Delay footer plus settings icons only when animationDelay is on (default off). Route Custom easing back to the one canonical Easing inspector rather than nesting a curve editor.",
+  "anatomy": [
+    { "part": "Scroll area", "description": "Vertical scroll container wrapping both sections (ScrollArea)." },
+    { "part": "Comp transition section", "description": "Top PanelSection; a None row when unset, else the expandable transition card. Settings right-action only when animationDelay is on." },
+    { "part": "Transition card", "description": "Collapsed: icon + style name + duration badge. Expanded: Style, Direction (Push/Slide/Wipe), Easing, Duration rows + full-width \"Apply to all compositions\" button." },
+    { "part": "Object animations section", "description": "Bottom PanelSection with Play-all right-action (disabled when empty) and a gated settings action." },
+    { "part": "Add Action button", "description": "Persistent full-width Secondary button opening the Build in / Action / Build out phase menu; disabled when no phases are addable." },
+    { "part": "Empty state", "description": "Helper text when no cards, or a direct-keyframe count with a \"Show in timeline\" link." },
+    { "part": "Sequence list", "description": "Ordered ranks with a muted block-number label per rank, dashed plus-line insertion spaces, and a \"With\" simultaneous-drop target during drag." },
+    { "part": "Animation card", "description": "Per-animation row: hover-revealed drag grip, type icon, element name, duration pill (collapsed); phase subheader, contextual Style/Duration/Easing/Direction/Delivery/Intensity rows, and trash button (expanded)." },
+    { "part": "Sequence connector", "description": "Vertical line between adjacent sequential ranks that expands on hover into an \"After …ms\" delay control." },
+    { "part": "Start & Delay footer", "description": "Gated (animationDelay) Start + Delay rows pinned below the list." }
+  ],
+  "use_when": [
+    "Building the editor's Animate tab beside the Design inspector.",
+    "Authoring a slide transition and per-object build-in / action / build-out animations, including their sequence order."
+  ],
+  "dont_use_when": [
+    "Editing direct property keyframes — those stay timeline- and Design-inspector-owned.",
+    "You need the generic capability-driven property surface — use the Design inspector / PropertyPanel."
+  ],
+  "slots": {},
+  "states": [
+    "collapsed",
+    "expanded",
+    "selected",
+    "focused",
+    "dragging",
+    "empty"
+  ],
+  "tokens": {
+    "surface": {
+      "bg": "bg/default (bg-c-bg)",
+      "bg hover": "bg/hover (bg-c-bg-hover)",
+      "bg selected": "bg/selected (bg-c-bg-selected)",
+      "bg secondary": "bg/secondary (bg-c-bg-secondary)",
+      "border": "border/default (border-c-border)",
+      "border selected": "border/selected (border-c-border-selected)",
+      "radius": "radius/md · radius/sm · radius/xs (rounded-c-md/-sm/-xs)"
+    },
+    "text": {
+      "primary": "text/default (text-c-text)",
+      "secondary": "text/secondary (text-c-text-secondary)",
+      "icon": "icon/default (text-c-icon)",
+      "icon secondary": "icon/secondary (text-c-icon-secondary)"
+    },
+    "type": {
+      "family": "var(--composa-font-family)",
+      "body medium": "type/body-medium (var(--composa-body-medium-*))",
+      "body medium strong": "type/body-medium-strong (var(--composa-body-medium-strong-weight))",
+      "body small": "type/body-small (var(--composa-body-small-*))"
+    },
+    "note": "Card titles, duration pill, badges, and connector chip use hardcoded font sizes (text-[11px] / text-[10px] / text-[9px]) instead of type tokens, and the expanded-card remove button hovers with hardcoded hover:bg-black/10 rather than a token."
+  },
+  "a11y": {
+    "role": "none at the panel level — a ScrollArea of two PanelSections; each PanelSection can own its region and every control carries its own role/label.",
+    "toggles": "collapse/expand buttons expose aria-expanded; the remove button is aria-label=\"Remove\".",
+    "reorder": "drag grip is aria-label=\"Drag <name> animation\"; plus-line spaces and the With target render role=\"button\" with descriptive aria-labels.",
+    "menus": "dropdown triggers carry aria-haspopup (\"menu\" for easing, \"dialog\" for the style picker) and ariaLabel."
+  },
+  "enforce": {
+    "role": "none",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { AnimatePanel } from '@composa/ui'",
+    "example": "<AnimatePanel\n  selectionType=\"element\"\n  anims={objectAnimations}\n  compTransition={{ style: \"fade\", direction: \"right\", durationMs: 300, easing: \"ease-out\" }}\n  compTransitionCallbacks={{ onStyleChange, onDurationChange }}\n  objectAnimationCallbacks={{ onAdd, onRemove, onReorder }}\n/>"
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "component": "ShareModal",
+  "category": "Overlays",
+  "archetype": "overlay",
+  "intent": "A standard-width share dialog: invite people by email, set the access scope, and manage each person's role; an optional stacked card exposes Export.",
+  "guidance": "Handlers double as capability gates. Omit onScopeChange and the access-scope row is static, not a menu; omit onChangeAccess/onRemovePerson and a person's role shows as plain text; omit onRevokeInvitation and pending rows read \"pending\" instead of offering Revoke. Pass onExport only when the host owns an export flow — it switches the Modal to stacked and adds a second card with an Export cell, since export is a peer of sharing, not a rename of it. variant only swaps the header copy (project vs team). Left unwired, people falls back to an internal single-owner demo roster and edits stay local — pass people to control it. Use inviteHint to explain why invitation is disabled.",
+  "anatomy": [
+    { "part": "Surface", "description": "A 480px Modal card (MODAL_WIDTHS.standard) with backdrop: bg-c-bg, rounded-c-lg, shadow-c-500. When onExport is set the Modal goes stacked, painting each ModalCard separately with an 8px gap." },
+    { "part": "Header", "description": "ModalHeader (h-40, border-b border-c-border): title left (\"Share this project\" / \"Invite to team\" per variant, or the title prop), a \"Copy link\" Link button, then the close X. Title binds to the Radix DialogTitle." },
+    { "part": "Close (X)", "description": "Corner dismiss button (aria-label \"Close\"); a backdrop click and Escape also call onClose." },
+    { "part": "Invite row", "description": "A large email InputField (autoFocus, placeholder \"Add emails, names, or user groups\") beside a Primary \"Invite\" button, disabled while the field is empty or inviteDisabled. An inviteHint line renders below when disabled." },
+    { "part": "\"Who has access\" label", "description": "A body-medium secondary section label above the access rows." },
+    { "part": "Access-scope row", "description": "A 36px ShareRow: Users icon + scopeLabel + trailing \"can access\". Becomes a menu (ChevronRight, aria-haspopup=\"menu\") opening checkmark scope options when onScopeChange is wired, else static." },
+    { "part": "Person rows", "description": "A 36px ShareRow per person: Avatar + name (+ muted \"(you)\"). Trailing is static \"owner\" text for the owner, otherwise a RoleMenu opening Can edit / Can view / (divider) / Remove (destructive)." },
+    { "part": "Pending invitation rows", "description": "A 36px ShareRow per unaccepted invite: grey Avatar + email + muted \"(pending)\". Trailing is a Revoke Link button when onRevokeInvitation is wired, else static \"pending\"." },
+    { "part": "Export actions card", "description": "Only when onExport is set: a second stacked ModalCard beneath the share card holding one 36px Export cell (Download icon + ChevronRight, aria-haspopup=\"dialog\")." }
+  ],
+  "use_when": [
+    "Sharing a project or team: invite by email and manage who has access and at what level.",
+    "You want Export offered as a peer of sharing in the same surface — pass onExport for the stacked actions card."
+  ],
+  "dont_use_when": [
+    "A blocking, destructive confirm — use DeleteConfirmDialog.",
+    "A transient, non-blocking message with an action — use a Notification toast.",
+    "A single-input prompt or plain form with no roster — use a compact Modal."
+  ],
+  "variants": {
+    "variant": [
+      "project (header \"Share this project\")",
+      "team (header \"Invite to team\")"
+    ],
+    "layout": [
+      "single card (default)",
+      "stacked (adds the Export actions card when onExport is set)"
+    ]
+  },
+  "slots": {},
+  "states": [
+    "closed",
+    "open",
+    "invite disabled (capability-gated; input + Invite disabled, optional inviteHint below)",
+    "person: owner (static \"owner\") vs editable role menu",
+    "pending invitation: static \"pending\" vs Revoke",
+    "stacked (Export actions card present when onExport is set)"
+  ],
+  "tokens": {
+    "Surface": { "bg": "--color-bg (bg-c-bg)", "radius": "rounded-c-lg", "shadow": "shadow-c-500", "borders": "--color-border (border-c-border)", "width": "MODAL_WIDTHS.standard = 480px" },
+    "Header title": { "font": "type/body-medium-strong (var(--composa-body-medium-strong-weight))", "color": "--color-text (text-c-text)" },
+    "Row label": { "font": "type/body-medium (var(--composa-body-medium-size/line/weight/letter-spacing))", "color": "--color-text (text-c-text)" },
+    "Secondary text": { "color": "--color-text-secondary (text-c-text-secondary)" },
+    "Icons": { "leading": "--color-icon (text-c-icon)", "chevrons": "--color-icon-secondary (text-c-icon-secondary)" },
+    "Row hover / focus": { "hover": "--color-bg-hover (bg-c-bg-hover)", "ring": "--color-focus-ring (focus-visible:ring-c-focus-ring)", "radius": "rounded-c-md" },
+    "Close (X)": { "icon": "text-c-icon-secondary", "hover": "bg-c-bg-hover", "radius": "rounded-c-sm" },
+    "note": "ShareModal's own JSX is fully token-bound (c-* / var(--composa-*)) with no hex. Row and label geometry is hardcoded px for Figma fidelity (rows h-36, leading slot size-24, header h-40, insets px-16 py-8, stack gap 8). The only non-token color is the Modal backdrop scrim, a hardcoded rgba(0,0,0,0.4) (special/modalbackdrop) owned by Modal, not this component."
+  },
+  "a11y": {
+    "role": "dialog — Radix Dialog.Content (via Modal) supplies role=dialog + aria-modal, a focus trap, and Escape-to-close; the header title binds to the Radix DialogTitle for the accessible name.",
+    "close": "The header X is a real <button aria-label=\"Close\">; a backdrop click and Escape also call onClose.",
+    "scope": "When onScopeChange is wired the access-scope row is a <button aria-label=\"Change who can access\" aria-haspopup=\"menu\"> opening checkmark rows.",
+    "roleMenu": "Each editable person's role trigger sets aria-haspopup=\"menu\" and opens Can edit / Can view / Remove (destructive) rows.",
+    "export": "When onExport is wired the Export cell is a <button aria-label=\"Export\" aria-haspopup=\"dialog\">.",
+    "note": "aria-describedby is intentionally undefined (from Modal). Owner rows and non-revocable pending rows render as static text, not controls."
+  },
+  "enforce": {
+    "role": "dialog",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { ShareModal } from '@composa/ui'",
+    "example": "<ShareModal\n  open={open}\n  onClose={() => setOpen(false)}\n  variant=\"project\"\n  people={people}\n  onInvite={email => invite(email)}\n  onChangeAccess={(id, access) => setAccess(id, access)}\n  onRemovePerson={id => remove(id)}\n/>"
+  }
+}

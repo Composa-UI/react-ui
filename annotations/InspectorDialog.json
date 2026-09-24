@@ -1,0 +1,91 @@
+{
+  "component": "InspectorDialog",
+  "category": "Overlays",
+  "archetype": "overlay",
+  "intent": "A non-modal floating inspector dialog: a draggable surface anchored to its trigger (or a named element) and portalled above the canvas, opening with a 40px title bar. Defaults to 320px wide.",
+  "guidance": "Non-modal by design — it never traps focus or blocks the canvas, so the user keeps editing with it open; reach for Modal for anything blocking. Anchor it with a `trigger`, or omit the trigger and pass `anchorSelector` for a dialog with no persistent launcher. When the trigger does not sit at the panel's left edge (a far-right action button), pass `anchorSurfaceSelector={COMPOSA_INSPECTOR_SURFACE_SELECTOR}` so the dialog docks the 8px gutter clear of the inspector regardless of trigger position or panel width (#499). The first element child becomes the drag handle — put `InspectorDialogHeader` first. `ariaLabel` is required. Inputs and textareas keep text selection; the rest is non-selectable chrome.",
+  "anatomy": [
+    {
+      "part": "Surface",
+      "description": "The portalled floating panel: rounded-c-lg, bg-c-bg, elevation/400 shadow. Edge-aware and drag-clamped to the overlay boundary."
+    },
+    {
+      "part": "Header (title bar)",
+      "description": "The 40px bar the dialog opens with; when draggable it doubles as the drag handle. Bottom border-c-border."
+    },
+    {
+      "part": "Title",
+      "description": "Truncating body-medium-strong label at the header's left."
+    },
+    {
+      "part": "Header actions",
+      "description": "Optional controls rendered between the title and the close X (e.g. open-in-new-tab)."
+    },
+    {
+      "part": "Close (X)",
+      "description": "24px button, aria-label \"Close\", with a 16px X glyph in icon/secondary."
+    },
+    {
+      "part": "Body",
+      "description": "The dialog contents rendered below the header (the remaining children)."
+    },
+    {
+      "part": "Resize handle",
+      "description": "Optional 20px bottom-right nwse affordance, shown only when `resizable` is set; keyboard-resizable with arrow keys."
+    }
+  ],
+  "use_when": [
+    "A property editor floating beside the inspector rail (Type, Stroke, Effects, Color, Export).",
+    "A dialog that must stay open while the user keeps working on the canvas (non-modal)."
+  ],
+  "dont_use_when": [
+    "A blocking task or confirmation — use Modal.",
+    "A simple option list — use Menu / Dropdown.",
+    "A transient message — use Notification."
+  ],
+  "slots": {
+    "trigger": "Optional launch control captured for anchoring; omit and pass anchorSelector for a dialog with no persistent trigger.",
+    "children": "Dialog contents; the first element child becomes the drag handle — put InspectorDialogHeader first.",
+    "header.actions": "InspectorDialogHeader slot rendered between the title and the close X."
+  },
+  "states": [
+    "open",
+    "closed",
+    "dragged",
+    "resized"
+  ],
+  "tokens": {
+    "surface": {
+      "bg": "bg/default (bg-c-bg)",
+      "radius": "radius/lg (rounded-c-lg)",
+      "shadow": "elevation/400 (var(--elevation-400); elevation/500 available)"
+    },
+    "header": {
+      "border": "border/default (border-c-border)",
+      "title": "type/body-medium-strong (var(--composa-body-medium-*))",
+      "titleColor": "text/default (text-c-text)"
+    },
+    "close": {
+      "radius": "radius/md (rounded-c-md)",
+      "icon": "icon/secondary (text-c-icon-secondary)",
+      "hover": "bg/hover (bg-c-bg-hover)"
+    },
+    "note": "Header height (40px), header insets (16/8px), close button (24px) and X glyph (16px) are hardcoded pixel dimensions, not spacing tokens. No hardcoded colors — every color binds to a c-* token."
+  },
+  "a11y": {
+    "role": "dialog — the portalled overlay surface renders role=\"dialog\" with aria-label; non-modal (aria-modal=false, no focus trap).",
+    "label": "ariaLabel is required and names the dialog (there is no title-element association).",
+    "close": "The header X is a <button aria-label=\"Close\">.",
+    "focus": "Focuses the first action on open unless preserveFocusOnOpen; Escape closes; focus returns to the trigger on close.",
+    "resize": "The optional resize handle is a <button> (aria-label \"Resize floating dialog\") operable with arrow keys."
+  },
+  "enforce": {
+    "role": "dialog",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { InspectorDialog, InspectorDialogHeader } from '@composa/ui'",
+    "example": "<InspectorDialog open={open} onClose={close} ariaLabel=\"Type settings\" trigger={<IconButton icon={Type} />}>\n  <InspectorDialogHeader title=\"Type\" onClose={close} />\n  {/* body */}\n</InspectorDialog>"
+  }
+}

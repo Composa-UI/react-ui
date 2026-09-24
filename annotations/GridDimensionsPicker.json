@@ -1,0 +1,89 @@
+{
+  "component": "GridDimensionsPicker",
+  "category": "Inputs",
+  "archetype": "composite",
+  "intent": "A compact grid face that opens a popover to edit column and row tracks — the Figma-style dimensions picker, not a second Inspector section or dialog.",
+  "guidance": "Sits inline in a grid frame's inspector as a compact face, not a section or dialog. Fully controlled: onChange emits track patches, and onAddTrack only signals creation intent; the host owns durable track IDs and document mutation. Each track is Fixed (px value, animatable via a keyframe control) or Hug (shows \"Auto\", not animatable). Both axes cap at GRID_TRACK_LIMIT (6) tracks, and the last track can't be removed. The summary reads \"{columns} × Auto\" when every row hugs, else \"{columns} × {rows}\". The preview caps at 6 columns and 3 rows regardless of real counts, so the face stays glanceable.",
+  "anatomy": [
+    {
+      "part": "Preview face",
+      "description": "The 56×88 trigger button; a mini grid of cells previewing the column count and (capped) row count."
+    },
+    {
+      "part": "Summary label",
+      "description": "\"{columns} × {Auto | rows}\" centered over the face; reads \"Auto\" when every row track hugs."
+    },
+    {
+      "part": "Popover editor",
+      "description": "Floating Menu opened on click; stacks the Columns and Rows groups. Not a second section/dialog."
+    },
+    {
+      "part": "Columns group",
+      "description": "\"Columns\" label above the column track rows, with a trailing \"Add column\" button."
+    },
+    {
+      "part": "Rows group",
+      "description": "\"Rows\" label above the row track rows, with a trailing \"Add row\" button."
+    },
+    {
+      "part": "Track row",
+      "description": "One per track inside a group: a sizing input plus a Remove (−) button (disabled at the last remaining track)."
+    },
+    {
+      "part": "Sizing input",
+      "description": "NumericComboInput per track: axis icon (Columns2/Rows2), px value, and a Fixed/Auto sizing-mode menu."
+    }
+  ],
+  "use_when": [
+    "Editing a grid frame's column and row tracks inline in the inspector.",
+    "You want a compact Figma-style dimensions face that opens the track editor on click."
+  ],
+  "dont_use_when": [
+    "You need a standalone panel section or dialog — this is a compact inline face by design.",
+    "The frame is auto-layout (1D flow), not Grid — use the flow and gap controls instead."
+  ],
+  "slots": {},
+  "states": [
+    "default",
+    "focus-visible",
+    "open",
+    "add-disabled",
+    "remove-disabled"
+  ],
+  "tokens": {
+    "face": {
+      "bg": "bg/secondary",
+      "text": "text/default",
+      "ring": "border/default",
+      "focusRing": "border/selected-strong",
+      "radius": "radius/md",
+      "note": "56×88px face, 3px pad, 2px cell gap all hardcoded (h-[56px] w-[88px] p-[3px] gap:2)"
+    },
+    "cell": {
+      "bg": "bg/default",
+      "note": "rounded-[2px] cell radius is hardcoded, not a radius token"
+    },
+    "summary": {
+      "type": "type/body-medium"
+    },
+    "sectionLabel": {
+      "text": "text/secondary",
+      "type": "type/body-small"
+    }
+  },
+  "a11y": {
+    "role": "Trigger is a native <button> (implicit role button); the popover body and each axis track list render role=\"group\".",
+    "label": "Trigger aria-label \"Grid dimensions: {summary}\" (e.g. \"3 × Auto\"); groups labelled \"Grid dimensions\", \"Column tracks\", \"Row tracks\".",
+    "controls": "Per track: NumericComboInput ariaLabel \"{axis} {n} size\" + dropdownAriaLabel naming the Fixed/Hug mode; Remove and Add buttons carry explicit labels.",
+    "focus": "Trigger shows a 2px border-selected-strong focus-visible ring."
+  },
+  "enforce": {
+    "role": "group",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { GridDimensionsPicker } from '@composa/ui'",
+    "example": "<GridDimensionsPicker\n  grid={grid}\n  keyframes={trackKeyframes}\n  onChange={(patch) => setGrid({ ...grid, ...patch })}\n  onAddTrack={(axis) => addTrack(axis)}\n/>"
+  }
+}

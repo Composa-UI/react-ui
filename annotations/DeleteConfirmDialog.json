@@ -1,0 +1,54 @@
+{
+  "component": "DeleteConfirmDialog",
+  "category": "Overlays",
+  "archetype": "overlay",
+  "intent": "A small danger-confirm dialog: a title, one message line, and a right-aligned Cancel + red Destructive confirm for irreversible actions.",
+  "guidance": "Reach for it to confirm a destructive, irreversible action; the confirm button is red (Destructive) by default and the message is the whole body — spell out exactly what is lost in one plain sentence. Copy is fully prop-driven (title / message / confirmLabel / cancelLabel), so one dialog serves team, project, or any delete. The backdrop is on and both Escape and a backdrop click fire onClose, so treat dismissal as \"cancel\" and never lean on the dialog as the only guard. For a non-destructive confirm pass destructive={false} to swap the red confirm for a neutral Primary one.",
+  "anatomy": [
+    { "part": "Header", "description": "ModalHeader with the title (left) and the close X (right), on a bottom border. Title binds to the Radix DialogTitle." },
+    { "part": "Close (X)", "description": "Corner dismiss button (aria-label \"Close\"); calls onClose, same as Escape and a backdrop click." },
+    { "part": "Body", "description": "A single body-medium paragraph holding the message — the dialog's entire content, not scrollable." },
+    { "part": "Footer", "description": "Right-aligned actions: Cancel (Ghost, onClose) then the confirm (Destructive by default / Primary when destructive={false})." }
+  ],
+  "use_when": [
+    "Confirming an irreversible, destructive action (delete team, project, layer).",
+    "A yes/no confirm where the affirmative choice should read as dangerous."
+  ],
+  "dont_use_when": [
+    "A reversible action with undo — use a Notification toast with an Undo action.",
+    "Collecting input or several fields — use a full Modal/form."
+  ],
+  "variants": {
+    "confirm": [
+      "destructive (red Destructive button — default)",
+      "neutral (Primary button — destructive={false})"
+    ]
+  },
+  "slots": {},
+  "states": [
+    "open",
+    "closed"
+  ],
+  "tokens": {
+    "Message": { "font": "type/body-medium", "color": "--color-text (text-c-text)" },
+    "Confirm (destructive)": { "bg": "--color-bg-danger (bg-c-bg-danger)", "text": "--color-text-on-brand" },
+    "Confirm (neutral)": { "bg": "--color-bg-brand (Primary)", "text": "--color-text-on-brand" },
+    "Cancel": { "variant": "Ghost — text-c-text on transparent" },
+    "Surface": { "bg": "--color-bg (bg-c-bg)", "radius": "rounded-c-lg", "shadow": "shadow-c-500", "borders": "--color-border (border-c-border)", "width": "MODAL_WIDTHS.dialog = 320px" },
+    "note": "This component's own JSX is fully token-bound (c-* / var(--composa-*)) with no hex. The only non-token value in the composition is the Modal backdrop, a hardcoded rgba(0,0,0,0.4) (special/modalbackdrop) owned by Modal, not this dialog."
+  },
+  "a11y": {
+    "role": "dialog — Radix Dialog.Content supplies role=dialog + aria-modal, a focus trap, and Escape-to-close; the header title is bound to the Radix DialogTitle for the accessible name.",
+    "close": "X is a real <button aria-label=\"Close\">; a backdrop click and Escape also call onClose.",
+    "note": "aria-describedby is intentionally undefined (from Modal); the message is not wired as the description."
+  },
+  "enforce": {
+    "role": "dialog",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { DeleteConfirmDialog } from '@composa/ui'",
+    "example": "<DeleteConfirmDialog open={open} onClose={close} onConfirm={remove} title=\"Delete team?\" message=\"This permanently deletes the team and its projects. This can't be undone.\" confirmLabel=\"Delete team\" />"
+  }
+}

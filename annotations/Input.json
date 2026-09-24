@@ -1,0 +1,56 @@
+{
+  "component": "InputField",
+  "category": "Inputs",
+  "archetype": "primitive",
+  "intent": "Editable field for entering and editing a text value inline, with an optional label, hint, and inline affordances.",
+  "guidance": "The field is value-controlled: `defaultValue` renders empty, so bind `value` + `onChange` to show a value. There is no resting border — a ring appears only on focus or a non-default `variant`. Set `variant` (error/success/warning) to color the focus ring and the hint together. Use `leadingIcon`/`trailingIcon` for the 24px icon columns, and reach for the numeric, combo, or color siblings in this module rather than stretching this field to non-text values.",
+  "use_when": [
+    "Entering or editing free text: a name, label, or URL.",
+    "A single-line field wanting a label above and/or a hint below.",
+    "Longer notes — set `multiline` for the textarea layout."
+  ],
+  "dont_use_when": [
+    "Editing a number with scrub/step — use NumericInput.",
+    "Choosing from a fixed list — use Dropdown/ComboInput.",
+    "Picking a color or fill — use ColorInput."
+  ],
+  "variants": {
+    "variant": ["default", "error", "success", "warning"],
+    "size": ["small", "medium", "large"],
+    "layout": ["single-line", "multiline"]
+  },
+  "slots": {
+    "label": "Field label above the control.",
+    "leadingIcon": "Glyph in the 24px leading column.",
+    "trailingIcon": "Glyph in the 24px trailing column.",
+    "inlineLabel": "Text/glyph in the leading column when no leadingIcon.",
+    "inlineDropdown": "Embedded value + chevron pill hugging the right edge.",
+    "hint": "Helper/validation text below the field."
+  },
+  "states": ["default", "focus", "disabled", "read-only"],
+  "tokens": {
+    "field": { "bg": "bg/secondary", "radius": "radius/medium", "text": "text/default", "placeholder": "text/tertiary" },
+    "ring": { "focus": "focus-ring", "resting": "border/translucent", "disabled": "border/disabled", "error": "border/danger", "success": "border/success", "warning": "border/warning" },
+    "icon": { "leading": "icon/secondary", "trailing": "icon/secondary", "inlineLabel": "text/secondary" },
+    "label": { "type": "type/body-medium" },
+    "hint": { "default": "text/tertiary", "error": "text/danger", "success": "text/success", "warning": "text/warning" },
+    "inlineDropdown": { "bg": "bg/default", "border": "border/default", "hover": "border/selected", "radius": "radius/small" },
+    "note": "Field height (h-20/24/32px), font size/leading (text-9/11/13px), weight (font-450), and tracking are hardcoded values, not size/type tokens. ColorInput in this module defaults `color` to a #hex literal (#ff24bd)."
+  },
+  "a11y": {
+    "role": "textbox (native <input type=\"text\"> / <textarea> when multiline).",
+    "label": "Associates <label htmlFor> with the input id (useId); pass `label`, or give the numeric/combo variants an aria-label.",
+    "keyboard": "Native text editing; numeric variants add ArrowUp/ArrowDown step, Enter commit, Escape cancel.",
+    "focus": "Focus ring bound to the focus-ring token from onFocus state (autofocus falls back to :focus-within); disabled/read-only apply cursor-not-allowed and disabled drops opacity.",
+    "note": "Numeric variants render role=\"spinbutton\" with min/max/step; the base text field uses the native textbox role with no role attribute."
+  },
+  "enforce": {
+    "role": "textbox",
+    "ariaRole": false,
+    "tokensOnly": false
+  },
+  "code": {
+    "import": "import { InputField } from '@composa/ui'",
+    "example": "<InputField label=\"Name\" value={name} onChange={setName} />"
+  }
+}

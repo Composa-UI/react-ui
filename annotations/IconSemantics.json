@@ -1,0 +1,25 @@
+{
+  "component": "IconSemantics",
+  "category": "Panels",
+  "archetype": "utility",
+  "intent": "Central map from Composa editor semantics (layer types, layout, spacing, alignment, typography, sizing, media) to their Lucide glyph, so every inspector field and panel shows one consistent icon.",
+  "slots": {},
+  "states": [],
+  "tokens": {
+    "note": "No token bindings. Exports return bare LucideIcon component references; size, stroke, and color are applied by the consumer that renders them."
+  },
+  "a11y": {
+    "role": "none — this module renders no DOM. `composaIconSemantics` is a semantic→LucideIcon map and `iconForSemantic(semantic)` returns the icon component for a semantic.",
+    "keyboard": [],
+    "note": "The resolved icon is decorative; the consumer that renders it owns aria-label / aria-hidden and any interactive role."
+  },
+  "enforce": {
+    "role": "none (module renders no DOM)",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { iconForSemantic, composaIconSemantics, type ComposaIconSemantic } from '@composa/ui'",
+    "example": "const Icon = iconForSemantic('layout-horizontal');\nreturn <Icon aria-hidden />;"
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "component": "TypeSettingsDialog",
+  "category": "Overlays",
+  "archetype": "overlay",
+  "intent": "An anchored, non-modal typography dialog: header + preview, segmented alignment/vertical/decoration/case rows, a weight input+slider, and line-height/letter-spacing metrics. Floats beside the inspector rail.",
+  "guidance": "Launch it from a trigger in the inspector; it anchors to the panel's left edge and floats beside the rail, never inside scroll content. It is non-modal — it won't trap focus or block the canvas, so nothing critical should live only here. It owns no document state: drive it with `value` and route every `onChange` patch through the host's undo/redo and persistence. Show mixed selections as mixed rather than fabricating a value, and pass `readOnly` for locked selections so values stay readable but inert. It surfaces only host-backed properties; unsupported axes are omitted rather than shipped disabled.",
+  "anatomy": [
+    {
+      "part": "Header",
+      "description": "40px bar with the \"Type settings\" title; doubles as the drag handle for the floating surface."
+    },
+    {
+      "part": "Close",
+      "description": "Icon button at the header's right (aria-label \"Close type settings\") that calls onClose."
+    },
+    {
+      "part": "Preview",
+      "description": "Static box showing the fixed word \"Preview\" — it names the surface and is deliberately not a live type sample (#499)."
+    },
+    {
+      "part": "Text section",
+      "description": "Bordered block of four segmented radio groups: Alignment, Vertical trim, Decoration, Case."
+    },
+    {
+      "part": "Weight",
+      "description": "Numeric font-weight input (1-1000) paired with a slider; the handle switches to a stroke variant on a mixed selection."
+    },
+    {
+      "part": "Metrics",
+      "description": "Side-by-side Line height and Letter spacing (% suffix) numeric inputs, each with a lead icon."
+    }
+  ],
+  "use_when": [
+    "Editing the typography of a selected text object from the inspector — alignment, weight, decoration, case, line height, letter spacing."
+  ],
+  "dont_use_when": [
+    "A blocking, focus-trapping confirmation — use Modal.",
+    "A single inline property control — drop SegmentedControl / NumericInput / Slider straight into the panel row."
+  ],
+  "slots": {
+    "trigger": "The launch control the dialog captures as its positioning anchor."
+  },
+  "states": [
+    "open",
+    "closed",
+    "read-only (every control disabled; sr-only polite hint to unlock the selection)",
+    "mixed (a field differs across the selection — no active segment / value shown)",
+    "justify unavailable (Justify segment disabled with a tooltip when the model can't justify)",
+    "keyframe active (weight / line height / letter spacing keyframe toggle lit)"
+  ],
+  "tokens": {
+    "Surface": {
+      "bg": "c-bg",
+      "radius": "c-lg",
+      "shadow": "elevation/400 (shadow-c-500)"
+    },
+    "Header": {
+      "border": "c-border",
+      "title": "c-text",
+      "closeIcon": "c-icon-secondary",
+      "closeHover": "c-bg-hover",
+      "radius": "c-md"
+    },
+    "Preview": {
+      "bg": "c-bg-secondary",
+      "text": "c-text-secondary",
+      "radius": "c-md"
+    },
+    "RowLabel": {
+      "text": "c-text-secondary"
+    },
+    "SectionDivider": {
+      "border": "c-border"
+    },
+    "font": "var(--composa-font-family)",
+    "note": "No hex literals — colors, radii, shadow, and font family bind to tokens. Type sizes/weights, spacing, and control dimensions are hardcoded literals, not tokens: e.g. 11px/9px/16px labels, font-[450]/[550], 40px header, 32px rows, 24px close, 240px width, 8px side offset, and the weight axis 1-1000 step 1."
+  },
+  "a11y": {
+    "role": "dialog (non-modal — aria-modal=false; portalled above the canvas, focus not trapped, dismisses on Esc or outside interaction).",
+    "label": "aria-label \"Type settings\" on the dialog surface.",
+    "close": "Header X button, aria-label \"Close type settings\".",
+    "segmentedGroups": "Alignment / Vertical trim / Decoration / Case are role=radiogroup of role=radio items; the group aria-label announces \"Mixed\" or the active label instead of a fabricated value, and a disabled option is labelled \"…: unavailable\".",
+    "numericInputs": "Font weight, line height, and letter spacing each carry an explicit aria-label.",
+    "readOnly": "A polite sr-only live region prompts to unlock the selection to edit."
+  },
+  "enforce": {
+    "role": "dialog",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { TypeSettingsDialog } from '@composa/ui'",
+    "example": "<TypeSettingsDialog open={open} onClose={close} trigger={<button aria-label=\"Type settings\" />} value={value} onChange={patch => applyType(patch)} />"
+  }
+}

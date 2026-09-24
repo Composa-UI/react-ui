@@ -1,0 +1,89 @@
+{
+  "component": "AgentPanel",
+  "category": "Panels",
+  "archetype": "composite",
+  "intent": "The Agent left-rail panel: a searchable conversation list that drills into a single streaming message thread with a context-aware composer.",
+  "guidance": "Fully controlled — pass conversations, activeConversation, search, and composerValue; the panel holds no chat state and emits every change through callbacks. Share one width across the left rail so it survives switching between Comp, Assets, and Agent. The view keys on activeConversation: null renders the searchable list, a value renders the thread. The thread auto-scrolls to the bottom only while the reader is already near it. Enter sends, Shift+Enter inserts a newline, Escape routes through onEscape; while sending, the send button flips to a square Stop control. Note: the voice/mic button ships disabled behind a 'Coming soon' tooltip even though the spec marks it implemented — do not wire it yet.",
+  "anatomy": [
+    { "part": "List header", "description": "40px bar (only in list view): 'Chats' title, Beta tag, and the new-chat (+) button." },
+    { "part": "Search field", "description": "24px filter row: search icon, 'Search chats' input, and a clear (x) button when non-empty." },
+    { "part": "Conversation list", "description": "Recency-grouped cards (Today / Yesterday / Last 7 days / Earlier); each card shows avatar, title, Private badge, relative time, and message preview. Falls back to a Sparkles empty state ('Start a conversation' / 'No matching chats') with a New chat button." },
+    { "part": "Thread header", "description": "40px bar (only in thread view): Back (<-) button, conversation title, Beta tag, and an optional options (...) button." },
+    { "part": "Message log", "description": "Scrollable role=\"log\" thread: right-aligned user bubbles with an optional context chip, left flat agent markdown with a rating bar, collapsible work / 'Worked for Xs' blocks, action cards (preview + title + description + buttons), and warning/error notices. An empty thread shows the new-chat prompt with suggestion cards." },
+    { "part": "Composer", "description": "Footer above the thread: optional storage notice, a dismissible context chip, and an auto-growing (38-78px) 'Ask for changes' textarea." },
+    { "part": "Composer toolbar", "description": "28px action row: add attachment (+), ModelPicker, add image, disabled voice input ('Coming soon' tooltip), and the send/stop button." }
+  ],
+  "use_when": [
+    "Giving users natural-language control of the editor from the left rail, alongside Comp and Assets.",
+    "You need a two-level chat surface: a searchable history list that drills into one conversation thread.",
+    "A thread that streams agent responses, collapses work steps, and attaches the canvas selection as context."
+  ],
+  "dont_use_when": [
+    "You only need the plain resizable left-column shell without chat — use SidePanel directly.",
+    "A floating menu, tooltip, or dialog above the canvas — use an overlay primitive (Menu / Modal / Tooltip).",
+    "The right-rail property editor — use Inspector / PropertyPanel (the right panel is the inspector only)."
+  ],
+  "slots": {},
+  "states": [
+    "list",
+    "thread",
+    "empty-list",
+    "search-empty",
+    "empty-thread",
+    "sending",
+    "streaming"
+  ],
+  "tokens": {
+    "surface": {
+      "bg": "bg/secondary (composer, search, cards, chips, work/action/error blocks)",
+      "hover": "bg/hover",
+      "selected": "bg/selected (new-chat glyph background)",
+      "inverse": "bg/inverse (code block, action-card preview)"
+    },
+    "text": {
+      "default": "text/default",
+      "secondary": "text/secondary",
+      "tertiary": "text/tertiary (timestamps, placeholders)",
+      "brand": "text/brand (new-chat glyph, links)",
+      "warning": "text/warning (storage notice)",
+      "danger": "text/danger (error message)",
+      "disabled": "text/disabled",
+      "on-inverse": "text/on-inverse (code block)",
+      "icon": "icon"
+    },
+    "border": {
+      "divider": "border/default (header/footer rules, work-step rail)",
+      "field": "border/translucent (composer / chip / card rings)",
+      "warning": "border/warning (warning notice ring)",
+      "danger": "border/danger (error notice ring)",
+      "focus": "focus-ring (focus-visible and focus-within)"
+    },
+    "radius": {
+      "sm": "radius/sm",
+      "md": "radius/md",
+      "lg": "radius/lg (user bubble, composer, action card)",
+      "full": "rounded-full (avatars, new-chat glyph)"
+    },
+    "type": {
+      "family": "var(--composa-font-family)",
+      "title": "type/body-medium — var(--composa-body-medium-size|line|strong-weight|letter-spacing) on headers, card and action titles",
+      "note": "Message, caption and label text use hardcoded px sizes, not type tokens: 13/11/10/9px with 18/16/14px line-heights and font weights 650/550/450. Layout dimensions are also hardcoded arbitrary values (header 40px, search/avatar 24px, toolbar 28px, user-bubble max-width 196px, composer 38-78px)."
+    }
+  },
+  "a11y": {
+    "role": "Root is a focusable labelled container (aria-label \"Agent panel\", tabIndex -1) with no landmark role; the message thread renders role=\"log\" aria-live=\"polite\" (aria-label \"Conversation messages\").",
+    "notices": "Storage notices render role=\"status\"; error messages render role=\"alert\", warnings role=\"status\"; an unavailable context chip renders role=\"note\".",
+    "labels": "Every icon button and field carries an aria-label (Back to chats, New chat, Search chats, Ask for changes, Send message / Stop response, etc.).",
+    "streaming": "A streaming agent message sets aria-live=\"polite\" so appended tokens are announced.",
+    "keyboard": "Enter sends, Shift+Enter newlines, Escape routes through onEscape; the composer skips IME composition (keyCode 229)."
+  },
+  "enforce": {
+    "role": "none — root is a labelled container (aria-label \"Agent panel\"); the thread region renders role=\"log\"",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { AgentPanel } from '@composa/ui'",
+    "example": "<AgentPanel\n  conversations={conversations}\n  activeConversation={active}\n  search={search}\n  composerValue={draft}\n  context={selection}\n  sending={sending}\n  onSearchChange={setSearch}\n  onNewConversation={createChat}\n  onOpenConversation={openChat}\n  onBack={() => setActive(null)}\n  onComposerChange={setDraft}\n  onSubmit={send}\n  onStop={stop}\n/>"
+  }
+}

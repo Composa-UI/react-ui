@@ -1,0 +1,98 @@
+{
+  "component": "SlidesPanel",
+  "category": "Panels",
+  "archetype": "composite",
+  "intent": "The Compositions left-rail panel — a scrollable, data-driven list of slide thumbnails that drives slide selection, rename, and the new-slide action.",
+  "guidance": "Presentational and fully controlled: pass a `slides` array plus callbacks (onNewSlide, onRenameRequest, onTitleChange, onTitleMenu, onSlideDuplicate, onSlideDelete) — the host owns selection, order, and persistence. One `SlideData` drives each row's state, so branch on the data, not on section-local code. Theme-aware via `c-*` tokens (dark under `data-composa-mode`). Slide actions live on right-click only — there is no hover ⋯ — and the menu appears only when a rename/duplicate/delete callback is wired. The New slide button is deliberately one plain action, not a split/template control. Thumbnails honor the project `aspectRatio` while the reserved slot height stays constant across ratios; sub-slides carry a deeper inset.",
+  "anatomy": [
+    {
+      "part": "Header",
+      "description": "Fixed 40px row holding the inline-rename project title — a button that swaps to a bordered input on click/Enter — plus a trailing chevron button that opens the project options menu."
+    },
+    {
+      "part": "New slide button",
+      "description": "Full-width bordered button (Plus icon + \"New slide\"), fenced by top and bottom dividers. The panel's only primary action; not segmented, no template chevron."
+    },
+    {
+      "part": "Slide list",
+      "description": "Scrollable listbox (overlay scrollbar) of slide rows, ordered top-to-bottom; roving focus across rows."
+    },
+    {
+      "part": "Slide row",
+      "description": "Number badge (top-left) beside a project-ratio thumbnail centered in a fixed slot. Group rows add an expand chevron; motion rows add a badge on the thumbnail; stacked rows add peek cards behind it; sub-slides indent deeper."
+    },
+    {
+      "part": "Slide actions menu",
+      "description": "Cursor-anchored context menu opened on right-click — Rename, Duplicate, a divider, then a destructive Delete; a backdrop closes it."
+    }
+  ],
+  "use_when": [
+    "Listing a project's slides/compositions in the left rail with live thumbnails and single-select navigation.",
+    "You want a data-driven list where one SlideData drives each row's state (group, sub-slide, stacked, motion, selected, in-view).",
+    "Rename and the New slide insert are the primary actions you need to surface."
+  ],
+  "dont_use_when": [
+    "You need to store slide order or persistence, or wire drag-to-reorder — the editor owns the data model; this is presentational only.",
+    "Editing the selected element's properties — use Inspector.",
+    "You need multi-select or the full copy/paste context menu — the source renders neither yet."
+  ],
+  "slots": {},
+  "states": [
+    "default",
+    "row: selected",
+    "row: in-view",
+    "row: focus-visible",
+    "row: group",
+    "row: expanded",
+    "row: sub-slide",
+    "row: stacked",
+    "row: motion",
+    "row: previewing (hover/focus swaps to previewThumb)",
+    "title: renaming",
+    "control: hover",
+    "menu: open"
+  ],
+  "tokens": {
+    "surface": {
+      "panel": "bg-c-bg",
+      "row selected": "bg-c-bg-selected",
+      "row in-view": "bg-c-bg-selected/50",
+      "control hover": "bg-c-bg-hover",
+      "motion badge": "bg-c-bg"
+    },
+    "text": {
+      "title / New slide label / chevrons": "text-c-text",
+      "slide number": "text-c-text-secondary",
+      "slide number (selected / in-view)": "text-c-text-brand",
+      "motion glyph": "text-c-icon-secondary"
+    },
+    "border": {
+      "panel border-r / dividers / new-slide button / thumbnail ring / motion badge": "border-c-border",
+      "rename input + focus-visible ring": "border-c-border-selected / ring-c-border-selected"
+    },
+    "radius": {
+      "title button / options button / rename input": "rounded-c-sm",
+      "note": "New slide button rounded-[6px], thumbnail rounded-[5px], motion badge rounded-[2px], stacked peek cards rounded-[4px]/[3px] are hardcoded px radii, not radius tokens."
+    },
+    "type": {
+      "body-medium": "var(--composa-body-medium-size|line|weight|letter-spacing) on the slide number and the New slide label",
+      "note": "The header title is hardcoded text-[13px] font-[550] leading-[22px] tracking-[-0.0325px]; font family is inline Inter, sans-serif — not type tokens."
+    },
+    "note": "Thumbnail fill is bg-white with a #111 fallback tint; stacked peek cards use bg-white and a #fff gradient with rgba shadows. Because #hex literals exist, tokensOnly is not asserted."
+  },
+  "a11y": {
+    "role": "listbox — the slide list is role=\"listbox\" (aria-label \"Compositions\"); each row is role=\"option\" with aria-selected and aria-label \"Composition {n}\". The 200px panel container itself carries no landmark role.",
+    "keyboard": "Roving tabIndex across rows; Arrow/Home/End move focus, Enter requests rename, Space activates the row.",
+    "labels": "New slide, Project options, Rename project {title}, and the rename input (\"Project name\") each carry aria-label.",
+    "focus": "focus-visible ring on rows via ring-c-border-selected."
+  },
+  "enforce": {
+    "role": "listbox",
+    "ariaRole": false,
+    "tokensOnly": false
+  },
+  "code": {
+    "import": "import { SlidesPanel } from '@composa/ui'",
+    "example": "<SlidesPanel\n  title=\"Product review\"\n  slides={[\n    { n: 1, thumb: cover, selected: true },\n    { n: 2, group: true, expanded: true },\n    { n: 3, sub: true, motion: true },\n  ]}\n  aspectRatio={16 / 9}\n  onNewSlide={addSlide}\n  onRenameRequest={(i) => renameSlide(i)}\n  onSlideDuplicate={(i) => duplicateSlide(i)}\n  onSlideDelete={(i) => deleteSlide(i)}\n/>"
+  }
+}

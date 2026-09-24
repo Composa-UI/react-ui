@@ -1,0 +1,71 @@
+{
+  "component": "AnchoredInspectorOverlay",
+  "category": "Overlays",
+  "archetype": "overlay",
+  "intent": "The shared anchored-overlay boundary on Radix Popover: it captures the launch rect before mounting, then portals a positioned, edge-aware, optionally draggable/resizable surface. Modal by default; defaults to 240px wide, side=\"left\".",
+  "guidance": "The low-level boundary that inspector dialogs and mini-players build on — it renders no header, title, or close, so put those in `children`. Modal by default (`trapFocus`); pass `trapFocus={false}` with `preserveFocusOnOpen` for passive chrome that must not grab focus. Anchor with a `trigger`, or omit it and pass `anchorSelector` for a free-floating surface with no launcher. Use `anchorSurfaceSelector` to dock the side axis to the inspector's left edge clear of the trigger's x (#499); `dragHandleSelector` lets a descendant drag the window; `resizable` adds the bottom-right handle. `surface=\"bare\"` drops the panel chrome; `boundarySelector` names the collision host. `ariaLabel` is required.",
+  "anatomy": [
+    {
+      "part": "Trigger",
+      "description": "Optional launch control wrapped in an inline-flex host; its rect is captured before the portal mounts so a controlled open never flashes at viewport origin. Omitted in free-floating mode (anchorSelector)."
+    },
+    {
+      "part": "Surface",
+      "description": "The portalled, positioned Popover content. With surface=\"default\": rounded-c-lg, bg-c-bg, shadow-c-500. Edge-aware (avoidCollisions, sticky) and drag-clamped to the overlay boundary; surface=\"bare\" keeps positioning without the panel chrome."
+    },
+    {
+      "part": "Content",
+      "description": "The host-supplied children — header, title, close, and body all live here; this component renders none of them itself."
+    },
+    {
+      "part": "Resize handle",
+      "description": "Optional bottom-right nwse affordance (a 20px <button> with an 8px corner glyph), shown only when `resizable` is set; drag- and arrow-key-resizable, clamped to product limits and the boundary."
+    }
+  ],
+  "use_when": [
+    "Building a floating inspector surface that must anchor to a trigger (or named element) and stay clipped to the overlay host.",
+    "A composa overlay that needs edge-aware placement with no viewport-origin flash, optionally draggable/resizable."
+  ],
+  "dont_use_when": [
+    "You want a ready-made titled dialog with header bar and close X — use InspectorDialog (which composes this).",
+    "A blocking task or confirmation — use Modal.",
+    "A simple option list — use Menu / Dropdown."
+  ],
+  "slots": {
+    "trigger": "Optional launch control captured for anchoring; omit and pass anchorSelector for a free-floating surface with no persistent launcher.",
+    "children": "The overlay contents (header/title/close/body); this component wraps them but renders none of them."
+  },
+  "states": [
+    "closed",
+    "open",
+    "dragged",
+    "resized"
+  ],
+  "tokens": {
+    "surface": {
+      "bg": "bg/default (bg-c-bg)",
+      "radius": "radius/lg (rounded-c-lg)",
+      "shadow": "elevation/500 (shadow-c-500)"
+    },
+    "elevation": "opt-in via `elevation` prop: var(--elevation-400) | var(--elevation-500) applied inline as box-shadow.",
+    "resizeHandle": {
+      "icon": "icon/secondary (text-c-icon-secondary)"
+    },
+    "note": "Default width (240px), sideOffset/collisionPadding (8px), z-index (z-50), max-width guard (calc(100vw-16px)), and the resize affordance dimensions (20px hit area, 8px glyph, 4px inset) are hardcoded layout values, not spacing tokens. No hardcoded colors — every color binds to a c-* token or an --elevation-* var."
+  },
+  "a11y": {
+    "role": "dialog — the portalled surface literally renders role=\"dialog\" with aria-label; aria-modal follows `trapFocus` (modal focus trap by default).",
+    "label": "ariaLabel is required and names the overlay (there is no title-element association).",
+    "focus": "Modal by default: traps focus and returns it to the captured trigger on close (onCloseAutoFocus). preserveFocusOnOpen keeps focus on the opener for passive chrome. Escape closes via onClose.",
+    "resize": "The optional resize handle is a <button> (aria-label \"Resize floating dialog\") operable with arrow keys."
+  },
+  "enforce": {
+    "role": "dialog",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { AnchoredInspectorOverlay } from '@composa/ui'",
+    "example": "<AnchoredInspectorOverlay open={open} onClose={close} ariaLabel=\"Type settings\" trigger={<IconButton icon={Type} />}>\n  {/* header / body */}\n</AnchoredInspectorOverlay>"
+  }
+}

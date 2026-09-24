@@ -1,0 +1,94 @@
+{
+  "component": "FontPickerDialog",
+  "category": "Overlays",
+  "archetype": "overlay",
+  "intent": "An anchored, non-modal font picker: a searchable list where each family previews in its own typeface, with an optional installed-fonts access step.",
+  "guidance": "Non-modal and hosted on InspectorDialog: it anchors to the inspector surface's left edge, so it clears the panel at any width. Drive it controlled — value is the applied family, onSelect fires the chosen name, and the owner applies it and closes. Each row previews in its own face; Google families lazy-load their stylesheet on view and on pick. Only the first 60 matches render — search filters the full (~2k) roster to reach the rest. The installed-fonts step degrades honestly: an unsupported browser shows a note, a denied permission keeps the bundled list and offers a retry. It reopens clean, dropping any stale query or half-open explainer.",
+  "anatomy": [
+    {
+      "part": "Header",
+      "description": "40px title bar (\"Fonts\") with a close X; it is the first child, so it doubles as the drag handle."
+    },
+    {
+      "part": "Search",
+      "description": "Input with a leading magnifier and a clear X; filters the entire merged roster by name."
+    },
+    {
+      "part": "Font list",
+      "description": "Scrolling area (max-h 316px). Each row is a button previewing the family in its own stack, with a check + highlight when selected; caps at 60 rows and shows a \"Showing X of Y — search to narrow\" hint, or a \"No fonts found\" row when empty."
+    },
+    {
+      "part": "Installed-fonts affordance",
+      "description": "Bottom row that opens the access step, or reports an honest state: unsupported-browser note, \"N installed fonts added\", or a retry label after denial."
+    },
+    {
+      "part": "Installed-fonts access screen",
+      "description": "Alternate surface swapped in for the whole dialog: header, a MonitorSmartphone icon + explanation, and a \"Learn more\" link plus a \"Continue\" button that requests local-font permission."
+    }
+  ],
+  "use_when": [
+    "Choosing a type family in the inspector, where the picker should stay beside the rail and each option must preview in-face.",
+    "You need search across a large roster (bundled + Google + installed) with capability-honest local-font access."
+  ],
+  "dont_use_when": [
+    "A blocking, centered choice that must be dismissed before continuing — use a modal Dialog/Modal.",
+    "A short, fixed set of options at the trigger — use Dropdown."
+  ],
+  "slots": {
+    "trigger": "The Font control (a ReactElement) that anchors the dialog and re-receives focus on dismissal."
+  },
+  "states": [
+    "open",
+    "closed",
+    "list screen",
+    "access screen",
+    "access loading (\"Requesting…\", Continue disabled)",
+    "access granted (\"N installed fonts added\")",
+    "access denied (\"Couldn't access installed fonts — try again\")",
+    "row selected (check + bg-c-bg-secondary)",
+    "empty (\"No fonts found\")",
+    "overflow (\"Showing X of Y — search to narrow\")",
+    "installed unsupported (\"Installed fonts need a supported browser\")"
+  ],
+  "tokens": {
+    "Title": {
+      "font": "type/body-medium-strong",
+      "color": "c-text"
+    },
+    "Access body": {
+      "font": "type/body-medium",
+      "color": "c-text-secondary"
+    },
+    "Surface": {
+      "bg": "c-bg",
+      "radius": "c-lg",
+      "elevation": "elevation-400"
+    },
+    "Divider": {
+      "border": "c-border"
+    },
+    "Row (selected)": {
+      "bg": "c-bg-secondary",
+      "icon": "c-icon-secondary"
+    },
+    "Hover": "bg-c-bg-hover",
+    "Link": "c-text-brand",
+    "note": "All color, border, radius and elevation bind to c-* / --composa / --elevation tokens — no hex color literals. Type is mixed: the header, access body and \"Use installed fonts\" row use --composa-body-medium tokens, but the search input, the preview row name (13px/20px) and the overflow/empty/unsupported hints (10–11px, font 450/500) use hardcoded px type sizes rather than a type token."
+  },
+  "a11y": {
+    "role": "dialog — non-modal (aria-modal=false). The InspectorDialog / AnchoredInspectorOverlay host renders role=\"dialog\" with aria-label=\"Fonts\" on the portalled Popover content. Focus is not trapped; Escape or outside-click closes and returns focus to the trigger.",
+    "search": "input carries aria-label \"Search fonts\"; the clear button aria-label \"Clear search\".",
+    "rows": "each font row is a <button> with aria-pressed reflecting the applied selection.",
+    "close": "close button aria-label \"Close fonts\"; the access screen's is \"Dismiss installed fonts\".",
+    "installed": "the affordance reports state as visible text (unsupported note, \"N installed fonts added\", or a retry label after denial) rather than failing silently."
+  },
+  "enforce": {
+    "role": "dialog",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { FontPickerDialog } from '@composa/ui'",
+    "example": "<FontPickerDialog open={open} onClose={close} trigger={<Button label={font} />} value={font} onSelect={setFont} />"
+  }
+}

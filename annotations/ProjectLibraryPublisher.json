@@ -1,0 +1,72 @@
+{
+  "component": "ProjectLibraryPublisher",
+  "category": "Overlays",
+  "archetype": "overlay",
+  "intent": "A modal that publishes selected project content — compositions, images, video, and audio — to the versioned project library, as a new item or a new version of an existing one.",
+  "guidance": "Drive it fully controlled: entries, publishedItems, targetItemId, description, publishing, and error are all props, and it owns only the search query — every change emits through onEntryChange / onTargetItemChange / onDescriptionChange / onPublish (and optional onArchive / onRestore). Opening from a composition should arrive with that composition and its transitive media pre-selected; mark those entries required so the checkbox locks and the row reads \"Required dependency\". Choosing an existing item under \"Publish as\" makes the action a new version (v2, v3…), never an overwrite; the footer always states the count and whether it creates an item or a version. Set publishing to disable every control, withhold the close X, and suppress backdrop-click dismissal (closeOnBackdrop={!publishing}); note Escape still closes, because Modal wires onEscapeKeyDown unconditionally. Omit onArchive/onRestore to make published rows read-only.",
+  "anatomy": [
+    { "part": "Surface", "description": "A 520px Modal card (bg-c-bg, rounded-c-lg, shadow-c-500 from Modal); backdrop dismissal is disabled while publishing (closeOnBackdrop={!publishing})." },
+    { "part": "Header", "description": "ModalHeader title \"Publish to project library\" bound to the Radix DialogTitle, plus the close X — the X is withheld while publishing." },
+    { "part": "Setup block", "description": "Fixed top zone (shrink-0, border-b border-c-border, 16px inset, 12px gap) holding the search, target select, and description." },
+    { "part": "Search field", "description": "InputField with a Search leading icon, placeholder \"Search compositions and media\"; filters the inventory by name and detail." },
+    { "part": "\"Publish as\" select", "description": "Native <select> (aria-label \"Publish as\") — \"New library item · v1\" or a non-archived published item's next version (\"name · new vN\")." },
+    { "part": "Version description", "description": "Multiline InputField labeled \"Version N description (optional)\", placeholder \"What changed in this version?\"." },
+    { "part": "Inventory scroll region", "description": "min-h-0 flex-1 overflow-y-auto list (px/py 8px)." },
+    { "part": "Kind groups", "description": "Compositions / Images / Video / Audio, each an aria-labelled <section> with an uppercase 9px h3 heading; empty groups are omitted." },
+    { "part": "Entry row", "description": "min-h-40 row (rounded-c-md, hover:bg-c-bg-hover): Checkbox + kind icon + name with a detail or \"Required dependency\" subtext; required entries lock the checkbox." },
+    { "part": "Empty state", "description": "\"No matching content\" (h-96, centered) when the filter matches nothing." },
+    { "part": "Published items", "description": "Optional <section aria-label=\"Published items\"> (border-t) listing a Library-icon row per item (\"name · vN\", archived rows tertiary) with an Archive / Restore action button." },
+    { "part": "Error line", "description": "role=\"alert\" paragraph (border-t, text-c-text-danger) shown only when error is set." },
+    { "part": "Footer", "description": "ModalFooter align=\"between\": left status \"{count} selected · new vN / new item\", right Cancel (Secondary) and Primary Publish button (\"Publishing…\" / \"Publish {count}\", disabled while publishing or at 0 selected)." }
+  ],
+  "use_when": [
+    "Publishing project content to the versioned library: pick from a searchable, grouped inventory and confirm as a new item or a new version.",
+    "Managing existing library items alongside publishing — archive or restore them in the same surface (wire onArchive / onRestore)."
+  ],
+  "dont_use_when": [
+    "A blocking, destructive confirmation — use DeleteConfirmDialog.",
+    "A transient status message with an action — use a Notification toast.",
+    "Browsing or inserting already-published content — that is the Assets pane / New composition surface, not this publisher."
+  ],
+  "slots": {},
+  "states": [
+    "closed",
+    "open",
+    "filtered (search narrows the grouped inventory)",
+    "empty (\"No matching content\" when the filter matches nothing)",
+    "target: new item (v1) vs new version of an existing item (vN)",
+    "entry: required dependency (checkbox locked, \"Required dependency\" subtext)",
+    "published item: active (Archive) vs archived (Restore, tertiary text)",
+    "publish disabled (0 selected)",
+    "publishing (all controls disabled, close X withheld and backdrop-click dismissal suppressed — Escape still closes — button reads \"Publishing…\")",
+    "error (role=\"alert\" line)"
+  ],
+  "tokens": {
+    "Surface": { "bg": "--color-bg (bg-c-bg, via Modal)", "radius": "rounded-c-lg (via Modal)", "shadow": "shadow-c-500 (via Modal)", "width": "note: hardcoded 520px (not a MODAL_WIDTHS preset)" },
+    "Dividers": { "borders": "--color-border (border-b / border-t border-c-border on the setup block, published-items section, and error line)" },
+    "Select": { "bg": "--color-bg-secondary (bg-c-bg-secondary)", "ring": "--color-border-translucent (ring-c-border-translucent)", "focus": "--color-focus-ring (focus:ring-c-focus-ring)", "radius": "rounded-c-md" },
+    "Rows": { "hover": "--color-bg-hover (bg-c-bg-hover)", "entryRadius": "rounded-c-md", "actionRadius": "rounded-c-sm (Archive/Restore button)" },
+    "Text": { "name": "--color-text (text-c-text)", "headings/detail/status": "--color-text-secondary (text-c-text-secondary)", "archived": "--color-text-tertiary (text-c-text-tertiary)", "error": "--color-text-danger (text-c-text-danger)" },
+    "Icons": { "kind + Library + search": "--color-icon-secondary (text-c-icon-secondary)" },
+    "Type": { "font": "var(--composa-font-family)", "note": "group headings and row text use hardcoded px sizes/weights (text-[11px]/[9px], font-[450]/[550], tracking-[0.05em] uppercase) rather than --composa-body-* type tokens" },
+    "note": "No #hex color in ProjectLibraryPublisher.tsx — every color binds to a c-* token. Geometry is hardcoded px for fidelity (width 520, max-h 560, insets 16/8, gaps 12/8/4, entry row min-h 40, published row min-h 36, select h-28, empty-state h-96, icons 12/14). Checkbox, Button, InputField, and Modal own their own token bindings; the modal backdrop scrim (rgba(0,0,0,0.4)) lives in Modal, not this component."
+  },
+  "a11y": {
+    "role": "dialog — via Modal (Radix Dialog.Content supplies role=dialog + aria-modal, a focus trap, and Escape-to-close); the header title \"Publish to project library\" binds to the Radix DialogTitle for the accessible name.",
+    "close": "The header X is a <button aria-label=\"Close\"> (from ModalHeader) — withheld while publishing; a backdrop click also calls onClose but is suppressed while publishing (closeOnBackdrop={!publishing}); Escape always calls onClose via Modal's unconditional onEscapeKeyDown, even while publishing.",
+    "groups": "Each kind group and the published-items block is a <section aria-label=…> (region landmark).",
+    "select": "The target picker is a native <select aria-label=\"Publish as\">.",
+    "entries": "Each entry's Checkbox is role=\"checkbox\" with aria-label \"Add {name}\" / \"Remove {name}\"; required entries disable it.",
+    "error": "The error message is a role=\"alert\" (assertive) live region.",
+    "note": "publishing disables every control and withholds the close X; Publish is disabled at 0 selected. aria-describedby is intentionally undefined (from Modal)."
+  },
+  "enforce": {
+    "role": "dialog",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { ProjectLibraryPublisher } from '@composa/ui'",
+    "example": "<ProjectLibraryPublisher\n  open={open}\n  entries={entries}\n  publishedItems={publishedItems}\n  targetItemId={targetId}\n  description={description}\n  publishing={publishing}\n  error={error}\n  onClose={() => setOpen(false)}\n  onEntryChange={(id, selected) => toggleEntry(id, selected)}\n  onTargetItemChange={setTargetId}\n  onDescriptionChange={setDescription}\n  onPublish={publish}\n  onArchive={id => archive(id)}\n  onRestore={id => restore(id)}\n/>"
+  }
+}

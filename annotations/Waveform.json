@@ -1,0 +1,27 @@
+{
+  "component": "Waveform",
+  "category": "Panels",
+  "archetype": "utility",
+  "intent": "Presentational bar-waveform SVG that stands in as the visual for an audio asset, drawing deterministic bars from a seed or from explicit peaks.",
+  "slots": {},
+  "states": [],
+  "tokens": {
+    "color": "note: no token bound in source — bars are fill=\"currentColor\"; callers set the color via a text-* utility on a parent",
+    "layout": "size-full (stretches the svg to fill its container)",
+    "geometry": "note: hardcoded plain SVG math, not tokens — viewBox 0 0 100 100, preserveAspectRatio=\"none\", default bars=40, gap 0.35 of a slot, bar rx = barWidth/2, min bar height 2"
+  },
+  "a11y": {
+    "role": "none — presentational <svg>, aria-hidden by default (aria-hidden prop defaults true)",
+    "labeling": "carries no accessible name, title, or role; decorative. The containing asset thumbnail/row must convey that it represents audio.",
+    "note": "bars are visual only; even with aria-hidden={false} the svg still exposes no label or role."
+  },
+  "enforce": {
+    "role": "none (aria-hidden)",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { Waveform } from '@composa/ui'",
+    "example": "<Waveform seed={asset.id} className=\"text-c-icon-secondary\" />"
+  }
+}

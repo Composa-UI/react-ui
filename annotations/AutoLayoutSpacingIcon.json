@@ -1,0 +1,30 @@
+{
+  "component": "AutoLayoutSpacingIcon",
+  "category": "Inputs",
+  "archetype": "utility",
+  "intent": "Decorative lead glyph that maps a Gap or Padding spacing dimension to its canonical Inspector/canvas icon.",
+  "variants": {
+    "kind": ["gap", "padding"],
+    "axis": ["horizontal (gap-* / padding-* axis pair)", "vertical (gap-* / padding-* axis pair)"],
+    "edge": ["top", "right", "bottom", "left (per-side padding glyph)"]
+  },
+  "slots": {},
+  "states": [],
+  "tokens": {
+    "note": "No color tokens bound in source — renders a Lucide glyph that inherits currentColor from the host row. Hardcoded values: default size 14 (overridable via size prop), strokeWidth 1.5."
+  },
+  "a11y": {
+    "role": "none — decorative glyph rendered with aria-hidden, skipped by assistive tech.",
+    "labeling": "Carries no accessible name; the paired numeric editor's own label conveys the spacing meaning.",
+    "attributes": "data-icon-semantic exposes the resolved semantic (e.g. gap-horizontal, padding-left) for QA/tests, not for AT."
+  },
+  "enforce": {
+    "role": "none (aria-hidden)",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { AutoLayoutSpacingIcon } from '@composa/ui'",
+    "example": "<AutoLayoutSpacingIcon kind=\"gap\" axis=\"horizontal\" />"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "component": "Chit",
+  "category": "Inputs",
+  "archetype": "utility",
+  "intent": "Fixed 24px swatch that previews a fill's paint — solid color, opacity, gradient, image, or video — always on the light inspector surface.",
+  "variants": {
+    "type": [
+      "Fill (solid color swatch)",
+      "Opacity (left half solid, right half faded over checkerboard)",
+      "Gradient (host-projected authored gradient, falls back to color)",
+      "Image (bound previewUrl image over checkerboard)",
+      "Video (bound previewUrl video over checkerboard)",
+      "Instance (renders no swatch layer)"
+    ],
+    "variant": [
+      "Square (14px rounded-[2px] swatch)",
+      "Circle (16px filled circle; renders only when type is Fill)"
+    ]
+  },
+  "slots": {},
+  "states": [],
+  "tokens": {
+    "note": "No design tokens; Chit renders fixed light-surface colors by design (color swatches always sit on the light panel in UI3).",
+    "swatch": {
+      "base": "bg-white",
+      "border": "border-black/10 (Fill/Image/Video only)",
+      "radius": "note: rounded-[2px] hardcoded (14px square); Circle is rounded-full at 16px",
+      "size": "note: outer size-[24px]; inner square 14px, circle 16px hardcoded"
+    },
+    "checkerboard": {
+      "note": "repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 8px 8px — hardcoded hex"
+    },
+    "color": {
+      "note": "default #ff24bd hardcoded; paint supplied via color/gradient/previewUrl props (inline style, not a token)"
+    }
+  },
+  "a11y": {
+    "role": "none (presentational <div>; not focusable or interactive)",
+    "note": "Decorative: the bound Image <img> renders empty alt + aria-hidden; the Video <video> renders aria-hidden (muted, playsInline). Pair with a real label in the containing control."
+  },
+  "enforce": {
+    "role": "none",
+    "ariaRole": false,
+    "tokensOnly": false
+  },
+  "code": {
+    "import": "import { Chit } from '@composa/ui'",
+    "example": "<Chit type=\"Fill\" color=\"#ff24bd\" />"
+  }
+}

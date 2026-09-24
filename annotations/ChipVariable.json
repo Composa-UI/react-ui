@@ -1,0 +1,36 @@
+{
+  "component": "ChipVariable",
+  "category": "Inputs",
+  "archetype": "utility",
+  "intent": "Compact read-only chip that shows a variable value bound into an inspector input, with an optional detach control.",
+  "slots": {},
+  "states": [
+    "Default",
+    "Selected",
+    "OnSelected",
+    "Hover",
+    "SoftDeleted",
+    "DisabledSecondary",
+    "DisabledTertiary",
+    "ValueNotRendered"
+  ],
+  "tokens": {
+    "Selected": { "bg": "c-bg-selected", "border": "c-border-selected" },
+    "Label": { "font": "composa-body-medium (--composa-body-medium-* vars)", "family": "--composa-font-family" },
+    "note": "Only the Selected state and the label type use tokens; every other color is hardcoded, not tokenized: OnSelected bg + border #dbd8ff, Hover bg #e6e6e6, muted (SoftDeleted / ValueNotRendered / disabled) bg #f5f5f5, Default bg white, non-selected border #e6e6e6, text rgba(0,0,0,0.9) (rgba(0,0,0,0.3) when disabled), detach glyph rgba(0,0,0,0.5) -> 0.9 on hover. Shape is hardcoded too: radius 5px, px 4px, gap 4px, label max-width 80px. By design this atom renders fixed light colors regardless of dark mode."
+  },
+  "a11y": {
+    "role": "none - the chip is a presentational <div>; the optional detach affordance is a native <button>.",
+    "keyboard": ["Enter", "Space"],
+    "note": "The detach <button> renders no aria-label, so the control is unlabeled; supply one host-side. The value label truncates with an ellipsis at max-width 80px."
+  },
+  "enforce": {
+    "role": "none",
+    "ariaRole": false,
+    "tokensOnly": false
+  },
+  "code": {
+    "import": "import { ChipVariable } from '@composa/ui'",
+    "example": "<ChipVariable value=\"opacity\" state=\"Selected\" onDetach={() => detach()} />"
+  }
+}

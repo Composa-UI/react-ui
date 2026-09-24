@@ -1,0 +1,39 @@
+{
+  "component": "Tag",
+  "category": "Feedback",
+  "archetype": "utility",
+  "intent": "A short status word on a tinted surface, such as Beta, New, or Public beta.",
+  "variants": {
+    "size": ["sm (editor chrome, 16px tall; default)", "md (roomier surfaces, 24px tall)"],
+    "tone": ["brand (tinted surface + brand text; default)", "neutral (states a fact, not a state)"]
+  },
+  "slots": {},
+  "states": [],
+  "use_when": [
+    "Flagging a short state or fact beside a heading or title: Beta, New."
+  ],
+  "dont_use_when": [
+    "The word needs to do something — use Button; a Tag takes no onClick and no focus."
+  ],
+  "tokens": {
+    "brand": { "bg": "c-bg-selected", "text": "c-text-brand" },
+    "neutral": { "bg": "c-bg-secondary", "text": "c-text-secondary" },
+    "sm": { "radius": "rounded-c-sm", "note": "h-[16px] px-[5px] text-[9px] leading-[14px] (hardcoded)" },
+    "md": { "radius": "rounded-c-md", "note": "h-[24px] px-[10px] text-[13px] leading-[18px] (hardcoded)" },
+    "font": { "family": "--composa-font-family", "note": "weight font-[550] hardcoded" }
+  },
+  "a11y": {
+    "role": "none (presentational <span>; a tag is text, not a control)",
+    "keyboard": "none (not focusable, no click handler)",
+    "labelling": "content is the visible word; sentence case, no all-caps unless asked."
+  },
+  "enforce": {
+    "role": "none",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { Tag } from '@composa/ui'",
+    "example": "<Tag tone=\"brand\" size=\"sm\">Beta</Tag>"
+  }
+}

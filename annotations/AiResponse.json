@@ -1,0 +1,47 @@
+{
+  "component": "AiResponse",
+  "category": "Feedback",
+  "archetype": "utility",
+  "intent": "An agent response in the chat thread: left-aligned message body with a trailing thumbs up/down rating bar.",
+  "use_when": [
+    "Rendering a completed agent turn in the chat thread.",
+    "You want the response body paired with an up/down feedback bar."
+  ],
+  "dont_use_when": [
+    "The right-aligned human message — use UserBubble.",
+    "You only need the vote control on its own — use RatingBar."
+  ],
+  "slots": {
+    "children": "The response body — inline or markdown message content.",
+    "ratingProps": "Props forwarded to the trailing RatingBar (e.g. vote, onVote)."
+  },
+  "variants": {
+    "rating": ["shown (default)", "hidden (rating={false}, e.g. streaming responses)"]
+  },
+  "states": ["default", "streaming (rating hidden)"],
+  "tokens": {
+    "body": {
+      "text": "c-text",
+      "font": "--composa-font-family",
+      "note": "text-[13px]/leading-[20px], font-[450], tracking-[-0.032px] are hardcoded arbitrary values, not tokens."
+    },
+    "rating": {
+      "note": "The trailing rating bar is a RatingBar; its tokens (icon/tertiary, bg/hover, text/brand, text/danger, focus-ring, rounded-c-md; 24px box, 16px icon, mt-[4px] gap hardcoded) are documented on RatingBar."
+    }
+  },
+  "a11y": {
+    "role": "none — presentational <div> stack; the message text is the accessible content and the enclosing chat log supplies turn/author semantics.",
+    "body": "renders whatever children are passed (inline/markdown); no role or label of its own.",
+    "rating": "the trailing RatingBar exposes labelled Thumbs up / Thumbs down buttons with aria-pressed; hidden when rating={false}.",
+    "icons": "rating icons are decorative lucide SVGs owned by RatingBar."
+  },
+  "enforce": {
+    "role": "none",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { AiResponse } from '@composa/ui'",
+    "example": "<AiResponse ratingProps={{ vote, onVote: setVote }}>\n  Here's the **fade-in** applied to your title.\n</AiResponse>\n\n<AiResponse rating={false}>{streamingText}</AiResponse>"
+  }
+}

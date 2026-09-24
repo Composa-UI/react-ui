@@ -1,0 +1,112 @@
+{
+  "component": "GeneratedControlsDialog",
+  "category": "Overlays",
+  "archetype": "overlay",
+  "intent": "A non-modal, rail-anchored inspector dialog that renders a generated control manifest (a title plus typed controls: number, color, text, boolean, enum, asset) as labelled rows.",
+  "guidance": "Prefer the inline GeneratedControlsSection for ordinary generated properties — the spec's property-first pattern keeps values beside the rest of the selection. Reach for this dialog only when a focused host needs the manifest as a temporary surface. It is non-modal: focus is not trapped, and it anchors to the inspector surface's left edge (COMPOSA_INSPECTOR_SURFACE_SELECTOR) so it lands clear of the rail whatever the trigger's position. Controls render in manifest order; readOnly disables every field, and the animation diamond appears only where a binding is animatable and is suppressed when disabled. The dialog owns no value store — it projects native document state, so committing a field emits onChange(controlId, value).",
+  "anatomy": [
+    {
+      "part": "Surface",
+      "description": "The 240px (COMPACT_INSPECTOR_DIALOG_WIDTH) anchored overlay, portalled above the canvas, docked beside the inspector rail; draggable by its header."
+    },
+    {
+      "part": "Header",
+      "description": "A 40px title bar with a bottom border, holding the title and the close affordance."
+    },
+    {
+      "part": "Title",
+      "description": "An <h2> rendering value.title in body-medium-strong; also the overlay's aria-label."
+    },
+    {
+      "part": "Close affordance",
+      "description": "A 24px icon button labelled `Close {title}` that fires onClose."
+    },
+    {
+      "part": "Control list",
+      "description": "A padded vertical stack of one ControlRow per manifest control, in manifest order."
+    },
+    {
+      "part": "Control row",
+      "description": "A fixed 88px leading text label plus the flex-filled bound field; control.description is exposed via the row's title tooltip."
+    },
+    {
+      "part": "Field",
+      "description": "The kind-specific primitive: NumericInput, ColorInput, InputField, Switch, Dropdown+radio Menu, or a Choose-asset Button."
+    }
+  ],
+  "use_when": [
+    "A focused host needs a generated control manifest as a temporary, dismissible surface anchored beside the inspector rail.",
+    "A control kit that must stay clear of scroll content and out of the way of the rail while editing."
+  ],
+  "dont_use_when": [
+    "Ordinary generated properties — render them inline with GeneratedControlsSection in the Properties inspector section (property-first pattern).",
+    "A blocking confirmation — use a modal Dialog/Modal.",
+    "A single native field that already has a section (Fill, Stroke, Typography) — bind it there, not in a second surface."
+  ],
+  "variants": {
+    "controls": [
+      "number (NumericInput)",
+      "color (ColorInput)",
+      "text (InputField, single/multiline)",
+      "boolean (Switch)",
+      "enum (Dropdown + radio Menu)",
+      "asset (Choose-asset Button)"
+    ],
+    "mode": [
+      "editable",
+      "read-only"
+    ]
+  },
+  "slots": {
+    "trigger": "The ReactElement the dialog anchors to and launches from (captured in a trigger host span)."
+  },
+  "states": [
+    "closed",
+    "open",
+    "read-only (readOnly disables every field)",
+    "control disabled (per-control disabled)",
+    "keyframe active (animation diamond, on animatable number/color controls)"
+  ],
+  "tokens": {
+    "Surface": {
+      "bg": "bg/bg",
+      "radius": "radius/lg",
+      "shadow": "elevation/400",
+      "note": "From InspectorDialog/AnchoredInspectorOverlay default surface: rounded-c-lg bg-c-bg with var(--elevation-400) (elevation prop) over shadow-c-500."
+    },
+    "Title": {
+      "font": "type/body-medium (strong weight)",
+      "family": "var(--composa-font-family)",
+      "color": "text/text"
+    },
+    "Row label": {
+      "font": "type/body-medium",
+      "color": "text/text-secondary"
+    },
+    "Header divider": {
+      "border": "border/border"
+    },
+    "Close button": {
+      "icon": "icon/icon-secondary",
+      "hover": "bg/bg-hover",
+      "radius": "radius/sm",
+      "focus": "focus-ring/focus-ring"
+    },
+    "note": "No hex literals — colors, type, radius, and shadow are all token-bound. Layout dimensions are hardcoded px, not tokens: 240 width (COMPACT_INSPECTOR_DIALOG_WIDTH), 40 header height, 88 label column, 12 body/header insets, 8/4 row and stack gaps, 24 close button, 32 min row height."
+  },
+  "a11y": {
+    "role": "dialog (non-modal) — rendered by the anchored inspector overlay (PopoverPrimitive.Content role=\"dialog\", aria-modal=false), labelled by value.title. Focus is not trapped; Escape and outside interaction dismiss.",
+    "title": "<h2> holds value.title; the overlay's aria-label mirrors it.",
+    "close": "24px icon <button> with aria-label `Close {title}`.",
+    "rows": "number/color/enum fields take an ariaLabel from control.label and the Switch takes a label; control.description is surfaced via the row's title attribute; the enum menu uses radio MenuRows."
+  },
+  "enforce": {
+    "role": "dialog",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { GeneratedControlsDialog } from '@composa/ui'",
+    "example": "<GeneratedControlsDialog open={open} onClose={close} trigger={<Button label=\"Edit\" />} value={{ id: 'glow', title: 'Glow', controls: [{ id: 'radius', kind: 'number', label: 'Radius', value: 8, unit: 'px' }, { id: 'tint', kind: 'color', label: 'Tint', value: tint }] }} onChange={(id, v) => patch(id, v)} />"
+  }
+}

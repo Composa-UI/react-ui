@@ -1,0 +1,104 @@
+{
+  "component": "AnimationStylesDialog",
+  "category": "Overlays",
+  "archetype": "overlay",
+  "intent": "A non-modal, searchable inspector dialog for picking an object-animation style (Build in / Action / Build out) from capability-truthful groups, anchored beside the inspector rail.",
+  "guidance": "Anchor it to the phase's Style control with `trigger`; it portals onto the shared InspectorDialog surface (240px, elevation-400), stays collision-safe within the overlay host, and returns focus to the trigger on close. It is non-modal and never traps focus, so the canvas stays live and Escape / outside-click dismiss. The panel owns the controlled `open` for sibling-dialog exclusivity. Pass only capability-truthful `groups` — supported styles only, no inert design-only rows. Search and category filter reset on every close, so a stale query never survives to the next open. The category-filter row appears only with more than one group. `onSelect` emits the chosen value; the owner applies it and closes.",
+  "anatomy": [
+    {
+      "part": "Header",
+      "description": "40px title bar with a bottom border: the phase title (body-medium-strong) and the Close X. It is the dialog's drag handle."
+    },
+    {
+      "part": "Search",
+      "description": "40px row with a leading search icon and a text input; filters options by label as you type."
+    },
+    {
+      "part": "Category filter",
+      "description": "48px row holding an inline dropdown that scopes the list to one group; rendered only when there is more than one group."
+    },
+    {
+      "part": "List",
+      "description": "Scrollable results region capped at 300px, holding the grouped options with 8px vertical padding."
+    },
+    {
+      "part": "Group heading",
+      "description": "32px label above each rendered group's options."
+    },
+    {
+      "part": "Option row",
+      "description": "32px button: a reserved 16px check slot (filled when the value matches) plus the truncating style label; hover-highlighted."
+    },
+    {
+      "part": "Empty state",
+      "description": "Centered \"No results\" shown when the query and category filter match nothing."
+    }
+  ],
+  "use_when": [
+    "Choosing an object-animation style for a Build in / Action / Build out phase from grouped, searchable options.",
+    "The style set is long or categorized enough to need search or category scoping rather than a flat menu."
+  ],
+  "dont_use_when": [
+    "A short, flat list of options with no grouping or search — use a Dropdown.",
+    "A blocking confirmation or form — use a modal Dialog."
+  ],
+  "slots": {
+    "trigger": "The Style control the dialog anchors to and launches from; it re-receives focus on dismissal."
+  },
+  "states": [
+    "open",
+    "closed",
+    "empty (no results)",
+    "option selected (check + aria-pressed)",
+    "category filter shown (>1 group)",
+    "category menu open"
+  ],
+  "tokens": {
+    "Surface": {
+      "background": "c-bg",
+      "radius": "c-lg",
+      "shadow": "c-500",
+      "elevation": "--elevation-400"
+    },
+    "Header": {
+      "border": "c-border",
+      "title": "type/body-medium-strong (var(--composa-body-medium-*))"
+    },
+    "Text": {
+      "default": "c-text",
+      "secondary": "c-text-secondary"
+    },
+    "Icon / header button": {
+      "icon": "c-icon-secondary",
+      "hoverBackground": "c-bg-hover",
+      "radius": "c-md"
+    },
+    "Category filter": {
+      "border": "c-border",
+      "background": "c-bg",
+      "hoverBackground": "c-bg-hover",
+      "radius": "c-sm",
+      "menuShadow": "c-500"
+    },
+    "Option row": {
+      "hoverBackground": "c-bg-hover"
+    },
+    "note": "No hex literals — every color binds to a c-* token, so tokensOnly holds. Only the header title binds type vars (body-medium-strong); the search, category filter, group headings, options, and empty state use hardcoded type (text-[11px] / leading-[16px] / tracking-[0.055px] / font-[500]|[600]). All dimensions are hardcoded numeric literals (row heights 24/32/40/48px, 240px width, 300px scroll cap, 16px check slot)."
+  },
+  "a11y": {
+    "role": "dialog (non-modal — aria-modal false; rendered by AnchoredInspectorOverlay with aria-label set to the title, default \"Animation styles\"). The inspector dialog does not trap focus; Escape / outside-click dismiss and focus returns to the trigger.",
+    "search": "<input> with aria-label \"Search animation styles\".",
+    "categoryFilter": "trigger <button> with aria-haspopup=menu / aria-expanded and aria-label \"Filter by category\"; the menu is role=menu with role=menuitemradio + aria-checked options.",
+    "options": "each option is a <button aria-pressed> reflecting the current selection.",
+    "close": "<button aria-label=\"Close\">."
+  },
+  "enforce": {
+    "role": "dialog",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { AnimationStylesDialog } from '@composa/ui'",
+    "example": "<AnimationStylesDialog open={open} onClose={close} title=\"Build in styles\" trigger={<Dropdown value={style} />} groups={groups} value={style} onSelect={apply} />"
+  }
+}

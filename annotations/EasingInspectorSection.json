@@ -1,0 +1,95 @@
+{
+  "component": "EasingInspectorSection",
+  "category": "Panels",
+  "archetype": "composite",
+  "intent": "The dedicated easing inspector section: pick an easing preset, hand-edit its cubic-bézier curve, and choose what the change applies to.",
+  "guidance": "The deep end of the 'basic inline, Custom → a dedicated inspector' easing split: AnimatePanel's inline easing routes 'Custom…' here, the one canonical curve editor. It renders and emits only — editable when value.editable !== false and onChange is wired. The preset dropdown always offers every preset plus Custom; the Curve/Spring segmented control is export parity (Spring picks the spring preset, Curve keeps a hand-editable cubic), and editing any handle or number switches the preset to 'custom'. Draggable control points appear only on the custom preset: drag emits live points, onCurveEditCommit commits, Escape or unmount cancels to the start value, and an interactionKey change cancels an active gesture. Apply-to is a real engine scope only with onApplyScopeChange; pass applyToLabel for a disabled, host-owned single-target description.",
+  "anatomy": [
+    {
+      "part": "Section header",
+      "description": "PanelSection 40px \"Easing\" title; landmark makes the section a region labelled by that title."
+    },
+    {
+      "part": "Preset dropdown",
+      "description": "Full-width Dropdown trigger opening a radio menu of every EASING_PRESET plus a divider and Custom (32px row)."
+    },
+    {
+      "part": "Curve / Spring segmented control",
+      "description": "Two-segment SegmentedControl — Spring selects the spring preset, Curve keeps the hand-editable cubic (32px)."
+    },
+    {
+      "part": "Curve preview",
+      "description": "112px panel holding an SVG: dashed linear reference, the cubic-bézier curve, two tangent handle lines, and (custom preset only) two draggable control-point handles."
+    },
+    {
+      "part": "Control points row",
+      "description": "PanelFieldRow \"Control points\": two NumericInput pairs — X1/Y1 on the left, X2/Y2 on the right."
+    },
+    {
+      "part": "Cubic readout row",
+      "description": "PanelFullRow \"Cubic\": the formatted cubic string in a bg-secondary chip with a Copy action that writes cubic-bezier(…) to the clipboard."
+    },
+    {
+      "part": "Apply-to row",
+      "description": "PanelFullRow \"Apply to\": a Dropdown of scope labels (This segment / All segments on this property / layer / slide) or, with applyToLabel, a disabled host-target description."
+    }
+  ],
+  "use_when": [
+    "Editing an animation segment's easing in depth — presets plus a hand-editable cubic-bézier curve.",
+    "Hosting the canonical curve editor that AnimatePanel's inline 'Custom…' easing opens into."
+  ],
+  "dont_use_when": [
+    "Offering only the common named easings — keep those inline in the animation card and hand off here on Custom.",
+    "Editing transition style, duration, or intensity — those are their own Animate rows/inspector."
+  ],
+  "slots": {},
+  "states": [
+    "editable (onChange wired, value.editable !== false)",
+    "disabled (no onChange or value.editable === false — preview at opacity-60, controls disabled)",
+    "preset: named (control-point handles hidden)",
+    "preset: custom (two draggable role=slider handles shown)",
+    "type: curve | spring (segmented selection)",
+    "dragging (control-point gesture active; Escape or interactionKey change cancels)",
+    "focus-visible (keyboard focus ring on a control-point handle)"
+  ],
+  "tokens": {
+    "surface": {
+      "preview bg": "bg/secondary (bg-c-bg-secondary)",
+      "preview ring": "border/translucent (ring-c-border-translucent)",
+      "readout bg": "bg/secondary (bg-c-bg-secondary)",
+      "handle fill": "bg/default (bg-c-bg)",
+      "radius": "radius/md (rounded-c-md)"
+    },
+    "curve": {
+      "linear guide": "border/default (var(--color-c-border), dashed)",
+      "curve + handle border": "border/selected-strong (var(--color-c-border-selected-strong) · border-c-border-selected-strong)",
+      "tangent lines": "icon/secondary (var(--color-c-icon-secondary))"
+    },
+    "text": {
+      "cubic readout": "text/default (text-c-text)"
+    },
+    "focus": {
+      "handle ring": "focus-ring (focus-visible:ring-c-focus-ring)"
+    },
+    "type": {
+      "family": "var(--composa-font-family)"
+    },
+    "note": "No hex color literals — every colour flows through c-* utilities or var(--color-c-*). But the cubic readout hardcodes its type (text-[11px] leading-[16px] font-[450] tracking-[0.055px]) instead of a type token, and the disabled preview uses a literal opacity-60; layout also carries hardcoded pixels (mx-[16px] my-[8px] h-[112px], the 200×112 viewBox, size-[18px] handles)."
+  },
+  "a11y": {
+    "role": "region — the Easing section is a PanelSection with landmark, labelled by its 'Easing' title via aria-labelledby.",
+    "menus": "the preset and Apply-to triggers are Dropdowns with aria-haspopup=\"menu\" and an aria-label; menu rows use selectionRole=\"radio\" with checked reflecting the current value.",
+    "curve handles": "each control point is a <button role=\"slider\"> with aria-label, aria-valuemin/max/now, aria-valuetext (X/Y), and aria-keyshortcuts for the arrow-key nudges (Shift = coarse step).",
+    "controls": "the NumericInputs, the Curve/Spring segmented control, and the Copy action all carry aria-labels.",
+    "preview": "the <svg> is aria-label \"Easing curve preview\"; a trailing sr-only span mirrors the export curve path."
+  },
+  "enforce": {
+    "role": "region",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { EasingInspectorSection } from '@composa/ui'",
+    "example": "<EasingInspectorSection\n  value={{ preset: \"ease-out\" }}\n  applyScope=\"segment\"\n  onChange={setEasing}\n  onApplyScopeChange={setScope}\n/>"
+  }
+}

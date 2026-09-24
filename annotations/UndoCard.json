@@ -1,0 +1,37 @@
+{
+  "component": "UndoCard",
+  "category": "Feedback",
+  "archetype": "utility",
+  "intent": "Version-status card shown below an agent canvas edit: a state label plus a Secondary Undo/Redo toggle.",
+  "slots": {},
+  "states": [
+    "current (default; \"Current version\" label + \"Undo\" button)",
+    "reverted (\"Reverted\" label + \"Redo\" button)"
+  ],
+  "tokens": {
+    "shape": {
+      "radius": "rounded-c-lg",
+      "ring": "ring-c-border (1px inset ring)"
+    },
+    "label": {
+      "color": "c-text-secondary",
+      "weight": "font-[450]"
+    },
+    "font": { "family": "var(--composa-font-family)" },
+    "note": "Label type (13px/22px, tracking -0.032px) and padding (px-[13px] py-[9px]) are hardcoded, not tokens. Button styling owned by Button (variant=Secondary, size=default)."
+  },
+  "a11y": {
+    "role": "none (presentational <div>; no role or aria set on the card)",
+    "action": "Undo/Redo is a nested Button (native <button>); keyboard and focus owned by Button.",
+    "note": "Status is conveyed by visible text only (\"Current version\" / \"Reverted\"); no aria-live region, so the toggle is not announced."
+  },
+  "enforce": {
+    "role": "none",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { UndoCard } from '@composa/ui'",
+    "example": "<UndoCard reverted={reverted} onToggle={setReverted} />"
+  }
+}
