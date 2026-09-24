@@ -2,6 +2,7 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { clsx } from "clsx";
 import { type ReactNode } from "react";
 import { useComposaMode } from "./useComposaMode";
+import { typography } from "../../styles/type";
 
 // ─── Shared constants ─────────────────────────────────────────────────────────
 // Tooltip always renders on the dark overlay surface — it floats above any surface.
@@ -38,14 +39,15 @@ function TooltipContent({ label, hotkey, className }: TooltipContentProps) {
       )}
       style={{ backgroundColor: BG }}
     >
-      <span
-        className="flex-1 min-w-0 text-white text-[11px] font-[450] leading-[16px] tracking-[0.055px] font-[family-name:var(--composa-font-family)]"
-      >
+      <span className={clsx("flex-1 min-w-0 text-white", typography.bodyMedium)}>
         {label}
       </span>
       {hotkey && (
         <span
-          className="shrink-0 text-[rgba(255,255,255,0.7)] text-[11px] font-[450] leading-[16px] tracking-[0.055px] font-[family-name:var(--composa-font-family)] whitespace-nowrap"
+          className={clsx(
+            "shrink-0 text-[rgba(255,255,255,0.7)] whitespace-nowrap",
+            typography.bodyMedium,
+          )}
         >
           {hotkey}
         </span>
@@ -213,11 +215,11 @@ export function TooltipBody({
       style={{ backgroundColor: BG }}
     >
       <div className="flex items-center gap-[4px] px-[8px] py-[4px]">
-        <span className="text-white text-[11px] font-[450] leading-[16px] tracking-[0.055px] font-[family-name:var(--composa-font-family)]">
+        <span className={clsx("text-white", typography.bodyMedium)}>
           {label}
         </span>
         {hotkey && (
-          <span className="text-[rgba(255,255,255,0.7)] text-[11px] font-[450] leading-[16px] tracking-[0.055px] font-[family-name:var(--composa-font-family)] whitespace-nowrap">
+          <span className={clsx("text-[rgba(255,255,255,0.7)] whitespace-nowrap", typography.bodyMedium)}>
             {hotkey}
           </span>
         )}
@@ -249,7 +251,7 @@ const LINK_META: Record<Exclude<LinkVariant, "URL">, { icon: string; defaultLabe
   File:      { icon: "📁", defaultLabel: "Open file",           ctas: ["Edit"] },
 };
 
-const LINK_TEXT = "text-[11px] font-[450] leading-[16px] tracking-[0.055px] font-[family-name:var(--composa-font-family)]";
+const LINK_TEXT = typography.bodyMedium;
 
 export function TooltipLink({
   variant = "URL",

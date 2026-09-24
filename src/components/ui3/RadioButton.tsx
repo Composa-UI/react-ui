@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { clsx } from "clsx";
+import { typography } from "../../styles/type";
 
 // RadioButton has two visual variants:
 // - "input": classic circular radio control
@@ -49,8 +50,7 @@ export function RadioButton({
         className={clsx(
           "relative inline-flex items-center justify-center h-[24px] px-[8px] rounded-c-md",
           "ring-1 ring-inset transition-colors duration-100 outline-none",
-          "text-[11px] font-[450] leading-[16px] tracking-[0.055px]",
-          "font-[family-name:var(--composa-font-family)]",
+          typography.bodyMedium,
           isActive && !disabled  ? "bg-c-bg-selected ring-[var(--color-border-selected-subtle)] text-c-text" :
           focused && !disabled   ? "bg-c-bg ring-c-border-selected text-c-text" :
           disabled               ? "ring-c-border-disabled text-c-text-tertiary cursor-not-allowed" :
@@ -102,8 +102,8 @@ export function RadioButton({
       {/* Label */}
       {label && (
         <span className={clsx(
-          "text-[11px] font-[450] leading-[16px] tracking-[0.055px]",
-          "font-[family-name:var(--composa-font-family)] whitespace-nowrap",
+          typography.bodyMedium,
+          "whitespace-nowrap",
           disabled ? "text-c-text-tertiary" : "text-c-text",
         )}>
           {label}

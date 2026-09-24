@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { clsx } from "clsx";
+import { typography } from "../../styles/type";
 
 export type CheckboxType = "Checked" | "Unchecked" | "Mixed";
 
@@ -149,8 +150,8 @@ export function Checkbox({
       {/* Label */}
       {label && (
         <span className={clsx(
-          "text-[11px] font-[450] leading-[16px] tracking-[0.005em]",
-          "font-[family-name:var(--font-family-default)] whitespace-nowrap",
+          typography.bodyMedium,
+          "whitespace-nowrap",
           labelColor,
         )}>
           {label}

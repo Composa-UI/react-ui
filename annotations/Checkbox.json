@@ -30,6 +30,7 @@
     "focused"
   ],
   "tokens": {
+    "Label": { "font": "type/body-medium" },
     "note": "Fully token-bound: the checked fill and border, and the dark checked surface (--color-bg-overlay), all resolve to DS tokens."
   },
   "a11y": {

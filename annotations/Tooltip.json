@@ -18,6 +18,8 @@
   },
   "states": ["hidden", "shown"],
   "tokens": {
+    "Label": { "font": "type/body-medium" },
+    "Hotkey": { "font": "type/body-medium" },
     "note": "Deliberately dark so it floats above any surface — the background/arrow (--color-bg-overlay) and divider (--color-border-overlay) are theme-independent overlay tokens, so it is fully token-bound."
   },
   "a11y": {

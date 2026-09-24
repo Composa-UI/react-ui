@@ -21,6 +21,7 @@
     "Primary": { "bg": "bg/brand", "hover": "bg/brand-pressed", "text": "text/onbrand" },
     "Secondary": { "bg": "bg/secondary", "border": "border/default", "text": "text/default" },
     "Danger": { "bg": "bg/danger", "text": "text/onbrand" },
+    "Label": { "font": "type/body-medium" },
     "shape": { "radius": "radius/medium" }
   },
   "a11y": {
