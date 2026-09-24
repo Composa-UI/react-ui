@@ -2,7 +2,7 @@ import { clsx } from "clsx";
 import type { ReactNode } from "react";
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
-const BG = "#1e1e1e";
+const BG = "var(--color-bg-overlay)";
 // matches Figma exactly: drop-shadow(0 2px 3.5px ...) drop-shadow(0 5px 8.5px ...)
 const SHADOW = "drop-shadow-[0px_2px_3.5px_rgba(0,0,0,0.15),0px_5px_8.5px_rgba(0,0,0,0.2)]";
 
@@ -73,7 +73,7 @@ export function Notification({ message, actions = [{ label: "Action" }], icon, c
       </div>
 
       {/* Vertical separator */}
-      <div className="w-px self-stretch" style={{ backgroundColor: "#383838" }} />
+      <div className="w-px self-stretch" style={{ backgroundColor: "var(--color-border-overlay)" }} />
 
       {/* Actions column — hugs content */}
       <div className="flex flex-col shrink-0">
@@ -91,7 +91,7 @@ export function Notification({ message, actions = [{ label: "Action" }], icon, c
         {/* Secondary CTA (optional) */}
         {secondary && (
           <>
-            <div className="h-px w-full" style={{ backgroundColor: "#383838" }} />
+            <div className="h-px w-full" style={{ backgroundColor: "var(--color-border-overlay)" }} />
             <button
               onClick={secondary.onClick}
               className={clsx(

@@ -67,6 +67,132 @@ function KV({ obj }: { obj?: Record<string, unknown> }) {
   );
 }
 
+// Split a "label (note)" string into its label and parenthetical note. Many
+// variant/state entries carry their own description this way
+// (e.g. "ghost (dark canvas)", "muted (empty / greyed)").
+function splitLabel(s: string): { label: string; note: string } {
+  const m = /^(.*?)\s*\((.*)\)\s*$/.exec(s);
+  return m ? { label: m[1].trim(), note: m[2].trim() } : { label: s.trim(), note: "" };
+}
+
+// "When to use" copy for the standard states, so the States table reads like
+// Carbon's even when an annotation only stores the bare state name. A state's
+// own parenthetical note (from splitLabel) wins over this; component-specific
+// states fall through to an em dash. Keyed by the lowercased label.
+const STATE_GLOSSARY: Record<string, string> = {
+  default: "Resting state — no interaction, and nothing selected.",
+  idle: "At rest, with no activity in progress.",
+  rest: "At rest, with no activity in progress.",
+  hover: "The pointer is over the control.",
+  focused: "The control has keyboard focus, showing a visible focus ring.",
+  focus: "The control has keyboard focus, showing a visible focus ring.",
+  "focus-visible": "Keyboard focus — the ring shows for keyboard users, not on a pointer click.",
+  active: "Being pressed, or the actively engaged item.",
+  pressed: "The control is held down.",
+  pushed: "The control is held down.",
+  selected: "The active choice within a set.",
+  unselected: "Not the active choice within a set.",
+  checked: "Ticked (true).",
+  unchecked: "Empty (false).",
+  mixed: "Indeterminate — some, but not all, children are checked.",
+  on: "The toggle is on.",
+  off: "The toggle is off.",
+  open: "Expanded / revealed.",
+  closed: "Collapsed / hidden.",
+  "menu-open": "Its menu is open.",
+  "submenu-expanded": "A submenu is expanded.",
+  hidden: "Not shown; awaiting the trigger that reveals it.",
+  shown: "Visible on screen.",
+  disabled: "Unavailable and non-interactive; rendered dimmed.",
+  "action-disabled": "One action is unavailable while the rest stay active.",
+  error: "Invalid input — flagged with the danger treatment and a message.",
+  success: "Valid input — confirmed with the success treatment.",
+  warning: "Needs attention — flagged with the warning treatment.",
+  readonly: "Displays a value that can't be edited.",
+  muted: "De-emphasized, low-emphasis styling.",
+  destructive: "A dangerous action, styled to warn before it's taken.",
+  dragging: "Being dragged by direct manipulation.",
+  "drag-reorder": "Being reordered by dragging.",
+  resizing: "Being resized by dragging a handle.",
+  zooming: "The view is being zoomed.",
+  keyframed: "A keyframe sits at the current playhead.",
+  scrolled: "Content has scrolled; an edge shadow marks the overflow.",
+  locked: "Locked from editing.",
+  "parent-selected": "An ancestor is selected.",
+  gradient: "The fill is a gradient.",
+  image: "The fill is an image.",
+  variable: "The fill is bound to a variable / token.",
+};
+
+function whenToUse(state: string): string {
+  const { note, label } = splitLabel(state);
+  return note || STATE_GLOSSARY[label.toLowerCase()] || "";
+}
+
+// Variants as Carbon's "Variant | Purpose" table. Values carry their purpose
+// inline as a parenthetical; when a component declares more than one variant
+// dimension, the dimension name leads each group (row-spanned, like TokenTable).
+function VariantsTable({ variants }: { variants?: Record<string, unknown> }) {
+  const dims = Object.entries(variants ?? {}).filter(([, v]) => Array.isArray(v)) as [string, string[]][];
+  if (!dims.length) return <KV obj={variants} />; // non-array shapes: fall back
+  const multi = dims.length > 1;
+  return (
+    <table className="docs-kv docs-tc">
+      <tbody>
+        <tr>
+          {multi && <th>Group</th>}
+          <th>Variant</th>
+          <th>Purpose</th>
+        </tr>
+        {dims.flatMap(([dim, vals]) =>
+          vals.map((v, i) => {
+            const { label, note } = splitLabel(v);
+            return (
+              <tr key={dim + "/" + v}>
+                {multi && i === 0 && (
+                  <td rowSpan={vals.length} className="token-el">
+                    {dim}
+                  </td>
+                )}
+                <td>
+                  <code>{label}</code>
+                </td>
+                <td className="muted">{note || <span aria-hidden>—</span>}</td>
+              </tr>
+            );
+          }),
+        )}
+      </tbody>
+    </table>
+  );
+}
+
+// States as Carbon's "State | When to use" table.
+function StatesTable({ states }: { states: string[] }) {
+  return (
+    <table className="docs-kv docs-tc">
+      <tbody>
+        <tr>
+          <th>State</th>
+          <th>When to use</th>
+        </tr>
+        {states.map(s => {
+          const { label } = splitLabel(s);
+          const desc = whenToUse(s);
+          return (
+            <tr key={s}>
+              <td>
+                <code>{label}</code>
+              </td>
+              <td className="muted">{desc || <span aria-hidden>—</span>}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
 // ── Page shell: Carbon's black masthead ─────────────────────────────────────
 // Carbon component pages open with a tall black band carrying the big, light
 // page title; on component pages the tab bar sits at the bottom of that same
@@ -226,15 +352,39 @@ function Tick({ on }: { on: boolean }) {
   );
 }
 
-// Accessibility facts a component's annotation + the contract expose.
+// The a11y sub-fields that describe what assistive tech perceives — announced
+// state, accessible name, live regions, wiring, and reading structure. A
+// component "documents screen-reader behavior" when its annotation carries any
+// of these (a bare role alone doesn't count).
+const SR_KEYS = [
+  "state", "wiring", "nonEssential", "announce", "actions",
+  "label", "labels", "labelless", "grouping", "landmarks",
+  "reading order", "sections", "destinations", "submenu", "items",
+  "segments", "tabs", "title", "disabledReason", "header",
+];
+
+// Accessibility facts a component's annotation + the contract expose. Mirrors
+// Carbon's four "Accessibility testing status" categories (Default state /
+// Advanced states / Screen reader / Keyboard navigation), but sourced honestly
+// from what the contract verifies and the annotation documents.
 function a11yFacts(c: Annotation) {
   const a = (c.a11y ?? {}) as Record<string, unknown>;
   const enforce = (c.enforce ?? {}) as { role?: string; ariaRole?: boolean };
   const roleRaw = enforce.role || (typeof a.role === "string" ? a.role : "");
   const role = String(roleRaw).replace(/\s*\(.*$/, "").trim() || "—";
+  const states = c.states ?? [];
   return {
     role,
+    // Default state — the contract renders the component and fails CI if the
+    // declared role is missing.
     roleVerified: enforce.ariaRole === true,
+    // Advanced states — states beyond the default, or announced-state semantics.
+    advancedStates: states.length > 1 || "state" in a || "disabled" in a,
+    states,
+    // Screen reader — the annotation documents what AT conveys.
+    screenReader: SR_KEYS.some(k => k in a),
+    srKeys: SR_KEYS.filter(k => k in a),
+    // Keyboard navigation.
     keyboard: "keyboard" in a,
     labels: "label" in a || "labels" in a || "labelless" in a,
   };
@@ -246,40 +396,95 @@ function A11yTag({ tone, label }: { tone: "on" | "mid" | "off"; label: string })
   return <span className={"a11y-tag " + tone}>{label}</span>;
 }
 
-// Per-component accessibility status cards (Carbon's <A11yStatus layout="cards">).
-// One card per AX aspect Composa's contract can speak to, each with a status tag.
-function A11yStatusCards({ c }: { c: Annotation }) {
+// Carbon's four "Accessibility testing status" categories — Default state,
+// Advanced states, Screen reader, Keyboard navigation — one per card/row. Carbon
+// labels these Tested / Manually tested / Not available; Composa keeps its own
+// honest wording (CI-verified / Documented / Not documented) so a green pill
+// always means "checked", never merely "asserted".
+type A11yItem = { title: string; tone: "on" | "mid" | "off"; tag: string; detail: ReactNode };
+function a11yStatusItems(c: Annotation): A11yItem[] {
   const f = a11yFacts(c);
-  const cards: { title: string; value: ReactNode; tone: "on" | "mid" | "off"; tag: string }[] = [
+  return [
     {
-      title: "ARIA role",
-      value: f.role === "—" ? "—" : <code>{f.role}</code>,
-      tone: f.roleVerified ? "on" : "mid",
-      tag: f.roleVerified ? "Verified in CI" : "Declared",
+      title: "Default state",
+      tone: f.roleVerified ? "on" : f.role === "—" ? "off" : "mid",
+      tag: f.roleVerified ? "CI-verified" : f.role === "—" ? "No role" : "Declared",
+      detail:
+        f.role === "—" ? (
+          "No explicit role to verify"
+        ) : (
+          <>
+            <code>role=&quot;{f.role}&quot;</code>{" "}
+            {f.roleVerified ? "— render-verified in CI" : "— declared, not CI-verified"}
+          </>
+        ),
+    },
+    {
+      title: "Advanced states",
+      tone: f.advancedStates ? "mid" : "off",
+      tag: f.advancedStates ? "Documented" : "Not documented",
+      detail: f.advancedStates
+        ? <>Documented: {codeList(f.states)}</>
+        : "Only a default state documented",
+    },
+    {
+      title: "Screen reader",
+      tone: f.screenReader ? "mid" : "off",
+      tag: f.screenReader ? "Documented" : "Not documented",
+      detail: f.screenReader
+        ? <>Announced / naming semantics documented ({f.srKeys.join(", ")})</>
+        : "Not documented in the annotation",
     },
     {
       title: "Keyboard navigation",
-      value: f.keyboard ? "Interaction documented" : "Not documented",
-      tone: f.keyboard ? "on" : "off",
+      tone: f.keyboard ? "mid" : "off",
       tag: f.keyboard ? "Documented" : "Not documented",
-    },
-    {
-      title: "Labels & names",
-      value: f.labels ? "Naming documented" : "Not documented",
-      tone: f.labels ? "on" : "off",
-      tag: f.labels ? "Documented" : "Not documented",
+      detail: f.keyboard ? "Keyboard interaction documented" : "Not documented in the annotation",
     },
   ];
+}
+
+// Cards on the USAGE tab (Carbon's <A11yStatus layout="cards">): each card links
+// through to the Accessibility tab's table.
+function A11yStatusCards({ c, onOpen }: { c: Annotation; onOpen: () => void }) {
   return (
     <div className="a11y-cards">
-      {cards.map(cd => (
-        <div className="a11y-card" key={cd.title}>
-          <div className="a11y-card-title">{cd.title}</div>
-          <div className="a11y-card-value">{cd.value}</div>
-          <A11yTag tone={cd.tone} label={cd.tag} />
-        </div>
+      {a11yStatusItems(c).map(it => (
+        <button type="button" className="a11y-card" key={it.title} onClick={onOpen}>
+          <div className="a11y-card-title">{it.title}</div>
+          <div className="a11y-card-foot">
+            <A11yTag tone={it.tone} label={it.tag} />
+            <span className="a11y-card-arrow" aria-hidden>
+              →
+            </span>
+          </div>
+        </button>
       ))}
     </div>
+  );
+}
+
+// Table on the ACCESSIBILITY tab (Carbon's <A11yStatus layout="table">).
+function A11yStatusTable({ c }: { c: Annotation }) {
+  return (
+    <table className="docs-kv docs-tc a11y-status-table">
+      <tbody>
+        <tr>
+          <th>Accessibility test</th>
+          <th>Status</th>
+          <th>Detail</th>
+        </tr>
+        {a11yStatusItems(c).map(it => (
+          <tr key={it.title}>
+            <td>{it.title}</td>
+            <td>
+              <A11yTag tone={it.tone} label={it.tag} />
+            </td>
+            <td className="muted">{it.detail}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -341,21 +546,24 @@ export function StatusPage() {
       body: (
         <>
           <p className="doc-lede">
-            What each component's annotation documents, and what the contract verifies. <b>Role
-            verified</b> means the contract renders the component and fails CI if the declared ARIA
-            role is absent — <b>
+            The four columns mirror Carbon's <i>Accessibility testing status</i> categories — Default
+            state, Advanced states, Screen reader, Keyboard — but report what the contract verifies
+            and each annotation documents, not a manual test pass. <b>Default state</b> is
+            render-verified: the contract renders the component and fails CI if the declared ARIA role
+            is absent (<b>
               {roleVerified} of {components.length}
             </b>{" "}
-            are render-verified today.
+            today); the rest are checkmarked from the annotation's a11y facts.
           </p>
           <table className="docs-kv docs-tc status-a11y">
             <tbody>
               <tr>
                 <th>Component</th>
                 <th>ARIA role</th>
-                <th>Role verified</th>
+                <th>Default state</th>
+                <th>Advanced states</th>
+                <th>Screen reader</th>
                 <th>Keyboard</th>
-                <th>Labels</th>
               </tr>
               {components.map(c => {
                 const f = a11yFacts(c);
@@ -371,10 +579,13 @@ export function StatusPage() {
                       <Tick on={f.roleVerified} />
                     </td>
                     <td>
-                      <Tick on={f.keyboard} />
+                      <Tick on={f.advancedStates} />
                     </td>
                     <td>
-                      <Tick on={f.labels} />
+                      <Tick on={f.screenReader} />
+                    </td>
+                    <td>
+                      <Tick on={f.keyboard} />
                     </td>
                   </tr>
                 );
@@ -521,6 +732,58 @@ function TokenTable({ tokens }: { tokens?: Record<string, unknown> }) {
     </>
   );
 }
+
+// Classify one token leaf into a Carbon Style category from its property name
+// (or element, for scalars) and the token it references.
+type StyleCategory = "Color" | "Typography" | "Structure" | "Size" | "Feedback";
+function tokenCategory(element: string, property: string, token: string): StyleCategory {
+  const key = (property || element).toLowerCase();
+  const tv = token.toLowerCase();
+  // Interactive states → Feedback (Carbon's interactive-state color table).
+  if (/(^|[-\s/])(hover|pressed|active|focus(ed)?|selected|disabled|checked|error|success|warning|on|off)($|[-\s/])/.test(key))
+    return "Feedback";
+  if (/pressed|hover|-active|focus-ring|focus-inset/.test(tv)) return "Feedback";
+  // Structure — radius, elevation, shadow, spacing.
+  if (/^(radius|shape|shadow|elevation|spacing|gap|border-?width)$/.test(key) ||
+      /^(radius|elevation|shadow|spacing|space)\b/.test(tv))
+    return "Structure";
+  // Size — explicit dimensions.
+  if (/^(size|width|height|dimension)$/.test(key) || /^(size|sizing)\b/.test(tv)) return "Size";
+  // Typography — font / type tokens.
+  if (/^(font|type|typography|text-style)/.test(tv) || /^(font|typography|type)$/.test(key))
+    return "Typography";
+  return "Color";
+}
+
+// Split a component's tokens into Carbon's Style categories, preserving the
+// element -> { property: token } (or scalar) shape each subset needs for
+// TokenTable. Empty categories are dropped by the caller.
+function categorizeTokens(tokens?: Record<string, unknown>): Record<StyleCategory, Record<string, unknown>> {
+  const cats: Record<StyleCategory, Record<string, unknown>> = {
+    Color: {}, Typography: {}, Structure: {}, Size: {}, Feedback: {},
+  };
+  for (const [element, val] of Object.entries(tokens ?? {})) {
+    if (element === "note") continue;
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      for (const [prop, tok] of Object.entries(val as Record<string, unknown>)) {
+        const bucket = cats[tokenCategory(element, prop, String(tok))];
+        if (!bucket[element]) bucket[element] = {};
+        (bucket[element] as Record<string, unknown>)[prop] = tok;
+      }
+    } else {
+      cats[tokenCategory(element, "", String(val))][element] = val; // scalar
+    }
+  }
+  return cats;
+}
+
+const STYLE_CATEGORY_META: { name: StyleCategory; desc: string }[] = [
+  { name: "Color", desc: "Color tokens for the component's resting state." },
+  { name: "Typography", desc: "Type tokens." },
+  { name: "Structure", desc: "Radius, elevation, and shape tokens." },
+  { name: "Size", desc: "Sizing tokens." },
+  { name: "Feedback", desc: "Interactive-state tokens — hover, focus, active, and toggle states." },
+];
 
 // ── Page footer: prev/next pagination + site footer (Carbon) ────────────────
 const REPO_URL = "https://github.com/Composa-UI/react-ui";
@@ -722,6 +985,19 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
       label: "Live demo",
       body: <StorybookDemo c={c} theme={theme} />,
     },
+    {
+      id: "a11y-status",
+      label: "Accessibility status",
+      body: (
+        <A11yStatusCards
+          c={c}
+          onOpen={() => {
+            setTab("a11y");
+            setTimeout(() => document.getElementById("status")?.scrollIntoView(), 0);
+          }}
+        />
+      ),
+    },
     ...(hasGuidance
       ? [{
           id: "guidance",
@@ -730,7 +1006,7 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
         } as Sec]
       : []),
     ...(hasVariants
-      ? [{ id: "variants", label: "Variants", body: <KV obj={c.variants} /> } as Sec]
+      ? [{ id: "variants", label: "Variants", body: <VariantsTable variants={c.variants} /> } as Sec]
       : []),
     ...(hasSlots
       ? [{ id: "anatomy", label: "Anatomy", body: <KV obj={c.slots} /> } as Sec]
@@ -739,44 +1015,66 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
       ? [{
           id: "states",
           label: "States",
-          body: <p className="muted chips">{codeList(c.states!)}</p>,
+          body: <StatesTable states={c.states!} />,
         } as Sec]
       : []),
   ];
 
   // Carbon's Style page: Color/Typography/Structure — Composa is fully
   // token-bound, so its Style is Design tokens + the verified compliance status.
+  // Carbon's Style page enumerates categories (Color / Typography / Structure /
+  // Size / Feedback). Composa derives them from the token references and renders
+  // only the categories a component actually has, so no faked-empty sections.
+  const styleCats = categorizeTokens(c.tokens);
+  const tokenNote = typeof c.tokens?.note === "string" ? (c.tokens.note as string) : "";
+  const categorySections: Sec[] = STYLE_CATEGORY_META.filter(
+    m => Object.keys(styleCats[m.name]).length > 0,
+  ).map(m => ({
+    id: slug(m.name),
+    label: m.name,
+    body: (
+      <>
+        <p className="doc-lede">{m.desc}</p>
+        <TokenTable tokens={styleCats[m.name]} />
+      </>
+    ),
+  }));
+
   const styleSections: Sec[] = [
-    {
-      id: "tokens",
-      label: "Design tokens",
-      body: (
-        <>
-          <p className="doc-lede">
-            {tokensOnly
-              ? "Every visual property binds to a design token — the source is verified hex-free by the annotation contract."
-              : "Mostly token-bound; this component still carries some hardcoded values, listed below as the hardcoded-hex debt to burn down."}
-          </p>
-          <TokenTable tokens={c.tokens} />
-        </>
-      ),
-    },
+    ...(categorySections.length
+      ? categorySections
+      : [
+          {
+            id: "tokens",
+            label: "Design tokens",
+            body: (
+              <p className="doc-lede">
+                {tokensOnly
+                  ? "Fully token-bound — every visual property resolves to a design token from the single source."
+                  : "Mostly token-bound; the remaining hardcoded values are listed under Token compliance."}
+              </p>
+            ),
+          } as Sec,
+        ]),
     {
       id: "compliance",
       label: "Token compliance",
       body: (
-        <p className="muted">
-          {tokensOnly ? (
-            <>
-              <span className="tc-ok">✓ token-only</span> — no hardcoded hex in source.{" "}
-            </>
-          ) : (
-            <>
-              <span className="tc-warn">⚠ hardcoded values</span> present.{" "}
-            </>
-          )}
-          See the <a href="#/status">Status page</a> for every component's compliance.
-        </p>
+        <>
+          <p className="muted">
+            {tokensOnly ? (
+              <>
+                <span className="tc-ok">✓ token-only</span> — no hardcoded hex in source.{" "}
+              </>
+            ) : (
+              <>
+                <span className="tc-warn">⚠ hardcoded values</span> present.{" "}
+              </>
+            )}
+            See the <a href="#/status">Status page</a> for every component's compliance.
+          </p>
+          {tokenNote && <p className="muted">{tokenNote}</p>}
+        </>
       ),
     },
   ];
@@ -789,7 +1087,7 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
     {
       id: "status",
       label: "Accessibility status",
-      body: <A11yStatusCards c={c} />,
+      body: <A11yStatusTable c={c} />,
     },
     {
       id: "provides",
@@ -883,8 +1181,9 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
           {tab === "style" && (
             <>
               <PageDescription>
-                How {c.component} is styled — every value below is a design token from the single
-                source, so it reskins and flips light/dark with the system.
+                This page documents {c.component}'s visual specifications — color, structure, and
+                interactive states. Every value is a design token from the single source, so it
+                reskins and flips light/dark with the system.
               </PageDescription>
               <TabBody sections={styleSections} />
             </>
@@ -913,17 +1212,6 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
                 Live demo
               </h2>
               <StorybookDemo c={c} theme={theme} />
-
-              <h2 className="section-h" id="install">
-                Install &amp; import
-              </h2>
-              <pre>
-                <code>
-                  {c.code.import}
-                  {"\n\n"}
-                  {c.code.example}
-                </code>
-              </pre>
             </div>
           )}
 

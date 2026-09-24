@@ -41,7 +41,8 @@
   "tokens": {
     "text": "text/default; placeholder text/tertiary",
     "hint": "text/tertiary (danger / success / warning by variant)",
-    "gotcha": "value-controlled — defaultValue renders empty (per AGENTS.md)."
+    "gotcha": "value-controlled — defaultValue renders empty (per AGENTS.md).",
+    "note": "Binds to DS tokens; shares Input.tsx with ColorInput, whose color-prop default is a hardcoded #ff24bd placeholder, so this is not claimed tokensOnly."
   },
   "a11y": {
     "role": "textbox (native <input> / <textarea>)",

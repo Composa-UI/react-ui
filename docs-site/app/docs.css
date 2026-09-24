@@ -494,30 +494,61 @@ table.docs-tc a:hover {
 }
 
 /* Per-component accessibility status cards (Carbon's A11yStatus cards) */
+/* Carbon's 2×2 testing-status grid: connected cells with no per-card stroke —
+   1px gaps over the container background become the hairline dividers, and the
+   container's own border draws the outer edge. */
 .a11y-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--cds-border-subtle);
+  border: 1px solid var(--cds-border-subtle);
   margin: 4px 0 8px;
 }
+@media (max-width: 640px) {
+  .a11y-cards {
+    grid-template-columns: 1fr;
+  }
+}
+/* Clickable cell (Usage tab) — jumps to the Accessibility tab's table. */
 .a11y-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 132px;
   padding: 16px;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
   background: var(--cds-surface);
-  border: 1px solid var(--cds-border-subtle);
+  border: 0;
+  transition: background-color 0.11s;
+}
+.a11y-card:hover {
+  background: var(--cds-layer);
+}
+.a11y-card:focus-visible {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: 2px;
 }
 .a11y-card-title {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--cds-text-secondary);
-  font-weight: 600;
-}
-.a11y-card-value {
   font-size: 15px;
   color: var(--cds-text);
+  font-weight: 400;
+}
+.a11y-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.a11y-card-arrow {
+  color: var(--cds-link);
+  font-size: 18px;
+}
+.a11y-status-table td:first-child {
+  font-weight: 600;
+  white-space: nowrap;
 }
 .a11y-tag {
   align-self: flex-start;

@@ -150,6 +150,20 @@
             "Dark": "#ffffff"
           }
         },
+        "bg/overlay": {
+          "type": "COLOR",
+          "scopes": [
+            "FRAME_FILL",
+            "SHAPE_FILL"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-bg-overlay)"
+          },
+          "values": {
+            "Light": "#1e1e1e",
+            "Dark": "#1e1e1e"
+          }
+        },
         "bg/menu": {
           "type": "COLOR",
           "scopes": [
@@ -324,6 +338,32 @@
           "values": {
             "Light": "#6b4fd1",
             "Dark": "#6b4fd1"
+          }
+        },
+        "border/selected-subtle": {
+          "type": "COLOR",
+          "scopes": [
+            "STROKE_COLOR"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-border-selected-subtle)"
+          },
+          "values": {
+            "Light": "#dbd8ff",
+            "Dark": "#dbd8ff"
+          }
+        },
+        "border/overlay": {
+          "type": "COLOR",
+          "scopes": [
+            "STROKE_COLOR"
+          ],
+          "codeSyntax": {
+            "WEB": "var(--color-border-overlay)"
+          },
+          "values": {
+            "Light": "#383838",
+            "Dark": "#383838"
           }
         },
         "border/strong": {

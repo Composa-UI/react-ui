@@ -51,7 +51,7 @@ export function RadioButton({
           "ring-1 ring-inset transition-colors duration-100 outline-none",
           "text-[11px] font-[450] leading-[16px] tracking-[0.055px]",
           "font-[family-name:var(--composa-font-family)]",
-          isActive && !disabled  ? "bg-c-bg-selected ring-[#dbd8ff] text-c-text" :
+          isActive && !disabled  ? "bg-c-bg-selected ring-[var(--color-border-selected-subtle)] text-c-text" :
           focused && !disabled   ? "bg-c-bg ring-c-border-selected text-c-text" :
           disabled               ? "ring-c-border-disabled text-c-text-tertiary cursor-not-allowed" :
           /* default */            "ring-c-border-translucent text-c-text hover:bg-c-bg-hover",
