@@ -1,0 +1,94 @@
+{
+  "component": "ColorAdjustmentsDialog",
+  "category": "Overlays",
+  "archetype": "overlay",
+  "intent": "A non-modal inspector dialog, docked beside the inspector rail, that hosts one video color-adjustment group — Light, Color, Color wheels, or Creative — as labelled slider rows, a color wheel, and a segmented control.",
+  "guidance": "Structure only — controls sit at neutral defaults and nothing is wired to the grade pipeline. It commits live (no Apply): pass `controlledKeys` + `values` for the engine-backed sliders and read `onValueChange`, and let every other key keep its internal cosmetic state. `onModifiedChange` reports deviation from neutral defaults so the collapsed inspector row can show 'Modified'. The anchored body unmounts on close, so value state lives on the always-mounted wrapper. Set `enabled={false}` (Color section not added) to render every control disabled. It anchors its side axis to the inspector surface's left edge, so it clears the rail at any panel width — don't hand it a trigger-relative offset.",
+  "anatomy": [
+    {
+      "part": "Title bar",
+      "description": "40px header showing the group title; it also serves as the dialog's drag handle."
+    },
+    {
+      "part": "Close button",
+      "description": "X icon button (aria-label \"Close\") at the header's right edge; dismisses the dialog. There are no footer actions — changes are live."
+    },
+    {
+      "part": "Body",
+      "description": "The group-specific control stack, inset 12px on all sides; unmounts when the dialog closes."
+    },
+    {
+      "part": "Slider row",
+      "description": "Repeated control: a caption label, a neutral or gradient-track slider, and a trailing 52px numeric value field."
+    },
+    {
+      "part": "Range tabs + color wheel",
+      "description": "Color-wheels group only: Shadows / Midtones / Highlights tabs above a 140px color wheel, then range/saturation/brightness sliders."
+    },
+    {
+      "part": "Noise-type control",
+      "description": "Creative group only: an Off / Luma / RGB segmented control sitting between the two slider blocks."
+    }
+  ],
+  "use_when": [
+    "Fine-tuning a bound clip's grade in one of the four groups — Light, Color, Color wheels, or Creative.",
+    "Deep adjustments too numerous for the inline Color section, opened as a dedicated anchored surface."
+  ],
+  "dont_use_when": [
+    "Choosing or authoring a fill/stroke/text color — use the color/fill dialog (ColorDialog).",
+    "A blocking, focus-trapping confirmation — use Modal.",
+    "A single control that fits on the inspector row — keep it inline."
+  ],
+  "variants": {
+    "group": [
+      "light (neutral exposure/brightness/contrast/tonal sliders)",
+      "color (gradient-track temperature/tint/saturation/vibrance/hue)",
+      "wheels (Shadows/Midtones/Highlights tabs + color wheel + range/sat/brightness)",
+      "creative (vignette/radius/roundness/softness + noise-type control + amount/strength)"
+    ]
+  },
+  "slots": {
+    "trigger": "The control the dialog launches from and re-focuses on close; captured and rendered full-width."
+  },
+  "states": [
+    "closed (anchored body unmounted)",
+    "open",
+    "disabled (enabled=false — every control renders disabled)",
+    "modified (emitted via onModifiedChange when a group control leaves its neutral default)"
+  ],
+  "tokens": {
+    "Surface": {
+      "bg": "c-bg",
+      "radius": "c-lg",
+      "elevation": "--elevation-400",
+      "shadow": "shadow-c-500"
+    },
+    "Header": {
+      "border": "c-border",
+      "title": "text-c-text"
+    },
+    "Close": {
+      "icon": "text-c-icon-secondary",
+      "hover": "bg-c-bg-hover",
+      "radius": "c-md"
+    },
+    "Row label": {
+      "text": "text-c-text-secondary"
+    },
+    "note": "Type sizes are hardcoded, not type tokens (title text-[11px]/font-[550]; row label text-[9px]/font-[450]/leading-[14px]/tracking-[0.05em]). The Color group's slider tracks use hardcoded hex gradients (e.g. Temperature #3b82f6→#ffffff→#f59e0b; Hue #f00→#ff0→#0f0→…), so the component is not fully token-bound."
+  },
+  "a11y": {
+    "role": "dialog (non-modal — rendered on the Popover content with aria-label set to the group title; aria-modal=false and focus is not trapped, so the canvas stays reachable).",
+    "dismiss": "Escape closes; a labelled Close (X) button in the header also closes. Outside interaction is not blocked by default.",
+    "controls": "Each numeric value field is labelled `<Label> value`; the color wheel is labelled `<tab> color wheel`; the noise segmented control is labelled 'Noise type'."
+  },
+  "enforce": {
+    "role": "dialog",
+    "ariaRole": false,
+    "tokensOnly": false
+  },
+  "code": {
+    "import": "import { ColorAdjustmentsDialog } from '@composa/ui'",
+    "example": "<ColorAdjustmentsDialog group=\"light\" open={open} trigger={<button>Light</button>} onClose={close} onModifiedChange={setModified} />"
+  }
+}

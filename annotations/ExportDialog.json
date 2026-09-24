@@ -1,0 +1,103 @@
+{
+  "component": "ExportDialog",
+  "category": "Overlays",
+  "archetype": "overlay",
+  "intent": "A non-modal inspector dialog, docked beside the inspector rail, holding a target's saved export settings: filename suffix, color profile, image resampling, and overlapping-layer handling.",
+  "guidance": "Open it from the inspector's export trigger; it renders through InspectorDialog, so it docks to the inspector surface's left edge with an 8px gutter (not to the trigger) and lands clear of the panel at any width (#499). Non-modal: the canvas stays live, focus is not trapped, and Escape, the close X, or an outside click all call onClose. Drive it fully controlled — pass value and emit committed patches via onChange; the dialog keeps no state. Omit onChange or pass readOnly to lock an inherited/locked selection: every field disables and a polite live region explains why. Keep it to these four saved knobs — job-time parameters (scope, presets, range, preflight) belong to the full Export flow, not this surface.",
+  "anatomy": [
+    {
+      "part": "Surface",
+      "description": "The portalled non-modal floating panel from InspectorDialog: 240px wide (COMPACT_INSPECTOR_DIALOG_WIDTH), rounded-c-lg, bg-c-bg, elevation/400, docked the 8px gutter clear of the inspector surface's left edge; draggable and edge-aware."
+    },
+    {
+      "part": "Header",
+      "description": "The 40px title bar (border-b border-c-border, pl-[16px] pr-[8px]); the dialog's first child, so it doubles as the drag handle."
+    },
+    {
+      "part": "Title",
+      "description": "The \"Export\" h2 (hand-rolled text-[11px] font-[550], text-c-text) at the header's left."
+    },
+    {
+      "part": "Close (X)",
+      "description": "24px button, aria-label \"Close export settings\", 16px X glyph in icon/secondary, rounded-c-md, hover bg-c-bg-hover. Calls onClose."
+    },
+    {
+      "part": "Body",
+      "description": "A 12px-inset column (gap 4px) of setting rows."
+    },
+    {
+      "part": "Suffix row",
+      "description": "96px label column beside a medium InputField for the filename suffix; empty renders the \"None\" placeholder. min-height 32px."
+    },
+    {
+      "part": "Color profile row",
+      "description": "96px label beside a full-width Dropdown opening a radio menu — sRGB (same as file) / sRGB / Display P3 / Unmanaged."
+    },
+    {
+      "part": "Image resampling row",
+      "description": "96px label beside a full-width Dropdown opening a radio menu — Detailed / Bilinear / Nearest neighbor."
+    },
+    {
+      "part": "Ignore overlapping layers",
+      "description": "A trailing Checkbox toggle (pt-[8px]) labeled \"Ignore overlapping layers\"."
+    }
+  ],
+  "use_when": [
+    "Editing a target's persistent export settings from the inspector — suffix, color profile, resampling, and overlap handling.",
+    "You need a small settings surface docked beside the inspector rail that leaves the canvas interactive while it's open."
+  ],
+  "dont_use_when": [
+    "Running an export job with scope, presets, range, or a preflight review — that is the full Export flow, not this saved-settings surface.",
+    "A blocking, focus-trapping confirmation — use Modal.",
+    "A free-standing option list with no dialog chrome — use Menu / Dropdown."
+  ],
+  "slots": {
+    "trigger": "The launch control (a ReactElement) the dialog anchors to and captures; focus returns here on close."
+  },
+  "states": [
+    "closed",
+    "open",
+    "read-only (locked)"
+  ],
+  "tokens": {
+    "Surface": {
+      "background": "bg/default (bg-c-bg)",
+      "radius": "radius/lg (rounded-c-lg)",
+      "shadow": "elevation/400 (var(--elevation-400))"
+    },
+    "Header": {
+      "divider": "border/default (border-c-border)"
+    },
+    "Title": {
+      "color": "text/default (text-c-text)",
+      "font": "hardcoded text-[11px] font-[550] on var(--composa-font-family)"
+    },
+    "Close": {
+      "icon": "icon/secondary (text-c-icon-secondary)",
+      "hover": "bg/hover (bg-c-bg-hover)",
+      "radius": "radius/md (rounded-c-md)"
+    },
+    "Row label": {
+      "color": "text/secondary (text-c-text-secondary)",
+      "font": "hardcoded text-[11px] leading-[16px] font-[450] on var(--composa-font-family)"
+    },
+    "note": "No #hex color in source — every color binds to a c-* token. Unlike the shared InspectorDialogHeader, this dialog hand-rolls its header, so the title and row labels use hardcoded px sizes/weights (text-[11px], font-[550]/[450], leading-[16px]) rather than the --composa-body-* type tokens. Spacing is hardcoded px (header 40, body inset 12, row gap 4, row min-height 32, label column 96, control gap 8); the 240px width, 8px surface-anchored gutter (TYPE_SETTINGS_INSPECTOR_SIDE_OFFSET) and elevation 400 come from shared InspectorDialog constants (COMPACT_INSPECTOR_DIALOG_WIDTH, COMPOSA_INSPECTOR_SURFACE_SELECTOR)."
+  },
+  "a11y": {
+    "role": "dialog — non-modal (aria-modal=false, no focus trap). The role is rendered by the InspectorDialog / AnchoredInspectorOverlay surface this component composes, so ariaRole is enforced.",
+    "label": "aria-label \"Export\" names the dialog (there is no title-element association).",
+    "close": "The header X is a <button aria-label=\"Close export settings\">; Escape and outside-click also call onClose.",
+    "controls": "Each option Dropdown carries aria-haspopup=\"menu\" and a descriptive aria-label (e.g. \"Color profile: sRGB\") and opens radio menu rows (selectionRole=\"radio\", checked); the InputField is a labelled text field and the Checkbox a labelled toggle.",
+    "readOnly": "When locked, an aria-live=\"polite\" sr-only note announces \"Unlock the selection to edit export settings.\"; every field is disabled.",
+    "focus": "Non-modal — focus is not trapped; the canvas stays interactive and focus returns to the trigger on close."
+  },
+  "enforce": {
+    "role": "dialog",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { ExportDialog } from '@composa/ui'",
+    "example": "<ExportDialog\n  open={open}\n  trigger={<IconButton icon={<Download />} ariaLabel=\"Export settings\" />}\n  value={{ suffix: '', colorProfile: 'sRGB (same as file)', imageResampling: 'Detailed', ignoreOverlappingLayers: false }}\n  onChange={patch => commit(patch)}\n  onClose={() => setOpen(false)}\n/>"
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "component": "AutoLayoutSettingsDialog",
+  "category": "Overlays",
+  "archetype": "overlay",
+  "intent": "A non-modal inspector dialog, docked beside the inspector rail, holding an auto-layout frame's three secondary settings: stroke inclusion, canvas stacking, and text-baseline alignment.",
+  "guidance": "Open it from the auto-layout section's settings trigger; it renders through InspectorDialog, so it docks to the inspector surface's left edge with an 8px gutter (not to the trigger) and lands clear of the panel wherever the trigger sits (#661). Non-modal: the canvas stays live, focus is not trapped, and Escape, the close X, or an outside click all call onClose. Fully controlled — emit committed patches via onChange and re-render with the new value; the dialog keeps no state. In grid mode only the Strokes row renders. Off the horizontal axis the text-baseline toggle is disabled and explains itself through a tooltip — keep it visible rather than hiding it.",
+  "anatomy": [
+    { "part": "Surface", "description": "The portalled non-modal floating panel from InspectorDialog: 240px wide (COMPACT_INSPECTOR_DIALOG_WIDTH), rounded-c-lg, bg-c-bg, elevation/400, docked the 8px gutter clear of the inspector surface's left edge; draggable and edge-aware." },
+    { "part": "Header", "description": "The 40px title bar (border-b border-c-border, px-[12px]); the dialog's first child, so it doubles as the drag handle." },
+    { "part": "Title", "description": "The \"Auto layout settings\" h2 in type/body-medium-strong, color/text." },
+    { "part": "Close (X)", "description": "24px button, aria-label \"Close Auto layout settings\", 16px X glyph in icon/secondary; rounded-c-sm with a c-focus-ring focus ring. Calls onClose." },
+    { "part": "Body", "description": "A 12px-inset column (gap 4px) of setting rows." },
+    { "part": "Setting row", "description": "A 104px label column (type/body-medium, color/text-secondary) beside a full-width control; min-height 32px." },
+    { "part": "Strokes control", "description": "Full-width Dropdown opening a radio menu — Excluded / Included; shows \"Mixed\" for multi-selection." },
+    { "part": "Canvas stacking control", "description": "Full-width Dropdown opening a radio menu — First on top / Last on top; shows \"Mixed\" for multi-selection. Hidden in grid mode." },
+    { "part": "Text baseline control", "description": "Two-segment SegmentedControl (Minus = off, Check = on); disabled with a tooltip \"Only applicable for horizontal layouts\" off the horizontal axis. Hidden in grid mode." }
+  ],
+  "use_when": [
+    "Editing an auto-layout frame's stroke inclusion, canvas stacking, or text-baseline alignment — the secondary settings that don't earn a permanent inspector row.",
+    "You need a small surface docked beside the inspector that leaves the canvas interactive while it's open."
+  ],
+  "dont_use_when": [
+    "A blocking task or confirmation — use Modal.",
+    "The primary auto-layout controls (direction, gap, padding, alignment) — those live inline in the inspector section, not here.",
+    "A free-standing option list with no dialog chrome — use Menu / Dropdown."
+  ],
+  "slots": {
+    "trigger": "The launch control (a ReactElement) the dialog anchors to and captures; focus returns here on close."
+  },
+  "states": [
+    "closed",
+    "open",
+    "disabled",
+    "mixed value",
+    "text baseline not applicable",
+    "grid mode"
+  ],
+  "tokens": {
+    "Surface": {
+      "background": "bg/default (bg-c-bg)",
+      "radius": "radius/lg (rounded-c-lg)",
+      "shadow": "elevation/400 (var(--elevation-400))"
+    },
+    "Header": {
+      "divider": "border/default (border-c-border)",
+      "title": "type/body-medium-strong (var(--composa-body-medium-*))",
+      "titleColor": "text/default (text-c-text)"
+    },
+    "Close": {
+      "icon": "icon/secondary (text-c-icon-secondary)",
+      "hover": "bg/hover (bg-c-bg-hover)",
+      "focusRing": "focus/ring (ring-c-focus-ring)",
+      "radius": "radius/sm (rounded-c-sm)"
+    },
+    "Row label": {
+      "font": "type/body-medium (var(--composa-body-medium-*))",
+      "color": "text/secondary (text-c-text-secondary)"
+    },
+    "note": "No #hex color in source — every color binds to a c-* token. Spacing is hardcoded px (header 40, body inset 12, row gap 4, row min-height 32, label column 104, control gap 8); the 240px width, 8px surface-anchored gutter and elevation 400 come from shared InspectorDialog constants (COMPACT_INSPECTOR_DIALOG_WIDTH, AUTO_LAYOUT_SETTINGS_INSPECTOR_SIDE_OFFSET, COMPOSA_INSPECTOR_SURFACE_SELECTOR)."
+  },
+  "a11y": {
+    "role": "dialog — non-modal (aria-modal=false, no focus trap). The role is rendered by the InspectorDialog overlay surface, not literally in this component's source, so ariaRole is not enforced here.",
+    "label": "aria-label \"Auto layout settings\" names the dialog (there is no title-element association).",
+    "close": "The header X is a <button aria-label=\"Close Auto layout settings\">; Escape and outside-click also call onClose.",
+    "controls": "Each Dropdown carries a descriptive aria-label (e.g. \"Stroke inclusion: Excluded\") and opens menuitemradio rows; the text-baseline SegmentedControl is a role=\"group\" of aria-pressed segments, and its disabled state is explained via a tooltip.",
+    "focus": "Non-modal — focus is not trapped; the canvas stays interactive and focus returns to the trigger on close."
+  },
+  "enforce": {
+    "role": "dialog",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { AutoLayoutSettingsDialog } from '@composa/ui'",
+    "example": "<AutoLayoutSettingsDialog\n  open={open}\n  value={{ mode: 'horizontal', textBaseline: false, strokeSizing: 'excluded', canvasStacking: 'last-on-top' }}\n  trigger={<IconButton icon={<Settings2 />} ariaLabel=\"Auto layout settings\" />}\n  onChange={patch => commit(patch)}\n  onClose={() => setOpen(false)}\n/>"
+  }
+}

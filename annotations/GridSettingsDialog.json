@@ -1,0 +1,82 @@
+{
+  "component": "GridSettingsDialog",
+  "category": "Overlays",
+  "archetype": "overlay",
+  "intent": "An anchored, non-modal inspector dialog for editing grid column/row tracks and secondary content alignment, floated beside the inspector rail.",
+  "guidance": "The externalised half of the grid inspector: per-track Column/Row sizing and content alignment live here, while the inline Grid section keeps flow, one alignment picker, the two gaps, padding and sizing. It anchors its side axis to the inspector surface's left edge with an 8px gutter, so it lands clear of the rail regardless of trigger position or panel width. It is non-modal and does not trap focus; its 40px header doubles as the drag handle. It holds no document state — onChange emits Partial<ElementGridSettings> patches and onAddTrack is intent-only; the host owns track identity and mutation. Typing a px value on a Hug track converts it to Fixed. Add is capped at GRID_TRACK_LIMIT; the last track can't be removed.",
+  "anatomy": [
+    {
+      "part": "Header",
+      "description": "40px title bar with the \"Grid Settings\" heading and a bottom border; doubles as the dialog's drag handle."
+    },
+    {
+      "part": "Close",
+      "description": "24px X button (aria-label \"Close Grid Settings\") that dismisses the dialog."
+    },
+    {
+      "part": "Columns",
+      "description": "\"Columns\" sub-label over the column track editor: each track is a NumericComboInput (size + Fixed/Hug mode menu) with a Minus remove; a trailing Plus adds a column, capped at GRID_TRACK_LIMIT."
+    },
+    {
+      "part": "Rows",
+      "description": "\"Rows\" sub-label over the identical row track editor plus a trailing Plus to add a row."
+    },
+    {
+      "part": "Content alignment",
+      "description": "\"Content alignment\" sub-label over a 3x3 AlignmentControl that positions the whole track block within the frame."
+    }
+  ],
+  "use_when": [
+    "Editing per-track column/row sizing and secondary content alignment, split out of the compact inline Grid section.",
+    "A frame is in Grid layout and needs its track editor anchored beside the inspector."
+  ],
+  "dont_use_when": [
+    "The primary grid controls (flow, one alignment, the two gaps, padding, sizing) — those stay in the inline Grid PropertyPanel section.",
+    "A blocking, focus-trapping confirmation — use a modal Modal/Dialog."
+  ],
+  "slots": {
+    "trigger": "The persistent element the dialog anchors to and that opens it (e.g. a PanelActionBtn in the Grid row's action gutter)."
+  },
+  "states": [
+    "closed (open=false)",
+    "open",
+    "track Fixed (numeric px size)",
+    "track Hug (idle \"Hug\" label, type-to-convert)",
+    "Add disabled (columns/rows at GRID_TRACK_LIMIT)",
+    "Remove disabled (single remaining track)"
+  ],
+  "tokens": {
+    "Title": {
+      "font": "type/body-medium-strong",
+      "color": "c-text"
+    },
+    "Sub-label": {
+      "color": "c-text-secondary",
+      "note": "Font is hardcoded (9px / 450 weight / 14px line / 0.05em) — a micro-label not bound to a type token."
+    },
+    "Header": {
+      "border": "c-border"
+    },
+    "Close": {
+      "icon": "c-icon-secondary",
+      "hover": "c-bg-hover",
+      "focusRing": "c-focus-ring",
+      "radius": "c-sm"
+    },
+    "note": "No hex literals — colors bind to c-* tokens. Spacing and sizes are hardcoded px (40px header, 12px body/header inset, 8px/4px gaps, 24px close, 240px dialog width via COMPACT_INSPECTOR_DIALOG_WIDTH, 8px side offset)."
+  },
+  "a11y": {
+    "role": "dialog (non-modal — InspectorDialog passes trapFocus=false, so aria-modal is false and focus is not trapped; announced with aria-label \"Grid Settings\").",
+    "label": "aria-label \"Grid Settings\" on the dialog surface; \"Close Grid Settings\" on the X.",
+    "groups": "Each track editor is role=group with aria-label \"Column tracks\" / \"Row tracks\"; every size input, sizing-mode dropdown, add and remove button carries an explicit aria-label."
+  },
+  "enforce": {
+    "role": "dialog",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { GridSettingsDialog } from '@composa/ui'",
+    "example": "<GridSettingsDialog open={open} grid={grid} trigger={<PanelActionBtn icon={<Settings2 />} label=\"Grid settings\" />} onChange={patch => setGrid({ ...grid, ...patch })} onAddTrack={axis => addTrack(axis)} onClose={() => setOpen(false)} />"
+  }
+}

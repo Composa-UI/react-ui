@@ -1,0 +1,81 @@
+{
+  "component": "Dialog",
+  "category": "Overlays",
+  "archetype": "overlay",
+  "intent": "A modal dialog on Radix Dialog — focus trap, Escape, aria-modal, portal — composed from ModalHeader / ModalBody / ModalFooter, with width presets and an optional backdrop.",
+  "guidance": "Compose from ModalHeader / ModalBody / ModalFooter: the header and footer pin while the body scrolls inside max-h 90vh. Pick a width preset (compact 240 / dialog 320 / standard 480) or pass a vh value for tall/medium. Drop the scrim with backdrop=false for a floating inspector dialog that must not block the canvas. Use stacked with ModalCard when a share flow needs separate floating cards instead of one tall card. In-modal menus and tooltips portal to document.body, so the card's overflow-hidden never clips them. Always supply a title so RadixDialog.Title can name the dialog for assistive tech.",
+  "anatomy": [
+    { "part": "Backdrop", "description": "Optional full-screen scrim (backdrop=true) at rgba(0,0,0,0.4); blocks background interaction. Omitted for floating inspector dialogs (backdrop=false)." },
+    { "part": "Card surface", "description": "Centered content card: bg/default, radius/lg, elevation/500, overflow-hidden, max-h 90vh, flex column. Goes transparent when stacked so each ModalCard paints its own surface." },
+    { "part": "Header (ModalHeader)", "description": "40px top row with a bottom border: title / tabs / navigation slot, optional actions, and the close X. Title binds to RadixDialog.Title for a11y." },
+    { "part": "Body (ModalBody)", "description": "Scrollable content area (flex-1); a tall dialog scrolls via the DS ScrollArea overlay thumb while header and footer stay pinned. Optional 16px padding." },
+    { "part": "Footer (ModalFooter)", "description": "48px bottom row with a top border; actions right-aligned by default (start / center / end / between)." },
+    { "part": "Close affordance", "description": "24px X button in the header, aria-label=\"Close\", wired to RadixDialog.Close." }
+  ],
+  "use_when": [
+    "A blocking task that owns focus (share, settings, confirm).",
+    "A floating inspector dialog beside the canvas (backdrop=false)."
+  ],
+  "dont_use_when": [
+    "A transient, non-blocking message — use Notification.",
+    "A contextual action list — use Menu."
+  ],
+  "variants": {
+    "width": [
+      "compact (240)",
+      "dialog (320)",
+      "standard (480)",
+      "tall (70vh)",
+      "medium (50vh)"
+    ],
+    "backdrop": [
+      "scrim (blocks background)",
+      "none (floating)"
+    ],
+    "layout": [
+      "single card",
+      "stacked (ModalCard column)"
+    ]
+  },
+  "slots": {
+    "children": "ModalHeader / ModalBody / ModalFooter, or a column of ModalCard when stacked."
+  },
+  "states": [
+    "open",
+    "closed"
+  ],
+  "tokens": {
+    "surface": {
+      "bg": "bg/default",
+      "radius": "radius/lg",
+      "shadow": "elevation/500"
+    },
+    "header": {
+      "border": "border/default",
+      "title": { "font": "type/body-medium-strong", "text": "text/default" }
+    },
+    "footer": {
+      "border": "border/default"
+    },
+    "close": {
+      "icon": "icon/secondary",
+      "hover": "bg/hover",
+      "radius": "radius/sm"
+    },
+    "note": "Backdrop is a hardcoded rgba(0,0,0,0.4) (mode-invariant modal-backdrop), not a c-* token. Dimensions are hardcoded pixels: header 40px, footer 48px, card max-h 90vh, X 24px, nav labels 11px/font-450, MODAL_STACK_GAP 8px."
+  },
+  "a11y": {
+    "role": "dialog (Radix Dialog.Content: role=dialog, aria-modal, focus trap, Escape, portal). Supplied by Radix, not literally in source.",
+    "title": "RadixDialog.Title in ModalHeader labels the dialog; falls back to an sr-only title for the tabs variant or when none is passed.",
+    "close": "X close button carries aria-label=\"Close\"."
+  },
+  "enforce": {
+    "role": "dialog",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { Modal, ModalHeader, ModalBody, ModalFooter } from '@composa/ui'",
+    "example": "<Modal open={open} onClose={close} width=\"standard\">\n  <ModalHeader title=\"Share\" onClose={close} />\n  <ModalBody padding>…</ModalBody>\n  <ModalFooter>…</ModalFooter>\n</Modal>"
+  }
+}

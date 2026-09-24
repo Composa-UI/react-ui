@@ -1,0 +1,59 @@
+{
+  "component": "ImageAdjustDialog",
+  "category": "Overlays",
+  "archetype": "overlay",
+  "intent": "The crop-and-zoom step of the image-picker flow: a compact dialog that masks a chosen image to a circle (profile picture) or square (team icon) and emits the committed transform on Save.",
+  "guidance": "Presentational only — it holds local zoom and pan and emits the committed transform on Save; the host does the actual crop and export. Reach for it as the second step after the native file picker, one dialog for both the circle profile picture and the square team icon (set via shape). Pan is clamped so the scaled image always covers the viewport, so the background is never exposed. Save stays disabled until src is passed, so it's safe to mount before an image is chosen. Keep it at its 328px compact width; there is no header bar — the only chrome is the floating close.",
+  "anatomy": [
+    { "part": "Card", "description": "328px Modal surface centered over the scrim; focus-trapped, Esc or backdrop dismisses. No header bar." },
+    { "part": "Close", "description": "Floating X at top-right (aria-label \"Close\"); the only chrome above the content." },
+    { "part": "Crop preview", "description": "200px square viewport masked to a circle (profile) or rounded square (team icon). Shows the source image; drag to pan, clamped so the image always covers the mask. role=\"img\"." },
+    { "part": "Zoom control", "description": "Minus glyph, Slider (1x-3x, step 0.01), Plus glyph; changing zoom re-clamps the pan." },
+    { "part": "Save action", "description": "Primary Button (saveLabel); disabled until src is set. Emits { zoom, offsetX, offsetY, viewport } on click." }
+  ],
+  "use_when": [
+    "Cropping and zooming a just-picked avatar or icon before upload — circle profile picture or square team icon.",
+    "The second step of an image-picker flow, after the native file picker returns a source URL."
+  ],
+  "dont_use_when": [
+    "Colour grading, LUTs, or chroma effects on media — use the media-effects inspector.",
+    "A blocking confirmation with no media — use a plain Modal/dialog."
+  ],
+  "variants": {
+    "shape": [
+      "circle (profile picture — default)",
+      "square (team icon)"
+    ]
+  },
+  "slots": {},
+  "states": [
+    "open",
+    "closed",
+    "empty (no src — Save disabled, no image, no grab cursor)",
+    "image loaded (src — drag-to-pan enabled, Save enabled)",
+    "dragging (active grabbing while panning)"
+  ],
+  "tokens": {
+    "Surface": { "bg": "c-bg", "radius": "rounded-c-lg", "shadow": "shadow-c-500", "width": "328px" },
+    "Backdrop": { "scrim": "special/modalbackdrop (rgba(0,0,0,0.4), constant across modes; owned by Modal)" },
+    "Close": { "icon": "text-c-icon-secondary", "hover": "bg-c-bg-hover", "radius": "rounded-c-md" },
+    "Crop preview": { "bg": "c-bg-secondary", "mask": "rounded-c-full (circle) / rounded-c-lg (square)" },
+    "Zoom icons": { "color": "text-c-icon" },
+    "note": "Geometry is hardcoded, not tokenised: 200px preview (VIEWPORT), zoom 1x-3x (MIN_ZOOM/MAX_ZOOM, step 0.01), 264px zoom row, 24px content gaps, 16px insets, 28px top / 16px bottom padding. Slider and the Primary Button carry their own token bindings. No #hex literals; the backdrop rgba is Modal's special/modalbackdrop token."
+  },
+  "a11y": {
+    "role": "dialog — Radix Dialog via Modal: focus-trapped, aria-modal, Esc and backdrop close. The title is sr-only (RadixDialog.Title).",
+    "preview": "The crop viewport is role=\"img\" with aria-label from the title; the inner <img> is alt=\"\" (decorative).",
+    "close": "Floating X button with aria-label \"Close\".",
+    "zoom": "Minus/Plus glyphs are aria-hidden; the Slider carries the zoom value."
+  },
+  "enforce": {
+    "role": "dialog",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { ImageAdjustDialog } from '@composa/ui'",
+    "example": "<ImageAdjustDialog open={open} onClose={close} src={objectUrl} shape=\"circle\" onSave={commit} />"
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "component": "ColorDialog",
+  "category": "Overlays",
+  "archetype": "overlay",
+  "intent": "The shared color/fill picker: a non-modal inspector dialog for authoring a solid color, gradient, image, video, or drop-zone fill, anchored to the swatch that opened it.",
+  "guidance": "One shared controlled picker for every color surface — element fill, stroke, text, effect color, composition background. Context supplies the available modes via `allowedFillModes` / `solidOnly`; unavailable types are absent from the toolbar, never disabled. It holds no document state: every change emits a callback and commits live (the host owns undo). Video, Drop zone, and each media action render only when both the capability and its handler are wired, so the dialog never offers something it can't perform. It's non-modal — anchored through InspectorDialog to the swatch that opened it, so focus stays on the canvas. Libraries and swatches default to demo data until the host injects document tokens.",
+  "anatomy": [
+    {
+      "part": "Header",
+      "description": "40px title bar: the Custom / Libraries tab switcher (a single \"Custom\" label when Libraries is off), an optional \"+\" new style/variable action, and the Close (X). Bottom border-c-border."
+    },
+    {
+      "part": "Close (X)",
+      "description": "24px button, aria-label \"Close\", 16px X glyph in icon color; calls onClose. There is no footer — the dialog has no OK/Cancel actions and commits live."
+    },
+    {
+      "part": "Fill-type toolbar",
+      "description": "41px row of icon buttons selecting Solid, Gradient, Image, Video, or Drop zone; rendered only when more than one mode is configured. The active mode uses the selected (bg-c-bg-secondary) treatment."
+    },
+    {
+      "part": "Body",
+      "description": "Scrollable ModalBody whose editor swaps with the active fill type."
+    },
+    {
+      "part": "Solid editor",
+      "description": "208px saturation/brightness canvas with a draggable PickerHandle, an optional eyedropper + hue slider, a Hex/RGB/HSL/HSB format dropdown with its value field(s), and the \"On this page\" swatch grid."
+    },
+    {
+      "part": "Gradient editor",
+      "description": "A Linear/Radial/Angular/Diamond type dropdown with optional Flip / Rotate actions, a preview bar carrying draggable stop handles, and a Stops list of per-stop position %, color, and remove (−) rows plus an Add (+) control."
+    },
+    {
+      "part": "Media preview",
+      "description": "208px image or video preview (checkerboard when empty) with a centered Choose/Replace media button, optional Make an image / effects actions, a fit dropdown, and — for video — play/scrub/timecode and Loop/Play sound/Autoplay/Show controls toggles."
+    },
+    {
+      "part": "Drop-zone picker",
+      "description": "A source menu that points the layer at a timeline track, with a one-line explanation; nothing is uploaded."
+    }
+  ],
+  "use_when": [
+    "Authoring an element fill — solid, gradient, image, video, or drop-zone — from the swatch that opens it.",
+    "Any color control that must share one picker: stroke, text, effect color, or composition background (narrow it with solidOnly / allowedFillModes)."
+  ],
+  "dont_use_when": [
+    "A blocking confirmation — use Modal.",
+    "A simple option list — use Menu / Dropdown.",
+    "A transient message — use Notification."
+  ],
+  "slots": {
+    "trigger": "The control whose captured launch rectangle anchors placement and receives focus return on close."
+  },
+  "states": [
+    "closed",
+    "solid",
+    "gradient (linear/radial/angular/diamond)",
+    "image",
+    "video",
+    "drop-zone",
+    "libraries tab",
+    "eyedropper active",
+    "media empty (checkerboard)",
+    "media bound"
+  ],
+  "tokens": {
+    "surface": {
+      "border": "border/default (border-c-border)",
+      "elevation": "elevation/400 (InspectorDialog elevation={400})"
+    },
+    "text": {
+      "default": "text/default (text-c-text)",
+      "secondary": "text-c-text-secondary",
+      "tertiary": "text-c-text-tertiary",
+      "brand": "text-c-text-brand"
+    },
+    "icon": {
+      "default": "icon/default (text-c-icon)",
+      "muted": "icon/secondary (text-c-icon-secondary)"
+    },
+    "background": {
+      "hover": "bg-c-bg-hover",
+      "secondary": "bg-c-bg-secondary",
+      "selected": "bg-c-bg-selected"
+    },
+    "radius": {
+      "sm": "rounded-c-sm",
+      "md": "rounded-c-md"
+    },
+    "focus": {
+      "ring": "ring-c-focus-ring"
+    },
+    "font": {
+      "family": "var(--composa-font-family)",
+      "body": "type/body-medium (var(--composa-body-medium-*))"
+    },
+    "note": "tokensOnly is false: the source contains #hex literals. The MOCK_LIBRARY demo swatches (#1e1e1e … #0d99ff), the hue-spectrum slider gradient (#f00…#f00), and the gradient preview / stop colors are literal colors — a picker necessarily renders concrete colors, and Libraries/swatches bind to injected document tokens at runtime. Swatch and preview inset rings use rgba(0,0,0,…); the empty-media checkerboard uses var(--color-bg)/var(--color-bg-secondary). All dialog geometry (240px width, 40/41px header/toolbar, 208px picker, etc.) is hardcoded pixels, not spacing tokens."
+  },
+  "a11y": {
+    "role": "dialog — the composed InspectorDialog / AnchoredInspectorOverlay portals a role=\"dialog\" surface with aria-label \"Color\"; non-modal (aria-modal=false, no focus trap), so the canvas stays interactive.",
+    "label": "The surface is named by ariaLabel \"Color\"; a visually-hidden <h2>Color</h2> heads the header.",
+    "controls": "Interactive elements carry real aria-labels: fill-type buttons, eyedropper, sliders (hue, adjustments), stop position/color/opacity, Add/Remove stop, Close, and the format dropdown (\"Color format: …\"). Menu options use selectionRole=\"radio\".",
+    "close": "The header X is a <button aria-label=\"Close\">."
+  },
+  "enforce": {
+    "role": "dialog",
+    "ariaRole": false,
+    "tokensOnly": false
+  },
+  "code": {
+    "import": "import { ColorDialog } from '@composa/ui'",
+    "example": "<ColorDialog open={open} onClose={close} trigger={<FillSwatch />} hex={hex} onHexChange={setHex} fillType={fillType} onFillTypeChange={setFillType} />"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "component": "TeamDialog",
+  "category": "Overlays",
+  "archetype": "overlay",
+  "intent": "The workspace/team management dialog: a tabbed modal for viewing members and their roles (Members) and editing the team name and description (Settings).",
+  "guidance": "One component renders both tabs; `tab` controls the active one (uncontrolled, it defaults to \"settings\"). It is presentational: it shows only what the host passes, and every \"Change name\", \"Add a description\", role change, and Remove is a host callback. An affordance with no wired callback renders muted or static text, never a live control that silently drops the action. With one or fewer members the Members tab shows a permissions helper caption instead of the \"Team · N members\" summary. Radix Dialog supplies the focus trap, Escape-to-close, aria-modal, and body portal; sections are separated by whitespace only, with no dividers.",
+  "anatomy": [
+    { "part": "Header (tab bar)", "description": "40px top bar with a bottom border (ModalHeader variant=\"tabs\"). Holds the Members/Settings tabs; the \"Team\" title is a visually hidden (sr-only) DialogTitle." },
+    { "part": "Close", "description": "24px X button at the header's right edge, aria-label \"Close\"." },
+    { "part": "Body", "description": "Scrollable content region (ModalBody, px-24 py-8): a team-icon column beside a 472px-max content column." },
+    { "part": "Team icon", "description": "80px square glyph — a photo (teamIconSrc) or a white Users icon on multiplayer grey." },
+    { "part": "Settings content", "description": "Settings tab: a \"Team name\" section (value + \"Change name\" link) and an \"About\" section (\"Add a description\" link)." },
+    { "part": "Members content", "description": "Members tab: a permissions helper caption or a \"Team · N members\" summary, then the list of member rows." },
+    { "part": "Member row", "description": "Avatar, name (+ muted \"(You)\"), optional email, and a role control; pending rows render at 60% opacity." },
+    { "part": "Role control", "description": "\"Owner\" shows as static text; editable roles open a dark dropdown (Can edit / Can view + Remove); unwired roles show static text." }
+  ],
+  "use_when": [
+    "Managing a workspace/team: reviewing members and their roles, or editing the team name and description.",
+    "You need one dialog that switches between a Members roster and Settings via tabs."
+  ],
+  "dont_use_when": [
+    "A blocking confirm or alert — use a plain Modal (width \"dialog\") with ModalFooter actions.",
+    "Sharing a document with people or links — use ShareModal.",
+    "Editing a single field inline — use InputField in a form, not a full dialog."
+  ],
+  "variants": {
+    "tab": [
+      "members (roster + role controls)",
+      "settings (team name + about)"
+    ]
+  },
+  "slots": {},
+  "states": [
+    "open",
+    "closed",
+    "members tab: empty (permissions helper caption)",
+    "members tab: populated (Team · N members)",
+    "member row: pending (60% opacity)",
+    "role: Owner (static text)",
+    "role: editable (dropdown menu)",
+    "link action: disabled (no wired callback)"
+  ],
+  "tokens": {
+    "Surface": { "bg": "c-bg", "radius": "rounded-c-lg", "shadow": "shadow-c-500" },
+    "Header": { "border": "c-border" },
+    "Heading": { "color": "c-text", "note": "size/line-height hardcoded 14px/24px, not a type token" },
+    "Value": { "color": "c-text", "note": "size/line-height hardcoded 11px/16px, not a type token" },
+    "Caption/Label": { "font": "type/body-medium", "color": "c-text-secondary" },
+    "Link action": { "color": "c-text-brand (enabled) / c-text-disabled (unwired)" },
+    "Team icon": { "radius": "rounded-c-lg", "icon": "text-white", "note": "background hardcoded #667799 (fixed multiplayer grey, mode-independent)" },
+    "Role trigger": { "hover": "c-bg-hover", "label": "c-text", "chevron": "c-icon-secondary" },
+    "Role menu": { "bg": "var(--color-bg-menu)", "highlight": "c-bg-brand", "separator": "c-border-menu", "ring": "c-border-translucent", "shadow": "shadow-c-400", "danger": "c-text-danger", "note": "dark menu (data-composa-mode=\"dark\"); item text white" },
+    "Backdrop": { "note": "scrim hardcoded rgba(0,0,0,0.4) (special/modalbackdrop, defined in Modal)" },
+    "note": "Not token-only: the TeamIcon background is a hardcoded #667799 hex, the modal scrim is a hardcoded rgba(0,0,0,0.4), and the heading/value type sizes are hardcoded px rather than type tokens."
+  },
+  "a11y": {
+    "role": "dialog (Radix Dialog.Content with aria-modal, focus trap, Escape-to-close, body portal). The role and aria-modal are provided by Radix, not a literal role attribute in source.",
+    "title": "A DialogTitle is always rendered for assistive tech — visually hidden (sr-only) on the tabs header, where the tab list replaces the visible \"Team\" title.",
+    "close": "X button carries aria-label \"Close\".",
+    "menu": "The role dropdown is a Radix DropdownMenu — portalled, dark, and keyboard-navigable."
+  },
+  "enforce": {
+    "role": "dialog",
+    "ariaRole": false,
+    "tokensOnly": false
+  },
+  "code": {
+    "import": "import { TeamDialog } from '@composa/ui'",
+    "example": "<TeamDialog open={open} onClose={close} tab={tab} onTabChange={setTab} teamName=\"Acme\" members={members} onChangeMemberRole={setRole} onRemoveMember={remove} />"
+  }
+}

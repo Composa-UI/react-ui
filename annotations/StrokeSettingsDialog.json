@@ -1,0 +1,87 @@
+{
+  "component": "StrokeSettingsDialog",
+  "category": "Overlays",
+  "archetype": "overlay",
+  "intent": "A non-modal inspector dialog, anchored beside the inspector rail, for editing a selection's stroke style, join, and cap.",
+  "guidance": "Non-modal: focus is not trapped, Escape and outside clicks dismiss. Its side axis anchors to the inspector surface's left edge (not the trigger) via anchorSurfaceSelector, so it clears the panel however the row anatomy or panel width drifts. Pass a shrink-wrapped trigger so the inline row columns keep their width. It exposes ONLY engine-backed properties (style/join/cap) — do not add a width profile, editable miter angle, or the Dynamic/Brush tabs the document model can't carry. When the selection is read-only or no onChange is wired, every control disables; a read-only selection also exposes a polite sr-only live region explaining why. A mixed multi-selection shows \"Mixed\" with no active segment.",
+  "anatomy": [
+    {
+      "part": "Title bar",
+      "description": "40px bar, border-b border-c-border, holding the \"Stroke settings\" title (text-c-text) and the close button; doubles as the dialog drag handle."
+    },
+    {
+      "part": "Close button",
+      "description": "24px X icon button (text-c-icon-secondary, hover:bg-c-bg-hover) that calls onClose."
+    },
+    {
+      "part": "Style field",
+      "description": "Labeled row whose control is a Dropdown showing a stroke-style preview + value; opens a single-select checkmark menu (Solid / Dashed / Dotted)."
+    },
+    {
+      "part": "Join field",
+      "description": "Labeled row whose control is a segmented control of join previews (Miter / Round / Bevel)."
+    },
+    {
+      "part": "Cap field",
+      "description": "Labeled row whose control is a segmented control of cap previews (None / Round / Square)."
+    }
+  ],
+  "use_when": [
+    "Editing a selection's stroke properties — dash style, line join, line cap — from a floating dialog next to the inspector rail."
+  ],
+  "dont_use_when": [
+    "A blocking confirmation that must trap focus — use Modal.",
+    "A single-select choice with no dialog chrome — use Dropdown / PopoverMenu directly.",
+    "Stroke properties the document model doesn't carry (width profile, miter angle) — deliberately not exposed."
+  ],
+  "slots": {
+    "trigger": "The launch control captured and anchored to. Rendered inline via a shrink-wrapped wrapper (triggerClassName=\"shrink-0\") so sibling flex columns keep their width."
+  },
+  "states": [
+    "open",
+    "closed",
+    "read-only",
+    "mixed"
+  ],
+  "tokens": {
+    "Surface": {
+      "background": "c-bg",
+      "radius": "c-lg",
+      "elevation": "--elevation-400 (elevation=400)"
+    },
+    "Title bar": {
+      "text": "c-text",
+      "border": "c-border"
+    },
+    "Label": {
+      "text": "c-text-secondary"
+    },
+    "Close button": {
+      "icon": "c-icon-secondary",
+      "hover": "c-bg-hover",
+      "radius": "c-md"
+    },
+    "Segmented field": {
+      "background": "c-bg-secondary",
+      "ring": "c-border",
+      "selected": "c-bg / c-text"
+    },
+    "note": "Colors are fully token-bound (c-* utilities / currentColor) with no hex literal. Typography and spacing are hardcoded pixel values, not named type/space tokens: the title/label use text-[11px] with font-[550]/font-[450] and leading-[16px] rather than a type token, and the layout uses p-[12px] pt-[16px], gap-[4px], min-h-[32px], h-[40px], and the w-[72px] label column."
+  },
+  "a11y": {
+    "role": "dialog (non-modal — aria-modal=false; focus is not trapped). Labelled \"Stroke settings\" via aria-label; dismisses on Escape and outside click.",
+    "style": "Dropdown trigger sets aria-haspopup=\"menu\" and an aria-label reflecting the value or \"Mixed\"; menu rows are selectionRole=\"radio\".",
+    "join_cap": "Each segmented control is role=\"group\" with an aria-label carrying the current (or \"Mixed\") value; each segment has its own aria-label and aria-pressed.",
+    "readOnly": "When read-only, controls disable and a polite sr-only live region announces \"Unlock the selection to edit stroke settings.\"",
+    "previews": "Stroke/join/cap preview SVGs are aria-hidden."
+  },
+  "enforce": {
+    "role": "dialog",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { StrokeSettingsDialog } from '@composa/ui'",
+    "example": "<StrokeSettingsDialog open={open} trigger={<IconButton aria-label=\"Stroke settings\" />} value={{ style: 'solid', join: 'miter', cap: 'round' }} onChange={patch => applyStroke(patch)} onClose={close} />"
+  }
+}
