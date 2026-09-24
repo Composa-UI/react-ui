@@ -6,11 +6,15 @@ import tokensFile from "../../tokens/composa.tokens.json";
 export type Annotation = {
   component: string;
   category: string;
+  archetype?: "primitive" | "composite" | "overlay" | "shell" | "utility";
   intent: string;
+  guidance?: string;
   use_when?: string[];
   dont_use_when?: string[];
   variants?: Record<string, unknown>;
   slots?: Record<string, string>;
+  anatomy?: Array<{ part: string; description: string }>;
+  examples?: Array<{ title: string; description: string; story?: string }>;
   states?: string[];
   tokens?: Record<string, unknown> & { note?: string };
   a11y?: Record<string, unknown>;

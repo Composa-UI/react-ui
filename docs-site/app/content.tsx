@@ -927,32 +927,84 @@ function TabBody({ sections }: { sections: Sec[] }) {
 
 // Carbon's <DoDont>: green-barred "do" / red-barred "don't" cards. Composa's
 // use_when → do, dont_use_when → don't.
+// Carbon's Do/Don't: paired cards, each with a colored accent bar and a filled
+// status badge (green ✓ / red ✗), the guidance as the caption. Carbon puts an
+// example image in the card; our annotations are text, so the caption is the
+// card's content (an optional image can slot in above it later).
+function DoBadge({ kind }: { kind: "do" | "dont" }) {
+  return (
+    <span className={"dd-badge " + kind} aria-hidden>
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+        {kind === "do" ? <path d="M3.5 8.5l3 3 6-6.5" /> : <path d="M4 4l8 8M12 4l-8 8" />}
+      </svg>
+    </span>
+  );
+}
+function DoDontCard({ kind, text }: { kind: "do" | "dont"; text: string }) {
+  return (
+    <figure className={"dd-card " + kind}>
+      <DoBadge kind={kind} />
+      <figcaption className="dd-text">{text}</figcaption>
+    </figure>
+  );
+}
 function DoDont({ dos, donts }: { dos?: string[]; donts?: string[] }) {
-  const hasDo = dos && dos.length > 0;
-  const hasDont = donts && donts.length > 0;
+  const hasDo = !!(dos && dos.length);
+  const hasDont = !!(donts && donts.length);
   if (!hasDo && !hasDont) return null;
   return (
     <div className="dodont-grid">
       <div className="dodont-col">
         <div className="dodont-head do">Do</div>
-        {(dos ?? []).map((t, i) => (
-          <div className="dodont do" key={i}>
-            <span className="dodont-mark" aria-hidden>✓</span>
-            <p>{t}</p>
-          </div>
-        ))}
+        {(dos ?? []).map((t, i) => <DoDontCard key={i} kind="do" text={t} />)}
         {!hasDo && <p className="muted dodont-empty">No specific guidance.</p>}
       </div>
       <div className="dodont-col">
         <div className="dodont-head dont">Don’t</div>
-        {(donts ?? []).map((t, i) => (
-          <div className="dodont dont" key={i}>
-            <span className="dodont-mark" aria-hidden>✕</span>
-            <p>{t}</p>
-          </div>
-        ))}
+        {(donts ?? []).map((t, i) => <DoDontCard key={i} kind="dont" text={t} />)}
         {!hasDont && <p className="muted dodont-empty">No specific guidance.</p>}
       </div>
+    </div>
+  );
+}
+
+// Anatomy — Carbon's numbered legend of the component's visible parts.
+function AnatomyLegend({ parts }: { parts: Array<{ part: string; description: string }> }) {
+  return (
+    <ol className="anatomy-legend">
+      {parts.map((p, i) => (
+        <li key={i}>
+          <span className="anatomy-num" aria-hidden>{i + 1}</span>
+          <span className="anatomy-body">
+            <b>{p.part}</b> — {p.description}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+// Guidance — bounded editorial prose (splits on blank lines into paragraphs).
+function Guidance({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/\n\s*\n/).map((para, i) => (
+        <p className="doc-prose" key={i}>{para}</p>
+      ))}
+    </>
+  );
+}
+
+// Examples — concrete usage patterns (mainly for composites).
+function Examples({ items }: { items: Array<{ title: string; description: string }> }) {
+  return (
+    <div className="examples-list">
+      {items.map((e, i) => (
+        <div className="example-item" key={i}>
+          <div className="example-title">{e.title}</div>
+          <p className="example-desc">{e.description}</p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -973,12 +1025,16 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
   const hasSlots = !!(c.slots && Object.keys(c.slots).length > 0);
   const hasVariants = !!(c.variants && Object.keys(c.variants).length > 0);
   const hasStates = !!(c.states && c.states.length > 0);
-  const hasGuidance = !!((c.use_when && c.use_when.length) || (c.dont_use_when && c.dont_use_when.length));
+  const hasWhenToUse = !!((c.use_when && c.use_when.length) || (c.dont_use_when && c.dont_use_when.length));
+  const hasAnatomy = !!(c.anatomy && c.anatomy.length) || hasSlots;
+  const hasProse = !!(c.guidance && c.guidance.trim());
+  const hasExamples = !!(c.examples && c.examples.length);
 
-  // Carbon's Usage page: Live demo → guidance (Do/Don't) → Variants → Anatomy
-  // (slots) → States. The intent shows as the PageDescription lede above the
-  // anchor links, so there's no separate Overview section. Only the sections the
-  // annotation supports render.
+  // Carbon's Usage page order (section-rubric.md): Live demo → When to use
+  // (Do/Don't) → Variants → Anatomy → States → Guidance → Examples. The intent
+  // is the PageDescription lede above the anchor links. Each section renders iff
+  // its backing annotation field is present, so every page is consistent by
+  // construction.
   const usageSections: Sec[] = [
     {
       id: "live-demo",
@@ -998,9 +1054,9 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
         />
       ),
     },
-    ...(hasGuidance
+    ...(hasWhenToUse
       ? [{
-          id: "guidance",
+          id: "when-to-use",
           label: "When to use",
           body: <DoDont dos={c.use_when} donts={c.dont_use_when} />,
         } as Sec]
@@ -1008,8 +1064,12 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
     ...(hasVariants
       ? [{ id: "variants", label: "Variants", body: <VariantsTable variants={c.variants} /> } as Sec]
       : []),
-    ...(hasSlots
-      ? [{ id: "anatomy", label: "Anatomy", body: <KV obj={c.slots} /> } as Sec]
+    ...(hasAnatomy
+      ? [{
+          id: "anatomy",
+          label: "Anatomy",
+          body: c.anatomy && c.anatomy.length ? <AnatomyLegend parts={c.anatomy} /> : <KV obj={c.slots} />,
+        } as Sec]
       : []),
     ...(hasStates
       ? [{
@@ -1017,6 +1077,12 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
           label: "States",
           body: <StatesTable states={c.states!} />,
         } as Sec]
+      : []),
+    ...(hasProse
+      ? [{ id: "guidance", label: "Guidance", body: <Guidance text={c.guidance!} /> } as Sec]
+      : []),
+    ...(hasExamples
+      ? [{ id: "examples", label: "Examples", body: <Examples items={c.examples!} /> } as Sec]
       : []),
   ];
 

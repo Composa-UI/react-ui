@@ -143,4 +143,35 @@ describe("annotation contract v1", () => {
       expect(src, `${name} declares tokensOnly but contains a hex literal`).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
     }
   });
+
+  // Rubric completeness (docs/design-system/section-rubric.md): a component that
+  // declares an `archetype` must carry the sections its archetype requires.
+  // Components without an archetype are grandfathered (valid, not yet
+  // rubric-complete) so the rubric can roll out incrementally.
+  it("rubric completeness: an archetyped component carries its required sections", () => {
+    const nonEmpty = (v: unknown) =>
+      Array.isArray(v) ? v.length > 0 : typeof v === "string" ? v.trim().length > 0 : v != null;
+    // Extra fields each archetype requires beyond the base schema.
+    const REQUIRED_SECTIONS: Record<string, string[]> = {
+      primitive: [],
+      composite: ["anatomy", "guidance"],
+      overlay: ["guidance"],
+      shell: ["anatomy", "guidance"],
+      utility: [],
+    };
+    for (const ann of annotations) {
+      const arch = ann.archetype as string | undefined;
+      if (!arch) continue; // grandfathered until annotated to the rubric
+      expect(REQUIRED_SECTIONS[arch], `${ann.component}: unknown archetype '${arch}'`).toBeTypeOf("object");
+      for (const field of REQUIRED_SECTIONS[arch] ?? []) {
+        expect(nonEmpty(ann[field]), `${ann.component} (${arch}) must have '${field}' per the section rubric`).toBe(true);
+      }
+      if (arch !== "utility") {
+        expect(
+          nonEmpty(ann.use_when) || nonEmpty(ann.dont_use_when),
+          `${ann.component} (${arch}) must have use_when / dont_use_when guidance`,
+        ).toBe(true);
+      }
+    }
+  });
 });

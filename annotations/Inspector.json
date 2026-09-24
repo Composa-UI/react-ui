@@ -1,7 +1,14 @@
 {
   "component": "Inspector",
   "category": "Panels",
+  "archetype": "composite",
   "intent": "The composable right-rail shell. Renders the PanelSection children it is given, in order.",
+  "guidance": "Compose the inspector from PanelSections rather than hardcoding rows — reorder, add, remove, or replace a section by changing children, and nothing else moves. The header stays fixed while the section stack scrolls beneath an overlay scrollbar (no layout shift). Label the rail with aria-label so it reads as a complementary landmark, and let each PanelSection own its own region.",
+  "anatomy": [
+    { "part": "Header", "description": "Fixed zone above the scroll — e.g. the zoom control and the Design / Animate tab row." },
+    { "part": "Section stack", "description": "The PanelSection children, rendered in the order given; the composition surface." },
+    { "part": "Scroll region", "description": "Overlay scrollbar that hides with no layout shift; only the selected content sits in the reading order." }
+  ],
   "use_when": [
     "Building an inspector by composing sections.",
     "You want to reorder, add, remove, or replace a section by changing children."
