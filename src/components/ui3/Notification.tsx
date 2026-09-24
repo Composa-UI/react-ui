@@ -1,13 +1,14 @@
 import { clsx } from "clsx";
 import type { ReactNode } from "react";
+import { typography } from "../../styles/type";
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const BG = "var(--color-bg-overlay)";
 // matches Figma exactly: drop-shadow(0 2px 3.5px ...) drop-shadow(0 5px 8.5px ...)
 const SHADOW = "drop-shadow-[0px_2px_3.5px_rgba(0,0,0,0.15),0px_5px_8.5px_rgba(0,0,0,0.2)]";
 
-const TEXT_MSG  = "text-[11px] font-[450] leading-[16px] tracking-[0.055px] font-[family-name:var(--composa-font-family)]";
-const TEXT_CTA  = "text-[11px] font-[550] leading-[16px] tracking-[0.055px] font-[family-name:var(--composa-font-family)]";
+const TEXT_MSG = typography.bodyMedium;       // 11/16 · 450
+const TEXT_CTA = typography.bodyMediumStrong; // 11/16 · 550
 
 // ─── Component icon (diamond/4-pointed star shape used in Figma UI) ───────────
 function ComponentIcon() {

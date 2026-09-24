@@ -31,6 +31,7 @@
     "idle": {
       "text": "text/secondary"
     },
+    "Label": { "font": "type/body-medium" },
     "note": "Fully token-bound: the button variant's active/selected ring binds to --color-border-selected-subtle, and every other fill, text, and border resolves to a DS token."
   },
   "a11y": {

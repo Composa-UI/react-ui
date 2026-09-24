@@ -1,6 +1,7 @@
 import { type ReactNode } from "react";
 import { clsx } from "clsx";
 import { Tooltip } from "./Tooltip";
+import { typography } from "../../styles/type";
 
 export type ButtonVariant =
   | "Primary" | "Secondary" | "Destructive" | "Inverse"
@@ -135,9 +136,8 @@ export function Button({
       disabled={disabled}
       className={clsx(
         "relative inline-flex items-center justify-center gap-[4px] rounded-c-md py-[4px]",
-        "font-[family-name:var(--composa-font-family)] font-[450]",
-        "text-[length:var(--composa-body-medium-size)] leading-[var(--composa-body-medium-line)]",
-        "tracking-[var(--composa-body-medium-letter-spacing)] whitespace-nowrap",
+        typography.bodyMedium,
+        "whitespace-nowrap",
         "transition-colors duration-100 outline-none select-none",
         size === "wide" && "w-full",
         heightClass,

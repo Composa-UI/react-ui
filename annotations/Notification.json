@@ -24,6 +24,8 @@
     "two actions"
   ],
   "tokens": {
+    "Message": { "font": "type/body-medium" },
+    "Action": { "font": "type/body-medium-strong" },
     "note": "Deliberately a dark pill that reads on any surface — its dark background and separators now bind to the theme-independent overlay tokens (--color-bg-overlay / --color-border-overlay), so it is fully token-bound."
   },
   "a11y": {
