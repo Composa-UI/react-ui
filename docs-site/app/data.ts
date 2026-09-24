@@ -129,7 +129,7 @@ export const storybookIframeHref = (c: Annotation, theme: Theme, variant = "Defa
 export type Route =
   | { kind: "home" }
   | { kind: "foundations" }
-  | { kind: "token-compliance" }
+  | { kind: "status" }
   | { kind: "component"; component: Annotation }
   | { kind: "not-found"; slug: string };
 
@@ -144,7 +144,8 @@ export function parseRoute(hash: string): Route {
   const path = hash.replace(/^#/, "").replace(/^\/+/, "").replace(/\/+$/, "");
   if (path === "") return { kind: "home" };
   if (path === "foundations") return { kind: "foundations" };
-  if (path === "token-compliance") return { kind: "token-compliance" };
+  // `token-compliance` kept as an alias for the reframed Status page.
+  if (path === "status" || path === "token-compliance") return { kind: "status" };
   const m = path.match(/^components\/(.+)$/);
   if (m) {
     const c = bySlug.get(m[1]);

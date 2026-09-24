@@ -123,9 +123,9 @@ export function HomePage() {
           <p>Color, radius and spacing swatches generated from the single token source.</p>
           <span className="home-card-go">Open →</span>
         </a>
-        <a className="home-card" href="#/token-compliance">
-          <h3>Token compliance</h3>
-          <p>Which components are fully token-bound, and the hardcoded-hex debt to burn down.</p>
+        <a className="home-card" href="#/status">
+          <h3>Status</h3>
+          <p>Per-component token compliance and accessibility, verified by the annotation contract.</p>
           <span className="home-card-go">Open →</span>
         </a>
       </div>
@@ -211,57 +211,152 @@ export function Foundations() {
   );
 }
 
-// ── Token compliance page ───────────────────────────────────────────────────
+// ── Status page: token compliance + accessibility (Carbon's status matrix) ──
 
 function isTokenOnly(c: Annotation) {
   return !!(c.enforce && c.enforce.tokensOnly === true);
 }
 
-export function TokenCompliance() {
-  const n = components.filter(isTokenOnly).length;
+// A compact status tick (Carbon's A11yStatusTag): green ✓ when true, muted – otherwise.
+function Tick({ on }: { on: boolean }) {
+  return (
+    <span className={"status-tick " + (on ? "on" : "off")} aria-hidden>
+      {on ? "✓" : "–"}
+    </span>
+  );
+}
+
+// Accessibility facts a component's annotation + the contract expose.
+function a11yFacts(c: Annotation) {
+  const a = (c.a11y ?? {}) as Record<string, unknown>;
+  const enforce = (c.enforce ?? {}) as { role?: string; ariaRole?: boolean };
+  const roleRaw = enforce.role || (typeof a.role === "string" ? a.role : "");
+  const role = String(roleRaw).replace(/\s*\(.*$/, "").trim() || "—";
+  return {
+    role,
+    roleVerified: enforce.ariaRole === true,
+    keyboard: "keyboard" in a,
+    labels: "label" in a || "labels" in a || "labelless" in a,
+  };
+}
+
+export function StatusPage() {
+  const tokenOK = components.filter(isTokenOnly).length;
+  const roleVerified = components.filter(c => a11yFacts(c).roleVerified).length;
+
+  const sections: Sec[] = [
+    {
+      id: "token-compliance",
+      label: "Token compliance",
+      body: (
+        <>
+          <p className="doc-lede">
+            Which components are fully token-bound. Enforced by the annotation contract: a component
+            may claim <code>tokensOnly</code> only if its source carries no hardcoded hex, so this is
+            verified, not asserted. <b>
+              {tokenOK} of {components.length}
+            </b>{" "}
+            are verified token-only; the rest name their hardcoded values — the hardcoded-hex debt to
+            burn down.
+          </p>
+          <table className="docs-kv docs-tc">
+            <tbody>
+              <tr>
+                <th>Component</th>
+                <th>Status</th>
+                <th>Note</th>
+              </tr>
+              {components.map(c => {
+                const ok = isTokenOnly(c);
+                const note = (c.tokens && c.tokens.note) || "";
+                return (
+                  <tr key={c.component}>
+                    <td>
+                      <a href={routeForComponent(c)}>{c.component}</a>
+                    </td>
+                    <td>
+                      {ok ? (
+                        <span className="tc-ok">✓ token-only</span>
+                      ) : note ? (
+                        <span className="tc-warn">⚠ hardcoded values</span>
+                      ) : (
+                        <span className="tc-na">— not asserted</span>
+                      )}
+                    </td>
+                    <td className="muted">{note || (ok ? "Source verified hex-free." : "")}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </>
+      ),
+    },
+    {
+      id: "accessibility",
+      label: "Accessibility",
+      body: (
+        <>
+          <p className="doc-lede">
+            What each component's annotation documents, and what the contract verifies. <b>Role
+            verified</b> means the contract renders the component and fails CI if the declared ARIA
+            role is absent — <b>
+              {roleVerified} of {components.length}
+            </b>{" "}
+            are render-verified today.
+          </p>
+          <table className="docs-kv docs-tc status-a11y">
+            <tbody>
+              <tr>
+                <th>Component</th>
+                <th>ARIA role</th>
+                <th>Role verified</th>
+                <th>Keyboard</th>
+                <th>Labels</th>
+              </tr>
+              {components.map(c => {
+                const f = a11yFacts(c);
+                return (
+                  <tr key={c.component}>
+                    <td>
+                      <a href={routeForComponent(c)}>{c.component}</a>
+                    </td>
+                    <td>
+                      {f.role === "—" ? <span className="muted">—</span> : <code>{f.role}</code>}
+                    </td>
+                    <td>
+                      <Tick on={f.roleVerified} />
+                    </td>
+                    <td>
+                      <Tick on={f.keyboard} />
+                    </td>
+                    <td>
+                      <Tick on={f.labels} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="muted" style={{ marginTop: 12 }}>
+            Role verified is enforced in CI; Keyboard and Labels reflect whether the component's a11y
+            annotation documents that behavior. Carbon publishes a similar per-component
+            accessibility-status matrix — this is Composa's equivalent, alongside token compliance.
+          </p>
+        </>
+      ),
+    },
+  ];
+
   return (
     <>
-      <Masthead eyebrow="Overview" title="Token compliance" />
+      <Masthead eyebrow="Overview" title="Status" />
       <div className="page">
         <PageDescription>
-          Which annotated components are fully token-bound. Enforced by the annotation contract: a
-          component may claim <code>tokensOnly</code> only if its source carries no hardcoded hex, so
-          this is verified, not asserted. <b>
-            {n} of {components.length}
-          </b>{" "}
-          are verified token-only; the rest name their hardcoded values — that is the hardcoded-hex
-          debt to burn down.
+          How each component measures up — token compliance and accessibility, both driven by the
+          enforced annotation contract.
         </PageDescription>
-        <table className="docs-kv docs-tc">
-        <tbody>
-          <tr>
-            <th>Component</th>
-            <th>Status</th>
-            <th>Note</th>
-          </tr>
-          {components.map(c => {
-            const ok = isTokenOnly(c);
-            const note = (c.tokens && c.tokens.note) || "";
-            return (
-              <tr key={c.component}>
-                <td>
-                  <a href={routeForComponent(c)}>{c.component}</a>
-                </td>
-                <td>
-                  {ok ? (
-                    <span className="tc-ok">✓ token-only</span>
-                  ) : note ? (
-                    <span className="tc-warn">⚠ hardcoded values</span>
-                  ) : (
-                    <span className="tc-na">— not asserted</span>
-                  )}
-                </td>
-                  <td className="muted">{note || (ok ? "Source verified hex-free." : "")}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <TabBody sections={sections} />
       </div>
     </>
   );
@@ -637,7 +732,7 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
               <span className="tc-warn">⚠ hardcoded values</span> present.{" "}
             </>
           )}
-          See the <a href="#/token-compliance">token-compliance report</a> for every component.
+          See the <a href="#/status">Status page</a> for every component's compliance.
         </p>
       ),
     },

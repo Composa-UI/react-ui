@@ -479,6 +479,20 @@ table.docs-tc a:hover {
   color: var(--cds-text-helper);
 }
 
+/* Accessibility-status ticks (Carbon's A11yStatusTag) */
+.status-tick {
+  font-weight: 700;
+}
+.status-tick.on {
+  color: var(--cds-success);
+}
+.status-tick.off {
+  color: var(--cds-text-helper);
+}
+.status-a11y td {
+  white-space: nowrap;
+}
+
 /* ── Foundations grids (sharp corners) ───────────────────────────────────── */
 .grid-sw {
   display: grid;
