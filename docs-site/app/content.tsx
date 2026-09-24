@@ -226,15 +226,39 @@ function Tick({ on }: { on: boolean }) {
   );
 }
 
-// Accessibility facts a component's annotation + the contract expose.
+// The a11y sub-fields that describe what assistive tech perceives — announced
+// state, accessible name, live regions, wiring, and reading structure. A
+// component "documents screen-reader behavior" when its annotation carries any
+// of these (a bare role alone doesn't count).
+const SR_KEYS = [
+  "state", "wiring", "nonEssential", "announce", "actions",
+  "label", "labels", "labelless", "grouping", "landmarks",
+  "reading order", "sections", "destinations", "submenu", "items",
+  "segments", "tabs", "title", "disabledReason", "header",
+];
+
+// Accessibility facts a component's annotation + the contract expose. Mirrors
+// Carbon's four "Accessibility testing status" categories (Default state /
+// Advanced states / Screen reader / Keyboard navigation), but sourced honestly
+// from what the contract verifies and the annotation documents.
 function a11yFacts(c: Annotation) {
   const a = (c.a11y ?? {}) as Record<string, unknown>;
   const enforce = (c.enforce ?? {}) as { role?: string; ariaRole?: boolean };
   const roleRaw = enforce.role || (typeof a.role === "string" ? a.role : "");
   const role = String(roleRaw).replace(/\s*\(.*$/, "").trim() || "—";
+  const states = c.states ?? [];
   return {
     role,
+    // Default state — the contract renders the component and fails CI if the
+    // declared role is missing.
     roleVerified: enforce.ariaRole === true,
+    // Advanced states — states beyond the default, or announced-state semantics.
+    advancedStates: states.length > 1 || "state" in a || "disabled" in a,
+    states,
+    // Screen reader — the annotation documents what AT conveys.
+    screenReader: SR_KEYS.some(k => k in a),
+    srKeys: SR_KEYS.filter(k => k in a),
+    // Keyboard navigation.
     keyboard: "keyboard" in a,
     labels: "label" in a || "labels" in a || "labelless" in a,
   };
@@ -246,18 +270,22 @@ function A11yTag({ tone, label }: { tone: "on" | "mid" | "off"; label: string })
   return <span className={"a11y-tag " + tone}>{label}</span>;
 }
 
-// The AX aspects Composa's contract can speak to, one per row/card.
+// Carbon's four "Accessibility testing status" categories — Default state,
+// Advanced states, Screen reader, Keyboard navigation — one per card/row. Carbon
+// labels these Tested / Manually tested / Not available; Composa keeps its own
+// honest wording (CI-verified / Documented / Not documented) so a green pill
+// always means "checked", never merely "asserted".
 type A11yItem = { title: string; tone: "on" | "mid" | "off"; tag: string; detail: ReactNode };
 function a11yStatusItems(c: Annotation): A11yItem[] {
   const f = a11yFacts(c);
   return [
     {
-      title: "ARIA role",
-      tone: f.roleVerified ? "on" : "mid",
-      tag: f.roleVerified ? "Verified in CI" : "Declared",
+      title: "Default state",
+      tone: f.roleVerified ? "on" : f.role === "—" ? "off" : "mid",
+      tag: f.roleVerified ? "CI-verified" : f.role === "—" ? "No role" : "Declared",
       detail:
         f.role === "—" ? (
-          "No explicit role"
+          "No explicit role to verify"
         ) : (
           <>
             <code>role=&quot;{f.role}&quot;</code>{" "}
@@ -266,16 +294,26 @@ function a11yStatusItems(c: Annotation): A11yItem[] {
         ),
     },
     {
-      title: "Keyboard navigation",
-      tone: f.keyboard ? "on" : "off",
-      tag: f.keyboard ? "Documented" : "Not documented",
-      detail: f.keyboard ? "Keyboard interaction documented" : "Not documented in the annotation",
+      title: "Advanced states",
+      tone: f.advancedStates ? "mid" : "off",
+      tag: f.advancedStates ? "Documented" : "Not documented",
+      detail: f.advancedStates
+        ? <>Documented: {codeList(f.states)}</>
+        : "Only a default state documented",
     },
     {
-      title: "Labels & names",
-      tone: f.labels ? "on" : "off",
-      tag: f.labels ? "Documented" : "Not documented",
-      detail: f.labels ? "Naming documented" : "Not documented in the annotation",
+      title: "Screen reader",
+      tone: f.screenReader ? "mid" : "off",
+      tag: f.screenReader ? "Documented" : "Not documented",
+      detail: f.screenReader
+        ? <>Announced / naming semantics documented ({f.srKeys.join(", ")})</>
+        : "Not documented in the annotation",
+    },
+    {
+      title: "Keyboard navigation",
+      tone: f.keyboard ? "mid" : "off",
+      tag: f.keyboard ? "Documented" : "Not documented",
+      detail: f.keyboard ? "Keyboard interaction documented" : "Not documented in the annotation",
     },
   ];
 }
@@ -382,21 +420,24 @@ export function StatusPage() {
       body: (
         <>
           <p className="doc-lede">
-            What each component's annotation documents, and what the contract verifies. <b>Role
-            verified</b> means the contract renders the component and fails CI if the declared ARIA
-            role is absent — <b>
+            The four columns mirror Carbon's <i>Accessibility testing status</i> categories — Default
+            state, Advanced states, Screen reader, Keyboard — but report what the contract verifies
+            and each annotation documents, not a manual test pass. <b>Default state</b> is
+            render-verified: the contract renders the component and fails CI if the declared ARIA role
+            is absent (<b>
               {roleVerified} of {components.length}
             </b>{" "}
-            are render-verified today.
+            today); the rest are checkmarked from the annotation's a11y facts.
           </p>
           <table className="docs-kv docs-tc status-a11y">
             <tbody>
               <tr>
                 <th>Component</th>
                 <th>ARIA role</th>
-                <th>Role verified</th>
+                <th>Default state</th>
+                <th>Advanced states</th>
+                <th>Screen reader</th>
                 <th>Keyboard</th>
-                <th>Labels</th>
               </tr>
               {components.map(c => {
                 const f = a11yFacts(c);
@@ -412,10 +453,13 @@ export function StatusPage() {
                       <Tick on={f.roleVerified} />
                     </td>
                     <td>
-                      <Tick on={f.keyboard} />
+                      <Tick on={f.advancedStates} />
                     </td>
                     <td>
-                      <Tick on={f.labels} />
+                      <Tick on={f.screenReader} />
+                    </td>
+                    <td>
+                      <Tick on={f.keyboard} />
                     </td>
                   </tr>
                 );

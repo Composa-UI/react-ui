@@ -496,9 +496,14 @@ table.docs-tc a:hover {
 /* Per-component accessibility status cards (Carbon's A11yStatus cards) */
 .a11y-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(2, 1fr); /* Carbon's 2×2 testing-status grid */
   gap: 16px;
   margin: 4px 0 8px;
+}
+@media (max-width: 640px) {
+  .a11y-cards {
+    grid-template-columns: 1fr;
+  }
 }
 /* Clickable card (Usage tab) — jumps to the Accessibility tab's table. */
 .a11y-card {
