@@ -1,0 +1,58 @@
+{
+  "component": "ProjectsHomeTemplate",
+  "category": "Templates",
+  "archetype": "template",
+  "intent": "The authenticated pre-editor file surface: a two-pane shell whose collection shows at most five cards per row.",
+  "guidance": "A two-pane shell — a 241px sidebar and a scrolling content pane — that owns the canonical grid. The track rule caps the collection at five cards per row and falls back to an honest 4 / 3 / 2 / 1 below ~1088px, so the collection, folder, trash, and skeleton grids stay in lockstep from one definition. It holds no repository, auth, or routing state: pass `stateKind` plus the collection items and wire the callbacks. Carry loading with the skeleton grid alone (no separate spinner), and render a state panel for empty, search-empty, and load-failure. Visual direction for the cards follows the Editor Study reference.",
+  "use_when": [
+    "The signed-in projects / home file browser — create, find, open, and manage projects.",
+    "An inventory surface that needs the capped card grid, a list toggle, and empty / loading / error states."
+  ],
+  "dont_use_when": [
+    "The public entry surface — use LandingTemplate.",
+    "The editor itself — use EditorShell.",
+    "A single dialog or panel — this owns the whole screen."
+  ],
+  "anatomy": [
+    { "part": "Sidebar", "description": "241px column: account chip, workspace switcher, search, nav (Recents / Drafts / All projects / Trash), Starred, brand." },
+    { "part": "Top bar", "description": "Page title + the primary actions (New project / Share)." },
+    { "part": "Toolbar", "description": "Sort control + the grid / list view toggle." },
+    { "part": "Collection", "description": "The card grid — at most five per row, fewer only when the width can't honestly carry five — or the list of rows; the host renders the items." },
+    { "part": "State panel", "description": "Shown in place of the collection for loading (skeleton), empty, search-empty, or load-failure." }
+  ],
+  "states": [
+    "loading (skeleton grid, no separate spinner)",
+    "populated (grid or list)",
+    "empty (explains no projects, offers New project)",
+    "search-empty (keeps the query, offers a reset)",
+    "failure (retry, no fabricated cards)"
+  ],
+  "slots": {
+    "sidebar": "The whole left navigation column.",
+    "title": "Page title in the top bar.",
+    "headerActions": "Top-bar right actions (create / share).",
+    "toolbar": "Sort control + grid/list toggle.",
+    "children": "The collection items (cards or rows).",
+    "statePanel": "Content for a non-populated state."
+  },
+  "tokens": {
+    "surface": { "bg": "bg/default" },
+    "divider": { "border": "border/default" },
+    "selection": { "bg": "bg/selected" },
+    "note": "Token-bound (c-* tokens). The grid track sizes — 240px floor, 32px gap, five-column cap — are layout constants from the spec, not colors."
+  },
+  "a11y": {
+    "role": "landmarks (complementary sidebar / main content pane)",
+    "keyboard": "focus follows document order; nav items expose their selected state",
+    "note": "The host supplies accessible names for cards, menus, and the sidebar controls."
+  },
+  "enforce": {
+    "role": "main",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { ProjectsHomeTemplate } from '@composa/ui'",
+    "example": "<ProjectsHomeTemplate title=\"Recents\" sidebar={nav} toolbar={sortAndView} stateKind=\"populated\">{cards}</ProjectsHomeTemplate>"
+  }
+}

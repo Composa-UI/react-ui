@@ -21,6 +21,8 @@ export * from "./components/ui3/Avatar";
 export * from "./components/ui3/Button";
 export * from "./components/ui3/Checkbox";
 export * from "./components/ui3/IconButton";
+export * from "./components/ui3/LandingTemplate";
+export * from "./components/ui3/ProjectsHomeTemplate";
 export * from "./components/ui3/ChipVariable";
 export * from "./components/ui3/Chit";
 export * from "./components/ui3/ColorDialog";

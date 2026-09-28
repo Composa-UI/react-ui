@@ -46,6 +46,7 @@ const order = [
   "ColorInput", "ColorWheel", "NavRail", "Tabs", "Menu", "MenuRow", "Modal", "Tooltip",
   "Notification", "ListCell", "LayerList", "Inspector", "PanelSection", "SidePanel",
   "InspectorRailSwitcher", "CreationToolbar", "CropToolbar", "EditorShell",
+  "LandingTemplate", "ProjectsHomeTemplate",
 ];
 
 const modules = import.meta.glob<{ default: Annotation }>("../../annotations/*.json", {
