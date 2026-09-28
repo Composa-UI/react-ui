@@ -1028,6 +1028,7 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
   const hasWhenToUse = !!((c.use_when && c.use_when.length) || (c.dont_use_when && c.dont_use_when.length));
   const hasAnatomy = !!(c.anatomy && c.anatomy.length) || hasSlots;
   const hasProse = !!(c.guidance && c.guidance.trim());
+  const hasRules = !!(c.rules && c.rules.length);
   const hasExamples = !!(c.examples && c.examples.length);
 
   // Carbon's Usage page order (section-rubric.md): Live demo → When to use
@@ -1080,6 +1081,16 @@ export function ComponentPage({ c, theme }: { c: Annotation; theme: Theme }) {
       : []),
     ...(hasProse
       ? [{ id: "guidance", label: "Guidance", body: <Guidance text={c.guidance!} /> } as Sec]
+      : []),
+    ...(hasRules
+      ? [{
+          id: "dos-donts",
+          label: "Do's & don'ts",
+          // Each authored rule renders as a Do/Don't card pair (Carbon's guidance
+          // cards). The same rule feeds an adherence check via `enforced_by`, so
+          // the guidance shown here and the check the contract runs share one source.
+          body: <DoDont dos={c.rules!.map(r => r.do)} donts={c.rules!.map(r => r.dont)} />,
+        } as Sec]
       : []),
     ...(hasExamples
       ? [{ id: "examples", label: "Examples", body: <Examples items={c.examples!} /> } as Sec]

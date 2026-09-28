@@ -31,6 +31,7 @@ sections are **required** vs **optional**.
 | `composite` | A structured surface of several named parts | Inspector, PanelSection, LayerList, NavRail, CreationToolbar |
 | `overlay`   | Floats above content; placement matters | Modal, Menu, Tooltip, Notification, InspectorDialog |
 | `shell`     | A whole-app layout of landmark regions | EditorShell |
+| `template`  | A composable screen-shape pattern with content slots (a page you fill), distinct from the app `shell` | LandingTemplate, ProjectsHomeTemplate |
 | `utility`   | A small presentational atom | Avatar, Chit, LayerTypeIcon, ChipVariable |
 
 ## Sections
@@ -38,20 +39,25 @@ sections are **required** vs **optional**.
 `R` = required for the archetype · `C` = conditional (renders iff its field is
 present) · `—` = omit.
 
-| Section | Backing field | Condition to render | primitive | composite | overlay | shell | utility |
-|---|---|---|---|---|---|---|---|
-| Intent (lede) | `intent` | always | R | R | R | R | R |
-| Live demo | — (story) | component renders | R | R | R | R | R |
-| When to use (do/don't) | `use_when` / `dont_use_when` | either non-empty | R | R | R | R | C |
-| **Variants** | `variants` | ≥1 dimension | C | C | C | — | C |
-| **Anatomy** | `anatomy` (or `slots`) | ≥2 named parts | C | **R** | C | **R** | — |
-| **States** | `states` | ≥2 states | R | C | C | — | C |
-| **Guidance** | `guidance` | present | C | R | R | R | — |
-| **Examples** | `examples` | present | C | C | C | C | — |
-| Accessibility status | `a11y` + `enforce` | always | R | R | R | R | R |
-| Style (Color/Type/Structure/Size/Feedback) | `tokens` | category non-empty | C | C | C | C | C |
-| Token compliance | `enforce.tokensOnly` | always | R | R | R | R | R |
-| Code (Storybook) | `code` | always | R | R | R | R | R |
+`template` sits between `composite` and `shell`: like a shell it needs named
+regions (anatomy) and wiring guidance, but it renders content slots, not app
+landmarks.
+
+| Section | Backing field | Condition to render | primitive | composite | overlay | shell | template | utility |
+|---|---|---|---|---|---|---|---|---|
+| Intent (lede) | `intent` | always | R | R | R | R | R | R |
+| Live demo | — (story) | component renders | R | R | R | R | R | R |
+| When to use (do/don't) | `use_when` / `dont_use_when` | either non-empty | R | R | R | R | R | C |
+| **Variants** | `variants` | ≥1 dimension | C | C | C | — | C | C |
+| **Anatomy** | `anatomy` (or `slots`) | ≥2 named parts | C | **R** | C | **R** | **R** | — |
+| **States** | `states` | ≥2 states | R | C | C | — | C | C |
+| **Guidance** | `guidance` | present | C | R | R | R | **R** | — |
+| **Do's & don'ts** | `rules` | ≥1 rule | C | C | C | C | C | — |
+| **Examples** | `examples` | present | C | C | C | C | C | — |
+| Accessibility status | `a11y` + `enforce` | always | R | R | R | R | R | R |
+| Style (Color/Type/Structure/Size/Feedback) | `tokens` | category non-empty | C | C | C | C | C | C |
+| Token compliance | `enforce.tokensOnly` | always | R | R | R | R | R | R |
+| Code (Storybook) | `code` | always | R | R | R | R | R | R |
 
 ### Section definitions
 
@@ -70,6 +76,10 @@ present) · `—` = omit.
 - **Guidance** — bounded editorial prose (≤ ~120 words), the non-obvious
   behavioural, placement, or wiring advice that the structured fields can't
   carry. NOT a place for unbounded essays; if it needs headings, it's too big.
+- **Do's & don'ts** — authored usage `rules`, each a `{ id, do, dont, enforced_by }`.
+  Rendered as Carbon-style Do/Don't card pairs, distinct from "When to use"
+  (which is *whether* to reach for the component; rules are *how* to use it
+  once you have). Each `dont` names the correct alternative.
 - **Examples** — concrete usage snippets/patterns for composites, each a
   `{ title, description }` (+ optional story id). The brief's "example section."
 - **Style / Token compliance / Accessibility / Code** — as today, all
@@ -98,3 +108,16 @@ The annotation contract enforces:
 
 Fields stay optional in the JSON Schema (so partial annotations still validate);
 archetype coverage is the layer that turns "valid" into "complete."
+
+## The rule→lint bridge
+
+A component's `rules` are authored **once** and render **twice**: as the human
+Do/Don't cards above, and — where machine-checkable — as an *adherence check*
+the contract test runs. Each rule's `enforced_by` is either `"prose-only"` (a
+judgement call no scan can make) or the id of a check the test actually runs.
+The contract fails if a rule claims an `enforced_by` id with no matching check,
+so the guidance on the page and the enforcement in CI can never silently drift
+(the discipline the Rem design system encodes with its `_adherence.oxlintrc.json`
+front-matter). The first bridged rule is `no-adhoc-icon-button`: the docs say
+"use the shared `IconButton`," and the check scans component source to prove no
+panel/toolbar re-implements one privately.

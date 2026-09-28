@@ -1,0 +1,57 @@
+{
+  "component": "IconButton",
+  "category": "Actions",
+  "archetype": "primitive",
+  "intent": "A compact 24px icon-only button for toolbar and panel actions.",
+  "guidance": "Reach for IconButton whenever an action is represented by a glyph alone — panel headers, toolbars, the composer. It carries its accessible name as both the aria-label and the hover tooltip, so a sighted user can always learn what a glyph does (Composa#661). Pass `active` for a toggle: it paints the selected ground and sets aria-pressed; leave it off for a plain action. For a connected row of these use IconButtonRow, and for a section right-action that turns an accent 'on' glyph use PanelActionBtn — this is the standalone one.",
+  "use_when": [
+    "A toolbar or panel action shown as a glyph alone (Upload, Play, New chat).",
+    "A single icon toggle that reflects on/off (pass `active`)."
+  ],
+  "dont_use_when": [
+    "The action needs a visible text label — use Button.",
+    "Several related icon toggles form one connected control — use IconButtonRow."
+  ],
+  "rules": [
+    {
+      "id": "no-adhoc-icon-button",
+      "do": "Use the shared IconButton for a glyph-only action or toggle.",
+      "dont": "Re-implement a private icon button as a bare <button> inside a panel or toolbar.",
+      "enforced_by": "no-adhoc-icon-button"
+    },
+    {
+      "id": "always-labelled",
+      "do": "Give every IconButton a `label` — it is both the aria-label and the tooltip.",
+      "dont": "Ship an icon-only button with no accessible name.",
+      "enforced_by": "prose-only"
+    }
+  ],
+  "variants": {
+    "state": ["default (action)", "active (toggle, aria-pressed)"]
+  },
+  "slots": {},
+  "states": ["default", "hover", "active (pressed / on)", "disabled", "focus-visible"],
+  "tokens": {
+    "glyph": { "text": "text/icon" },
+    "hover": { "bg": "bg/hover" },
+    "active": { "bg": "bg/selected" },
+    "disabled": { "text": "text/disabled" },
+    "shape": { "radius": "radius/medium" }
+  },
+  "a11y": {
+    "role": "button (native <button>)",
+    "name": "the `label` prop supplies both aria-label and the tooltip",
+    "keyboard": ["Enter", "Space"],
+    "pressed": "a toggle sets aria-pressed from `active`; a plain action leaves it unset",
+    "focus": "focus-visible ring bound to the focus-ring token; disabled is removed from the tab order."
+  },
+  "enforce": {
+    "role": "button",
+    "ariaRole": false,
+    "tokensOnly": true
+  },
+  "code": {
+    "import": "import { IconButton } from '@composa/ui'",
+    "example": "<IconButton label=\"Upload\" icon={<Upload size={16} />} onClick={onUpload} />"
+  }
+}

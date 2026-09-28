@@ -20,6 +20,7 @@ export * from "./components/ui3/Waveform";
 export * from "./components/ui3/Avatar";
 export * from "./components/ui3/Button";
 export * from "./components/ui3/Checkbox";
+export * from "./components/ui3/IconButton";
 export * from "./components/ui3/ChipVariable";
 export * from "./components/ui3/Chit";
 export * from "./components/ui3/ColorDialog";

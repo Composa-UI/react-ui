@@ -44,7 +44,7 @@ const annotations = files.map(readJson) as Array<Record<string, unknown>>;
 // Components the DS considers contract-complete: adding one without a valid,
 // truthful annotation must fail here.
 const REQUIRED = [
-  "Button", "Tabs", "Inspector", "EditorShell", "Dropdown", "MenuRow", "NavRail",
+  "Button", "IconButton", "Tabs", "Inspector", "EditorShell", "Dropdown", "MenuRow", "NavRail",
   "PanelSection", "SegmentedControl", "RadioButton",
   "Switch", "Checkbox", "Dial", "AlignmentControl",
   "CreationToolbar", "CropToolbar", "LayerList", "Notification",
@@ -120,6 +120,54 @@ describe("annotation contract v1", () => {
     expect(validate(readJson(file), schema)).toEqual([]);
   });
 
+  // The rule→lint bridge (REM's pattern): each authored rule renders as a
+  // Do/Don't card AND names how it's enforced. `enforced_by` must be either
+  // 'prose-only' or the id of an adherence check this file actually runs, so a
+  // rule can never claim an enforcement that doesn't exist. ADHERENCE_CHECKS is
+  // the registry of ids that have a real check below.
+  const ADHERENCE_CHECKS = new Set<string>([
+    "no-adhoc-icon-button",
+  ]);
+  it("rules are well-formed and only claim enforcement that exists", () => {
+    for (const ann of annotations) {
+      const rules = (ann.rules ?? []) as Array<Record<string, unknown>>;
+      for (const r of rules) {
+        for (const k of ["id", "do", "dont"]) {
+          expect(typeof r[k], `${ann.component}: rule missing string '${k}'`).toBe("string");
+        }
+        const by = r.enforced_by;
+        if (by != null && by !== "prose-only") {
+          expect(
+            ADHERENCE_CHECKS.has(by as string),
+            `${ann.component}: rule '${String(r.id)}' claims enforced_by='${String(by)}' but no such adherence check runs`,
+          ).toBe(true);
+        }
+      }
+    }
+  });
+
+  // Adherence check `no-adhoc-icon-button`: the shared IconButton (and Button's
+  // icon-only mode) are the design system's icon buttons. A panel/toolbar must
+  // not re-implement one as a private, per-file component — that is exactly the
+  // drift the docs warn against, so we scan the source for it. Enforces the
+  // IconButton "use the shared primitive" rule.
+  it("no-adhoc-icon-button: components use the shared IconButton, not a private one", () => {
+    const OWNS_ICON_BUTTON = new Set(["IconButton", "Button", "SplitButton", "Panel", "CreationToolbar"]);
+    // A private re-implementation looks like `function XIconButton(` or
+    // `const XIconButton = (` where the local renders a bare <button>.
+    const PRIVATE_ICON_BUTTON = /\b(?:function|const)\s+\w*(?:IconButton|TransportIconButton)\b/;
+    const uiDir = srcDir;
+    for (const file of readdirSync(uiDir).filter(f => f.endsWith(".tsx"))) {
+      const name = file.replace(/\.tsx$/, "");
+      if (OWNS_ICON_BUTTON.has(name)) continue;
+      const src = stripComments(readFileSync(uiDir + file, "utf8"));
+      expect(
+        PRIVATE_ICON_BUTTON.test(src),
+        `${name} defines a private icon-button; use the shared IconButton (docs/design-system: no-adhoc-icon-button)`,
+      ).toBe(false);
+    }
+  });
+
   it("enforce.role is truthful: a component claiming an ARIA role renders it", () => {
     for (const ann of annotations) {
       const enforce = (ann.enforce ?? {}) as { role?: string; ariaRole?: boolean };
@@ -157,6 +205,9 @@ describe("annotation contract v1", () => {
       composite: ["anatomy", "guidance"],
       overlay: ["guidance"],
       shell: ["anatomy", "guidance"],
+      // A composable screen-shape pattern with content slots: it must name its
+      // regions (anatomy) and carry the wiring/placement advice (guidance).
+      template: ["anatomy", "guidance"],
       utility: [],
     };
     for (const ann of annotations) {

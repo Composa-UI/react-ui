@@ -6,11 +6,12 @@ import tokensFile from "../../tokens/composa.tokens.json";
 export type Annotation = {
   component: string;
   category: string;
-  archetype?: "primitive" | "composite" | "overlay" | "shell" | "utility";
+  archetype?: "primitive" | "composite" | "overlay" | "shell" | "template" | "utility";
   intent: string;
   guidance?: string;
   use_when?: string[];
   dont_use_when?: string[];
+  rules?: Array<{ id: string; do: string; dont: string; enforced_by?: string }>;
   variants?: Record<string, unknown>;
   slots?: Record<string, string>;
   anatomy?: Array<{ part: string; description: string }>;
@@ -40,7 +41,7 @@ export const GROUP_ORDER = [
 
 // Within-group order (falls back to alphabetical for anything unlisted).
 const order = [
-  "Button", "SplitButton", "Dropdown", "InputField", "NumericInput", "Checkbox",
+  "Button", "IconButton", "SplitButton", "Dropdown", "InputField", "NumericInput", "Checkbox",
   "RadioButton", "Switch", "SegmentedControl", "AlignmentControl", "Slider", "Dial",
   "ColorInput", "ColorWheel", "NavRail", "Tabs", "Menu", "MenuRow", "Modal", "Tooltip",
   "Notification", "ListCell", "LayerList", "Inspector", "PanelSection", "SidePanel",
