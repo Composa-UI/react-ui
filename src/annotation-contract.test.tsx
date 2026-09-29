@@ -129,42 +129,55 @@ describe("annotation contract v1", () => {
     "no-adhoc-icon-button",
   ]);
   it("rules are well-formed and only claim enforcement that exists", () => {
+    const RULE_KEYS = new Set(["id", "do", "dont", "enforced_by"]);
     for (const ann of annotations) {
       const rules = (ann.rules ?? []) as Array<Record<string, unknown>>;
       for (const r of rules) {
         for (const k of ["id", "do", "dont"]) {
           expect(typeof r[k], `${ann.component}: rule missing string '${k}'`).toBe("string");
         }
+        // additionalProperties: false — no field beyond the schema's four.
+        for (const k of Object.keys(r)) {
+          expect(RULE_KEYS.has(k), `${ann.component}: rule '${String(r.id)}' has unknown field '${k}'`).toBe(true);
+        }
         const by = r.enforced_by;
-        if (by != null && by !== "prose-only") {
-          expect(
-            ADHERENCE_CHECKS.has(by as string),
-            `${ann.component}: rule '${String(r.id)}' claims enforced_by='${String(by)}' but no such adherence check runs`,
-          ).toBe(true);
+        if (by !== undefined) {
+          expect(typeof by, `${ann.component}: rule '${String(r.id)}' enforced_by must be a string`).toBe("string");
+          if (by !== "prose-only") {
+            expect(
+              ADHERENCE_CHECKS.has(by as string),
+              `${ann.component}: rule '${String(r.id)}' claims enforced_by='${String(by)}' but no such adherence check runs`,
+            ).toBe(true);
+          }
         }
       }
     }
   });
 
-  // Adherence check `no-adhoc-icon-button`: the shared IconButton (and Button's
-  // icon-only mode) are the design system's icon buttons. A panel/toolbar must
-  // not re-implement one as a private, per-file component — that is exactly the
-  // drift the docs warn against, so we scan the source for it. Enforces the
-  // IconButton "use the shared primitive" rule.
+  // Adherence check `no-adhoc-icon-button`: the shared IconButton is the design
+  // system's icon-only button. A panel or toolbar must import it rather than
+  // define its own private icon-button COMPONENT — the exact drift this contract
+  // removed (AgentPanel/AssetsPanel/Timeline each had one). Scope: this catches a
+  // re-implemented `*IconButton` component, NOT a one-off inline <button> with
+  // bespoke behaviour (e.g. Timeline's Loop/record toggles), which is a separate,
+  // out-of-scope concern — the rule's Do/Don't is worded to match that scope.
   it("no-adhoc-icon-button: components use the shared IconButton, not a private one", () => {
     const OWNS_ICON_BUTTON = new Set(["IconButton", "Button", "SplitButton", "Panel", "CreationToolbar"]);
-    // A private re-implementation looks like `function XIconButton(` or
-    // `const XIconButton = (` where the local renders a bare <button>.
-    const PRIVATE_ICON_BUTTON = /\b(?:function|const)\s+\w*(?:IconButton|TransportIconButton)\b/;
-    const uiDir = srcDir;
-    for (const file of readdirSync(uiDir).filter(f => f.endsWith(".tsx"))) {
+    // A private re-implementation is a PascalCase component whose name ends in
+    // "IconButton" (IconButton, TransportIconButton, FooIconButton). camelCase
+    // helpers/hooks (useIconButton, renderIconButton) are excluded by the
+    // leading-uppercase test; test files are skipped outright.
+    const DEFN = /\b(?:function|const)\s+([A-Za-z_]\w*)/g;
+    const isPrivateIconButton = (name: string) => /^[A-Z]/.test(name) && /IconButton$/.test(name);
+    for (const file of readdirSync(srcDir).filter(f => f.endsWith(".tsx") && !f.endsWith(".test.tsx"))) {
       const name = file.replace(/\.tsx$/, "");
       if (OWNS_ICON_BUTTON.has(name)) continue;
-      const src = stripComments(readFileSync(uiDir + file, "utf8"));
+      const src = stripComments(readFileSync(srcDir + file, "utf8"));
+      const offenders = [...src.matchAll(DEFN)].map(m => m[1]).filter(isPrivateIconButton);
       expect(
-        PRIVATE_ICON_BUTTON.test(src),
-        `${name} defines a private icon-button; use the shared IconButton (docs/design-system: no-adhoc-icon-button)`,
-      ).toBe(false);
+        offenders,
+        `${name} defines a private icon-button component (${offenders.join(", ")}); import the shared IconButton (docs/design-system: no-adhoc-icon-button)`,
+      ).toEqual([]);
     }
   });
 

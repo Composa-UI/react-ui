@@ -15,8 +15,8 @@
   "rules": [
     {
       "id": "no-adhoc-icon-button",
-      "do": "Use the shared IconButton for a glyph-only action or toggle.",
-      "dont": "Re-implement a private icon button as a bare <button> inside a panel or toolbar.",
+      "do": "Import the shared IconButton for a glyph-only action or toggle.",
+      "dont": "Re-implement a private icon-button component in a panel or toolbar instead of importing the shared one.",
       "enforced_by": "no-adhoc-icon-button"
     },
     {
