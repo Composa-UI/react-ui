@@ -11,8 +11,8 @@
     "category": { "type": "string" },
     "archetype": {
       "type": "string",
-      "enum": ["primitive", "composite", "overlay", "shell", "utility"],
-      "description": "The component's kind. Sets which sections its doc requires, per docs/design-system/section-rubric.md."
+      "enum": ["primitive", "composite", "overlay", "shell", "template", "utility"],
+      "description": "The component's kind. Sets which sections its doc requires, per docs/design-system/section-rubric.md. `template` is a composable screen-shape pattern with content slots (a page you fill), distinct from `shell` (the app frame)."
     },
     "intent": { "type": "string", "description": "One line: what this is for." },
     "guidance": {
@@ -29,6 +29,21 @@
         "properties": {
           "part": { "type": "string", "description": "The part's name." },
           "description": { "type": "string", "description": "What it is / does." }
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "description": "Authored usage rules, each rendered twice (the Carbon/REM bridge): as a human Do/Don't card pair in the docs, and — where machine-checkable — as an adherence check named by `enforced_by`. Authored once here so the prose and the enforcement cannot drift.",
+      "items": {
+        "type": "object",
+        "required": ["id", "do", "dont"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "description": "kebab-case rule slug, unique within the component." },
+          "do": { "type": "string", "description": "What to do." },
+          "dont": { "type": "string", "description": "What not to do — name the correct alternative." },
+          "enforced_by": { "type": "string", "description": "The adherence-check id that enforces this rule (a check the contract test runs), or 'prose-only' when it is not machine-checkable." }
         }
       }
     },

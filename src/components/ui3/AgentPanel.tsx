@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "./Button";
+import { IconButton } from "./IconButton";
 import { Tag } from "./Tag";
 import { LayerTypeIcon, type LayerIconType } from "./LayerTypeIcon";
 import { ModelPicker } from "./ModelPicker";
@@ -291,33 +292,8 @@ function messageRenderSignature(message: AgentPanelMessage) {
   return `${message.id}:${message.type}:${message.status}:${message.content}`;
 }
 
-function IconButton({
-  label,
-  children,
-  disabled = false,
-  onClick,
-}: {
-  label: string;
-  children: ReactNode;
-  disabled?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      disabled={disabled}
-      onClick={disabled ? undefined : onClick}
-      className={clsx(
-        "size-[24px] shrink-0 rounded-c-md flex items-center justify-center outline-none",
-        "text-c-icon hover:bg-c-bg-hover focus-visible:ring-1 focus-visible:ring-c-focus-ring",
-        disabled && "cursor-not-allowed text-c-text-disabled",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
+// Icon buttons in this panel use the shared IconButton primitive (imported
+// above) — no private re-implementation (contract: no-adhoc-icon-button).
 
 // The editor's "Beta" flag, now the shared `Tag` at its editor size rather than
 // a private copy of one. Kept as a named local so the two call sites below read
@@ -753,10 +729,10 @@ export function AgentPanel({
                 header height (matches the history header + PropertyPanel sections)
                 and lays out on a single line — no stacked "Private" descriptor. */}
             <header className="h-[40px] shrink-0 px-[8px] border-b border-c-border flex items-center gap-[6px]">
-              <IconButton label="Back to chats" onClick={onBack}><ArrowLeft size={16} strokeWidth={1.5} /></IconButton>
+              <IconButton label="Back to chats" onClick={onBack} icon={<ArrowLeft size={16} strokeWidth={1.5} />} />
               <h2 className={clsx(FONT, "min-w-0 flex-1 m-0 truncate [font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text")}>{activeConversation.title}</h2>
               <BetaBadge />
-              {onConversationOptions && <IconButton label="Conversation options" onClick={() => onConversationOptions(activeConversation.id)}><MoreHorizontal size={16} strokeWidth={1.5} /></IconButton>}
+              {onConversationOptions && <IconButton label="Conversation options" onClick={() => onConversationOptions(activeConversation.id)} icon={<MoreHorizontal size={16} strokeWidth={1.5} />} />}
             </header>
             <ScrollArea viewportRef={threadViewportRef as MutableRefObject<HTMLDivElement | null>}
               onScroll={() => {
@@ -807,20 +783,19 @@ export function AgentPanel({
                   className={clsx(FONT, "block min-h-[38px] max-h-[78px] w-full resize-none overflow-hidden bg-transparent px-[8px] pt-[7px] text-[11px] leading-[16px] text-c-text placeholder:text-c-text-tertiary outline-none")}
                 />
                 <div className="h-[28px] px-[4px] pb-[4px] flex items-center gap-[2px]">
-                  <IconButton label="Add attachment" disabled={!onAttachmentRequest} onClick={onAttachmentRequest}><Plus size={15} strokeWidth={1.5} /></IconButton>
+                  <IconButton label="Add attachment" disabled={!onAttachmentRequest} onClick={onAttachmentRequest} icon={<Plus size={15} strokeWidth={1.5} />} />
                   <ModelPicker value={model} disabled={!onModelClick} onClick={onModelClick} />
-                  <IconButton label="Add image" disabled={!onImageRequest} onClick={onImageRequest}><Image size={15} strokeWidth={1.5} /></IconButton>
+                  <IconButton label="Add image" disabled={!onImageRequest} onClick={onImageRequest} icon={<Image size={15} strokeWidth={1.5} />} />
                   <Tooltip label="Coming soon" direction="Top">
-                    <span tabIndex={0} aria-label="Voice input unavailable: Coming soon"><IconButton label="Voice input coming soon" disabled><Mic size={15} strokeWidth={1.5} /></IconButton></span>
+                    <span tabIndex={0} aria-label="Voice input unavailable: Coming soon"><IconButton label="Voice input coming soon" disabled icon={<Mic size={15} strokeWidth={1.5} />} /></span>
                   </Tooltip>
                   <span className="flex-1" />
                   <IconButton
                     label={sending ? "Stop response" : "Send message"}
                     disabled={sending ? !onStop : !canSubmit}
                     onClick={sending ? onStop : onSubmit}
-                  >
-                    {sending ? <span className="size-[9px] rounded-[1px] bg-current" /> : <Send size={15} strokeWidth={1.5} />}
-                  </IconButton>
+                    icon={sending ? <span className="size-[9px] rounded-[1px] bg-current" /> : <Send size={15} strokeWidth={1.5} />}
+                  />
                 </div>
               </div>
             </div>
@@ -831,7 +806,7 @@ export function AgentPanel({
               <h2 className={clsx(FONT, "m-0 [font-size:var(--composa-body-medium-size)] [line-height:var(--composa-body-medium-line)] [font-weight:var(--composa-body-medium-strong-weight)] [letter-spacing:var(--composa-body-medium-letter-spacing)] text-c-text")}>Chats</h2>
               <BetaBadge />
               <span className="flex-1" />
-              <IconButton label="New chat" onClick={onNewConversation}><Plus size={16} strokeWidth={1.5} /></IconButton>
+              <IconButton label="New chat" onClick={onNewConversation} icon={<Plus size={16} strokeWidth={1.5} />} />
             </header>
             <div className="shrink-0 p-[8px]">
               <div className="h-[24px] rounded-c-md bg-c-bg-secondary flex items-center gap-[5px] px-[7px] focus-within:ring-1 focus-within:ring-c-focus-ring">

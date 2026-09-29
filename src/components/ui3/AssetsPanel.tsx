@@ -8,6 +8,7 @@ import { FieldShell, InputField } from "./Input";
 import { Menu, MenuRow, PopoverMenu } from "./Menu";
 import { Modal, ModalBody, ModalFooter, ModalHeader, MODAL_WIDTHS } from "./Dialog";
 import { Button } from "./Button";
+import { IconButton } from "./IconButton";
 import { Waveform } from "./Waveform";
 import { iconForSemantic } from "./IconSemantics";
 
@@ -392,20 +393,8 @@ function DropOverlay() {
   );
 }
 
-// ─── Icon button (header Upload) ──────────────────────────────────────────────
-function IconButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick?: () => void }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      className="flex items-center justify-center size-[24px] rounded-c-md text-c-icon hover:bg-c-bg-hover transition-colors"
-    >
-      {icon}
-    </button>
-  );
-}
+// The header Upload button uses the shared IconButton primitive (imported
+// above) — no private re-implementation (contract: no-adhoc-icon-button).
 
 // ─── Demo data ────────────────────────────────────────────────────────────────
 const DEMO_ASSETS: AssetItem[] = [

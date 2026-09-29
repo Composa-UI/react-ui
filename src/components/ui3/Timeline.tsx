@@ -6,6 +6,7 @@ import { collectAggregateKeyframes, createTimelineEdgeDragController, formatMast
 import { LayerTypeIcon, type LayerAutoLayoutAlign, type LayerAutoLayoutMode, type LayerIconType } from "./LayerTypeIcon";
 import { rowSelectionHighlightClassName, type RowSelectionState } from "./RowSelectionState";
 import { ScrollArea, IconButtonRow, type IconBtn } from "./Panel";
+import { IconButton } from "./IconButton";
 import { Menu, MenuRow } from "./Menu";
 import { Tooltip } from "./Tooltip";
 import { ProposedDiamondCircle } from "../../icons/proposed-lucide";
@@ -1354,13 +1355,9 @@ export function TimelineTrackRows({ track, trackIndex, focusable, viewport, plot
 // wired no handler, the tooltip is suppressed the same way `IconButtonRow` and
 // `PanelActionBtn` already suppress theirs — a natively-disabled <button> swallows
 // hover, and an inert control has nothing to explain.
-function TransportIconButton({ children, label, onClick, active }: { children: React.ReactNode; label: string; onClick?: () => void; active?: boolean }) {
-  return (
-    <Tooltip label={label}>
-      <button aria-label={label} aria-pressed={active} onClick={onClick} style={{ width: TRANSPORT_BTN, height: TRANSPORT_BTN }} className={clsx("rounded-c-md flex items-center justify-center text-c-icon hover:bg-c-bg-hover", active && "bg-c-bg-selected")}>{children}</button>
-    </Tooltip>
-  );
-}
+// Transport controls use the shared IconButton primitive (imported above), a
+// 24px hit box matching TRANSPORT_BTN — no private re-implementation (contract:
+// no-adhoc-icon-button). `active` paints the selected ground + sets aria-pressed.
 
 /** Props for {@link TimelineTransport}. */
 export interface TimelineTransportProps {
@@ -1398,8 +1395,8 @@ export function TimelineTransport({ current, duration, mode, playing, loop, auto
   return (
     <div className="shrink-0 flex items-center gap-[8px]" style={{ width: leftW, paddingLeft: TRANSPORT_PAD_X, paddingRight: TRANSPORT_PAD_X }}>
       {/* shared transport controls */}
-      <TransportIconButton label={playing ? "Pause" : "Play"} active={playing} onClick={() => onPlayingChange(!playing)}>{playing ? <Pause size={TRANSPORT_GLYPH} strokeWidth={1.5} /> : <Play size={TRANSPORT_GLYPH} strokeWidth={1.5} />}</TransportIconButton>
-      <TransportIconButton label="Stop" onClick={onStop}><Square size={14} strokeWidth={1.5} /></TransportIconButton>
+      <IconButton label={playing ? "Pause" : "Play"} active={playing} onClick={() => onPlayingChange(!playing)} icon={playing ? <Pause size={TRANSPORT_GLYPH} strokeWidth={1.5} /> : <Play size={TRANSPORT_GLYPH} strokeWidth={1.5} />} />
+      <IconButton label="Stop" onClick={onStop} icon={<Square size={14} strokeWidth={1.5} />} />
       {/* Auto-keyframe / record toggle (Composa#330) — sits ALONGSIDE Stop, does not
           replace it. When armed, edits record keyframes and the timeline shows the red
           record affordances (top-stroke + red playhead). */}

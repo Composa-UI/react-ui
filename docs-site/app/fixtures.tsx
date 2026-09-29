@@ -450,6 +450,20 @@ export const FIXTURES: Record<string, () => ReactNode> = {
   EditorShell: () => <EditorShellFixture />,
 };
 
+// Additional live fixtures live one-per-file under ./fixtures/*.tsx, each
+// default-exporting a () => ReactNode that renders the real component. They are
+// merged into FIXTURES here so a component gets a live demo by adding a single
+// self-contained file — no edit to this shared registry — which lets many
+// authors add fixtures in parallel without colliding on one file. The matching
+// story is docs-site/stories/<Component>.stories.tsx (render: () => FIXTURES.<Component>()).
+const extraFixtures = import.meta.glob<{ default: () => ReactNode }>("./fixtures/*.tsx", {
+  eager: true,
+});
+for (const [path, mod] of Object.entries(extraFixtures)) {
+  const name = path.slice(path.lastIndexOf("/") + 1, -".tsx".length);
+  if (mod.default) FIXTURES[name] = mod.default;
+}
+
 // Per-variant fixtures — the discrete stories a component's demo dropdown offers
 // (Carbon's StorybookDemo `variants`). Each label must match a same-named story
 // export in docs-site/stories/<Component>.stories.tsx and an entry in VARIANTS

@@ -44,13 +44,13 @@ const annotations = files.map(readJson) as Array<Record<string, unknown>>;
 // Components the DS considers contract-complete: adding one without a valid,
 // truthful annotation must fail here.
 const REQUIRED = [
-  "Button", "Tabs", "Inspector", "EditorShell", "Dropdown", "MenuRow", "NavRail",
+  "Button", "IconButton", "Tabs", "Inspector", "EditorShell", "Dropdown", "MenuRow", "NavRail",
   "PanelSection", "SegmentedControl", "RadioButton",
   "Switch", "Checkbox", "Dial", "AlignmentControl",
   "CreationToolbar", "CropToolbar", "LayerList", "Notification",
   "Slider", "ListCell", "Tooltip", "SplitButton", "Menu", "NumericInput",
   "Modal", "InputField", "InspectorRailSwitcher", "SidePanel",
-  "ColorWheel", "ColorInput",
+  "ColorWheel", "ColorInput", "LandingTemplate", "ProjectsHomeTemplate",
 ];
 
 // Components whose source lives in a shared file (not <Component>.tsx). Used to
@@ -120,6 +120,67 @@ describe("annotation contract v1", () => {
     expect(validate(readJson(file), schema)).toEqual([]);
   });
 
+  // The rule→lint bridge (REM's pattern): each authored rule renders as a
+  // Do/Don't card AND names how it's enforced. `enforced_by` must be either
+  // 'prose-only' or the id of an adherence check this file actually runs, so a
+  // rule can never claim an enforcement that doesn't exist. ADHERENCE_CHECKS is
+  // the registry of ids that have a real check below.
+  const ADHERENCE_CHECKS = new Set<string>([
+    "no-adhoc-icon-button",
+  ]);
+  it("rules are well-formed and only claim enforcement that exists", () => {
+    const RULE_KEYS = new Set(["id", "do", "dont", "enforced_by"]);
+    for (const ann of annotations) {
+      const rules = (ann.rules ?? []) as Array<Record<string, unknown>>;
+      for (const r of rules) {
+        for (const k of ["id", "do", "dont"]) {
+          expect(typeof r[k], `${ann.component}: rule missing string '${k}'`).toBe("string");
+        }
+        // additionalProperties: false — no field beyond the schema's four.
+        for (const k of Object.keys(r)) {
+          expect(RULE_KEYS.has(k), `${ann.component}: rule '${String(r.id)}' has unknown field '${k}'`).toBe(true);
+        }
+        const by = r.enforced_by;
+        if (by !== undefined) {
+          expect(typeof by, `${ann.component}: rule '${String(r.id)}' enforced_by must be a string`).toBe("string");
+          if (by !== "prose-only") {
+            expect(
+              ADHERENCE_CHECKS.has(by as string),
+              `${ann.component}: rule '${String(r.id)}' claims enforced_by='${String(by)}' but no such adherence check runs`,
+            ).toBe(true);
+          }
+        }
+      }
+    }
+  });
+
+  // Adherence check `no-adhoc-icon-button`: the shared IconButton is the design
+  // system's icon-only button. A panel or toolbar must import it rather than
+  // define its own private icon-button COMPONENT — the exact drift this contract
+  // removed (AgentPanel/AssetsPanel/Timeline each had one). Scope: this catches a
+  // re-implemented `*IconButton` component, NOT a one-off inline <button> with
+  // bespoke behaviour (e.g. Timeline's Loop/record toggles), which is a separate,
+  // out-of-scope concern — the rule's Do/Don't is worded to match that scope.
+  it("no-adhoc-icon-button: components use the shared IconButton, not a private one", () => {
+    const OWNS_ICON_BUTTON = new Set(["IconButton", "Button", "SplitButton", "Panel", "CreationToolbar"]);
+    // A private re-implementation is a PascalCase component whose name ends in
+    // "IconButton" (IconButton, TransportIconButton, FooIconButton). camelCase
+    // helpers/hooks (useIconButton, renderIconButton) are excluded by the
+    // leading-uppercase test; test files are skipped outright.
+    const DEFN = /\b(?:function|const)\s+([A-Za-z_]\w*)/g;
+    const isPrivateIconButton = (name: string) => /^[A-Z]/.test(name) && /IconButton$/.test(name);
+    for (const file of readdirSync(srcDir).filter(f => f.endsWith(".tsx") && !f.endsWith(".test.tsx"))) {
+      const name = file.replace(/\.tsx$/, "");
+      if (OWNS_ICON_BUTTON.has(name)) continue;
+      const src = stripComments(readFileSync(srcDir + file, "utf8"));
+      const offenders = [...src.matchAll(DEFN)].map(m => m[1]).filter(isPrivateIconButton);
+      expect(
+        offenders,
+        `${name} defines a private icon-button component (${offenders.join(", ")}); import the shared IconButton (docs/design-system: no-adhoc-icon-button)`,
+      ).toEqual([]);
+    }
+  });
+
   it("enforce.role is truthful: a component claiming an ARIA role renders it", () => {
     for (const ann of annotations) {
       const enforce = (ann.enforce ?? {}) as { role?: string; ariaRole?: boolean };
@@ -157,6 +218,9 @@ describe("annotation contract v1", () => {
       composite: ["anatomy", "guidance"],
       overlay: ["guidance"],
       shell: ["anatomy", "guidance"],
+      // A composable screen-shape pattern with content slots: it must name its
+      // regions (anatomy) and carry the wiring/placement advice (guidance).
+      template: ["anatomy", "guidance"],
       utility: [],
     };
     for (const ann of annotations) {
