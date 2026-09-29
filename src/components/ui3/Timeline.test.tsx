@@ -955,7 +955,10 @@ describe("master track header aligns with the transport above it (Composa#661)",
 
   it("insets the lane header by the transport's play-glyph offset", () => {
     const playButton = tagWithLabel(html, "Play");
-    const box = Number(/width:\s*(\d+)px/.exec(playButton)?.[1]);
+    // The transport button is the shared IconButton, whose 24px hit box is a
+    // `size-[24px]` utility class (not an inline width), like every other icon
+    // button — so read the box off that class.
+    const box = Number(/size-\[(\d+)px\]/.exec(playButton)?.[1]);
     const glyph = Number(/<svg[^>]*width="(\d+)"/.exec(html.slice(html.indexOf(playButton)))?.[1]);
     // The transport row's own horizontal inset, read off the element that wraps it.
     const rowIdx = html.indexOf(playButton);
