@@ -3,7 +3,7 @@
   "category": "Templates",
   "archetype": "template",
   "intent": "The public marketing-page shell: sticky header, a hero with one media slot, a content well, and a footer.",
-  "guidance": "Fills the marketing surface top to bottom while holding no product, auth, or routing state — the host wires the CTAs and fills the copy. The scroll container is deliberate: the template owns the scrollport and its content grows with the page, which is what keeps the header sticky the whole way down. Keep exactly one media slot, at the top, holding a stable 1320:693 frame for the launch film; the sections below are copy-only (DEC-073). Mark the redundant 'Log in' link with data-landing-collapsible so it hides below a 368px header and the primary CTA never clips. This surface is fixed-light and is not themed.",
+  "guidance": "Fills the marketing surface top to bottom while holding no product, auth, or routing state — the host wires the CTAs and fills the copy. The scroll container is deliberate: the template owns the scrollport and its content grows with the page, which is what keeps the header sticky the whole way down. Keep exactly one media slot, at the top, holding a stable 1320:693 frame for the launch film; the sections below are copy-only (DEC-073). Mark the redundant 'Log in' link with data-landing-collapsible so it hides below a 368px header and the primary CTA never clips. The surface binds to the c-* tokens; the host pins it to light with data-composa-mode=\"light\", so it reads as a light marketing page without hardcoding colors.",
   "use_when": [
     "The public / marketing entry surface that routes a visitor toward authentication.",
     "A full-page content surface that needs a sticky header, a hero, and a footer."
@@ -38,9 +38,9 @@
     "footerSocials": "Footer social row."
   },
   "tokens": {
-    "surface": { "bg": "white (fixed-light marketing surface)" },
+    "surface": { "bg": "bg/default", "text": "text/default", "divider": "border/default" },
     "shape": { "radius": "radius/medium (media frame)" },
-    "note": "A fixed-light marketing surface: it uses raw white/black and the landing spec's measured rgba values (e.g. shadows), not the themed c-* token set — so it is intentionally not fully token-bound."
+    "note": "Token-bound to the c-* set. The host pins the surface to light via data-composa-mode=\"light\", so it stays a light marketing page without hardcoded colors; the only raw values are the header/media drop-shadow alphas (rgba), which carry no hue."
   },
   "a11y": {
     "role": "landmarks (header / main / footer)",
@@ -51,7 +51,7 @@
   "enforce": {
     "role": "main",
     "ariaRole": false,
-    "tokensOnly": false
+    "tokensOnly": true
   },
   "code": {
     "import": "import { LandingTemplate } from '@composa/ui'",

@@ -61,7 +61,7 @@ export function LandingTemplate({
     // The scroll container is what pins the header: it owns the scrollport and
     // its child grows with content (`min-h-full`), so `sticky top-0` stays put.
     <div
-      className={clsx("bg-white overflow-y-auto overflow-x-hidden font-['Inter',sans-serif] text-black", className)}
+      className={clsx("bg-c-bg overflow-y-auto overflow-x-hidden font-['Inter',sans-serif] text-c-text", className)}
       style={{ height: "100dvh", scrollBehavior: "smooth" }}
     >
       {/* container-query login-collapse: a viewport media query can't see the
@@ -70,7 +70,7 @@ export function LandingTemplate({
       <style>{`@container landing-header (max-width: 368px){[data-landing-collapsible]{display:none}}`}</style>
       <div className="flex flex-col items-start w-full min-h-full">
         <header
-          className="bg-white flex items-center sticky top-0 z-20 shrink-0 w-full drop-shadow-[0px_1px_0px_rgba(0,0,0,0.16)]"
+          className="bg-c-bg flex items-center sticky top-0 z-20 shrink-0 w-full drop-shadow-[0px_1px_0px_rgba(0,0,0,0.16)]"
           style={{ containerType: "inline-size", containerName: "landing-header" }}
         >
           <div className="h-[78.391px] w-full max-w-[1345px] mx-auto px-[24px] flex items-center justify-between py-[16px]">
@@ -83,7 +83,7 @@ export function LandingTemplate({
 
         <main className="w-full flex flex-col items-center">
           {/* Hero — beta tag, title, sub-copy, CTA, then the one media slot. */}
-          <section className="w-full bg-white pb-[32px]">
+          <section className="w-full bg-c-bg pb-[32px]">
             <div className="flex flex-col gap-[64px] items-center pt-[64px] w-full">
               <div className={MAX}>
                 <div className="max-w-[660px]">
@@ -110,12 +110,12 @@ export function LandingTemplate({
 
           {disclaimer && (
             <div className={clsx(MAX, "pb-[120px]")}>
-              <p className="text-[16px] leading-[23.2px] text-black/60 text-center m-0">{disclaimer}</p>
+              <p className="text-[16px] leading-[23.2px] text-c-text-secondary text-center m-0">{disclaimer}</p>
             </div>
           )}
         </main>
 
-        <footer className="w-full pt-[121px] pb-[120px] border-t border-black/[0.08]">
+        <footer className="w-full pt-[121px] pb-[120px] border-t border-c-border">
           <div className={clsx(MAX, "mx-auto")}>
             <div className="font-['IBM_Plex_Sans',sans-serif] text-[20px] font-semibold tracking-[-0.4px]">
               {footerBrand ?? "Composa"}

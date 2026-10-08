@@ -12,7 +12,7 @@ export default function LandingTemplateFixture() {
     <LandingTemplate
       headerActions={
         <>
-          <a href="#hero" data-landing-collapsible className="text-[14px] px-[8px] text-black no-underline">Log in</a>
+          <a href="#hero" data-landing-collapsible className="text-[14px] px-[8px] text-c-text no-underline">Log in</a>
           <Button label="Start composing" variant="Primary" onClick={() => undefined} />
           <IconButton label="GitHub" icon={<Github size={18} strokeWidth={1.5} />} onClick={() => undefined} />
         </>
@@ -22,12 +22,12 @@ export default function LandingTemplateFixture() {
       subtitle={
         <>
           <p className="m-0">Compose videos the way you build slides.</p>
-          <p className="m-0 pt-[12px] text-[18px] text-black/55">It&rsquo;s like Figma met Keynote.</p>
+          <p className="m-0 pt-[12px] text-[18px] text-c-text-secondary">It&rsquo;s like Figma met Keynote.</p>
         </>
       }
       heroActions={<Button label="Try Composa" variant="Primary" onClick={() => undefined} />}
       media={
-        <div className="size-full grid place-items-center bg-gradient-to-br from-black/[0.04] to-black/[0.10] text-black/40 text-[13px]">
+        <div className="size-full grid place-items-center bg-c-bg-secondary text-c-text-tertiary text-[13px]">
           Launch film goes here
         </div>
       }
@@ -43,7 +43,7 @@ export default function LandingTemplateFixture() {
         <h2 className="font-['IBM_Plex_Sans',sans-serif] text-[32px] leading-[41.6px] tracking-[-0.32px] m-0 max-w-[540px]">
           Design and animate the scene. Compose the video.
         </h2>
-        <p className="pt-[16px] text-[18px] leading-[25.2px] text-black/60 max-w-[540px] m-0">
+        <p className="pt-[16px] text-[18px] leading-[25.2px] text-c-text-secondary max-w-[540px] m-0">
           A copy-only value section — the host fills these; the template owns the rhythm around them.
         </p>
       </div>
